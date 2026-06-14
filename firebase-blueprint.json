@@ -1,0 +1,190 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores player profile, stats, and inventory.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the user." },
+        "name": { "type": "string", "description": "The display name of the user." },
+        "level": { "type": "integer", "description": "The current level of the player." },
+        "glory": { "type": "integer", "description": "The current glory points." },
+        "energy": { "type": "integer", "description": "The current energy points." },
+        "reputation": { "type": "integer", "description": "The current reputation points." },
+        "clanId": { "type": "number", "description": "The ID of the clan the player belongs to." },
+        "inventory": { "type": "object", "description": "A map of resource IDs to amounts." },
+        "gold": { "type": "integer", "description": "The current gold amount." },
+        "rubies": { "type": "integer", "description": "The current rubies amount." },
+        "lastSaveTime": { "type": "integer", "description": "Timestamp of the last save." },
+        "banEndTime": { "type": "number", "description": "Timestamp when the user's ban ends." },
+        "activeCurse": { "type": "object", "description": "Current active curse on the user." },
+        "role": { "type": "string", "description": "User role (user, admin)." }
+      },
+      "required": ["uid", "name", "level", "glory", "energy", "reputation", "inventory", "gold", "rubies"]
+    },
+    "Building": {
+      "title": "Building",
+      "description": "Represents a structure on the map.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "Unique ID for the building instance." },
+        "x": { "type": "number", "description": "X coordinate on the map." },
+        "y": { "type": "number", "description": "Y coordinate on the map." },
+        "buildingId": { "type": "number", "description": "The type ID of the building." },
+        "ownerId": { "type": "string", "description": "The UID of the owner (or 'monster' or '0' for local player)." },
+        "hp": { "type": "number", "description": "Current health points." },
+        "maxHp": { "type": "number", "description": "Maximum health points." },
+        "isConstructing": { "type": "boolean", "description": "Whether the building is under construction." },
+        "constructionEndTime": { "type": "number", "description": "Timestamp when construction finishes." },
+        "workState": { "type": "string", "description": "Current work state (idle, working, finished)." },
+        "workEndTime": { "type": "number", "description": "Timestamp when work finishes." },
+        "lastMoveTime": { "type": "number", "description": "Timestamp of the last monster move." },
+        "protectionEndTime": { "type": "number", "description": "Timestamp when protection ends." },
+        "isDestroying": { "type": "boolean", "description": "Whether the building is currently being destroyed." },
+        "destructionEndTime": { "type": "number", "description": "Timestamp when destruction finishes." },
+        "initiatorId": { "type": "string", "description": "UID of the player who initiated destruction." },
+        "pendingDamage": { "type": "number", "description": "Damage waiting to be applied." },
+        "hostId": { "type": "string", "description": "UID of the host player for monster buildings." }
+      },
+      "required": ["x", "y", "buildingId", "ownerId"]
+    },
+    "MarketListing": {
+      "title": "Market Listing",
+      "description": "An item listed for sale on the market.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "Unique ID for the listing." },
+        "sellerName": { "type": "string", "description": "Name of the seller." },
+        "sellerId": { "type": "string", "description": "UID of the seller." },
+        "resourceId": { "type": "number", "description": "ID of the resource being sold." },
+        "amount": { "type": "number", "description": "Amount of the resource." },
+        "price": { "type": "number", "description": "Price of the item." },
+        "currency": { "type": "string", "description": "Currency used (coins, rubies)." }
+      },
+      "required": ["id", "sellerName", "sellerId", "resourceId", "amount", "price", "currency"]
+    },
+    "Clan": {
+      "title": "Clan",
+      "description": "Represents a player-created clan.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "Unique ID for the clan." },
+        "name": { "type": "string", "description": "Name of the clan." },
+        "description": { "type": "string", "description": "Description of the clan." },
+        "avatarUrl": { "type": "string", "description": "URL to the clan avatar image." },
+        "leaderName": { "type": "string", "description": "Display name of the clan leader." },
+        "leaderUid": { "type": "string", "description": "UID of the clan leader." },
+        "membersCount": { "type": "number", "description": "Number of members in the clan." }
+      },
+      "required": ["id", "name", "description", "leaderName", "leaderUid", "membersCount"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A message sent in a chat tab.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "sender": { "type": "string" },
+        "text": { "type": "string" },
+        "type": { "type": "string", "enum": ["normal", "shout", "system"] },
+        "timestamp": { "type": "number" },
+        "tab": { "type": "string" },
+        "clanId": { "type": ["number", "string", "null"] },
+        "teleportCoordinates": { "type": "object" }
+      },
+      "required": ["id", "sender", "text", "type", "timestamp", "tab"]
+    },
+    "Presence": {
+      "title": "Presence",
+      "description": "User's current location in the chat.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "activeTab": { "type": "string" },
+        "clanId": { "type": ["number", "string", "null"] },
+        "lastSeen": { "type": "number" }
+      },
+      "required": ["uid", "name", "activeTab", "lastSeen"]
+    },
+    "MapState": {
+      "title": "Map State",
+      "description": "Tracks if the map has been generated.",
+      "type": "object",
+      "properties": {
+        "generated": { "type": "boolean", "description": "Whether the map is generated." },
+        "seed": { "type": "number", "description": "The seed used for map generation." }
+      },
+      "required": ["generated", "seed"]
+    },
+    "MapResource": {
+      "title": "Map Resource",
+      "description": "A resource on the map.",
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "hp": { "type": "number" },
+        "type": { "type": "string", "enum": ["tree", "oil", "chest", "quarry"] }
+      },
+      "required": ["x", "y", "hp", "type"]
+    },
+    "PrivateMessage": {
+      "title": "Private Message",
+      "description": "A private message between two users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "chatId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "read": { "type": "boolean" },
+        "participants": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["id", "chatId", "senderId", "receiverId", "text", "timestamp", "read", "participants"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "Individual user profiles."
+    },
+    "/buildings/{buildingId}": {
+      "schema": "Building",
+      "description": "All buildings on the shared map."
+    },
+    "/market/{listingId}": {
+      "schema": "MarketListing",
+      "description": "Active market listings."
+    },
+    "/clans/{clanId}": {
+      "schema": "Clan",
+      "description": "Player-created clans."
+    },
+    "/chat_messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Chat messages for different tabs."
+    },
+    "/private_messages/{messageId}": {
+      "schema": "PrivateMessage",
+      "description": "Private messages between users."
+    },
+    "/presence/{userId}": {
+      "schema": "Presence",
+      "description": "User presence in chat tabs."
+    },
+    "/map_state/status": {
+      "schema": "MapState",
+      "description": "The current generation status of the map."
+    },
+    "/map_resources/{resourceId}": {
+      "schema": "MapResource",
+      "description": "All map resources on the shared map."
+    }
+  }
+}

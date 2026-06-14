@@ -1,0 +1,360 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {uid}
+    // Fields:
+    //   - uid: string (required) - The unique ID of the user.
+    //   - name: string (required) - The display name of the user.
+    //   - level: int (required) - The current level of the player.
+    //   - glory: int (required) - The current glory points.
+    //   - energy: int (required) - The current energy points.
+    //   - reputation: int (required) - The current reputation points.
+    //   - clanId: string (optional) - The ID of the clan.
+    //   - inventory: map (required) - A map of resource IDs to amounts.
+    //   - gold: int (required) - The current gold amount.
+    //   - rubies: int (required) - The current rubies amount.
+    //   - lastSaveTime: int (required) - Timestamp of the last save.
+    //
+    // Collection: buildings
+    // Document ID: {buildingId}
+    // Fields:
+    //   - id: number (required) - Unique ID for the building instance.
+    //   - x: number (required) - X coordinate.
+    //   - y: number (required) - Y coordinate.
+    //   - buildingId: number (required) - Type ID.
+    //   - ownerId: string (required) - UID of the owner or 'monster'.
+    //   - hp: number (optional) - Current HP.
+    //   - maxHp: number (optional) - Max HP.
+    //   - isConstructing: bool (optional) - Construction state.
+    //   - constructionEndTime: number (optional) - End time.
+    //   - workState: string (optional) - Work state.
+    //   - workEndTime: number (optional) - Work end time.
+    //   - lastMoveTime: number (optional) - Monster move time.
+    //   - protectionEndTime: number (optional) - Protection end time.
+    //   - isActive: bool (optional) - Activation state for cannons.
+    //
+    // Collection: market
+    // Document ID: {listingId}
+    // Fields:
+    //   - id: number (required) - Unique ID.
+    //   - sellerName: string (required) - Seller name.
+    //   - sellerId: string (required) - Seller UID.
+    //   - resourceId: number (required) - Resource ID.
+    //   - amount: number (required) - Amount.
+    //   - price: number (required) - Price.
+    //   - currency: string (required) - Currency.
+    //   - isPlayer: bool (required) - Is player.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (('email' in request.auth.token && request.auth.token.email == "goldwasd1@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin' ||
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'moderator')));
+    }
+
+    function isClanMember(clanId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             string(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clanId) == string(clanId);
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidActiveCurse(data) {
+      return data is map && 'prefix' in data && 'endTime' in data && data.prefix is string && data.endTime is number;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'name', 'level', 'glory', 'energy', 'reputation', 'inventory', 'gold', 'rubies']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.level is number &&
+             data.glory is number &&
+             data.energy is number &&
+             data.reputation is number &&
+             data.inventory is map &&
+             data.gold is number &&
+             data.rubies is number &&
+             (!('activeCurse' in data) || (data.activeCurse is map && 'prefix' in data.activeCurse && 'endTime' in data.activeCurse)) &&
+             (!('role' in data) || data.role in ['user', 'admin']) &&
+             (!('avatar' in data) || data.avatar == null || (data.avatar is string && data.avatar.size() < 1000000));
+    }
+
+    function isValidBuilding(data) {
+      return hasRequiredFields(['x', 'y', 'buildingId', 'ownerId']) &&
+             data.x is number && data.x >= 0 &&
+             data.y is number && data.y >= 0 &&
+             data.buildingId is number &&
+             data.ownerId is string && data.ownerId.size() < 128 &&
+             (!('isActive' in data) || data.isActive is bool) &&
+             (!('taxRate' in data) || (data.taxRate is number && data.taxRate >= 0 && data.taxRate <= 50)) &&
+             (!('bank' in data) || (data.bank is number && data.bank >= 0));
+    }
+
+    function isValidMarketListing(data) {
+      return hasRequiredFields(['id', 'sellerName', 'sellerId', 'resourceId', 'amount', 'price', 'currency']) &&
+             data.id is number &&
+             data.sellerName is string && data.sellerName.size() < 100 &&
+             data.sellerId is string && data.sellerId.size() < 128 &&
+             data.resourceId is number &&
+             data.amount is number && data.amount > 0 &&
+             data.price is number && data.price >= 0 &&
+             data.currency in ['coins', 'rubies'];
+    }
+
+    function isValidClan(data) {
+      return hasRequiredFields(['id', 'name', 'description', 'leaderName', 'leaderUid', 'membersCount']) &&
+             data.id is number &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             data.description is string && data.description.size() <= 500 &&
+             data.leaderName is string && data.leaderName.size() < 100 &&
+             data.leaderUid is string && data.leaderUid.size() < 128 &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() < 1000000)) &&
+             data.membersCount is number;
+    }
+
+    function isValidClanUpdate(data) {
+      return (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() < 50)) &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() < 1000000)) &&
+             (!('membersCount' in data) || data.membersCount is number);
+    }
+
+    function isValidChatMessage(data) {
+      return hasRequiredFields(['id', 'sender', 'text', 'type', 'timestamp', 'tab']) &&
+             data.id is number &&
+             data.sender is string && data.sender.size() < 100 &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 2000 &&
+             data.type in ['normal', 'shout', 'system'] &&
+             data.timestamp is number &&
+             data.tab is string && data.tab.size() < 50 &&
+             (!('clanId' in data) || data.clanId == null || data.clanId is number || (data.clanId is string && data.clanId.size() < 128)) &&
+             (!('teleportCoordinates' in data) || (data.teleportCoordinates is map && data.teleportCoordinates.x is number && data.teleportCoordinates.y is number));
+    }
+
+    function isValidMapState(data) {
+      return hasRequiredFields(['generated', 'seed']) &&
+             data.generated is bool &&
+             data.seed is number;
+    }
+
+    function isValidMapResource(data) {
+      return hasRequiredFields(['x', 'y', 'hp', 'type']) &&
+             data.x is number && data.y is number &&
+             data.hp is number &&
+             data.type in ['tree', 'oil', 'chest', 'quarry'];
+    }
+
+    function isValidDroppedItem(data) {
+      return hasRequiredFields(['id', 'x', 'y', 'itemId', 'amount']) &&
+             data.id is string &&
+             data.x is number && data.y is number &&
+             data.itemId is number &&
+             data.amount is number && data.amount > 0 &&
+             (!('ownerId' in data) || data.ownerId is string);
+    }
+
+    function isValidPresence(data) {
+      return hasRequiredFields(['uid', 'name', 'activeTab', 'lastSeen']) &&
+             data.uid is string && data.uid.size() < 128 &&
+             data.name is string && data.name.size() < 100 &&
+             data.activeTab is string && data.activeTab.size() < 50 &&
+             data.lastSeen is number &&
+             (!('clanId' in data) || data.clanId == null || data.clanId is number || (data.clanId is string && data.clanId.size() < 128)) &&
+             (!('x' in data) || data.x is number) &&
+             (!('y' in data) || data.y is number) &&
+             (!('level' in data) || data.level is number) &&
+             (!('glory' in data) || data.glory is number) &&
+             (!('reputation' in data) || data.reputation is number) &&
+             (!('avatar' in data) || data.avatar == null || (data.avatar is string && data.avatar.size() < 1000000)) &&
+             (!('activeCurse' in data) || data.activeCurse == null || (data.activeCurse is map && 'prefix' in data.activeCurse && 'endTime' in data.activeCurse));
+    }
+
+    function isValidPrivateMessage(data) {
+      return hasRequiredFields(['id', 'chatId', 'senderId', 'receiverId', 'text', 'timestamp', 'read', 'participants']) &&
+             data.id is string &&
+             data.chatId is string &&
+             data.senderId is string &&
+             data.receiverId is string &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 2000 &&
+             data.timestamp is number &&
+             data.read is bool &&
+             data.participants is list && data.participants.size() == 2 &&
+             data.participants[0] is string && data.participants[1] is string;
+    }
+
+    function isValidUserUpdate(data, existingData) {
+      return (!('uid' in data) || (data.uid is string && data.uid.size() < 128)) &&
+             (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() < 100)) &&
+             (!('level' in data) || data.level is number) &&
+             (!('glory' in data) || data.glory is number) &&
+             (!('energy' in data) || data.energy is number) &&
+             (!('reputation' in data) || data.reputation is number) &&
+             (!('inventory' in data) || data.inventory is map) &&
+             (!('gold' in data) || data.gold is number) &&
+             (!('rubies' in data) || data.rubies is number) &&
+             (!('clanId' in data) || data.clanId == null || data.clanId is number || (data.clanId is string && data.clanId.size() < 128)) &&
+             (!('lastSaveTime' in data) || data.lastSaveTime is number) &&
+             data.get('banEndTime', 0) == existingData.get('banEndTime', 0) &&
+             data.get('activeCurse', null) == existingData.get('activeCurse', null) &&
+             (!('avatar' in data) || data.avatar == null || (data.avatar is string && data.avatar.size() < 1000000));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if isAuthenticated() && 
+                    (
+                      (isOwner(userId) && isValidUserUpdate(request.resource.data, resource.data) && (request.resource.data.get('role', 'user') == resource.data.get('role', 'user'))) ||
+                      isAdmin() ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['banEndTime']) && request.resource.data.banEndTime is number && request.resource.data.banEndTime > request.time.toMillis()) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reputation']) && request.resource.data.reputation is number) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gold']) && request.resource.data.gold is number && request.resource.data.gold >= resource.data.gold) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rubies']) && request.resource.data.rubies is number && request.resource.data.rubies >= resource.data.rubies) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeCurse']) && 
+                       isValidActiveCurse(request.resource.data.activeCurse) &&
+                       (!('activeCurse' in resource.data) || resource.data.activeCurse == null || resource.data.activeCurse.endTime < request.time.toMillis()))
+                    );
+      allow delete: if isAdmin();
+    }
+
+    match /buildings/{buildingId} {
+      allow read: if true;
+      
+      // Allow creating buildings if authenticated OR if it's a game/monster building
+      allow create: if (isAuthenticated() && isValidBuilding(request.resource.data) && (request.resource.data.ownerId == request.auth.uid || request.resource.data.ownerId == 'monster' || request.resource.data.ownerId == '0' || request.resource.data.ownerId == '-1' || isAdmin())) ||
+                       (isValidBuilding(request.resource.data) && (request.resource.data.ownerId == 'monster' || request.resource.data.ownerId == '0' || request.resource.data.ownerId == '-1'));
+      
+      // Allow updating if authenticated AND (owner or admin) OR if it's a game/monster building (with restricted fields)
+      allow update: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid || 
+        isAdmin() ||
+        (
+          (resource.data.buildingId == 50004 || resource.data.buildingId == 50005 || resource.data.buildingId == "50004" || resource.data.buildingId == "50005") &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['x', 'y', 'ownerId'])
+        ) ||
+        (
+          (resource.data.ownerId == 'monster' || resource.data.ownerId == '0' || resource.data.ownerId == '-1') &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'maxHp', 'isDestroying', 'destructionEndTime', 'pendingDamage', 'workState', 'lastAttackTime', 'lastMoveTime', 'x', 'y', 'hostId', 'isConstructing', 'constructionEndTime', 'buildingId', 'type', 'bank', 'workEndTime', 'ownerId', 'initiatorId'])
+        ) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hp', 'maxHp', 'isDestroying', 'destructionEndTime', 'pendingDamage', 'workState', 'hostId', 'lastAttackTime', 'lastMoveTime', 'x', 'y', 'buildingId', 'type', 'bank', 'workEndTime', 'initiatorId', 'ownerId'])
+        )
+      );
+      
+      // Allow deleting if authenticated AND (owner or admin) OR if it's a game/monster building OR if HP is 0
+      allow delete: if (isAuthenticated() && (resource == null || resource.data.ownerId == request.auth.uid || resource.data.ownerId == '0' || resource.data.ownerId == 'monster' || resource.data.ownerId == '-1' || isAdmin() || resource.data.get('hp', 1) <= 0)) ||
+                       (resource != null && (resource.data.ownerId == '0' || resource.data.ownerId == 'monster' || resource.data.ownerId == '-1'));
+    }
+
+    match /market/{listingId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidMarketListing(request.resource.data) && (request.resource.data.sellerId == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && isValidMarketListing(request.resource.data) && (resource.data.sellerId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated();
+    }
+
+    match /clans/{clanId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidClan(request.resource.data) && (request.resource.data.leaderUid == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && 
+                    (
+                      (isValidClanUpdate(request.resource.data) && (resource.data.leaderUid == request.auth.uid || isAdmin() || isClanMember(clanId))) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membersCount']) && request.resource.data.membersCount is number)
+                    );
+      allow delete: if isAuthenticated() && (resource.data.leaderUid == request.auth.uid || isAdmin());
+    }
+
+    match /chat_messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidChatMessage(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /private_messages/{messageId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && isValidPrivateMessage(request.resource.data) && 
+                    (request.auth.uid == request.resource.data.senderId || (request.resource.data.senderId == 'anonymous' && request.auth.uid in request.resource.data.participants)) && 
+                    request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) && request.resource.data.read == true;
+      allow delete: if isAdmin();
+    }
+
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && isValidPresence(request.resource.data);
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /map_state/status {
+      allow read: if true;
+      allow write: if isAuthenticated() && (!exists(/databases/$(database)/documents/map_state/status) || isAdmin());
+    }
+
+    match /map_resources/{resourceId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && (isValidMapResource(request.resource.data) || isAdmin());
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() || isAdmin();
+    }
+
+    match /dropped_items/{itemId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidDroppedItem(request.resource.data);
+      allow update, delete: if isAuthenticated();
+    }
+
+    match /elections/{electionId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

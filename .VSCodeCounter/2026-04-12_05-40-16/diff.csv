@@ -1,0 +1,204 @@
+"filename", "language", "TypeScript", "JavaScript", "PowerShell", "HTML", "Markdown", "JSON", "TypeScript JSX", "comment", "blank", "total"
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\AI Integration.md", "Markdown", 0, 0, 0, 0, 292, 0, 0, 0, 44, 336
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\API Reference\API Reference.md", "Markdown", 0, 0, 0, 0, 366, 0, 0, 0, 69, 435
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\API Reference\Component APIs.md", "Markdown", 0, 0, 0, 0, 282, 0, 0, 0, 40, 322
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\API Reference\Database API.md", "Markdown", 0, 0, 0, 0, 348, 0, 0, 0, 66, 414
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\API Reference\Game Engine API.md", "Markdown", 0, 0, 0, 0, 389, 0, 0, 0, 67, 456
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\API Reference\Gemini AI API.md", "Markdown", 0, 0, 0, 0, 264, 0, 0, 0, 52, 316
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\API Reference\Type Definitions.md", "Markdown", 0, 0, 0, 0, 482, 0, 0, 0, 86, 568
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Architecture Overview\Architecture Overview.md", "Markdown", 0, 0, 0, 0, 370, 0, 0, 0, 52, 422
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Architecture Overview\Component Interactions.md", "Markdown", 0, 0, 0, 0, 345, 0, 0, 0, 51, 396
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Architecture Overview\Data Flow Patterns.md", "Markdown", 0, 0, 0, 0, 299, 0, 0, 0, 51, 350
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Architecture Overview\Design Patterns.md", "Markdown", 0, 0, 0, 0, 375, 0, 0, 0, 66, 441
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Architecture Overview\System Architecture.md", "Markdown", 0, 0, 0, 0, 348, 0, 0, 0, 46, 394
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Building Data Structure.md", "Markdown", 0, 0, 0, 0, 479, 0, 0, 0, 85, 564
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Building System.md", "Markdown", 0, 0, 0, 0, 380, 0, 0, 0, 50, 430
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Building UI Components.md", "Markdown", 0, 0, 0, 0, 324, 0, 0, 0, 50, 374
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Construction Mechanics\Construction Mechanics.md", "Markdown", 0, 0, 0, 0, 371, 0, 0, 0, 65, 436
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Construction Mechanics\Construction Timing.md", "Markdown", 0, 0, 0, 0, 233, 0, 0, 0, 41, 274
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Construction Mechanics\Placement Validation.md", "Markdown", 0, 0, 0, 0, 268, 0, 0, 0, 44, 312
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Construction Mechanics\Resource Cost Calculation.md", "Markdown", 0, 0, 0, 0, 246, 0, 0, 0, 49, 295
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Destruction Mechanics\Damage Calculation.md", "Markdown", 0, 0, 0, 0, 211, 0, 0, 0, 36, 247
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Destruction Mechanics\Destruction Mechanics.md", "Markdown", 0, 0, 0, 0, 273, 0, 0, 0, 52, 325
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Destruction Mechanics\Resource Recovery.md", "Markdown", 0, 0, 0, 0, 275, 0, 0, 0, 47, 322
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Destruction Mechanics\Weapon System.md", "Markdown", 0, 0, 0, 0, 245, 0, 0, 0, 42, 287
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Building System\Upgrade System.md", "Markdown", 0, 0, 0, 0, 247, 0, 0, 0, 42, 289
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Building Destruction\Building Destruction.md", "Markdown", 0, 0, 0, 0, 263, 0, 0, 0, 48, 311
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Building Destruction\Damage Calculation.md", "Markdown", 0, 0, 0, 0, 252, 0, 0, 0, 46, 298
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Building Destruction\Destruction Effects.md", "Markdown", 0, 0, 0, 0, 352, 0, 0, 0, 58, 410
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Building Destruction\Destruction Synchronization.md", "Markdown", 0, 0, 0, 0, 256, 0, 0, 0, 43, 299
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Building Destruction\Health Management.md", "Markdown", 0, 0, 0, 0, 237, 0, 0, 0, 46, 283
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat Resolution\Battle Outcome Determination.md", "Markdown", 0, 0, 0, 0, 273, 0, 0, 0, 45, 318
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat Resolution\Combat Logging and Audit.md", "Markdown", 0, 0, 0, 0, 318, 0, 0, 0, 58, 376
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat Resolution\Combat Resolution.md", "Markdown", 0, 0, 0, 0, 328, 0, 0, 0, 48, 376
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat Resolution\Resource Rewards System\Combat Loot Distribution.md", "Markdown", 0, 0, 0, 0, 281, 0, 0, 0, 44, 325
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat Resolution\Resource Rewards System\Penalty Calculations.md", "Markdown", 0, 0, 0, 0, 236, 0, 0, 0, 47, 283
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat Resolution\Resource Rewards System\Resource Rewards System.md", "Markdown", 0, 0, 0, 0, 337, 0, 0, 0, 52, 389
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat Resolution\Resource Rewards System\Victory Bonuses.md", "Markdown", 0, 0, 0, 0, 223, 0, 0, 0, 43, 266
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Combat System.md", "Markdown", 0, 0, 0, 0, 357, 0, 0, 0, 56, 413
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Damage Calculation System.md", "Markdown", 0, 0, 0, 0, 274, 0, 0, 0, 50, 324
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster AI System.md", "Markdown", 0, 0, 0, 0, 332, 0, 0, 0, 57, 389
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Behavior Patterns\Behavioral Patterns Overview.md", "Markdown", 0, 0, 0, 0, 303, 0, 0, 0, 45, 348
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Behavior Patterns\Gorynych Behavior.md", "Markdown", 0, 0, 0, 0, 307, 0, 0, 0, 55, 362
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Behavior Patterns\Killing Hut Behavior.md", "Markdown", 0, 0, 0, 0, 216, 0, 0, 0, 42, 258
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Behavior Patterns\Kind Santa Behavior.md", "Markdown", 0, 0, 0, 0, 329, 0, 0, 0, 49, 378
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Behavior Patterns\Monster Behavior Patterns.md", "Markdown", 0, 0, 0, 0, 319, 0, 0, 0, 48, 367
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Combat System.md", "Markdown", 0, 0, 0, 0, 255, 0, 0, 0, 46, 301
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Pathfinding System.md", "Markdown", 0, 0, 0, 0, 246, 0, 0, 0, 42, 288
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Combat System\Monster AI System\Monster Spawning System.md", "Markdown", 0, 0, 0, 0, 261, 0, 0, 0, 40, 301
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Contributing Guidelines.md", "Markdown", 0, 0, 0, 0, 235, 0, 0, 0, 30, 265
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Core Game Engine\Component Lifecycle Integration.md", "Markdown", 0, 0, 0, 0, 209, 0, 0, 0, 41, 250
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Core Game Engine\Core Game Engine.md", "Markdown", 0, 0, 0, 0, 336, 0, 0, 0, 55, 391
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Core Game Engine\Game Loop and State Management.md", "Markdown", 0, 0, 0, 0, 283, 0, 0, 0, 47, 330
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Core Game Engine\Isometric Coordinate System.md", "Markdown", 0, 0, 0, 0, 223, 0, 0, 0, 44, 267
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Core Game Engine\Map Generation and Procedural Content.md", "Markdown", 0, 0, 0, 0, 296, 0, 0, 0, 49, 345
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Core Game Engine\Real-Time Synchronization.md", "Markdown", 0, 0, 0, 0, 289, 0, 0, 0, 47, 336
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Core Game Engine\Zone-Based Data Management.md", "Markdown", 0, 0, 0, 0, 316, 0, 0, 0, 42, 358
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Database Integration.md", "Markdown", 0, 0, 0, 0, 377, 0, 0, 0, 54, 431
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Database Schema and Data Models\Core Collections.md", "Markdown", 0, 0, 0, 0, 406, 0, 0, 0, 47, 453
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Database Schema and Data Models\Database Schema and Data Models.md", "Markdown", 0, 0, 0, 0, 530, 0, 0, 0, 59, 589
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Database Schema and Data Models\Game State and Configuration Collections.md", "Markdown", 0, 0, 0, 0, 384, 0, 0, 0, 52, 436
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Database Schema and Data Models\Market and Economy Collections.md", "Markdown", 0, 0, 0, 0, 321, 0, 0, 0, 53, 374
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Database Schema and Data Models\Social and Communication Collections.md", "Markdown", 0, 0, 0, 0, 341, 0, 0, 0, 43, 384
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\PocketBase Wrapper Implementation\Authentication System.md", "Markdown", 0, 0, 0, 0, 314, 0, 0, 0, 63, 377
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\PocketBase Wrapper Implementation\CRUD Operations.md", "Markdown", 0, 0, 0, 0, 277, 0, 0, 0, 48, 325
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\PocketBase Wrapper Implementation\Data Transformation Layer.md", "Markdown", 0, 0, 0, 0, 404, 0, 0, 0, 83, 487
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\PocketBase Wrapper Implementation\PocketBase Wrapper Implementation.md", "Markdown", 0, 0, 0, 0, 329, 0, 0, 0, 57, 386
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\PocketBase Wrapper Implementation\Real-time Subscriptions.md", "Markdown", 0, 0, 0, 0, 193, 0, 0, 0, 40, 233
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Real-time Synchronization and Subscriptions\Optimistic Updates and Conflict Resolution.md", "Markdown", 0, 0, 0, 0, 300, 0, 0, 0, 55, 355
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Real-time Synchronization and Subscriptions\Performance Optimization and Throttling.md", "Markdown", 0, 0, 0, 0, 269, 0, 0, 0, 53, 322
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Real-time Synchronization and Subscriptions\Real-time Synchronization and Subscriptions.md", "Markdown", 0, 0, 0, 0, 277, 0, 0, 0, 55, 332
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Real-time Synchronization and Subscriptions\Subscription Management and Lifecycle.md", "Markdown", 0, 0, 0, 0, 306, 0, 0, 0, 54, 360
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Real-time Synchronization and Subscriptions\Zone-based Data Partitioning.md", "Markdown", 0, 0, 0, 0, 320, 0, 0, 0, 44, 364
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Database Integration\Security Rules and Access Control.md", "Markdown", 0, 0, 0, 0, 454, 0, 0, 0, 65, 519
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Deployment Guide.md", "Markdown", 0, 0, 0, 0, 373, 0, 0, 0, 63, 436
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Development Tools.md", "Markdown", 0, 0, 0, 0, 495, 0, 0, 0, 100, 595
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Getting Started.md", "Markdown", 0, 0, 0, 0, 303, 0, 0, 0, 51, 354
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Performance Optimization.md", "Markdown", 0, 0, 0, 0, 316, 0, 0, 0, 46, 362
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Project Overview.md", "Markdown", 0, 0, 0, 0, 289, 0, 0, 0, 46, 335
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Economic Simulation\Economic Simulation.md", "Markdown", 0, 0, 0, 0, 324, 0, 0, 0, 49, 373
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Economic Simulation\Market Mechanics.md", "Markdown", 0, 0, 0, 0, 246, 0, 0, 0, 45, 291
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Economic Simulation\Production Chains.md", "Markdown", 0, 0, 0, 0, 351, 0, 0, 0, 57, 408
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Economic Simulation\Storage Systems.md", "Markdown", 0, 0, 0, 0, 246, 0, 0, 0, 48, 294
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Extraction Mechanics.md", "Markdown", 0, 0, 0, 0, 290, 0, 0, 0, 48, 338
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Production Chains\Factory Systems.md", "Markdown", 0, 0, 0, 0, 364, 0, 0, 0, 64, 428
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Production Chains\Production Chains.md", "Markdown", 0, 0, 0, 0, 322, 0, 0, 0, 57, 379
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Production Chains\Production Optimization.md", "Markdown", 0, 0, 0, 0, 301, 0, 0, 0, 64, 365
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Production Chains\Resource Transformation.md", "Markdown", 0, 0, 0, 0, 227, 0, 0, 0, 39, 266
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Resource Management.md", "Markdown", 0, 0, 0, 0, 350, 0, 0, 0, 48, 398
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Resource Management\Storage Systems.md", "Markdown", 0, 0, 0, 0, 219, 0, 0, 0, 42, 261
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Security Considerations.md", "Markdown", 0, 0, 0, 0, 280, 0, 0, 0, 47, 327
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Chat System\Chat System.md", "Markdown", 0, 0, 0, 0, 303, 0, 0, 0, 59, 362
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Chat System\Emoji Integration.md", "Markdown", 0, 0, 0, 0, 226, 0, 0, 0, 49, 275
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Chat System\Location Sharing.md", "Markdown", 0, 0, 0, 0, 215, 0, 0, 0, 49, 264
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Chat System\Moderation Tools.md", "Markdown", 0, 0, 0, 0, 287, 0, 0, 0, 45, 332
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Chat System\Private Messaging.md", "Markdown", 0, 0, 0, 0, 258, 0, 0, 0, 46, 304
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Chat System\Public Chat Channels.md", "Markdown", 0, 0, 0, 0, 256, 0, 0, 0, 50, 306
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Chat System\Shout System.md", "Markdown", 0, 0, 0, 0, 237, 0, 0, 0, 42, 279
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Clan System\Administrative Features and Moderation.md", "Markdown", 0, 0, 0, 0, 230, 0, 0, 0, 41, 271
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Clan System\Clan Creation and Management.md", "Markdown", 0, 0, 0, 0, 343, 0, 0, 0, 65, 408
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Clan System\Clan System.md", "Markdown", 0, 0, 0, 0, 269, 0, 0, 0, 50, 319
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Clan System\Financial Intelligence and Resource Sharing.md", "Markdown", 0, 0, 0, 0, 308, 0, 0, 0, 52, 360
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Clan System\Territorial Control and Protection.md", "Markdown", 0, 0, 0, 0, 270, 0, 0, 0, 41, 311
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Friends System.md", "Markdown", 0, 0, 0, 0, 225, 0, 0, 0, 41, 266
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Market System\Market Buying Interface.md", "Markdown", 0, 0, 0, 0, 253, 0, 0, 0, 50, 303
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Market System\Market Categories and Item Classification.md", "Markdown", 0, 0, 0, 0, 288, 0, 0, 0, 53, 341
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Market System\Market Pricing and Price Discovery.md", "Markdown", 0, 0, 0, 0, 262, 0, 0, 0, 51, 313
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Market System\Market Selling Interface.md", "Markdown", 0, 0, 0, 0, 256, 0, 0, 0, 47, 303
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Market System\Market System.md", "Markdown", 0, 0, 0, 0, 292, 0, 0, 0, 45, 337
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Social Features\Social Features.md", "Markdown", 0, 0, 0, 0, 265, 0, 0, 0, 41, 306
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\State Management.md", "Markdown", 0, 0, 0, 0, 298, 0, 0, 0, 42, 340
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\Troubleshooting.md", "Markdown", 0, 0, 0, 0, 447, 0, 0, 0, 109, 556
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\UI Components\Building Detail View Component.md", "Markdown", 0, 0, 0, 0, 271, 0, 0, 0, 49, 320
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\UI Components\Error Boundary Component.md", "Markdown", 0, 0, 0, 0, 281, 0, 0, 0, 75, 356
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\UI Components\Icon System.md", "Markdown", 0, 0, 0, 0, 258, 0, 0, 0, 36, 294
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\UI Components\Item Detail View Component.md", "Markdown", 0, 0, 0, 0, 313, 0, 0, 0, 55, 368
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\UI Components\Search Bar Component.md", "Markdown", 0, 0, 0, 0, 266, 0, 0, 0, 60, 326
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\content\UI Components\UI Components.md", "Markdown", 0, 0, 0, 0, 338, 0, 0, 0, 60, 398
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\.qoder\repowiki\en\meta\repowiki-metadata.json", "JSON", 0, 0, 0, 0, 0, 1, 0, 0, 0, 1
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\App.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 1804, 240, 255, 2299
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\LoadingScreen.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 179, 5, 14, 198
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\analyze_line.cjs", "JavaScript", 0, 9, 0, 0, 0, 0, 0, 0, 1, 10
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\analyze_mojibake.cjs", "JavaScript", 0, 11, 0, 0, 0, 0, 0, 1, 2, 14
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\append_buildings.cjs", "JavaScript", 0, 399, 0, 0, 0, 0, 0, 4, 12, 415
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\apply_restoration_final.ps1", "PowerShell", 0, 0, 54, 0, 0, 0, 0, 2, 12, 68
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\check_build.mjs", "JavaScript", 0, 11, 0, 0, 0, 0, 0, 0, 1, 12
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\check_monster_count.mjs", "JavaScript", 0, 53, 0, 0, 0, 0, 0, 3, 10, 66
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\clean_all_monsters_complete.mjs", "JavaScript", 0, 82, 0, 0, 0, 0, 0, 5, 18, 105
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\clean_monsters_direct.mjs", "JavaScript", 0, 91, 0, 0, 0, 0, 0, 5, 15, 111
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\clean_monsters_final.mjs", "JavaScript", 0, 50, 0, 0, 0, 0, 0, 2, 12, 64
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\clean_monsters_for_new_spawn.mjs", "JavaScript", 0, 79, 0, 0, 0, 0, 0, 4, 16, 99
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\data\buildings.ts", "TypeScript", 22285, 0, 0, 0, 0, 0, 0, 5, -3, 22287
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\delete_all_monsters_force.mjs", "JavaScript", 0, 88, 0, 0, 0, 0, 0, 3, 17, 108
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\deploy.js", "JavaScript", 0, -14, 0, 0, 0, 0, 0, 0, -6, -20
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\dump_map_state.mjs", "JavaScript", 0, 11, 0, 0, 0, 0, 0, 0, 1, 12
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\emergency_mojibake_cleanup.cjs", "JavaScript", 0, 21, 0, 0, 0, 0, 0, 2, 5, 28
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\final_performance_optimization.cjs", "JavaScript", 0, 45, 0, 0, 0, 0, 0, 3, 8, 56
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\final_string_fix.cjs", "JavaScript", 0, 13, 0, 0, 0, 0, 0, 7, 8, 28
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\find_consts.cjs", "JavaScript", 0, 27, 0, 0, 0, 0, 0, 2, 10, 39
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\find_initializers.cjs", "JavaScript", 0, 11, 0, 0, 0, 0, 0, 0, 4, 15
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\find_nan.js", "JavaScript", 0, 13, 0, 0, 0, 0, 0, 0, 1, 14
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\find_nested.cjs", "JavaScript", 0, 15, 0, 0, 0, 0, 0, 1, 4, 20
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\find_nested.js", "JavaScript", 0, 15, 0, 0, 0, 0, 0, 1, 4, 20
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\find_returns.cjs", "JavaScript", 0, 26, 0, 0, 0, 0, 0, 2, 10, 38
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_app_braces.ps1", "PowerShell", 0, 0, 108, 0, 0, 0, 0, 4, 25, 137
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_broken_strings.cjs", "JavaScript", 0, 15, 0, 0, 0, 0, 0, 5, 6, 26
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_cannon_debug.ps1", "PowerShell", 0, 0, 60, 0, 0, 0, 0, 3, 8, 71
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_cannon_future_bug.ps1", "PowerShell", 0, 0, 16, 0, 0, 0, 0, 1, 3, 20
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_cannon_log.ps1", "PowerShell", 0, 0, 54, 0, 0, 0, 0, 1, 6, 61
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_cannon_owner.ps1", "PowerShell", 0, 0, 57, 0, 0, 0, 0, 2, 7, 66
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_cannon_range.ps1", "PowerShell", 0, 0, 92, 0, 0, 0, 0, 5, 10, 107
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_cannons_db.mjs", "JavaScript", 0, 39, 0, 0, 0, 0, 0, 4, 13, 56
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_drawing_lines.cjs", "JavaScript", 0, 20, 0, 0, 0, 0, 0, 3, 4, 27
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_mail_schema.mjs", "JavaScript", 0, 69, 0, 0, 0, 0, 0, 1, 13, 83
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_sorting_final.cjs", "JavaScript", 0, 38, 0, 0, 0, 0, 0, 0, 4, 42
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_strings.cjs", "JavaScript", 0, 8, 0, 0, 0, 0, 0, 3, 4, 15
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\fix_strings_v2.cjs", "JavaScript", 0, 8, 0, 0, 0, 0, 0, 1, 3, 12
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\force_reload.mjs", "JavaScript", 0, 38, 0, 0, 0, 0, 0, 2, 7, 47
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\global_syntax_fix.cjs", "JavaScript", 0, 6, 0, 0, 0, 0, 0, 1, 3, 10
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\implementation_plan.md", "Markdown", 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\index.html", "HTML", 0, 0, 0, 165, 0, 0, 0, 0, 18, 183
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\items_map.json", "JSON", 0, 0, 0, 0, 0, 1, 0, 0, 0, 1
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\mass_delete_monsters.mjs", "JavaScript", 0, 103, 0, 0, 0, 0, 0, 6, 25, 134
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\migrate_zones_80.mjs", "JavaScript", 0, 47, 0, 0, 0, 0, 0, 1, 11, 59
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\optimization_fix.cjs", "JavaScript", 0, 57, 0, 0, 0, 0, 0, 4, 8, 69
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\package.json", "JSON", 0, 0, 0, 0, 0, -1, 0, 0, 0, -1
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\performance_and_lang_fix.cjs", "JavaScript", 0, 81, 0, 0, 0, 0, 0, 7, 12, 100
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\quick_reset_map.mjs", "JavaScript", 0, 239, 0, 0, 0, 0, 0, 29, 33, 301
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\restore_drawing_logic.ps1", "PowerShell", 0, 0, 143, 0, 0, 0, 0, 3, 8, 154
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\restore_emojis.cjs", "JavaScript", 0, 14, 0, 0, 0, 0, 0, 6, 5, 25
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\append_buildings.cjs", "JavaScript", 0, 7, 0, 0, 0, 0, 0, 2, 4, 13
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\append_cannons.cjs", "JavaScript", 0, 19, 0, 0, 0, 0, 0, 3, 7, 29
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\chain.cjs", "JavaScript", 0, 17, 0, 0, 0, 0, 0, 3, 4, 24
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\check.cjs", "JavaScript", 0, 8, 0, 0, 0, 0, 0, 12, 8, 28
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\check_cannon_ids.cjs", "JavaScript", 0, 8, 0, 0, 0, 0, 0, 0, 2, 10
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\check_items.cjs", "JavaScript", 0, 2, 0, 0, 0, 0, 0, 4, 3, 9
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\find391.cjs", "JavaScript", 0, 5, 0, 0, 0, 0, 0, 1, 2, 8
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fix.cjs", "JavaScript", 0, 18, 0, 0, 0, 0, 0, 0, 9, 27
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fix2.cjs", "JavaScript", 0, 55, 0, 0, 0, 0, 0, 5, 8, 68
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fix3.cjs", "JavaScript", 0, 52, 0, 0, 0, 0, 0, 18, 10, 80
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fix_cannon_costs.cjs", "JavaScript", 0, 23, 0, 0, 0, 0, 0, 2, 7, 32
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fix_items_in_cannons.cjs", "JavaScript", 0, 19, 0, 0, 0, 0, 0, 10, 14, 43
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fixapostrophe.cjs", "JavaScript", 0, 13, 0, 0, 0, 0, 0, 7, 6, 26
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fixcat.cjs", "JavaScript", 0, 40, 0, 0, 0, 0, 0, 8, 8, 56
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fixindent.cjs", "JavaScript", 0, 21, 0, 0, 0, 0, 0, 5, 4, 30
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\fixnames.cjs", "JavaScript", 0, 61, 0, 0, 0, 0, 0, 7, 9, 77
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\list_items.cjs", "JavaScript", 0, 7, 0, 0, 0, 0, 0, 0, 1, 8
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\out.ts", "TypeScript", 2026, 0, 0, 0, 0, 0, 0, 0, 0, 2026
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\out_cannons.ts", "TypeScript", 1221, 0, 0, 0, 0, 0, 0, 0, 0, 1221
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\parse.cjs", "JavaScript", 0, 279, 0, 0, 0, 0, 0, 2, 37, 318
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\scratch\parse_cannons.cjs", "JavaScript", 0, 221, 0, 0, 0, 0, 0, 0, 33, 254
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\search_nan.js", "JavaScript", 0, 19, 0, 0, 0, 0, 0, 0, 3, 22
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\smart_mojibake_restorer.cjs", "JavaScript", 0, 48, 0, 0, 0, 0, 0, 29, 16, 93
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\src\pocketbase.ts", "TypeScript", 51, 0, 0, 0, 0, 0, 0, 5, 6, 62
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\src\vite-env.d.ts", "TypeScript", 4, 0, 0, 0, 0, 0, 0, 1, 2, 7
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\syntax_and_text_fix.cjs", "JavaScript", 0, 22, 0, 0, 0, 0, 0, 4, 6, 32
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\types.ts", "TypeScript", 3, 0, 0, 0, 0, 0, 0, 0, 0, 3
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\ultimate_fix.cjs", "JavaScript", 0, 9, 0, 0, 0, 0, 0, 2, 4, 15
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\ultra_mojibake_remover.cjs", "JavaScript", 0, 44, 0, 0, 0, 0, 0, 19, 11, 74
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\update_mail_ui.ps1", "PowerShell", 0, 0, 147, 0, 0, 0, 0, 0, 7, 154
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\update_monster_ai.ps1", "PowerShell", 0, 0, 127, 0, 0, 0, 0, 8, 25, 160
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\update_monster_ai_robust.ps1", "PowerShell", 0, 0, 138, 0, 0, 0, 0, 5, 7, 150
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\verify_final.cjs", "JavaScript", 0, 7, 0, 0, 0, 0, 0, 0, 1, 8
+"c:\Users\User\.antigravity\extensions\goldwasdx-svg-BASINGSEMMORPGREALTIME-main\vite.config.ts", "TypeScript", 5, 0, 0, 0, 0, 0, 0, 0, 0, 5
+"Total", "-", 25595, 2862, 996, 165, 35067, 1, 1983, 551, 6930, 74150

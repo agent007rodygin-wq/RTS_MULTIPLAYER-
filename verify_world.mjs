@@ -1,0 +1,21 @@
+import PocketBase from 'pocketbase';
+const pb = new PocketBase('http://185.126.114.231:8090');
+await pb.collection('_superusers').authWithPassword('admin@basingse.game', 'BaSingSe2024');
+// buildingId is stored as text string in PB
+const b = await pb.collection('buildings').getList(1, 1, { filter: 'buildingId="50005"' });
+console.log('Mountains:', b.totalItems);
+const r = await pb.collection('buildings').getList(1, 1, { filter: 'buildingId="50004"' });
+console.log('Rivers:', r.totalItems);
+const t = await pb.collection('map_resources').getList(1, 1, { filter: 'type="tree"' });
+console.log('Trees:', t.totalItems);
+const m = await pb.collection('buildings').getList(1, 1, { filter: 'ownerId="monster"' });
+console.log('Monsters:', m.totalItems);
+const o = await pb.collection('map_resources').getList(1, 1, { filter: 'type="oil"' });
+console.log('Oil:', o.totalItems);
+const q = await pb.collection('map_resources').getList(1, 1, { filter: 'type="quarry"' });
+console.log('Quarries:', q.totalItems);
+const c = await pb.collection('map_resources').getList(1, 1, { filter: 'type="chest"' });
+console.log('Chests:', c.totalItems);
+const ms = await pb.collection('map_state').getFullList();
+console.log('Map state records:', ms.length);
+if (ms.length > 0) console.log('  map_state:', JSON.stringify(ms[0]));

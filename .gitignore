@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Large archives and media
+*.tar
+*.zip
+*.mp4
+*.swf
+
+# Exclude heavy assets
+animation
+public/animation
+public/music
+
+# Exclude secrets and credentials
+ai-studio-applet-webapp-*.json
+idp.json
+firebase_dump.json
+
+
+

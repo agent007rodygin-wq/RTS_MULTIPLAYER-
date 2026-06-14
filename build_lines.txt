@@ -1,0 +1,706 @@
+15:import { buildings as buildingData } from './data/buildings';
+17:import { Building, MapResource, BuildingType, PlacedBuilding, VisualEffect, DestructionInfo, Item, MarketListing, Clan, HistoryEntry, DroppedItem, PrivateMessage } from './types';
+149:type BuildMenuTab = 'Жилые' | 'Бизнес' | 'Буквы' | 'Зелень' | 'Дороги и стены' | 'Заводы' | 'Монстры' | 'Клан' | 'Подарки' | 'Защита';
+182:const builderIconUrl = 'https://i.ibb.co/8g87qFfv/gn1-1.png';
+200:const ConstructionTimer = ({ endTime, cost, onSpeedUp, isMyBuilding }: { endTime: number, cost: number, onSpeedUp: () => void, isMyBuilding: boolean }) => {
+223:             {isMyBuilding && (
+249:  const [placedBuildings, setPlacedBuildings] = useState<PlacedBuilding[]>([]);
+256:  const isMyBuilding = useCallback((b: PlacedBuilding) => {
+289:  const generateMap = (seed: number, existingBuildings: PlacedBuilding[]) => {
+297:    const newBuildings: PlacedBuilding[] = [];
+299:    const occupied = new Set(existingBuildings.map(b => `${b.x},${b.y}`));
+318:    const mountainInfo = buildingData.find(b => b.id === MOUNTAIN_ID);
+323:          newBuildings.push({
+328:            buildingId: MOUNTAIN_ID,
+333:            type: BuildingType.Default,
+343:    const riverInfo = buildingData.find(b => b.id === RIVER_ID);
+348:          newBuildings.push({
+353:            buildingId: RIVER_ID,
+358:            type: BuildingType.Default,
+401:      const monsterInfo = buildingData.find(b => b.id === typeId);
+406:            newBuildings.push({
+411:              buildingId: typeId,
+416:              type: BuildingType.Default,
+428:    return { newBuildings, newResources };
+438:        const buildingsSnapshot = await getDocs(collection(db, 'buildings'));
+439:        const existingBuildings = buildingsSnapshot.docs.map(doc => doc.data() as PlacedBuilding);
+442:        const { newBuildings, newResources } = generateMap(seed, existingBuildings);
+444:        // Save to buildings
+445:        newBuildings.forEach(b => {
+446:          setDoc(doc(db, 'buildings', `${b.id}`), b).catch(e => handleFirestoreError(e, OperationType.CREATE, `buildings/${b.id}`));
+515:            const hasIntel = placedBuildingsRef.current.some(b => 
+516:              [340, 341, 342].includes(b.buildingId) && 
+573:  const [buildMenu, setBuildMenu] = useState<{visible: boolean, x: number, y: number}>({ visible: false, x: 0, y: 0});
+574:  const [activeBuildTab, setActiveBuildTab] = useState<BuildMenuTab>('Жилые');
+575:  const [selectedBuilding, setSelectedBuilding] = useState<{ building: PlacedBuilding, info: Building } | null>(null);
+578:  const [buildConfirmation, setBuildConfirmation] = useState<{ visible: boolean, building: Building | null, x: number, y: number }>({ visible: false, building: null, x: 0, y: 0 });
+581:  const [moveMode, setMoveMode] = useState<{ active: boolean, building: PlacedBuilding | null }>({ active: false, building: null });
+1046:  const serverZoneBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+1047:  const serverMyBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+1049:  const updatePlacedBuildingsFromServer = useCallback(() => {
+1050:      setPlacedBuildings(prev => {
+1051:          const merged = new Map<string | number, PlacedBuilding>();
+1053:          serverZoneBuildingsRef.current.forEach((b, id) => merged.set(id, b));
+1054:          serverMyBuildingsRef.current.forEach((b, id) => merged.set(id, b));
+1056:          const localOnlyBuildings = prev.filter(b => !merged.has(b.id) && (b.ownerId === "-1" || b.ownerId === "monster"));
+1058:          return [...Array.from(merged.values()), ...localOnlyBuildings];
+1062:  // Sync My Buildings from Firestore (Globally)
+1066:    const buildingsCol = collection(db, 'buildings');
+1067:    const qMy = query(buildingsCol, where('ownerId', '==', user.uid));
+1070:      const myBuildingsMap = new Map<string | number, PlacedBuilding>();
+1075:        myBuildingsMap.set(finalId, { ...data, id: finalId } as PlacedBuilding);
+1078:      serverMyBuildingsRef.current = myBuildingsMap;
+1079:      updatePlacedBuildingsFromServer();
+1080:    }, (error) => handleFirestoreError(error, OperationType.GET, 'buildings_my'));
+1083:  }, [isAuthReady, user, updatePlacedBuildingsFromServer]);
+1085:  // Sync Zone Buildings from Firestore
+1089:    const buildingsCol = collection(db, 'buildings');
+1090:    const qZone = query(buildingsCol, where('zoneId', 'in', currentZones), limit(200));
+1093:      const zoneBuildingsMap = new Map<string | number, PlacedBuilding>();
+1098:        zoneBuildingsMap.set(finalId, { ...data, id: finalId } as PlacedBuilding);
+1101:      serverZoneBuildingsRef.current = zoneBuildingsMap;
+1102:      updatePlacedBuildingsFromServer();
+1103:    }, (error) => handleFirestoreError(error, OperationType.GET, 'buildings_zone'));
+1106:  }, [isAuthReady, user, currentZones, updatePlacedBuildingsFromServer]);
+1129:  const placedBuildingsRef = useRef(placedBuildings);
+1133:    placedBuildingsRef.current = placedBuildings;
+1135:    // Sync selected building with latest data from placedBuildings
+1136:    if (selectedBuilding) {
+1137:        const latest = placedBuildings.find(b => b.id === selectedBuilding.building.id);
+1140:            const hasChanged = !Object.is(latest.bank, selectedBuilding.building.bank) || 
+1141:                             !Object.is(latest.taxRate, selectedBuilding.building.taxRate) ||
+1142:                             !Object.is(latest.hp, selectedBuilding.building.hp) ||
+1143:                             latest.isConstructing !== selectedBuilding.building.isConstructing;
+1146:                setSelectedBuilding(prev => prev ? { ...prev, building: latest } : null);
+1150:  }, [placedBuildings, selectedBuilding]);
+1401:    return placedBuildings
+1402:        .filter(b => isMyBuilding(b))
+1404:            const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+1405:            if (!buildingInfo) return sum;
+1409:                return sum + (buildingInfo.constructionRequirements.population || 0);
+1412:            // Non-production buildings always take population (if they have takesPopulation stat)
+1413:            if (!buildingInfo.stats.workTimeSeconds) {
+1414:                return sum + (buildingInfo.stats.takesPopulation || 0);
+1416:            // Production buildings only take population when not idle
+1419:                return sum + (buildingInfo.stats.takesPopulation || 0);
+1423:  }, [placedBuildings]);
+1426:     return placedBuildings
+1427:        .filter(b => isMyBuilding(b) && (b.type === BuildingType.Residential || b.type === BuildingType.TownHall))
+1429:            const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+1430:            return sum + (buildingInfo?.stats.populationBonus || 0);
+1432:  }, [placedBuildings]);
+1437:      return placedBuildings.some(b => b.buildingId === CLAN_CASTLE_ID && isMyBuilding(b) && !b.isConstructing);
+1438:  }, [placedBuildings]);
+1441:      return placedBuildings.some(b => [340, 341, 342].includes(b.buildingId) && isMyBuilding(b) && !b.isConstructing);
+1442:  }, [placedBuildings]);
+1445:      return placedBuildings.some(b => [341, 342].includes(b.buildingId) && isMyBuilding(b) && !b.isConstructing);
+1446:  }, [placedBuildings]);
+1448:  const oilRigInfo = useMemo(() => buildingData.find(b => b.id === OIL_RIG_ID), []);
+1449:  const wildQuarryInfo = useMemo(() => buildingData.find(b => b.id === WILD_QUARRY_ID), []);
+1515:        ...buildingData.map(b => b.imageUrl),
+1526:        builderIconUrl,
+1600:  const hasTownHall = useMemo(() => placedBuildings.some(b => b.type === BuildingType.TownHall && isMyBuilding(b)), [placedBuildings, isMyBuilding]);
+1602:      const th = placedBuildings.find(b => b.type === BuildingType.TownHall && isMyBuilding(b));
+1604:  }, [placedBuildings, isMyBuilding]);
+1606:  const maxBuildings = useMemo(() => {
+1607:    return placedBuildings
+1608:        .filter(b => isMyBuilding(b))
+1610:            const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+1611:            return total + (buildingInfo?.stats.permits || 0);
+1613:  }, [placedBuildings]);
+1798:        ...placedBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => ({...b, entityType: 'building' as const}))
+1805:        // If on the same tile, draw resources first, then buildings, then dropped items on top
+1806:        const typeOrder: Record<string, number> = { 'resource': 0, 'building': 1, 'dropped_item': 2 };
+1824:        let buildingInfo: Building | undefined;
+1851:        } else if (entity.entityType === 'building' && 'buildingId' in entity) {
+1852:             buildingInfo = buildingData.find(b => b.id === entity.buildingId);
+1858:             } else if (buildingInfo) {
+1859:                img = images[buildingInfo.imageUrl];
+1865:        const isRoadOrWall = buildingInfo && buildingInfo.category === 'Дороги и стены';
+1874:            // Make dropped items visible but slightly smaller than buildings
+1923:        if ('buildingId' in entity && buildingInfo) {
+1930:            const maxHp = entity.maxHp || buildingInfo.stats.durability;
+1932:            if (buildingInfo.id !== MOUNTAIN_ID && buildingInfo.id !== RIVER_ID && hp !== undefined && hp < maxHp) {
+2003:                const totalTime = (buildingInfo.stats.workTimeSeconds || 0) * 1000;
+2021:                const isIntermediatePond = [400, 401, 402, 403, 404, 406, 407, 408, 70, 71, 72, 77, 78, 79].includes(buildingInfo.id);
+2022:                const isFinishedPond = [405, 409, 73, 80].includes(buildingInfo.id);
+2025:                    const builderImg = images[builderIconUrl];
+2026:                    if (builderImg) {
+2030:                        context.drawImage(builderImg, iconX, iconY, iconSize, iconSize);
+2064:                if (buildingInfo.id === 400) {
+2065:                    const builderImg = images[builderIconUrl];
+2066:                    if (builderImg) {
+2071:                         context.drawImage(builderImg, iconX, iconY, iconSize, iconSize);
+2135:      const isOccupied = placedBuildings.some(b => b.x === hoveredTile.x && b.y === hoveredTile.y) || mapResources.some(r => r.x === hoveredTile.x && r.y === hoveredTile.y);
+2154:  }, [cameraOffset, placedBuildings, mapResources, hoveredTile, hasTownHall, images, visualEffects, zoomIndex, worldToScreen, moveMode.active]);
+2167:      const buildingsToUpdate = placedBuildingsRef.current.filter(b => {
+2179:      const monstersMoving = placedBuildingsRef.current.filter(b => {
+2181:          const info = buildingData.find(i => i.id === b.buildingId);
+2192:      const cannonsAttacking = placedBuildingsRef.current.filter(b => {
+2199:          const isDefense = b.buildingId === CANNON_ID || b.buildingId === 701 || b.buildingId === PROTECTED_TOWER_ID || b.buildingId === WATCHTOWER_ID;
+2202:          const info = buildingData.find(i => i.id === b.buildingId);
+2206:          if (b.buildingId === CANNON_ID) interval = 60; 
+2212:      if (buildingsToUpdate.length > 0 || monstersMoving.length > 0 || cannonsAttacking.length > 0) {
+2216:          const currentBuildings = placedBuildingsRef.current;
+2217:          const occupiedPositions = new Set(currentBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`));
+2221:          const monsterUpdates = new Map<string, PlacedBuilding>();
+2222:          const cannonUpdates = new Map<string, PlacedBuilding>();
+2225:          const actingMonsters = currentBuildings.filter(b => {
+2226:              const info = buildingData.find(i => i.id === b.buildingId);
+2235:              const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+2243:              const possibleTargets = currentBuildings.filter(t => 
+2247:                  buildingData.find(i => i.id === t.buildingId)?.category !== 'Природа'
+2251:                  const info = buildingData.find(i => i.id === t.buildingId);
+2260:                  const targetInfo = buildingData.find(i => i.id === target.buildingId);
+2277:                          updateDoc(doc(db, 'buildings', docId), { lastMoveTime: now, lastAttackTime: now, hostId: userRef.current?.uid || null }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2285:                          updateDoc(doc(db, 'buildings', docId), { lastMoveTime: now, hostId: userRef.current?.uid || null }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2305:                           updateDoc(doc(db, 'buildings', docId), { 
+2310:                           }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2317:                           updateDoc(doc(db, 'buildings', docId), { lastMoveTime: now, hostId: userRef.current?.uid || null }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2324:          const monsters = currentBuildings.filter(b => {
+2325:              const info = buildingData.find(i => i.id === b.buildingId);
+2330:              const cannonInfo = buildingData.find(i => i.id === cannon.buildingId);
+2333:              if (cannon.buildingId === CANNON_ID) damage = 5;
+2335:              let targetMonster: PlacedBuilding | null = null;
+2338:              if (cannon.buildingId === CANNON_ID) range = 3;
+2339:              else if (cannon.buildingId === 701) range = 5;
+2340:              else if (cannon.buildingId === PROTECTED_TOWER_ID) range = 6;
+2341:              else if (cannon.buildingId === WATCHTOWER_ID) range = 4;
+2361:                      updateDoc(doc(db, 'buildings', docId), { lastAttackTime: now }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2367:          const nextBuildings: PlacedBuilding[] = [];
+2370:          currentBuildings.forEach(b => {
+2385:              // Check if building is destroying via timer
+2401:                          updateDoc(doc(db, 'buildings', docId), { hp: remainingHp, isDestroying: false, destructionEndTime: deleteField(), pendingDamage: 0 }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2410:                      updateDoc(doc(db, 'buildings', docId), { isConstructing: false, workState: 'idle' }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2417:                      updateDoc(doc(db, 'buildings', docId), { workState: 'finished' }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2424:                  updatedB.hp = (updatedB.hp ?? buildingData.find(i=>i.id===updatedB.buildingId)?.stats.durability ?? 1) - damageMap.get(key)!;
+2438:                      updateDoc(doc(db, 'buildings', docId), { hp: updatedB.hp }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2457:                  const buildingInfo = buildingData.find(bd => bd.id === updatedB.buildingId);
+2458:                  if (buildingInfo) {
+2463:                          gloryGained += buildingInfo.stats.gloryOnExplosion || 0;
+2465:                          if (buildingInfo.drops) {
+2488:                              if (buildingInfo.drops.frequent) {
+2489:                                  spawnDrops(buildingInfo.drops.frequent);
+2491:                              if (buildingInfo.drops.rare) {
+2492:                                  spawnDrops(buildingInfo.drops.rare);
+2499:                  deleteDoc(doc(db, 'buildings', docId)).catch(e => handleGameLoopError(e, OperationType.DELETE, `buildings/${docId}`));
+2502:                      updateDoc(doc(db, 'buildings', docId), { hp: 0 }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `buildings/${docId}`));
+2505:                  nextBuildings.push(updatedB);
+2510:              setPlacedBuildings(nextBuildings);
+2552:  // Cleanup dead buildings
+2553:  const deletingBuildingsRef = useRef<Set<string>>(new Set());
+2556:      const deadBuildings = placedBuildings.filter(b => b.hp !== undefined && b.hp <= 0 && b.ownerId === user.uid);
+2557:      if (deadBuildings.length > 0) {
+2558:          deadBuildings.forEach(b => {
+2560:              if (!deletingBuildingsRef.current.has(docId)) {
+2561:                  deletingBuildingsRef.current.add(docId);
+2562:                  deleteDoc(doc(db, 'buildings', docId)).catch(e => {
+2563:                      handleFirestoreError(e, OperationType.DELETE, `buildings/${docId}`);
+2569:  }, [placedBuildings, isAuthReady, user]);
+2578:              const prevBuildings = placedBuildingsRef.current;
+2580:              const oilRigs = prevBuildings.filter(b => b.buildingId === OIL_RIG_ID);
+2590:                  ...prevBuildings.map(b => `${b.x},${b.y}`)
+2622:              const prevBuildings = placedBuildingsRef.current;
+2624:              const wildQuarries = prevBuildings.filter(b => b.buildingId === WILD_QUARRY_ID);
+2634:                  ...prevBuildings.map(b => `${b.x},${b.y}`)
+2666:              const prevBuildings = placedBuildingsRef.current;
+2677:                  ...prevBuildings.map(b => `${b.x},${b.y}`)
+2710:          const prevBuildings = placedBuildingsRef.current;
+2716:              ...prevBuildings.map(b => `${b.x},${b.y}`)
+2720:              const currentCount = prevBuildings.filter(b => b.buildingId === typeId && (b.ownerId === "-1" || b.ownerId === "monster")).length;
+2737:                  const monsterInfo = buildingData.find(b => b.id === typeId);
+2745:                          buildingId: typeId,
+2751:                          type: BuildingType.Default,
+2759:                      setDoc(doc(db, 'buildings', docId), newMonster).catch(e => handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`));
+2769:      const additionalCapacity = placedBuildings
+2770:          .filter(b => isMyBuilding(b) && b.type === BuildingType.Storage && !b.isConstructing)
+2772:              const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+2773:              return sum + (buildingInfo?.stats.increasesGoldCapacity || 0);
+2776:  }, [placedBuildings]);
+3117:      const hoveredBuilding = placedBuildings.find(b => b.x === gridX && b.y === gridY);
+3118:      if (hoveredBuilding && !hoveredBuilding.isConstructing && !hoveredBuilding.isDestroying) {
+3119:          const buildingInfo = buildingData.find(b => b.id === hoveredBuilding.buildingId);
+3120:          if (buildingInfo) {
+3121:              const buildingInfo = buildingData.find(bd => bd.id === hoveredBuilding.buildingId);
+3122:              const isMonster = buildingInfo?.category === 'Монстры';
+3123:              const isNature = buildingInfo?.category === 'Природа';
+3126:              if (isMyBuilding(hoveredBuilding)) {
+3128:              } else if (hoveredBuilding.ownerId === "-1" || hoveredBuilding.ownerId === "monster") {
+3137:                  ownerName = allUsers[hoveredBuilding.ownerId as string]?.name || "Неизвестный игрок";
+3139:              const ownerColor = (hoveredBuilding.ownerId === "-1" || hoveredBuilding.ownerId === "monster") ? 'gray' : 'blue';
+3141:              const curHp = hoveredBuilding.hp ?? buildingInfo.stats.durability;
+3142:              const maxHp = hoveredBuilding.maxHp ?? buildingInfo.stats.durability;
+3144:              const isProtected = hoveredBuilding.protectionEndTime && hoveredBuilding.protectionEndTime > Date.now();
+3148:                      <p className="font-bold">{buildingInfo.name}</p>
+3150:                      {buildingInfo.id !== MOUNTAIN_ID && buildingInfo.id !== RIVER_ID && (
+3153:                      {buildingInfo.stats.increasesGoldCapacity && (
+3154:                          <p className="text-xs text-yellow-400">Вместимость: +{buildingInfo.stats.increasesGoldCapacity}</p>
+3156:                      {buildingInfo.stats.workTimeSeconds && hoveredBuilding.workState === 'working' && (
+3159:                      {buildingInfo.id === WATCHTOWER_ID && hoveredBuilding.taxRate !== undefined && (
+3160:                          <p className="text-xs text-purple-400">Налог сектора: {hoveredBuilding.taxRate}%</p>
+3182:  }, [cameraOffset, placedBuildings, tooltip.visible, zoomIndex, screenToWorld, allUsers]);
+3184:  const handleConfirmBuild = () => {
+3186:    if (!buildConfirmation.building) return;
+3188:    const { building, x, y } = buildConfirmation;
+3189:    const currentBuildingCount = placedBuildings.filter(b => isMyBuilding(b)).length;
+3191:    if (currentBuildingCount >= maxBuildings && building.id !== TOWN_HALL_ID) {
+3193:      setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+3197:    if (building.id === WATCHTOWER_ID) {
+3198:        const hasClanCastle = placedBuildings.some(b => b.buildingId === CLAN_CASTLE_ID && isMyBuilding(b) && !b.isConstructing);
+3201:            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+3206:    if (playerGold < (building.price || 0)) {
+3208:      setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+3212:    if (building.constructionRequirements.population && building.type !== BuildingType.TownHall) {
+3213:        const requiredPop = building.constructionRequirements.population;
+3218:             setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+3223:    if (building.constructionRequirements.resources) {
+3224:        const missingResources = building.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
+3228:            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+3233:        building.constructionRequirements.resources.forEach(req => {
+3236:        updatePlayerResources(-(building.price || 0), 0, inventoryDeltas);
+3238:        updatePlayerResources(-(building.price || 0), 0, {});
+3241:    addHistoryLog(`Построено здание "${building.name}" в точке [${x}, ${y}]. Стоимость: ${building.price} монет.`, 'build');
+3243:    const newBuilding: PlacedBuilding = {
+3248:      buildingId: building.id,
+3252:      constructionEndTime: Date.now() + (building.stats.constructionTimeSeconds || 0) * 1000,
+3253:      lastAttackTime: Date.now() + (building.stats.constructionTimeSeconds || 0) * 1000,
+3254:      ...(building.type ? { type: building.type } : {}),
+3256:      ...(building.stats.durability ? { hp: building.stats.durability, maxHp: building.stats.durability } : {}),
+3257:      ...(building.id === WATCHTOWER_ID ? { taxRate: 0 } : {}),
+3258:      isActive: building.id === CANNON_ID || building.id === 701 || building.id === PROTECTED_TOWER_ID || building.id === WATCHTOWER_ID ? true : false
+3261:    const buildingDocId = String(newBuilding.id);
+3264:        const docId = String(newBuilding.id);
+3265:        setDoc(doc(db, 'buildings', docId), newBuilding).catch(e => handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`));
+3267:        setPlacedBuildings(prev => [...prev, newBuilding]);
+3269:    setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+3273:  // ... (handleMouseUp, handleStartGame, handleShareOil, handleShareQuarry, handleBuildOilRig, handleBuildWildQuarry, handleNameChange, handleBuyRuby, handleBuyShopItem, handleRubyExchange, handleUpgrade, handleStartProduction, handleCollectProduction, handleSetTax, handleWithdrawBank, handleSectorTeleport, handleMoveClick, calculateRepairCost, handleRepair, handleSell, handleApplyProtection, handleExplode, handleSpeedUp, handleAvatarChange, handleSelectBuildingFromMenu, handleWheel, handleTeleportToTownHall, handleSendMessage, handleConfirmShout, handleSwitchChatTab, handleSendLocation, handleEmojiClick, renderMessageText... all unchanged logic) ...
+3280:        if (buildMenu.visible || buildConfirmation.visible) {
+3281:          setBuildMenu({visible: false, x: 0, y: 0});
+3282:          setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+3289:        if (moveMode.active && moveMode.building) {
+3292:            const isOccupied = placedBuildings.some(b => b.x === gridX && b.y === gridY && (b.x !== moveMode.building!.x || b.y !== moveMode.building!.y) && (b.hp === undefined || b.hp > 0)) || mapResources.some(r => r.x === gridX && r.y === gridY);
+3299:            const moveCost = (Number(moveMode.building.buildingId) === MOUNTAIN_ID || Number(moveMode.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST;
+3303:                setMoveMode({active: false, building: null});
+3309:            const buildingInfo = buildingData.find(b => b.id === moveMode.building!.buildingId);
+3310:            addHistoryLog(`Перемещен объект "${buildingInfo?.name}" с [${moveMode.building!.x}, ${moveMode.building!.y}] на [${gridX}, ${gridY}]. Расход: ${moveCost} энергии.`, 'move');
+3312:            const isMountainOrRiver = Number(moveMode.building!.buildingId) === MOUNTAIN_ID || Number(moveMode.building!.buildingId) === RIVER_ID;
+3315:                const docId = String(moveMode.building!.id);
+3321:                updateDoc(doc(db, 'buildings', docId), updates)
+3322:                    .catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${docId}`));
+3325:                setPlacedBuildings(prev => prev.map(b => {
+3326:                    if (b.id === moveMode.building!.id) {
+3332:                setPlacedBuildings(prev => prev.map(b => {
+3333:                    if (b.x === moveMode.building!.x && b.y === moveMode.building!.y) {
+3339:            setMoveMode({ active: false, building: null });
+3343:        if (selectedBuilding) {
+3344:          setSelectedBuilding(null);
+3393:        const buildingAtTile = placedBuildings.find(b => b.x === gridX && b.y === gridY && (b.hp === undefined || b.hp > 0));
+3395:        if (buildingAtTile) {
+3396:            if (buildingAtTile.isDestroying) return; 
+3398:            const buildingInfo = buildingData.find(b => b.id === buildingAtTile.buildingId);
+3399:            if (buildingInfo) {
+3400:                setSelectedBuilding({ building: buildingAtTile, info: buildingInfo });
+3449:                            const buildingsSnapshot = await getDocs(collection(db, 'buildings'));
+3450:                            const currentBuildings = buildingsSnapshot.docs.map(d => d.data() as PlacedBuilding);
+3454:                              ...currentBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`)
+3477:              const townHallBuilding = buildingData.find(b => b.id === TOWN_HALL_ID);
+3478:              if (townHallBuilding) {
+3479:                  const newTownHall: PlacedBuilding = {
+3484:                      buildingId: TOWN_HALL_ID,
+3488:                      constructionEndTime: Date.now() + (townHallBuilding.stats.constructionTimeSeconds || 0) * 1000,
+3489:                      type: townHallBuilding.type,
+3490:                      hp: townHallBuilding.stats.durability,
+3491:                      maxHp: townHallBuilding.stats.durability
+3495:                      setDoc(doc(db, 'buildings', docId), newTownHall).catch(e => handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`));
+3497:                      setPlacedBuildings(prev => [...prev, newTownHall]);
+3499:                  addHistoryLog("Основан новый город!", 'build');
+3502:                 setBuildMenu({ visible: true, x: gridX, y: gridY });
+3506:  }, [cameraOffset, placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, sellItemSelection]);
+3552:  const handleBuildOilRig = () => {
+3572:      const newBuilding: PlacedBuilding = {
+3577:          buildingId: OIL_RIG_ID,
+3589:          const docId = String(newBuilding.id);
+3590:          setDoc(doc(db, 'buildings', docId), newBuilding).catch(e => handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`));
+3593:          setPlacedBuildings(prev => [...prev, newBuilding]);
+3595:      addHistoryLog(`Построена Нефтяная вышка в [${selectedOilDeposit.x}, ${selectedOilDeposit.y}].`, 'build');
+3599:  const handleBuildWildQuarry = () => {
+3619:      const newBuilding: PlacedBuilding = {
+3624:          buildingId: WILD_QUARRY_ID,
+3636:          const docId = String(newBuilding.id);
+3637:          setDoc(doc(db, 'buildings', docId), newBuilding).catch(e => handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`));
+3640:          setPlacedBuildings(prev => [...prev, newBuilding]);
+3642:      addHistoryLog(`Построена Дикая каменоломня в [${selectedQuarry.x}, ${selectedQuarry.y}].`, 'build');
+3813:    if (!selectedBuilding) return;
+3815:    const upgradeTargetId = selectedBuilding.info.upgradesTo;
+3816:    const cost = selectedBuilding.info.upgradeCost;
+3817:    const newBuildingInfo = buildingData.find(b => b.id === upgradeTargetId);
+3819:    if (!newBuildingInfo || cost === undefined) return;
+3826:    if (newBuildingInfo.constructionRequirements.population && newBuildingInfo.type !== BuildingType.TownHall) {
+3827:         const requiredPop = newBuildingInfo.constructionRequirements.population;
+3835:    if (newBuildingInfo.constructionRequirements.resources) {
+3836:        const missingResources = newBuildingInfo.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
+3845:    if (newBuildingInfo.constructionRequirements.resources) {
+3846:        newBuildingInfo.constructionRequirements.resources.forEach(req => {
+3854:        x: selectedBuilding.building.x,
+3855:        y: selectedBuilding.building.y,
+3861:    addHistoryLog(`Улучшение здания "${selectedBuilding.info.name}" до "${newBuildingInfo.name}". Стоимость: ${cost} монет.`, 'build');
+3864:        const buildingDocId = String(selectedBuilding.building.id);
+3865:        updateDoc(doc(db, 'buildings', buildingDocId), {
+3866:            buildingId: newBuildingInfo.id,
+3868:            constructionEndTime: Date.now() + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000,
+3869:            lastAttackTime: Date.now() + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000,
+3870:            type: newBuildingInfo.type || deleteField(),
+3871:            hp: newBuildingInfo.stats.durability,
+3872:            maxHp: newBuildingInfo.stats.durability
+3873:        }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+3875:        setPlacedBuildings(prev => {
+3876:          const index = prev.findIndex(b => b.x === selectedBuilding.building.x && b.y === selectedBuilding.building.y);
+3879:          const newBuildings = [...prev];
+3880:          newBuildings[index] = {
+3881:            ...newBuildings[index],
+3882:            buildingId: newBuildingInfo.id,
+3884:            constructionEndTime: Date.now() + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000,
+3885:            lastAttackTime: Date.now() + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000,
+3886:            type: newBuildingInfo.type,
+3887:            hp: newBuildingInfo.stats.durability,
+3888:            maxHp: newBuildingInfo.stats.durability
+3890:          return newBuildings;
+3894:    setSelectedBuilding(null);
+3898:    if (!selectedBuilding) return;
+3899:    const { building, info } = selectedBuilding;
+3902:    const isContinuation = (building.workState === 'finished' && [400, 401, 402, 403, 404, 406, 407, 408, 70, 71, 72, 73, 77, 78, 79, 80].includes(building.buildingId));
+3905:    if (building.buildingId === 408 && building.workState === 'finished') {
+3943:        const buildingDocId = String(building.id);
+3949:        if (building.workState === 'finished' || building.workState === 'idle') {
+3950:            if (building.buildingId === 400) {
+3953:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+3955:                    updatedFields.buildingId = targetId;
+3961:            } else if (building.buildingId === 70) {
+3964:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+3966:                    updatedFields.buildingId = targetId;
+3972:            } else if (building.buildingId === 77) {
+3974:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+3976:                    updatedFields.buildingId = targetId;
+3982:            } else if (building.buildingId === 78) {
+3984:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+3986:                    updatedFields.buildingId = targetId;
+3992:            } else if (building.buildingId === 79) {
+3994:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+3996:                    updatedFields.buildingId = targetId;
+4002:            } else if (building.buildingId === 71) {
+4004:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4006:                    updatedFields.buildingId = targetId;
+4012:            } else if (building.buildingId === 72) {
+4014:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4016:                    updatedFields.buildingId = targetId;
+4022:            } else if (building.buildingId === 401) {
+4024:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4026:                    updatedFields.buildingId = targetId;
+4032:            } else if (building.buildingId === 406) {
+4034:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4036:                    updatedFields.buildingId = targetId;
+4042:            } else if (building.buildingId === 407) {
+4044:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4046:                    updatedFields.buildingId = targetId;
+4052:            } else if (building.buildingId === 408) {
+4054:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4056:                    updatedFields.buildingId = targetId;
+4062:            } else if (building.buildingId === 402) {
+4064:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4066:                    updatedFields.buildingId = targetId;
+4072:            } else if (building.buildingId === 403) {
+4074:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4076:                    updatedFields.buildingId = targetId;
+4082:            } else if (building.buildingId === 404) {
+4084:                const targetInfo = buildingData.find(bd => bd.id === targetId);
+4086:                    updatedFields.buildingId = targetId;
+4095:        updateDoc(doc(db, 'buildings', buildingDocId), updatedFields).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4097:        setPlacedBuildings(prev => prev.map(b => {
+4098:            if (b.x === building.x && b.y === building.y) {
+4100:                    if (b.buildingId === 400) { 
+4103:                        const targetInfo = buildingData.find(bd => bd.id === targetId);
+4108:                                buildingId: targetId,
+4116:                    } else if (b.buildingId === 70) {
+4119:                        const targetInfo = buildingData.find(bd => bd.id === targetId);
+4123:                                buildingId: targetId,
+4131:                    } else if (b.buildingId === 77) {
+4133:                        const targetInfo = buildingData.find(bd => bd.id === targetId);
+4137:                                buildingId: targetId,
+4145:                    } else if (b.buildingId === 78) {
+4147:                        const targetInfo = buildingData.find(bd => bd.id === targetId);
+4151:                                buildingId: targetId,
+4159:                    } else if (b.buildingId === 79) {
+4161:                        const targetInfo = buildingData.find(bd => bd.id === targetId);
+4165:                                buildingId: targetId,
+4173:                    } else if (b.buildingId === 71) {
+4175:                        const targetInfo = buildingData.find(bd => bd.id === targetId);
+4179:                                buildingId: targetId,
+4187:                    } else if (b.buildingId === 72) {
+4189:                        const targetInfo = buildingData.find(bd => bd.id === targetId);
+4193:                                buildingId: targetId,
+4201:                    } else if (b.buildingId === 401) { 
+4203:                         const targetInfo = buildingData.find(bd => bd.id === targetId);
+4207:                                buildingId: targetId,
+4215:                    } else if (b.buildingId === 406) { 
+4217:                         const targetInfo = buildingData.find(bd => bd.id === targetId);
+4221:                                buildingId: targetId,
+4229:                    } else if (b.buildingId === 407) {
+4231:                         const targetInfo = buildingData.find(bd => bd.id === targetId);
+4235:                                buildingId: targetId,
+4243:                    } else if (b.buildingId === 408) {
+4245:                         const targetInfo = buildingData.find(bd => bd.id === targetId);
+4249:                                buildingId: targetId,
+4257:                    } else if (b.buildingId === 402) { 
+4259:                         const targetInfo = buildingData.find(bd => bd.id === targetId);
+4263:                                buildingId: targetId,
+4271:                    } else if (b.buildingId === 403) { 
+4273:                         const targetInfo = buildingData.find(bd => bd.id === targetId);
+4277:                                buildingId: targetId,
+4285:                    } else if (b.buildingId === 404) { 
+4287:                         const targetInfo = buildingData.find(bd => bd.id === targetId);
+4291:                                buildingId: targetId,
+4307:    setSelectedBuilding(null);
+4315:    if (!selectedBuilding) return;
+4316:    const { building, info } = selectedBuilding;
+4320:        const zoneX = Math.floor(building.x / ZONE_SIZE);
+4321:        const zoneY = Math.floor(building.y / ZONE_SIZE);
+4323:        const taxCollector = placedBuildings.find(b => 
+4324:            (b.buildingId === WATCHTOWER_ID || b.buildingId === CLAN_CASTLE_ID) && 
+4338:            const banditCastle = placedBuildings.find(b => 
+4339:                b.buildingId === CLAN_CASTLE_ID && 
+4347:                    const buildingDocId = String(banditCastle.id);
+4348:                    updateDoc(doc(db, 'buildings', buildingDocId), { 
+4350:                    }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4353:                    setPlacedBuildings(prev => prev.map(b => 
+4391:        const buildingDocId = String(building.id);
+4397:        if (building.buildingId === 405 || building.buildingId === 409 || building.buildingId === 73 || building.buildingId === 80) {
+4398:            const targetId = (building.buildingId === 73 || building.buildingId === 80) ? 70 : 400;
+4399:            const lvl1 = buildingData.find(i => i.id === targetId);
+4401:                updatedFields.buildingId = targetId;
+4408:        updateDoc(doc(db, 'buildings', buildingDocId), updatedFields).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4410:        setPlacedBuildings(prev => prev.map(b => {
+4411:            if (b.x === building.x && b.y === building.y) {
+4412:                if (b.buildingId === 405 || b.buildingId === 409 || b.buildingId === 73 || b.buildingId === 80) { 
+4413:                    const targetId = (b.buildingId === 73 || b.buildingId === 80) ? 70 : 400;
+4414:                    const lvl1 = buildingData.find(i => i.id === targetId);
+4418:                            buildingId: targetId,
+4434:    setSelectedBuilding(null); 
+4442:    if (!selectedBuilding) return;
+4445:    const hasDenOfThieves = placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing);
+4456:    const { building, info } = selectedBuilding;
+4460:        const zoneX = Math.floor(building.x / ZONE_SIZE);
+4461:        const zoneY = Math.floor(building.y / ZONE_SIZE);
+4463:        const taxCollector = placedBuildings.find(b => 
+4464:            (b.buildingId === WATCHTOWER_ID || b.buildingId === CLAN_CASTLE_ID) && 
+4478:            const banditCastle = placedBuildings.find(b => 
+4479:                b.buildingId === CLAN_CASTLE_ID && 
+4487:                    const buildingDocId = String(banditCastle.id);
+4488:                    updateDoc(doc(db, 'buildings', buildingDocId), { 
+4490:                    }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4493:                    setPlacedBuildings(prev => prev.map(b => 
+4531:        const buildingDocId = String(building.id);
+4537:        if (building.buildingId === 405 || building.buildingId === 409 || building.buildingId === 73 || building.buildingId === 80) {
+4538:            const targetId = (building.buildingId === 73 || building.buildingId === 80) ? 70 : 400;
+4539:            const lvl1 = buildingData.find(i => i.id === targetId);
+4541:                updatedFields.buildingId = targetId;
+4548:        updateDoc(doc(db, 'buildings', buildingDocId), updatedFields).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4550:        setPlacedBuildings(prev => prev.map(b => {
+4551:            if (b.x === building.x && b.y === building.y) {
+4552:                if (b.buildingId === 405 || b.buildingId === 409 || b.buildingId === 73 || b.buildingId === 80) { 
+4553:                    const targetId = (b.buildingId === 73 || b.buildingId === 80) ? 70 : 400;
+4554:                    const lvl1 = buildingData.find(i => i.id === targetId);
+4558:                            buildingId: targetId,
+4574:    setSelectedBuilding(null); 
+4578:      if (!selectedBuilding) return;
+4582:        const buildingDocId = String(selectedBuilding.building.id);
+4583:        updateDoc(doc(db, 'buildings', buildingDocId), { taxRate: newRate }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4585:        setPlacedBuildings(prev => prev.map(b => 
+4586:            b.x === selectedBuilding.building.x && b.y === selectedBuilding.building.y
+4592:      setSelectedBuilding(prev => prev ? { ...prev, building: { ...prev.building, taxRate: newRate } } : null);
+4596:      if (!selectedBuilding || selectedBuilding.info.id !== CLAN_CASTLE_ID) return;
+4598:      const bankAmount = selectedBuilding.building.bank || 0;
+4603:              const buildingDocId = String(selectedBuilding.building.id);
+4604:              updateDoc(doc(db, 'buildings', buildingDocId), { bank: 0 })
+4605:                  .catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4607:              setPlacedBuildings(prev => prev.map(b => 
+4608:                  b.id === selectedBuilding.building.id ? { ...b, bank: 0 } : b
+4633:    if (!selectedBuilding) return;
+4635:    const moveCost = (Number(selectedBuilding.info.id) === MOUNTAIN_ID || Number(selectedBuilding.info.id) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST;
+4641:    setMoveMode({ active: true, building: selectedBuilding.building });
+4642:    setSelectedBuilding(null);
+4646:  const calculateRepairCost = (building: PlacedBuilding, info: Building) => {
+4647:      const currentHp = building.hp ?? info.stats.durability;
+4648:      const maxHp = building.maxHp ?? info.stats.durability;
+4659:    if (!selectedBuilding) return;
+4660:    const building = selectedBuilding.building;
+4661:    const newActive = !building.isActive;
+4663:    setPlacedBuildings(prev => prev.map(b => 
+4664:      (b.x === building.x && b.y === building.y) ? { ...b, isActive: newActive } : b
+4667:    setSelectedBuilding(prev => prev ? {
+4669:      building: { ...prev.building, isActive: newActive }
+4673:      const docId = String(building.id);
+4674:      updateDoc(doc(db, 'buildings', docId), { isActive: newActive }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${docId}`));
+4679:      if (!selectedBuilding) return;
+4680:      const { building, info } = selectedBuilding;
+4681:      const cost = calculateRepairCost(building, info);
+4690:      addHistoryLog(`Починка здания "${info.name}". Стоимость: ${cost} монет.`, 'build');
+4692:      const maxHp = building.maxHp ?? info.stats.durability;
+4695:          const buildingDocId = String(building.id);
+4696:          updateDoc(doc(db, 'buildings', buildingDocId), { 
+4701:          }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4703:          setPlacedBuildings(prev => prev.map(b => 
+4704:              b.x === building.x && b.y === building.y 
+4710:      setSelectedBuilding(prev => prev ? ({
+4712:          building: { ...prev.building, hp: maxHp, isDestroying: false }
+4717:      if (!selectedBuilding) return;
+4719:      const { building, info } = selectedBuilding;
+4747:          const buildingDocId = String(building.id);
+4748:          deleteDoc(doc(db, 'buildings', buildingDocId)).catch(e => handleFirestoreError(e, OperationType.DELETE, `buildings/${buildingDocId}`));
+4750:          setPlacedBuildings(prev => prev.filter(b => b.x !== building.x || b.y !== building.y));
+4753:      setSelectedBuilding(null);
+4759:      if (!selectedBuilding) return;
+4769:      addHistoryLog(`Активирована защита для "${selectedBuilding.info.name}". Стоимость: ${cost} рубинов.`, 'social');
+4772:          const buildingDocId = String(selectedBuilding.building.id);
+4773:          updateDoc(doc(db, 'buildings', buildingDocId), { protectionEndTime }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4775:          setPlacedBuildings(prev => prev.map(b => 
+4776:              b.x === selectedBuilding.building.x && b.y === selectedBuilding.building.y
+4784:          x: selectedBuilding.building.x,
+4785:          y: selectedBuilding.building.y,
+4791:      setSelectedBuilding(null);
+4796:    if (!selectedBuilding) return;
+4803:    if (selectedBuilding.building.protectionEndTime && selectedBuilding.building.protectionEndTime > Date.now()) {
+4838:    addHistoryLog(`Взорвано здание "${selectedBuilding.info.name}" в [${selectedBuilding.building.x}, ${selectedBuilding.building.y}] оружием "${destructionOption.weaponName}". Расход: ${destructionOption.goldCost} золота, ${destructionOption.energyCost} энергии.`, 'destroy');
+4841:        const buildingDocId = String(selectedBuilding.building.id);
+4842:        const currentHp = selectedBuilding.building.hp ?? selectedBuilding.info.stats.durability;
+4843:        const maxHp = selectedBuilding.building.maxHp ?? selectedBuilding.info.stats.durability;
+4854:        updateDoc(doc(db, 'buildings', buildingDocId), updateData).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4856:        setPlacedBuildings(prev => {
+4858:                if (b.x === selectedBuilding.building.x && b.y === selectedBuilding.building.y) {
+4859:                    const currentHp = b.hp ?? selectedBuilding.info.stats.durability;
+4860:                    const maxHp = b.maxHp ?? selectedBuilding.info.stats.durability;
+4876:    setSelectedBuilding(null);
+4881:        if (!selectedBuilding || !selectedBuilding.building.isConstructing) return;
+4882:        const { building, info } = selectedBuilding;
+4894:            const buildingDocId = String(building.id);
+4895:            updateDoc(doc(db, 'buildings', buildingDocId), {
+4899:            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+4901:        setPlacedBuildings(prev => prev.map(b => {
+4902:            if (b.x === building.x && b.y === building.y) {
+4914:        setSelectedBuilding(prev => prev ? {
+4916:            building: {
+4917:                ...prev.building,
+4971:  const handleSelectBuildingFromMenu = (building: Building) => {
+4972:    if (building.id === 6000 && playerLevel < 2) {
+4976:    setBuildMenu({ visible: false, x: 0, y: 0 });
+4977:    setBuildConfirmation({ visible: true, building, x: buildMenu.x, y: buildMenu.y });
+5005:      const townHall = placedBuildings.find(b => b.type === BuildingType.TownHall && isMyBuilding(b));
+5311:  const playerBuildingsCount = placedBuildings.filter(b => isMyBuilding(b)).length;
+5313:  const buildTabs: { name: BuildMenuTab, icon: React.ReactNode }[] = [
+5326:  const buildingsInCurrentTab = buildingData.filter(b => b.category === activeBuildTab && b.id !== TOWN_HALL_ID && b.buildable !== false);
+5328:  const repairCost = selectedBuilding ? calculateRepairCost(selectedBuilding.building, selectedBuilding.info) : 0;
+5339:  const protectedTowerInfo = useMemo(() => buildingData.find(b => b.id === PROTECTED_TOWER_ID), []);
+5384:      {/* ... (MoveMode, OilModal, QuarryModal, UserContextModal, BuildingContextModal, MarketModal, BuildMenu, BuildConfirmation, InventoryModal, ShopModal, ExchangeModal, MapModal, ShoutModal unchanged) ... */}
+5390:                  <span className="text-xs text-blue-200">Стоимость: {(Number(moveMode.building?.buildingId) === MOUNTAIN_ID || Number(moveMode.building?.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} ⚡</span>
+5392:              <button onClick={() => setMoveMode({active: false, building: null})} className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm font-bold transition-colors">Отмена</button>
+5418:                          onClick={handleBuildOilRig}
+5459:                          onClick={handleBuildWildQuarry}
+5619:      {selectedBuilding && (
+5620:          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={() => {setSelectedBuilding(null); setShowExplosionMenu(false); setShowProtectionMenu(false);}}>
+5623:                      <h2 className="text-xl font-bold text-white">{selectedBuilding.info.name}</h2>
+5624:                      <button onClick={() => {setSelectedBuilding(null); setShowExplosionMenu(false); setShowProtectionMenu(false);}} className="text-gray-400 hover:text-white">
+5630:                      {selectedBuilding.info.stats.workTimeSeconds && selectedBuilding.info.category !== 'Защита' && isMyBuilding(selectedBuilding.building) && (
+5634:                             {(!selectedBuilding.building.workState || selectedBuilding.building.workState === 'idle') && (
+5637:                                      {selectedBuilding.info.stats.takesPopulation && (
+5638:                                         <div className={`px-2 py-1 rounded text-sm flex items-center ${maxPopulation - currentPopulation >= selectedBuilding.info.stats.takesPopulation ? 'text-green-400 bg-green-900/30' : 'text-red-400 bg-red-900/30'}`}>
+5640:                                            {selectedBuilding.info.stats.takesPopulation} чел.
+5643:                                      {selectedBuilding.info.stats.consumes?.map(req => {
+5653:                                      Начать работу ({selectedBuilding.info.stats.workTimeSeconds} сек)
+5658:                             {selectedBuilding.building.workState === 'working' && (
+5665:                             {selectedBuilding.building.workState === 'finished' && (
+5667:                                    {[400, 401, 402, 403, 404, 406, 407, 408].includes(selectedBuilding.info.id) ? (
+5669:                                            <img src={builderIconUrl} className="w-6 h-6 mr-2" alt="worker"/>
+5683:                      {(selectedBuilding.info.id === WATCHTOWER_ID || selectedBuilding.info.id === CLAN_CASTLE_ID) && isMyBuilding(selectedBuilding.building) && (
+5692:                                       value={selectedBuilding.building.taxRate || 0} 
+5696:                                   <span className="font-bold text-white w-12 text-right">{selectedBuilding.building.taxRate || 0}%</span>
+5702:                      {selectedBuilding.info.id === CLAN_CASTLE_ID && isMyBuilding(selectedBuilding.building) && (
+5708:                                   {selectedBuilding.building.bank || 0}
+5712:                                   disabled={(selectedBuilding.building.bank || 0) <= 0}
+5720:                      <p className="text-gray-300 mb-4">{selectedBuilding.info.description}</p>
+5722:                      {/* ... (Building info, upgrades, buttons) ... */}
+5724:                        {selectedBuilding.info.id !== MOUNTAIN_ID && selectedBuilding.info.id !== RIVER_ID && (
+5725:                           <p>Прочность: <span className="font-bold text-white">{selectedBuilding.info.stats.durability}</span></p>
+5727:                        {selectedBuilding.building.hp !== undefined && selectedBuilding.info.id !== MOUNTAIN_ID && selectedBuilding.info.id !== RIVER_ID && (
+5728:                           <p>Здоровье: <span className={`${selectedBuilding.building.hp < selectedBuilding.info.stats.durability ? 'text-red-400' : 'text-green-400'} font-bold`}>{selectedBuilding.building.hp} / {selectedBuilding.info.stats.durability}</span></p>
+5730:                        {selectedBuilding.info.stats.populationBonus && <p>Даёт населения: <span className="font-bold text-white">{selectedBuilding.info.stats.populationBonus}</span></p>}
+5732:                        {selectedBuilding.building.isConstructing && (
+5734:                                 endTime={selectedBuilding.building.constructionEndTime} 
+5735:                                 cost={selectedBuilding.info.stats.accelerationCost || 0}
+5737:                                 isMyBuilding={isMyBuilding(selectedBuilding.building)}
+5742:                      {selectedBuilding.info.id === AUCTION_ID && isMyBuilding(selectedBuilding.building) && (
+5773:                      {/* Building Upgrades Block... (omitted detailed content for brevity as it's unchanged) */}
+5774:                      {selectedBuilding.info.upgradesTo && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && isMyBuilding(selectedBuilding.building) && (
+5777:                                disabled={playerGold < (selectedBuilding.info.upgradeCost || 0) || selectedBuilding.building.isConstructing}
+5780:                                <span>Улучшить ({selectedBuilding.info.upgradeCost})</span>
+5785:                           {(selectedBuilding.info.id === CANNON_ID || selectedBuilding.info.id === 701 || selectedBuilding.info.id === PROTECTED_TOWER_ID) && isMyBuilding(selectedBuilding.building) && (
+5788:                                   className={`col-span-3 ${selectedBuilding.building.isActive ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'} text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 transition-colors`}
+5791:                                   <span>{selectedBuilding.building.isActive ? 'Активировано' : 'Активировать'}</span>
+5794:                           {selectedBuilding.info.id === MARKET_ID && isMyBuilding(selectedBuilding.building) && (
+5804:                           {selectedBuilding.info.id === MILITARY_MARKET_ID && isMyBuilding(selectedBuilding.building) && (
+5814:                           {(isMyBuilding(selectedBuilding.building) || Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) && (
+5816:                                  {repairCost > 0 && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID ? (
+5826:                                  ) : Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
+5833:                                  {Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
+5845:                                      className={`${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed`}
+5846:                                      title={`Переместить за ${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии`}
+5852:                                  {Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
+5865:                          {Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
+5868:                                className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed ${!isMyBuilding(selectedBuilding.building) ? 'col-span-3' : ''}`}
+5874:                          {!isMyBuilding(selectedBuilding.building) && selectedBuilding.building.workState === 'finished' && placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing) && playerLevel >= 2 && (
+5888:                              className={`mt-1 font-bold ${(selectedBuilding.building.ownerId !== "-1" && selectedBuilding.building.ownerId !== "monster") ? 'text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted underline-offset-4' : 'text-gray-200'} transition-colors`}
+5890:                                  if (selectedBuilding.building.ownerId !== "-1" && selectedBuilding.building.ownerId !== "monster") {
+5891:                                      setSelectedPlayerId(selectedBuilding.building.ownerId as string);
+5896:                              {isMyBuilding(selectedBuilding.building) ? "Вы" : 
+5897:                               (selectedBuilding.building.ownerId === "-1" || selectedBuilding.building.ownerId === "monster") ? 
+5898:                               (selectedBuilding.info.category === 'Монстры' ? "Игра (Персонаж: нет)" : "Природа") : 
+5899:                               (allUsers[selectedBuilding.building.ownerId as string]?.name || "Неизвестный игрок")}
+5911:                            {selectedBuilding.info.destructionInfo && selectedBuilding.info.destructionInfo.length > 0 ? (
+5912:                                selectedBuilding.info.destructionInfo.map((option, idx) => {
+6213:      {/* Build Menu */}
+6214:      {buildMenu.visible && (
+6215:          // ... (Build Menu content) ...
+6216:          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={() => setBuildMenu({ visible: false, x: 0, y: 0 })}>
+6220:                      <button onClick={() => setBuildMenu({ visible: false, x: 0, y: 0 })} className="text-gray-400 hover:text-white">
+6226:                          {buildTabs.map(tab => (
+6229:                                  onClick={() => setActiveBuildTab(tab.name)}
+6230:                                  className={`w-full flex items-center space-x-3 p-2 my-1 rounded-md text-sm font-medium ${activeBuildTab === tab.name ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'}`}
+6239:                            {buildingsInCurrentTab.map(building => (
+6240:                              <div key={building.id} onClick={() => handleSelectBuildingFromMenu(building)} className="bg-gray-700/50 p-2 rounded-lg text-center flex flex-col justify-between cursor-pointer hover:bg-gray-600/50 transition-colors">
+6243:                                      <img src={building.imageUrl} alt={building.name} className="w-full h-full object-contain p-1"/>
+6245:                                    <p className="text-sm font-semibold">{building.name}</p>
+6248:                                      <span>{building.price?.toLocaleString() || 0}</span>
+6253:                            {buildingsInCurrentTab.length === 0 && <p className="text-gray-400 col-span-3 text-center mt-8">Здания для этой категории еще не добавлены.</p>}
+6261:      {/* Build Confirmation */}
+6262:      {buildConfirmation.visible && buildConfirmation.building && (
+6263:          // ... (Build Confirmation content) ...
+6264:          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setBuildConfirmation({ ...buildConfirmation, visible: false })}>
+6267:                      <h2 className="text-xl font-bold text-white">{buildConfirmation.building.name}</h2>
+6268:                      <button onClick={() => setBuildConfirmation({ ...buildConfirmation, visible: false })} className="text-gray-400 hover:text-white">
+6274:                          <img src={buildConfirmation.building.imageUrl} alt={buildConfirmation.building.name} className="max-w-full max-h-full object-contain"/>
+6277:                          <div className="flex justify-between"><span className="text-gray-400">Прочность:</span> <span className="text-white font-semibold">{buildConfirmation.building.stats.durability}</span></div>
+6278:                          <div className="flex justify-between"><span className="text-gray-400">Время строительства:</span> <span className="text-white font-semibold">{buildConfirmation.building.stats.constructionTimeSeconds} секунд</span></div>
+6279:                          <div className="flex justify-between"><span className="text-gray-400">Даёт населения:</span> <span className="text-green-400 font-semibold">+{buildConfirmation.building.stats.populationBonus}</span></div>
+6280:                          {buildConfirmation.building.constructionRequirements.population && (
+6281:                            <div className="flex justify-between"><span className="text-gray-400">Требует населения:</span> <span className="text-red-400 font-semibold">{buildConfirmation.building.constructionRequirements.population}</span></div>
+6283:                          {buildConfirmation.building.constructionRequirements.resources && buildConfirmation.building.constructionRequirements.resources.length > 0 && (
+6287:                                      {buildConfirmation.building.constructionRequirements.resources.map(req => (
+6296:                      <button onClick={handleConfirmBuild} className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center">
+6298:                          {buildConfirmation.building.price?.toLocaleString() || 0} Построить
+6480:                            const clanCastle = placedBuildings.find(b => {
+6481:                                const info = buildingData.find(i => i.id === b.buildingId);
+6773:                    {placedBuildings.filter(b => b.ownerId === selectedPlayerId).length > 0 ? (
+6774:                        placedBuildings.filter(b => b.ownerId === selectedPlayerId).map(b => {
+6775:                            const info = buildingData.find(i => i.id === b.buildingId);
+6794:                                            setSelectedBuilding(null);
+6900:                                 <p className="text-2xl">{playerBuildingsCount} / {maxBuildings}</p>
+7090:                                                    entry.type === 'build' ? 'bg-green-900/50 text-green-300' :
+7096:                                                    {entry.type === 'build' ? 'Строительство' :

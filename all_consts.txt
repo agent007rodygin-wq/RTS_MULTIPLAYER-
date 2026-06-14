@@ -1,0 +1,855 @@
+243: const canvasRef = useRef<HTMLCanvasElement | null>(null);
+252: const placedBuildingsRef = useRef(placedBuildings);
+253: const mapResourcesRef = useRef(mapResources);
+266: const isAuthReadyRef = useRef(isAuthReady);
+267: const userRef = useRef(user);
+304: const isMyBuilding = useCallback((b: PlacedBuilding) => {
+311: const currentOwnerId = user ? user.uid : "0";
+313: const screenToWorld = useCallback((screenX: number, screenY: number, zoom: number): { x: number, y: number } => {
+314: const adjustedX = screenX - cameraOffset.x;
+315: const adjustedY = screenY - cameraOffset.y;
+316: const scaledTileWidth = TILE_WIDTH * zoom;
+317: const scaledTileHeight = TILE_HEIGHT * zoom;
+318: const x = Math.floor((adjustedX / (scaledTileWidth / 2) + adjustedY / (scaledTileHeight / 2)) / 2);
+319: const y = Math.floor((adjustedY / (scaledTileHeight / 2) - adjustedX / (scaledTileWidth / 2)) / 2);
+325: const timer = setTimeout(() => {
+331: const generateMap = (seed: number, existingBuildings: PlacedBuilding[]) => {
+332: const random = (function(s) {
+341: const occupied = new Set(existingBuildings.map(b => `${b.x},${b.y}`));
+343: const tryPlace = (maxTries: number) => {
+360: const mountainInfo = buildingData.find(b => b.id === MOUNTAIN_ID);
+363: const pos = tryPlace(50);
+385: const riverInfo = buildingData.find(b => b.id === RIVER_ID);
+388: const pos = tryPlace(50);
+410: const pos = tryPlace(50);
+418: const pos = tryPlace(50);
+426: const pos = tryPlace(50);
+434: const pos = tryPlace(50);
+441: const monsterTypes = [KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID];
+443: const monsterInfo = buildingData.find(b => b.id === typeId);
+446: const pos = tryPlace(50);
+476: const mapStateRef = doc(db, 'map_state', 'status');
+480: const buildingsSnapshot = await getDocs(collection(db, 'buildings'));
+481: const existingBuildings = buildingsSnapshot.docs.map(doc => doc.data() as PlacedBuilding);
+483: const seed = Math.floor(Math.random() * 1000000);
+493: const resourceId = `${r.x}_${r.y}`;
+503: const initialResourcesLoaded = useRef(false);
+509: const zoom = ZOOM_LEVELS[zoomIndex];
+511: const screenX = window.innerWidth / 2;
+512: const screenY = window.innerHeight / 2;
+513: const adjustedX = screenX - throttledCameraOffset.x;
+514: const adjustedY = screenY - throttledCameraOffset.y;
+517: const isoX = adjustedX / (TILE_WIDTH / 2 * zoom);
+518: const isoY = adjustedY / (TILE_HEIGHT / 2 * zoom);
+520: const worldX = (isoY + isoX) / 2;
+521: const worldY = (isoY - isoX) / 2;
+523: const zX = Math.floor(worldX / ZONE_SIZE);
+524: const zY = Math.floor(worldY / ZONE_SIZE);
+529: const nx = zX + dx;
+530: const ny = zY + dy;
+550: const resourcesCol = collection(db, 'map_resources');
+551: const q = query(resourcesCol, where('zoneId', 'in', currentZones));
+553: const unsubscribe = onSnapshot(q, (snapshot) => {
+564: const newResource = change.doc.data() as MapResource;
+565: const sectorX = Math.floor(newResource.x / ZONE_SIZE) + 1;
+566: const sectorY = Math.floor(newResource.y / ZONE_SIZE) + 1;
+568: const hasIntel = placedBuildingsRef.current.some(b =>
+607: const droppedItemsCol = collection(db, 'dropped_items');
+608: const q = query(droppedItemsCol, where('zoneId', 'in', currentZones));
+610: const unsubscribe = onSnapshot(q, (snapshot) => {
+621: const seededZones = useRef(new Set<string>());
+625: const seedCurrentZones = async () => {
+627: const zonesToSeed = currentZones.filter(z => !seededZones.current.has(z));
+632: const resourcesRef = collection(db, 'map_resources');
+636: const q = query(resourcesRef, where('zoneId', '==', zoneId), limit(10));
+637: const snap = await getDocs(q);
+645: const occupied = new Set<string>();
+650: const rx = zx * ZONE_SIZE + Math.floor(Math.random() * ZONE_SIZE);
+651: const ry = zy * ZONE_SIZE + Math.floor(Math.random() * ZONE_SIZE);
+654: const id = `${rx}_${ry}`;
+663: const rx = zx * ZONE_SIZE + Math.floor(Math.random() * ZONE_SIZE);
+664: const ry = zy * ZONE_SIZE + Math.floor(Math.random() * ZONE_SIZE);
+667: const id = `monster_${rx}_${ry}`;
+683: const handleResetMap = async () => {
+773: const MUSIC_TRACKS = useMemo(() => [
+777: const audioRef = useRef<HTMLAudioElement>(null);
+782: const interval = setInterval(() => {
+816: const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+822: const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+824: const touch = event.touches[0];
+831: const handleMouseUp = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+832: const wasDragging = hasDraggedRef.current;
+843: const zoom = ZOOM_LEVELS[zoomIndex];
+849: const isOccupied = placedBuildings.some(b => b.x === gridX && b.y === gridY && (b.x !== moveMode.building!.x || b.y !== moveMode.building!.y) && (b.hp === undefined || b.hp > 0)) || mapResources.some(r => r.x === gridX && r.y === gridY);
+856: const moveCost = (Number(moveMode.building.buildingId) === MOUNTAIN_ID || Number(moveMode.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST;
+866: const buildingInfo = buildingData.find(b => b.id === moveMode.building!.buildingId);
+869: const isMountainOrRiver = Number(moveMode.building!.buildingId) === MOUNTAIN_ID || Number(moveMode.building!.buildingId) === RIVER_ID;
+872: const docId = String(moveMode.building!.id);
+911: const droppedItemIndex = droppedItems.findIndex(i => i.x === gridX && i.y === gridY);
+918: const item = droppedItems[droppedItemIndex];
+933: const itemInfo = itemData.find(i => i.id === item.itemId);
+949: const resourceIndex = mapResources.findIndex(r => r.x === gridX && r.y === gridY);
+950: const buildingAtTile = placedBuildings.find(b => b.x === gridX && b.y === gridY && (b.hp === undefined || b.hp > 0));
+955: const buildingInfo = buildingData.find(b => b.id === buildingAtTile.buildingId);
+960: const resource = mapResources[resourceIndex];
+977: const resourceId = `${resource.x}_${resource.y}`;
+978: const resourceRef = doc(db, 'map_resources', resourceId);
+979: const newHp = resource.hp - 1;
+982: const actualGold = Math.min(GOLD_PER_CHOP, goldCapacity - playerGold);
+987: const resourceZone = getZoneId(resource.x, resource.y);
+988: const sectorOwnerBuilding = placedBuildingsRef.current.find(b =>
+997: const sectorX = Math.floor(resource.x / ZONE_SIZE) + 1;
+998: const sectorY = Math.floor(resource.y / ZONE_SIZE) + 1;
+1013: const coinRewards = [100, 500, 1000, 2000];
+1014: const randomCoins = coinRewards[Math.floor(Math.random() * coinRewards.length)];
+1025: const currentResourcesSnapshot = await getDocs(collection(db, 'map_resources'));
+1026: const currentResources = currentResourcesSnapshot.docs.map(d => d.data() as MapResource);
+1030: const maxTries = 100;
+1033: const buildingsSnapshot = await getDocs(collection(db, 'buildings'));
+1034: const currentBuildings = buildingsSnapshot.docs.map(d => d.data() as PlacedBuilding);
+1036: const occupied = new Set([
+1049: const newResourceId = `${newX}_${newY}`;
+1050: const newTree = { x: newX, y: newY, zoneId: getZoneId(newX, newY), hp: TREE_HP, type: 'tree' };
+1061: const townHallBuilding = buildingData.find(b => b.id === TOWN_HALL_ID);
+1081: const docId = String(newTownHall.id);
+1093: const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+1094: const wasDragging = hasDraggedRef.current;
+1099: const touch = event.changedTouches[0];
+1110: const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+1112: const dx = event.clientX - dragStartRef.current.x;
+1113: const dy = event.clientY - dragStartRef.current.y;
+1120: const newX = prev.x + dx;
+1121: const newY = prev.y + dy;
+1126: const zoom = ZOOM_LEVELS[zoomIndex];
+1131: const hoveredBuilding = placedBuildings.find(b => b.x === gridX && b.y === gridY);
+1133: const buildingInfo = buildingData.find(b => b.id === hoveredBuilding.buildingId);
+1135: const info = buildingData.find(bd => bd.id === hoveredBuilding.buildingId);
+1136: const isMonster = info?.category === 'Монстры';
+1137: const isNature = info?.category === 'Природа';
+1153: const ownerColor = (hoveredBuilding.ownerId === "-1" || hoveredBuilding.ownerId === "monster") ? 'gray' : 'blue';
+1155: const curHp = hoveredBuilding.hp ?? buildingInfo.stats.durability;
+1156: const maxHp = hoveredBuilding.maxHp ?? buildingInfo.stats.durability;
+1158: const isProtected = hoveredBuilding.protectionEndTime && hoveredBuilding.protectionEndTime > Date.now();
+1160: const content = (
+1198: const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+1200: const touch = event.touches[0];
+1201: const dx = touch.clientX - dragStartRef.current.x;
+1202: const dy = touch.clientY - dragStartRef.current.y;
+1213: const handleConfirmBuild = async () => {
+1221: const currentBuildingCount = placedBuildings.filter(b => isMyBuilding(b)).length;
+1236: const hasClanCastle = placedBuildings.some(b => b.buildingId === CLAN_CASTLE_ID && isMyBuilding(b) && !b.isConstructing);
+1251: const requiredPop = building.constructionRequirements.population;
+1252: const availablePop = maxPopulation - currentPopulation;
+1262: const missingResources = building.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
+1264: const missingNames = missingResources.map(r => r.name).join(', ');
+1300: const docId = String(newBuilding.id);
+1320: const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+1328: const userDocRef = doc(db, 'users', currentUser.uid);
+1329: const userSnap = await getDoc(userDocRef);
+1357: const saveUserData = useCallback(async () => {
+1362: const userDocRef = doc(db, 'users', user.uid);
+1378: const interval = setInterval(() => {
+1384: const updatePlayerResources = (goldDelta: number, rubiesDelta: number, inventoryDeltas: Record<number, number>) => {
+1405: const next = { ...prev };
+1415: const handleAuth = async (e: React.FormEvent) => {
+1451: const handleLogin = async () => {
+1456: const handleLogout = async () => {
+1464: const initialLoadDone = useRef(false);
+1470: const userDocRef = doc(db, 'users', user.uid);
+1471: const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+1473: const data = docSnap.data();
+1477: const loadedLevel = data.level || 1;
+1478: const maxE = BASE_MAX_ENERGY + (loadedLevel - 1) * 50;
+1501: const initialData = {
+1521: const fetchClans = useCallback(async () => {
+1524: const clansCol = collection(db, 'clans');
+1525: const snapshot = await getDocs(clansCol);
+1543: const chatCol = collection(db, 'chat_messages');
+1545: const q = query(chatCol, orderBy('created', 'desc'), limit(50));
+1547: const unsubscribe = onSnapshot(q, (snapshot) => {
+1554: const sysMsgs = prev.filter(m => m.type === 'system');
+1555: const firestoreMsgs = messages.sort((a, b) => a.timestamp - b.timestamp);
+1567: const presenceDocRef = doc(db, 'presence', user.uid);
+1568: const updatePresence = async () => {
+1570: const zoom = ZOOM_LEVELS[zoomIndex];
+1571: const worldCenter = screenToWorld(window.innerWidth / 2, window.innerHeight / 2, zoom);
+1572: const activeCurse = activeCurses[playerName];
+1595: const interval = setInterval(updatePresence, 45000); // 45s heartbeat
+1608: const onlinePlayersDataRef = useRef(onlinePlayersData);
+1615: const interval = setInterval(() => {
+1620: const current = prev[player.uid] || { x: player.x, y: player.y };
+1622: const dx = (player.x - current.x) * 0.05;
+1623: const dy = (player.y - current.y) * 0.05;
+1638: const presenceCol = collection(db, 'presence');
+1640: const fiveMinutesAgo = Date.now() - 300000;
+1641: const q = query(presenceCol, where('lastSeen', '>', fiveMinutesAgo), limit(50));
+1642: const unsubscribe = onSnapshot(q, (snapshot) => {
+1651: const now = Date.now();
+1653: const data = doc.data();
+1656: const tab = (data.activeTab || 'general') as ChatTab;
+1695: const allUsersRef = useRef<Record<string, any>>({});
+1700: const fetchUserProfile = async () => {
+1702: const userDoc = await getDoc(doc(db, 'users', selectedPlayerId));
+1704: const data = userDoc.data();
+1727: const deletingBuildingsRef = useRef<Set<string>>(new Set());
+1728: const serverZoneBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+1729: const serverMyBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+1731: const updatePlacedBuildingsFromServer = useCallback(() => {
+1733: const merged = new Map<string, PlacedBuilding>();
+1736: const strId = String(id);
+1742: const strId = String(id);
+1749: const localOnlyBuildings = prev.filter(b => {
+1750: const strId = String(b.id);
+1751: const isTownHall = TOWN_HALL_IDS.includes(Number(b.buildingId));
+1752: const isMyTH = isTownHall && isMyBuilding(b);
+1755: const shouldKeep = (b.isLocal || isMyTH) && !merged.has(strId) && !deletingBuildingsRef.current.has(strId);
+1758: const isPersistentEntity = b.ownerId === "-1" || b.ownerId === "monster";
+1771: const buildingsCol = collection(db, 'buildings');
+1772: const qMy = query(buildingsCol, where('ownerId', '==', user.uid));
+1774: const unsubscribeMy = onSnapshot(qMy, (snapshot) => {
+1775: const myBuildingsMap = new Map<string, PlacedBuilding>();
+1777: const data = doc.data() as any;
+1778: const strId = String(doc.id);
+1793: const buildingsCol = collection(db, 'buildings');
+1794: const qZone = query(buildingsCol, where('zoneId', 'in', currentZones));
+1796: const unsubscribeZone = onSnapshot(qZone, (snapshot) => {
+1797: const zoneBuildingsMap = new Map<string, PlacedBuilding>();
+1799: const data = doc.data() as any;
+1800: const strId = String(doc.id);
+1812: const fetchMarketListings = useCallback(async () => {
+1815: const marketCol = collection(db, 'market');
+1816: const snapshot = await getDocs(marketCol);
+1834: const latest = placedBuildings.find(b => b.id === selectedBuilding.building.id);
+1837: const hasChanged = !Object.is(latest.bank, selectedBuilding.building.bank) ||
+1865: const addHistoryLog = (message: string, type: HistoryEntry['type']) => {
+1874: const getUserLevel = useCallback((name: string) => {
+1876: const foundUser = Object.values(allUsers).find(u => u.name === name);
+1881: const getUserGlory = useCallback((name: string) => {
+1883: const foundUser = Object.values(allUsers).find(u => u.name === name);
+1885: const level = MOCK_USER_LEVELS[name] || 1;
+1886: const baseGlory = level * 100 + (name.length * 10);
+1887: const adjustment = userGloryAdjustments[name] || 0;
+1891: const getUserReputation = useCallback((name: string) => {
+1893: const foundUser = Object.values(allUsers).find(u => u.name === name);
+1898: const handleChatUserClick = (userName: string, userId: string | undefined, e: React.MouseEvent) => {
+1907: const handleReputationAction = async (type: 'praise' | 'complain') => {
+1910: const targetUser = Object.values(allUsers).find(u => u.name === selectedChatUser);
+1920: const currentRep = prev[selectedChatUser] || 0;
+1921: const newRep = type === 'praise' ? currentRep + 1 : currentRep - 1;
+1922: const clampedRep = Math.min(MAX_REPUTATION, newRep);
+1928: const actionText = type === 'praise' ? 'похвалили' : 'пожаловались на';
+1934: const handlePraisePlayer = async (targetUid: string) => {
+1936: const isAdmin = user && user.email === "fabiosluco@gmail.com";
+1943: const targetUserDocRef = doc(db, 'users', targetUid);
+1944: const currentUserDocRef = doc(db, 'users', user.uid);
+1947: const currentUserDoc = await transaction.get(currentUserDocRef);
+1950: const userRecs = currentUserDoc.data().inventory?.[RECOMMENDATION_ID] || 0;
+1973: const handleComplainPlayer = async (targetUid: string) => {
+1977: const targetUserDocRef = doc(db, 'users', targetUid);
+1978: const currentUserDocRef = doc(db, 'users', user.uid);
+1981: const currentUserDoc = await transaction.get(currentUserDocRef);
+1984: const userRecs = currentUserDoc.data().inventory?.[RECOMMENDATION_ID] || 0;
+2006: const handleBanPlayer = (cost: number, durationMinutes: number) => {
+2018: const targetUser = Object.values(allUsersRef.current).find((u: any) => u.name === selectedChatUser) as any;
+2020: const targetUid = targetUser.uid;
+2021: const newBanEndTime = Date.now() + durationMinutes * 60 * 1000;
+2035: const handleBanPlayerByUid = async (targetUid: string, cost: number, durationMinutes: number) => {
+2041: const newBanEndTime = Date.now() + durationMinutes * 60 * 1000;
+2042: const batch = writeBatch(db);
+2050: const targetUser = allUsers[targetUid];
+2063: const handleCursePlayerByUid = async (targetUid: string, cost: number, durationMinutes: number, prefix: string, animalName: string) => {
+2069: const activeCurse = {
+2074: const batch = writeBatch(db);
+2082: const targetUser = allUsers[targetUid];
+2097: const getLevelIcon = useCallback((level: number) => {
+2098: const levelIcons = [
+2103: const index = Math.max(0, Math.min(level - 1, levelIcons.length - 1));
+2107: const maxEnergy = useMemo(() => {
+2111: const isBanned = useCallback(() => {
+2126: const currentPopulation = useMemo(() => {
+2130: const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+2151: const maxPopulation = useMemo(() => {
+2155: const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+2160: const isInClan = useMemo(() => playerClanId !== null, [playerClanId]);
+2162: const hasClanCastle = useMemo(() => {
+2166: const hasFinancialIntelligence = useMemo(() => {
+2170: const hasAdvancedFinancialIntelligence = useMemo(() => {
+2174: const oilRigInfo = useMemo(() => buildingData.find(b => b.id === OIL_RIG_ID), []);
+2175: const wildQuarryInfo = useMemo(() => buildingData.find(b => b.id === WILD_QUARRY_ID), []);
+2181: const isDraggingRef = useRef(false);
+2182: const hasDraggedRef = useRef(false);
+2183: const dragStartRef = useRef({ x: 0, y: 0 });
+2185: const getCanvasContext = (): [HTMLCanvasElement, CanvasRenderingContext2D] | [null, null] => {
+2186: const canvas = canvasRef.current;
+2188: const context = canvas.getContext('2d');
+2194: const worldToScreen = useCallback((x: number, y: number, zoom: number): { screenX: number, screenY: number } => {
+2195: const screenX = (x - y) * (TILE_WIDTH * zoom / 2);
+2196: const screenY = (x + y) * (TILE_HEIGHT * zoom / 2);
+2206: const q = query(
+2211: const unsubscribe = onSnapshot(q, (snapshot) => {
+2229: const myTownHalls = placedBuildings
+2233: const idA = String(a.id);
+2234: const idB = String(b.id);
+2235: const timeA = idA.length >= 13 ? parseInt(idA.substring(0, 13)) : (a.timestamp || 0);
+2236: const timeB = idB.length >= 13 ? parseInt(idB.substring(0, 13)) : (b.timestamp || 0);
+2241: const now = Date.now();
+2243: const hasVeryNew = myTownHalls.some(b => {
+2244: const idStr = String(b.id);
+2245: const buildTime = idStr.length >= 13 ? parseInt(idStr.substring(0, 13)) : (b.timestamp || now);
+2252: const duplicates = myTownHalls.slice(1);
+2257: const docId = String(dup.id);
+2276: const unreadMsgs = privateMessages.filter(m => m.chatId === activePrivateChatId && m.receiverId === user.uid && !m.read);
+2289: const allImageUrls = [
+2320: const uniqueUrls = [...new Set(allImageUrls)];
+2323: const totalImages = uniqueUrls.length;
+2338: const img = new Image();
+2357: const getGloryForLevel = useCallback((level: number) => {
+2375: const hasTownHall = useMemo(() => placedBuildings.some(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isMyBuilding(b)), [placedBuildings, isMyBuilding]);
+2376: const townHallLocation = useMemo(() => {
+2377: const th = placedBuildings.find(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isMyBuilding(b));
+2381: const maxBuildings = useMemo(() => {
+2385: const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+2390: const isUserOnline = (name: string) => {
+2395: const handleAddFriend = async () => {
+2411: const updatedFriends = [...friends, newFriend];
+2414: const userDocRef = doc(db, 'users', user.uid);
+2428: const handleRemoveFriend = async (friendName: string) => {
+2430: const updatedFriends = friends.filter(f => f.name !== friendName);
+2433: const userDocRef = doc(db, 'users', user.uid);
+2443: const handlePunishPlayer = (cost: number, penalty: number, actionName: string) => {
+2449: const handlePunishPlayerByUid = async (targetUid: string, cost: number, penalty: number, actionName: string) => {
+2461: const targetUserRef = doc(db, 'users', targetUid);
+2472: const handleAddFriendByUid = async (targetUid: string) => {
+2483: const handleCursePlayer = (cost: number, durationMinutes: number, prefix: string, animalName: string) => {
+2492: const targetUser = Object.values(allUsersRef.current).find((u: any) => u.name === selectedChatUser) as any;
+2494: const targetUid = targetUser.uid;
+2495: const activeCurse = {
+2519: const draw = useCallback(() => {
+2523: const zoom = ZOOM_LEVELS[zoomIndex];
+2524: const scaledTileWidth = TILE_WIDTH * zoom;
+2525: const scaledTileHeight = TILE_HEIGHT * zoom;
+2534: const groundImg = images[groundTileImageUrl];
+2570: const drawableEntities = [
+2577: const posDiff = (a.x + a.y) - (b.x + b.y);
+2625: const itemInfo = itemData.find(i => i.id === entity.itemId);
+2633: const isProtected = entity.protectionEndTime && entity.protectionEndTime > Date.now();
+2645: const isRoadOrWall = buildingInfo && buildingInfo.category === 'Дороги и стены';
+2646: const aspectRatio = img ? img.height / img.width : 1.5;
+2647: const imageScaledWidth = isRoadOrWall ? scaledTileWidth : scaledTileWidth * 0.9;
+2648: const imageScaledHeight = imageScaledWidth * aspectRatio;
+2655: const itemScale = 0.6;
+2656: const itemWidth = imageScaledWidth * itemScale;
+2657: const itemHeight = imageScaledHeight * itemScale;
+2660: const safeId = String(entity.id || '');
+2661: const hash = safeId.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
+2662: const offsetX = (hash % 20 - 10) * zoom;
+2663: const offsetY = ((hash >> 4) % 10 - 5) * zoom;
+2705: const now = Date.now();
+2710: const hp = entity.hp;
+2711: const maxHp = entity.maxHp || buildingInfo.stats.durability;
+2714: const barWidth = scaledTileWidth * 0.8;
+2715: const barHeight = 6 * zoom;
+2716: const barX = screenX - barWidth / 2;
+2726: const hpPercent = Math.max(0, hp / maxHp);
+2732: const timeRemaining = Math.max(0, entity.destructionEndTime - now);
+2733: const barWidth = scaledTileWidth * 0.8;
+2734: const barHeight = 10 * zoom;
+2735: const barX = screenX - barWidth / 2;
+2736: const barY = drawY - barHeight - (5 * zoom);
+2744: const minutes = Math.floor(timeRemaining / 60000);
+2745: const seconds = Math.floor((timeRemaining % 60000) / 1000);
+2749: const timeRemaining = Math.max(0, entity.constructionEndTime - now);
+2750: const loadingImg = images[loadingIconUrl];
+2753: const spinnerSize = 24 * zoom;
+2754: const centerX = screenX;
+2755: const centerY = drawY + imageScaledHeight / 2;
+2770: const minutes = Math.floor(timeRemaining / 60000);
+2771: const seconds = Math.floor((timeRemaining % 60000) / 1000);
+2772: const timeText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+2777: const minutes = Math.floor(timeRemaining / 60000);
+2778: const seconds = Math.floor((timeRemaining % 60000) / 1000);
+2783: const timeRemaining = Math.max(0, entity.workEndTime - now);
+2784: const totalTime = (buildingInfo.stats.workTimeSeconds || 0) * 1000;
+2785: const progress = totalTime > 0 ? 1 - (timeRemaining / totalTime) : 1;
+2787: const barWidth = scaledTileWidth * 0.8;
+2788: const barHeight = 10 * zoom;
+2789: const barX = screenX - barWidth / 2;
+2790: const barY = drawY - barHeight - (5 * zoom);
+2798: const minutes = Math.floor(timeRemaining / 60000);
+2799: const seconds = Math.floor((timeRemaining % 60000) / 1000);
+2802: const isIntermediatePond = [400, 401, 402, 403, 404, 406, 407, 408, 70, 71, 72, 77, 78, 79].includes(buildingInfo.id);
+2803: const isFinishedPond = [405, 409, 73, 80].includes(buildingInfo.id);
+2806: const builderImg = images[builderIconUrl];
+2808: const iconSize = 32 * zoom;
+2809: const iconX = screenX - iconSize / 2;
+2810: const iconY = drawY - iconSize - (10 * zoom);
+2821: const coinImg = images[coinImageUrl];
+2823: const iconSize = 32 * zoom;
+2824: const iconX = screenX - iconSize / 2;
+2825: const iconY = drawY - iconSize - (10 * zoom);
+2832: const iconSize = 20 * zoom;
+2833: const boxHeight = Math.max(iconSize, 16 * zoom) + (10 * zoom);
+2834: const boxX = screenX - (iconSize * 1.5);
+2835: const boxY = drawY - boxHeight - (10 * zoom);
+2846: const builderImg = images[builderIconUrl];
+2848: const iconSize = 32 * zoom;
+2849: const iconX = screenX - iconSize;
+2850: const iconY = drawY - iconSize - (10 * zoom);
+2867: const now = Date.now();
+2868: const elapsedTime = now - effect.startTime;
+2869: const progress = Math.min(elapsedTime / effect.duration, 1.0);
+2873: const radius = scaledTileWidth * 0.75 * progress;
+2874: const opacity = 1.0 - progress;
+2881: const radius = scaledTileWidth * (0.5 + progress);
+2882: const opacity = 1.0 - progress;
+2891: const currentX = startX + (endX - startX) * progress;
+2892: const currentY = startY + (endY - startY) * progress;
+2903: const opacity = 0.8 * (1.0 - progress);
+2916: const isOccupied = placedBuildings.some(b => b.x === hoveredTile.x && b.y === hoveredTile.y) || mapResources.some(r => r.x === hoveredTile.x && r.y === hoveredTile.y);
+2937: const drawRef = useRef(draw);
+2944: const gameLoop = () => {
+2945: const now = Date.now();
+2948: const buildingsToUpdate = placedBuildingsRef.current.filter(b => {
+2949: const isOwner = b.ownerId === "0" || (isAuthReadyRef.current && userRef.current && b.ownerId === userRef.current.uid);
+2950: const isHost = b.ownerId === "monster" && isAuthReadyRef.current && userRef.current && (b.hostId === userRef.current.uid || !b.hostId);
+2951: const isInitiator = b.initiatorId && isAuthReadyRef.current && userRef.current && b.initiatorId === userRef.current.uid;
+2960: const monstersMoving = placedBuildingsRef.current.filter(b => {
+2962: const info = buildingData.find(i => i.id === b.buildingId);
+2966: const isHost = isAuthReadyRef.current && userRef.current && (b.hostId === userRef.current.uid || !b.hostId);
+2969: const lastTime = b.lastMoveTime || b.constructionEndTime || 0;
+2973: const cannonsAttacking = placedBuildingsRef.current.filter(b => {
+2977: const isOwner = b.ownerId === "0" || (isAuthReadyRef.current && userRef.current && b.ownerId === userRef.current.uid);
+2980: const isDefense = b.buildingId === CANNON_ID || b.buildingId === 701 || b.buildingId === PROTECTED_TOWER_ID || b.buildingId === WATCHTOWER_ID;
+2983: const info = buildingData.find(i => i.id === b.buildingId);
+2989: const lastTime = b.lastAttackTime || b.constructionEndTime || 0;
+2997: const currentBuildings = placedBuildingsRef.current;
+2998: const occupiedPositions = new Set(currentBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`));
+3001: const damageMap = new Map<string, number>();
+3002: const monsterUpdates = new Map<string, PlacedBuilding>();
+3003: const cannonUpdates = new Map<string, PlacedBuilding>();
+3006: const actingMonsters = currentBuildings.filter(b => {
+3007: const info = buildingData.find(i => i.id === b.buildingId);
+3008: const lastTime = b.lastMoveTime || b.constructionEndTime || 0;
+3009: const isHost = isAuthReadyRef.current && userRef.current && (b.hostId === userRef.current.uid || !b.hostId);
+3016: const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+3017: const neighbors = [
+3024: const possibleTargets = currentBuildings.filter(t =>
+3032: const info = buildingData.find(i => i.id === t.buildingId);
+3033: const hates = monsterInfo?.stats.hates;
+3041: const targetInfo = buildingData.find(i => i.id === target.buildingId);
+3048: const lastAttackTime = monster.lastAttackTime || 0;
+3049: const attackInterval = (monsterInfo?.stats.moveIntervalSeconds || 120) * 1000;
+3053: const newMonsterState = { ...monster, lastMoveTime: now, lastAttackTime: now, hostId: userRef.current?.uid || null };
+3057: const docId = String(monster.id);
+3061: const newMonsterState = { ...monster, lastMoveTime: now, hostId: userRef.current?.uid || null };
+3065: const docId = String(monster.id);
+3070: const validMoves = neighbors.filter(move =>
+3077: const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+3081: const newMonsterState = { ...monster, x: randomMove.x, y: randomMove.y, lastMoveTime: now, hostId: userRef.current?.uid || null };
+3085: const docId = String(monster.id);
+3094: const newMonsterState = { ...monster, lastMoveTime: now, hostId: userRef.current?.uid || null };
+3097: const docId = String(monster.id);
+3105: const monsters = currentBuildings.filter(b => {
+3106: const info = buildingData.find(i => i.id === b.buildingId);
+3111: const cannonInfo = buildingData.find(i => i.id === cannon.buildingId);
+3128: const dist = Math.max(Math.abs(monster.x - cannon.x), Math.abs(monster.y - cannon.y));
+3136: const targetKey = `${targetMonster.x},${targetMonster.y}`;
+3141: const docId = String(cannon.id);
+3153: const key = `${b.x},${b.y}`;
+3168: const damage = updatedB.pendingDamage || 0;
+3169: const currentHp = updatedB.hp ?? 0;
+3170: const remainingHp = currentHp - damage;
+3177: const isOwner = updatedB.ownerId === "0" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid);
+3178: const isHost = updatedB.ownerId === "monster" && isAuthReadyRef.current && userRef.current && (updatedB.hostId === userRef.current.uid || !updatedB.hostId);
+3181: const docId = String(updatedB.id);
+3190: const docId = String(updatedB.id);
+3197: const docId = String(updatedB.id);
+3218: const docId = String(updatedB.id);
+3229: const docId = String(updatedB.id);
+3241: const buildingInfo = buildingData.find(bd => bd.id === updatedB.buildingId);
+3243: const isInitiator = updatedB.initiatorId === userRef.current?.uid;
+3244: const isFallbackOwner = !updatedB.initiatorId && (updatedB.ownerId === "0" || updatedB.ownerId === "monster" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid));
+3250: const spawnDrops = (dropsList: any[]) => {
+3252: const chance = drop.chance !== undefined ? drop.chance : 100;
+3254: const droppedItemId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+3309: const next = prev.filter(effect => Date.now() - effect.startTime < effect.duration);
+3323: const handleResize = () => {
+3338: const deadBuildings = placedBuildings.filter(b => b.hp !== undefined && b.hp <= 0 && b.ownerId === user.uid);
+3341: const docId = String(b.id);
+3355: const oilSpawner = setInterval(() => {
+3356: const users = Object.keys(allUsersRef.current).sort();
+3360: const prevBuildings = placedBuildingsRef.current;
+3361: const oilDeposits = prev.filter(r => r.type === 'oil');
+3362: const oilRigs = prevBuildings.filter(b => b.buildingId === OIL_RIG_ID);
+3368: const maxTries = 50;
+3370: const occupied = new Set([
+3385: const resourceId = `${newX}_${newY}`;
+3399: const quarrySpawner = setInterval(() => {
+3400: const users = Object.keys(allUsersRef.current).sort();
+3404: const prevBuildings = placedBuildingsRef.current;
+3405: const quarries = prev.filter(r => r.type === 'quarry');
+3406: const wildQuarries = prevBuildings.filter(b => b.buildingId === WILD_QUARRY_ID);
+3412: const maxTries = 50;
+3414: const occupied = new Set([
+3429: const resourceId = `${newX}_${newY}`;
+3443: const chestSpawner = setInterval(() => {
+3444: const users = Object.keys(allUsersRef.current).sort();
+3448: const prevBuildings = placedBuildingsRef.current;
+3449: const chests = prev.filter(r => r.type === 'chest');
+3455: const maxTries = 50;
+3457: const occupied = new Set([
+3472: const resourceId = `${newX}_${newY}`;
+3486: const monsterSpawner = setInterval(() => {
+3489: const users = Object.keys(allUsersRef.current).sort();
+3492: const prevBuildings = placedBuildingsRef.current;
+3493: const prevResources = mapResourcesRef.current;
+3494: const monsterTypes = [KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID];
+3496: const occupied = new Set([
+3502: const currentCount = prevBuildings.filter(b => b.buildingId === typeId && (b.ownerId === "-1" || b.ownerId === "monster")).length;
+3508: const maxTries = 50;
+3519: const monsterInfo = buildingData.find(b => b.id === typeId);
+3522: const newMonster = {
+3540: const docId = String(newMonster.id);
+3551: const additionalCapacity = placedBuildings
+3554: const buildingInfo = buildingData.find(bd => bd.id === b.buildingId);
+3561: const energyTimer = setInterval(() => {
+3572: const gloryToNextLevel = getGloryForLevel(currentLevel);
+3582: const newMaxEnergy = BASE_MAX_ENERGY + (currentLevel - 1) * 50;
+3583: const glorySubtracted = playerGlory - currentGlory;
+3607: const handleBuyMarketItem = (listing: MarketListing) => {
+3624: const buyerRef = doc(db, 'users', user.uid);
+3625: const listingRef = doc(db, 'market', String(listing.id));
+3626: const sellerRef = listing.sellerId && listing.sellerId !== "0" && listing.sellerId !== user.uid ? doc(db, 'users', listing.sellerId) : null;
+3627: const currencyField = listing.currency === 'coins' ? 'gold' : 'rubies';
+3630: const buyerDoc = await transaction.get(buyerRef);
+3633: const listingDoc = await transaction.get(listingRef);
+3639: const sellerDoc = await transaction.get(sellerRef);
+3645: const buyerData = buyerDoc.data();
+3646: const currentBalance = Number(buyerData[currencyField]) || 0;
+3647: const listingPrice = Number(listing.price) || 0;
+3648: const listingAmount = Number(listing.amount) || 0;
+3649: const listingResourceId = Number(listing.resourceId);
+3663: const currentItemAmount = Number(buyerData.inventory?.[listingResourceId]) || 0;
+3673: const currentSellerBalance = Number(sellerData[currencyField]) || 0;
+3683: const itemInfo = itemData.find(i => i.id === listing.resourceId);
+3708: const itemInfo = itemData.find(i => i.id === listing.resourceId);
+3714: const handleCreateMarketListing = () => {
+3725: const currentAmount = sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId] || 0);
+3743: const userRef = doc(db, 'users', user.uid);
+3744: const listingRef = doc(db, 'market', String(newListing.id));
+3747: const userDoc = await transaction.get(userRef);
+3750: const userData = userDoc.data();
+3751: const currentItemAmount = sellItemSelection.itemId === 10014 ? (userData.rubies || 0) : (userData.inventory?.[sellItemSelection.itemId!] || 0);
+3768: const itemInfo = itemData.find(i => i.id === sellItemSelection.itemId);
+3788: const itemInfo = itemData.find(i => i.id === sellItemSelection.itemId);
+3796: const handleCancelListing = (listing: MarketListing) => {
+3805: const userRef = doc(db, 'users', user.uid);
+3806: const listingRef = doc(db, 'market', String(listing.id));
+3809: const listingDoc = await transaction.get(listingRef);
+3848: const handleShareOil = () => {
+3855: const messageText = `Я нашел нефть! Делюсь со всеми ресурсом.`;
+3870: const handleShareQuarry = () => {
+3877: const messageText = `Я нашел каменоломню! Делюсь со всеми ресурсом.`;
+3892: const handleBuildOilRig = () => {
+3901: const requiredPop = oilRigInfo.constructionRequirements.population;
+3902: const availablePop = maxPopulation - currentPopulation;
+3930: const docId = String(newBuilding.id);
+3940: const handleBuildWildQuarry = () => {
+3949: const requiredPop = wildQuarryInfo.constructionRequirements.population;
+3950: const availablePop = maxPopulation - currentPopulation;
+3978: const docId = String(newBuilding.id);
+3988: const handleNameChange = async () => {
+3989: const cost = 500;
+4013: const handleBuyRuby = () => {
+4015: const totalCost = buyRubyAmount * 10000;
+4019: const userRef = doc(db, 'users', user.uid);
+4022: const userDoc = await transaction.get(userRef);
+4025: const currentGold = Number(userDoc.data().gold) || 0;
+4028: const currentRubies = Number(userDoc.data().rubies) || 0;
+4057: const handleBuyShopItem = (item: Item, quantity: number = 1) => {
+4064: const userRef = doc(db, 'users', user.uid);
+4067: const userDoc = await transaction.get(userRef);
+4070: const currentRubies = Number(userDoc.data().rubies) || 0;
+4073: const currentItemAmount = Number(userDoc.data().inventory?.[item.id]) || 0;
+4102: const handleRubyExchange = () => {
+4105: const coins = exchangeAmount * 7777;
+4109: const userRef = doc(db, 'users', user.uid);
+4112: const userDoc = await transaction.get(userRef);
+4115: const currentRubies = Number(userDoc.data().rubies) || 0;
+4118: const currentGold = Number(userDoc.data().gold) || 0;
+4119: const newGold = Math.min(goldCapacity, currentGold + coins);
+4154: const handleUpgrade = () => {
+4157: const upgradeTargetId = selectedBuilding.info.upgradesTo;
+4158: const cost = selectedBuilding.info.upgradeCost;
+4159: const newBuildingInfo = buildingData.find(b => b.id === upgradeTargetId);
+4169: const requiredPop = newBuildingInfo.constructionRequirements.population;
+4170: const availablePop = maxPopulation - currentPopulation;
+4178: const missingResources = newBuildingInfo.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
+4180: const missingNames = missingResources.map(r => r.name).join(', ');
+4206: const buildingDocId = String(selectedBuilding.building.id);
+4218: const index = prev.findIndex(b => b.x === selectedBuilding.building.x && b.y === selectedBuilding.building.y);
+4221: const newBuildings = [...prev];
+4239: const handleStartProduction = () => {
+4243: const popCost = info.stats.takesPopulation || 0;
+4244: const isContinuation = (building.workState === 'finished' && [400, 401, 402, 403, 404, 406, 407, 408, 70, 71, 72, 73, 77, 78, 79, 80].includes(building.buildingId));
+4285: const buildingDocId = String(building.id);
+4293: const isSuper = Math.random() < 0.3;
+4294: const targetId = isSuper ? 401 : 402;
+4295: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4304: const isSuper = Math.random() < 0.3;
+4305: const targetId = isSuper ? 77 : 71;
+4306: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4315: const targetId = 78;
+4316: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4325: const targetId = 79;
+4326: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4335: const targetId = 80;
+4336: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4345: const targetId = 72;
+4346: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4355: const targetId = 73;
+4356: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4365: const targetId = 406;
+4366: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4375: const targetId = 407;
+4376: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4385: const targetId = 408;
+4386: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4395: const targetId = 409;
+4396: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4405: const targetId = 403;
+4406: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4415: const targetId = 404;
+4416: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4425: const targetId = 405;
+4426: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4443: const isSuper = Math.random() < 0.3;
+4444: const targetId = isSuper ? 401 : 402;
+4445: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4459: const isSuper = Math.random() < 0.3;
+4460: const targetId = isSuper ? 77 : 71;
+4461: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4474: const targetId = 78;
+4475: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4488: const targetId = 79;
+4489: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4502: const targetId = 80;
+4503: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4516: const targetId = 72;
+4517: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4530: const targetId = 73;
+4531: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4544: const targetId = 406;
+4545: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4558: const targetId = 407;
+4559: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4572: const targetId = 408;
+4573: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4586: const targetId = 409;
+4587: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4600: const targetId = 403;
+4601: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4614: const targetId = 404;
+4615: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4628: const targetId = 405;
+4629: const targetInfo = buildingData.find(bd => bd.id === targetId);
+4652: const handleCollectProduction = () => {
+4662: const zoneX = Math.floor(building.x / ZONE_SIZE);
+4663: const zoneY = Math.floor(building.y / ZONE_SIZE);
+4665: const taxCollector = placedBuildings.find(b =>
+4675: const taxRate = Math.min(50, Math.max(0, taxCollector.taxRate));
+4677: const taxShare = info.stats.workYieldGold - playerShare;
+4680: const banditCastle = placedBuildings.find(b =>
+4689: const buildingDocId = String(banditCastle.id);
+4718: const qty = prod.amount || 1;
+4733: const buildingDocId = String(building.id);
+4740: const targetId = (building.buildingId === 73 || building.buildingId === 80) ? 70 : 400;
+4741: const lvl1 = buildingData.find(i => i.id === targetId);
+4755: const targetId = (b.buildingId === 73 || b.buildingId === 80) ? 70 : 400;
+4756: const lvl1 = buildingData.find(i => i.id === targetId);
+4779: const handleStealProduction = () => {
+4787: const hasDenOfThieves = placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing);
+4803: const zoneX = Math.floor(building.x / ZONE_SIZE);
+4804: const zoneY = Math.floor(building.y / ZONE_SIZE);
+4806: const taxCollector = placedBuildings.find(b =>
+4816: const taxRate = Math.min(50, Math.max(0, taxCollector.taxRate));
+4818: const taxShare = info.stats.workYieldGold - playerShare;
+4821: const banditCastle = placedBuildings.find(b =>
+4830: const buildingDocId = String(banditCastle.id);
+4859: const qty = prod.amount || 1;
+4872: const thiefName = playerName || 'Неизвестный воришка';
+4873: const msgId = `theft-${Date.now()}-${building.ownerId}`;
+4874: const notification = {
+4890: const buildingDocId = String(building.id);
+4897: const targetId = (building.buildingId === 73 || building.buildingId === 80) ? 70 : 400;
+4898: const lvl1 = buildingData.find(i => i.id === targetId);
+4912: const targetId = (b.buildingId === 73 || b.buildingId === 80) ? 70 : 400;
+4913: const lvl1 = buildingData.find(i => i.id === targetId);
+4936: const handleSetTax = (rate: number) => {
+4938: const newRate = Math.min(50, Math.max(0, rate));
+4941: const buildingDocId = String(selectedBuilding.building.id);
+4954: const handleWithdrawBank = () => {
+4957: const bankAmount = selectedBuilding.building.bank || 0;
+4962: const buildingDocId = String(selectedBuilding.building.id);
+4978: const handleSectorTeleport = (x: number, y: number) => {
+4979: const zoom = ZOOM_LEVELS[zoomIndex];
+4980: const isoX = (x - y) * (TILE_WIDTH * zoom / 2);
+4981: const isoY = (x + y) * (TILE_HEIGHT * zoom / 2);
+4982: const centerX = window.innerWidth / 2;
+4983: const centerY = window.innerHeight / 2;
+4991: const handleMoveClick = () => {
+4994: const moveCost = (Number(selectedBuilding.info.id) === MOUNTAIN_ID || Number(selectedBuilding.info.id) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST;
+5005: const calculateRepairCost = (building: PlacedBuilding, info: Building) => {
+5006: const currentHp = building.hp ?? info.stats.durability;
+5007: const maxHp = building.maxHp ?? info.stats.durability;
+5008: const missingHp = maxHp - currentHp;
+5011: const basePrice = info.price || (info.rubyPrice ? info.rubyPrice * 10000 : 100);
+5017: const handleToggleActive = () => {
+5019: const building = selectedBuilding.building;
+5020: const newActive = !building.isActive;
+5032: const docId = String(building.id);
+5037: const handleRepair = () => {
+5040: const cost = calculateRepairCost(building, info);
+5051: const maxHp = building.maxHp ?? info.stats.durability;
+5054: const buildingDocId = String(building.id);
+5075: const handleSell = () => {
+5080: const refundGold = Math.floor((info.price || 0) / 2);
+5094: const buildingDocId = String(selectedBuilding.building.id);
+5102: const handleApplyProtection = (cost: number, duration: number) => {
+5111: const protectionEndTime = Date.now() + duration;
+5116: const buildingDocId = String(selectedBuilding.building.id);
+5139: const handleExplode = (destructionOption: DestructionInfo) => {
+5160: const currentAmount = inventory[destructionOption.resourceId] || 0;
+5185: const buildingDocId = String(selectedBuilding.building.id);
+5186: const currentHp = selectedBuilding.building.hp ?? selectedBuilding.info.stats.durability;
+5187: const maxHp = selectedBuilding.building.maxHp ?? selectedBuilding.info.stats.durability;
+5203: const currentHp = b.hp ?? selectedBuilding.info.stats.durability;
+5204: const maxHp = b.maxHp ?? selectedBuilding.info.stats.durability;
+5224: const handleSpeedUp = () => {
+5227: const cost = info.stats.accelerationCost || 0;
+5238: const buildingDocId = String(building.id);
+5269: const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+5271: const file = event.target.files[0];
+5272: const reader = new FileReader();
+5274: const img = new Image();
+5276: const canvas = document.createElement('canvas');
+5277: const MAX_WIDTH = 200;
+5278: const MAX_HEIGHT = 200;
+5295: const ctx = canvas.getContext('2d');
+5297: const newAvatar = canvas.toDataURL('image/jpeg', 0.8);
+5315: const handleSelectBuildingFromMenu = (building: Building) => {
+5324: const handleWheel = useCallback((event: React.WheelEvent<HTMLCanvasElement>) => {
+5325: const oldZoom = ZOOM_LEVELS[zoomIndex];
+5336: const newZoom = ZOOM_LEVELS[newZoomIndex];
+5337: const mouseX = event.clientX;
+5338: const mouseY = event.clientY;
+5340: const newCameraX = mouseX - ((mouseX - cameraOffset.x) / oldZoom) * newZoom;
+5341: const newCameraY = mouseY - ((mouseY - cameraOffset.y) / oldZoom) * newZoom;
+5347: const handleTeleportToTownHall = () => {
+5348: const townHall = placedBuildings.find(b => b.type === BuildingType.TownHall && isMyBuilding(b));
+5356: const handleSendPrivateMessage = async () => {
+5364: const cost = isAnonymousMessage ? 500 : 0;
+5365: const energy = isAnonymousMessage ? 1 : 0;
+5372: const text = privateMessageText.trim();
+5375: const chatId = [user.uid, activePrivateChat].sort().join('_') + (isAnonymousMessage ? '_anon' : '');
+5376: const messageId = Date.now().toString() + Math.floor(Math.random() * 1000);
+5403: const handleSendAnonymousMessage = async () => {
+5410: const handleSendMessage = (type: 'normal' | 'shout' = 'normal') => {
+5423: const activeCurse = activeCurses[playerName];
+5439: const msgId = `${Date.now()}-${playerName}`;
+5440: const msgDocRef = doc(db, 'chat_messages', msgId);
+5446: const handleConfirmShout = () => {
+5466: const activeCurse = activeCurses[playerName];
+5481: const msgId = `${Date.now()}-${playerName}-shout`;
+5482: const msgDocRef = doc(db, 'chat_messages', msgId);
+5489: const handleSwitchChatTab = (newTab: ChatTab) => {
+5494: const handleSendLocation = () => {
+5499: const now = Date.now();
+5501: const remaining = Math.ceil((LOCATION_SHARE_COOLDOWN - (now - lastLocationShareTime)) / 1000);
+5507: const zoom = ZOOM_LEVELS[zoomIndex];
+5521: const msgId = `${Date.now()}-${playerName}-loc`;
+5522: const msgDocRef = doc(db, 'chat_messages', msgId);
+5526: const handleEmojiClick = (emojiCode: string) => {
+5531: const renderMessageText = (text: string) => {
+5532: const safeText = String(text || '');
+5533: const regex = new RegExp(`(${KOLOBOK_EMOJIS.map(e => e.code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g');
+5535: const parts = safeText.split(regex);
+5538: const emoji = KOLOBOK_EMOJIS.find(e => e.code === part);
+5547: const handleClanAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+5549: const reader = new FileReader();
+5557: const handleCreateClan = () => {
+5578: const clanDocRef = doc(db, 'clans', String(newClan.id));
+5590: const handleJoinClan = (clanId: number) => {
+5600: const oldClan = clans.find(c => c.id === playerClanId);
+5602: const oldClanDocRef = doc(db, 'clans', String(playerClanId));
+5609: const clan = clans.find(c => c.id === clanId);
+5612: const clanDocRef = doc(db, 'clans', String(clanId));
+5619: const userDocRef = doc(db, 'users', user.uid);
+5626: const handleLeaveClan = () => {
+5630: const handleConfirmLeaveClan = () => {
+5633: const clan = clans.find(c => c.id === playerClanId);
+5635: const clanDocRef = doc(db, 'clans', String(playerClanId));
+5643: const userDocRef = doc(db, 'users', user.uid);
+5652: const gloryToNextLevel = getGloryForLevel(playerLevel);
+5653: const xpPercentage = playerLevel >= MAX_LEVEL ? 100 : (playerGlory / gloryToNextLevel) * 100;
+5655: const playerBuildingsCount = placedBuildings.filter(b => isMyBuilding(b)).length;
+5670: const buildingsInCurrentTab = buildingData.filter(b => b.category === activeBuildTab && b.id !== TOWN_HALL_ID && b.buildable !== false);
+5672: const repairCost = selectedBuilding ? calculateRepairCost(selectedBuilding.building, selectedBuilding.info) : 0;
+5674: const filteredMessages = chatHistory.filter(msg => {
+5676: const msgTab = msg.tab || 'general';
+5683: const protectedTowerInfo = useMemo(() => buildingData.find(b => b.id === PROTECTED_TOWER_ID), []);
+5684: const isLocationCooldown = Date.now() - lastLocationShareTime < LOCATION_SHARE_COOLDOWN;
+5686: const isAdmin = user && user.email === "goldwasdodessabibi@gmail.com";
+5688: const resetMap = async () => {
+5696: const resources = await getDocs(query(collection(db, 'map_resources'), limit(500)));
+5697: const deletePromises = resources.docs.map(d => deleteDoc(d.ref));
+5706: const privateChats = useMemo(() => {
+5710: const otherUserId = msg.senderId === user?.uid ? msg.receiverId : msg.senderId;
+5731: const tryPlay = () => {
+5759: const handleTrackEnd = () => {
+5764: const interval = setInterval(() => {
+6024: const foundUser = Object.values(allUsers).find(u => u.name === selectedChatUser);
+6049: const targetRep = userReputations[selectedChatUser!] || 0;
+6050: const multiplier = 1 + Math.floor(Math.max(0, targetRep) / 5);
+6051: const dynamicCost = option.cost * multiplier;
+6059: const foundUser = Object.values(allUsers).find((u: any) => u.name === selectedChatUser);
+6155: const has = (inventory[req.id] || 0) >= (req.amount || 0);
+6424: const item = itemData.find(i => i.id === option.resourceId);
+6425: const hasEnough = (inventory[option.resourceId] || 0) >= option.amount;
+6426: const hasGold = playerGold >= option.goldCost;
+6427: const hasEnergy = playerEnergy >= option.energyCost;
+6428: const canExplode = hasEnough && hasGold && hasEnergy;
+6541: const item = itemData.find(i => i.id === listing.resourceId);
+6543: const isOwn = user && listing.sellerId === user.uid;
+6613: const amount = val as number;
+6614: const id = parseInt(idStr);
+6619: const item = itemData.find(i => i.id === id);
+6620: const isSelected = sellItemSelection.itemId === id;
+6663: const max = sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId!] || 1);
+6839: const amount = val as number;
+6840: const id = parseInt(idStr);
+6842: const item = itemData.find(i => i.id === id);
+6895: const qty = shopQuantities[item.id] || 1;
+6896: const totalItems = item.rubyPackQuantity! * qty;
+6984: const row = Math.floor(index / ZONES_X);
+6985: const col = index % ZONES_X;
+6987: const hasTownHall = townHallLocation &&
+6991: const clanCastle = placedBuildings.find(b => {
+6992: const info = buildingData.find(i => i.id === b.buildingId);
+7099: const isMine = msg.senderId === user?.uid;
+7100: const isAnonymous = msg.senderId === 'anonymous';
+7137: const newAnon = !isAnonymousMessage;
+7140: const baseChatId = [user?.uid, activePrivateChat].sort().join('_');
+7223: const targetRep = allUsers[selectedPlayerId]?.reputation || 0;
+7224: const multiplier = 1 + Math.floor(Math.max(0, targetRep) / 5);
+7225: const dynamicCost = option.cost * multiplier;
+7286: const info = buildingData.find(i => i.id === b.buildingId);
+7300: const zoom = ZOOM_LEVELS[zoomIndex];
+7301: const screenX = (b.x - b.y) * (TILE_WIDTH * zoom / 2);
+7302: const screenY = (b.x + b.y) * (TILE_HEIGHT * zoom / 2);
+7624: const isOnline = isUserOnline(friend.name);
+7683: const otherUser = Object.values(allUsers).find(u => u.uid === chat.otherUserId);
+7828: const zoom = ZOOM_LEVELS[zoomIndex];
+7829: const pos = interpolatedPlayers[player.uid] || { x: player.x, y: player.y };
+7832: const finalX = screenX + cameraOffset.x;
+7833: const finalY = screenY + cameraOffset.y;
