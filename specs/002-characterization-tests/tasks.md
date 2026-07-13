@@ -77,10 +77,10 @@ Every task must follow this checklist shape:
 
 **Independent Test**: The suite has a fixture manifest, clock inputs, reset policy, and provenance rules that avoid credentials, hidden network state, and mutable production player data.
 
-- [ ] T018 [P] Define the feature-local fixture manifest in `tests/characterization/fixtures/manifest.json` with frozen record snapshots, ordered event traces, and expected outcomes. (FR-010, SC-007)
-- [ ] T019 [P] Define deterministic clock inputs and timestamp fixtures in `tests/characterization/fixtures/clock.json` for the timer/completion slice; stop if any fixture requires live time or hidden network access. (FR-010, SC-007)
-- [ ] T020 [P] Define fixture reset and cleanup policy in `tests/characterization/fixtures/reset.md` so every run starts from the same state and no live player data is touched. (FR-010, SC-007)
-- [ ] T021 [P] Define fixture provenance and no-credential policy in `tests/characterization/fixtures/provenance.md` so fixtures remain local and reproducible. (FR-010, SC-007, SC-008)
+- [X] T018 [P] Define the fixture schema and identity rules in `tests/characterization/fixture-schema.md`; document allowed and forbidden fixture content, naming rules, evidence linkage, and failure conditions. (FR-010, SC-007)
+- [X] T019 [P] Define the future fixture manifest documentation in `tests/characterization/fixture-manifest.md`; manifest means Markdown documentation of the future schema only, not `manifest.json` or any machine-readable artifact. (FR-010, SC-007)
+- [X] T020 [P] Define the proposed fixture layout conventions in `tests/characterization/fixture-layout.md`; document the path layout only and do not create data-bearing fixture directories. (FR-010, SC-007)
+- [X] T021 [P] Define the fixture reset and deterministic replay policy in `tests/characterization/fixture-reset-policy.md`; keep reset local, idempotent, and free of live PocketBase or player-data mutation. (FR-010, SC-007, SC-008)
 
 ---
 
