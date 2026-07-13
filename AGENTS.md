@@ -44,6 +44,9 @@ baseline are the evidence layer.
   Graphify freshness.
 - `basing-change-safety` for any edit, refactor, or patch that could affect
   runtime behavior.
+- `basing-performance` for FPS, frame time, renders, batching, virtualization,
+  startup latency, texture and image loading, PocketBase latency, realtime
+  event storms, or render-budget bottlenecks.
 - `basing-pocketbase-contracts` for PocketBase reads/writes, auth, schema
   assumptions, hooks, or record compatibility.
 - `basing-realtime-sync` for subscriptions, snapshots, retries, tombstones,
