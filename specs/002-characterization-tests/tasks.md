@@ -33,12 +33,12 @@ Every task must follow this checklist shape:
 
 **Independent Test**: A clean `main`, a correct Feature 002 pointer, protected paths, no-live-mutation rules, and stop conditions are all enforced before scenario decomposition begins.
 
-- [ ] T001 [P] Encode the clean-`main` and active Feature 002 pointer gate in `tests/characterization/preflight.md` using `main`, `origin/main`, and `.specify/feature.json`; stop on branch mismatch or dirty status. (FR-007, SC-005)
-- [ ] T002 [P] Encode the allowed/protected path policy in `tests/characterization/path-policy.md` for `App.tsx`, `src/pocketbase.ts`, `types.ts`, `data/**`, `components/**`, `pb_hooks/**`, `public/**`, `package.json`, `package-lock.json`, `tsconfig.json`, and `vite.config.ts`; stop on any unexpected file. (FR-007, SC-005)
-- [ ] T003 [P] Encode the no-live-PocketBase-mutation rule in `tests/characterization/fixture-boundary.md` and `tests/characterization/preflight.md`; stop if any future step would write live records or player data. (FR-010, SC-007)
-- [ ] T004 [P] Encode test-artifact output boundaries in `tests/characterization/output-policy.md` so future reports stay feature-local and do not spill into runtime or data paths. (SC-007, SC-009)
-- [ ] T005 [P] Encode the owner-approval workflow in `tests/characterization/approval-policy.md` so seams, classification promotion, and known-bug exclusions all require explicit owner confirmation. (FR-008, FR-009, SC-008)
-- [ ] T006 [P] Encode the stop-condition matrix in `tests/characterization/stop-policy.md` for known bugs, schema/config/balance/save changes, broad refactors, hidden network access, and future-wave creep. (FR-007, FR-009, FR-012, SC-005, SC-006, SC-009)
+- [X] T001 [P] Encode the clean-`main` and active Feature 002 pointer gate in `tests/characterization/preflight.md` using `main`, `origin/main`, and `.specify/feature.json`; stop on branch mismatch or dirty status. (FR-007, SC-005)
+- [X] T002 [P] Encode the allowed/protected path policy in `tests/characterization/path-policy.md` for `App.tsx`, `src/pocketbase.ts`, `types.ts`, `data/**`, `components/**`, `pb_hooks/**`, `public/**`, `package.json`, `package-lock.json`, `tsconfig.json`, and `vite.config.ts`; stop on any unexpected file. (FR-007, SC-005)
+- [X] T003 [P] Encode the no-live-PocketBase-mutation rule in `tests/characterization/fixture-boundary.md` and `tests/characterization/preflight.md`; stop if any future step would write live records or player data. (FR-010, SC-007)
+- [X] T004 [P] Encode test-artifact output boundaries in `tests/characterization/output-policy.md` so future reports stay feature-local and do not spill into runtime or data paths. (SC-007, SC-009)
+- [X] T005 [P] Encode the owner-approval workflow in `tests/characterization/approval-policy.md` so seams, classification promotion, and known-bug exclusions all require explicit owner confirmation. (FR-008, FR-009, SC-008)
+- [X] T006 [P] Encode the stop-condition matrix in `tests/characterization/stop-policy.md` for known bugs, schema/config/balance/save changes, broad refactors, hidden network access, and future-wave creep. (FR-007, FR-009, FR-012, SC-005, SC-006, SC-009)
 
 ---
 
@@ -48,12 +48,12 @@ Every task must follow this checklist shape:
 
 **Independent Test**: The feature has a traceable source inventory, a scenario inventory, ownership mapping, a path matrix, a promotion policy, and a seam-decision workflow before any slice implementation starts.
 
-- [ ] T007 [P] Build the current-source and baseline anchor inventory plus the confirmed domain group index in `tests/characterization/evidence-index.md`; source anchors must come from `App.tsx`, `src/pocketbase.ts`, `pb_hooks/**`, `types.ts`, `data/**`, and `specs/_baseline/*`. (FR-001, FR-002, FR-003, SC-001, SC-002)
-- [ ] T008 [P] Build the 10-scenario inventory and freeze-priority order in `tests/characterization/scenario-index.md` with every proposed scenario starting as `UNCONFIRMED_RUNTIME_BEHAVIOR`; stop if any scenario is treated as accepted behavior before investigation or if the order ignores runtime risk. (FR-004, FR-005, FR-006, FR-008, FR-009, SC-004, SC-006)
-- [ ] T009 [P] Record the current ownership model per scenario in `tests/characterization/ownership-matrix.md` using `specs/_baseline/03-state-ownership.md`, `specs/_baseline/04-pocketbase-contracts.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, and `specs/_baseline/15-invariants.md`. (FR-003, SC-002)
-- [ ] T010 [P] Record the current persistence/realtime/timer/optimistic path per scenario in `tests/characterization/path-matrix.md`; stop if any scenario would need a broad production refactor to observe it. (FR-003, FR-005, SC-003)
-- [ ] T011 [P] Record the known-bug check and owner-acceptance gate in `tests/characterization/promotion-policy.md`; do not let `KNOWN_BUG_DO_NOT_FREEZE` become a permanent test. (FR-008, FR-009, SC-008)
-- [ ] T012 [P] Record the seam-decision workflow in `tests/characterization/seam-boundary.md` and flag only potential owner-approved seams; stop if the seam would change gameplay behavior or become a production refactor. (FR-007, FR-011, SC-005, SC-006)
+- [X] T007 [P] Build the current-source and baseline anchor inventory plus the confirmed domain group index in `tests/characterization/evidence-index.md`; source anchors must come from `App.tsx`, `src/pocketbase.ts`, `pb_hooks/**`, `types.ts`, `data/**`, and `specs/_baseline/*`. (FR-001, FR-002, FR-003, SC-001, SC-002)
+- [X] T008 [P] Build the 10-scenario inventory and freeze-priority order in `tests/characterization/scenario-index.md` with every proposed scenario starting as `UNCONFIRMED_RUNTIME_BEHAVIOR`; stop if any scenario is treated as accepted behavior before investigation or if the order ignores runtime risk. (FR-004, FR-005, FR-006, FR-008, FR-009, SC-004, SC-006)
+- [X] T009 [P] Record the current ownership model per scenario in `tests/characterization/ownership-matrix.md` using `specs/_baseline/03-state-ownership.md`, `specs/_baseline/04-pocketbase-contracts.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, and `specs/_baseline/15-invariants.md`. (FR-003, SC-002)
+- [X] T010 [P] Record the current persistence/realtime/timer/optimistic path per scenario in `tests/characterization/path-matrix.md`; stop if any scenario would need a broad production refactor to observe it. (FR-003, FR-005, SC-003)
+- [X] T011 [P] Record the known-bug check and owner-acceptance gate in `tests/characterization/promotion-policy.md`; do not let `KNOWN_BUG_DO_NOT_FREEZE` become a permanent test. (FR-008, FR-009, SC-008)
+- [X] T012 [P] Record the seam-decision workflow in `tests/characterization/seam-boundary.md` and flag only potential owner-approved seams; stop if the seam would change gameplay behavior or become a production refactor. (FR-007, FR-011, SC-005, SC-006)
 
 ---
 
