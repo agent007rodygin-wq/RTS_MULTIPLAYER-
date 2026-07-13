@@ -1,29 +1,5 @@
 const fs = require('fs');
 
-const weapons = [
-  { resourceId: 10013, weaponName: 'Петарда', damage: 6, goldCost: 5, energyCost: 1, timeSeconds: 25 },
-  { resourceId: 10010, weaponName: 'Садовая бомба', damage: 80, goldCost: 500, energyCost: 4, timeSeconds: 1800 },
-  { resourceId: 10012, weaponName: 'MGM-52 «Ланс»', damage: 384, goldCost: 5000, energyCost: 16, timeSeconds: 2600 },
-  { resourceId: 10011, weaponName: 'Садовая супер бомба', damage: 576, goldCost: 15000, energyCost: 20, timeSeconds: 1800 },
-  { resourceId: 10016, weaponName: 'Атомная бомба «Снежинка»', damage: 1842, goldCost: 10000, energyCost: 48, timeSeconds: 3600 },
-  { resourceId: 10043, weaponName: 'Суператомная бомба', damage: 2302, goldCost: 40000, energyCost: 60, timeSeconds: 3 }
-];
-
-function generateDestruction(durability) {
-  return weapons.map(w => {
-    const amount = Math.ceil(durability / w.damage) || 1;
-    return {
-      resourceId: w.resourceId,
-      weaponName: w.weaponName,
-      amount: amount,
-      goldCost: amount * w.goldCost,
-      energyCost: amount * w.energyCost,
-      timeSeconds: amount === 1 && w.resourceId === 10043 ? 3 : amount * w.timeSeconds,
-      damage: w.damage
-    };
-  });
-}
-
 const resourcesMap = {
   'дерево': 10001,
   'доски': 10002,
@@ -386,7 +362,6 @@ const newBuildingsData = [
 for (let b of newBuildingsData) {
   b.category = 'Жилые';
   b.type = 'Residential'; // BuildingType.Residential is probably used, as a string or enum. In existing file `type: BuildingType.Residential`
-  b.destructionInfo = generateDestruction(b.stats.durability);
   b.description = b.name;
 }
 

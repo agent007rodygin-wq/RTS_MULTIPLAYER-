@@ -121,12 +121,16 @@ export interface MapResource {
 
 export interface PlacedBuilding {
   id: string | number;
+  tempId?: string;
+  clientBuildTraceId?: string;
   x: number;
   y: number;
   zoneId?: string;
   buildingId: number;
   ownerId: string; // "0" for local player, or UID
   ownerName?: string;
+  status?: 'pending' | 'normal' | 'error';
+  syncState?: 'creating' | 'synced' | 'error';
   isConstructing: boolean;
   constructionEndTime: number;
   type?: BuildingType;
@@ -135,6 +139,11 @@ export interface PlacedBuilding {
   workEndTime?: number;
   isDestroying?: boolean;
   destructionEndTime?: number;
+  destructionStartedAt?: number;
+  destructionExpiresAt?: number;
+  destructionDurationMs?: number;
+  destructionMaxLifetimeMs?: number;
+  destructionStatus?: 'active' | 'finished';
   hp?: number;
   maxHp?: number;
   pendingDamage?: number;
@@ -158,6 +167,11 @@ export interface VisualEffect {
   type: 'upgrade' | 'explosion' | 'shot' | 'flash';
   startTime: number;
   duration: number;
+  createdAt: number;
+  expiresAt: number;
+  durationMs: number;
+  maxLifetimeMs: number;
+  status: 'active' | 'finished';
   targetX?: number;
   targetY?: number;
 }

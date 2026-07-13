@@ -151,74 +151,74 @@ const CASINO_IDS = [328, 329]; // Casino, Ruby Casino 2
 
 // Level icon images for player tags on the map (shown inside nickname tag)
 const LEVEL_ICON_URLS: Record<number, string> = {
-    1: 'https://i.ibb.co/nNvw3ND1/ur1.png',
-    2: 'https://i.ibb.co/HDjFb8Mk/ur2.png',
-    3: 'https://i.ibb.co/tMhg4bjW/ur3.png',
-    4: 'https://i.ibb.co/nqQ0MrK4/ur4.png',
-    5: 'https://i.ibb.co/v6dTtgm5/ur5.png',
-    6: 'https://i.ibb.co/vvL0nGQS/ur6.png',
-    7: 'https://i.ibb.co/7Ntmf43Z/ur7.png',
-    8: 'https://i.ibb.co/QykYtCy/ur8.png',
-    9: 'https://i.ibb.co/Gw2zwcf/ur9.png',
-    10: 'https://i.ibb.co/BHPbKQhy/ur10.png',
-    11: 'https://i.ibb.co/LXt2RpSx/ur11.png',
-    12: 'https://i.ibb.co/hR30cGF7/ur12.png',
-    13: 'https://i.ibb.co/kgCWtVBx/ur13.png',
-    14: 'https://i.ibb.co/Wv7RpTwk/ur14.png',
-    15: 'https://i.ibb.co/XxWqCZrc/ur15.png',
-    16: 'https://i.ibb.co/placeholder-level16.png',
-    17: 'https://i.ibb.co/placeholder-level17.png',
-    18: 'https://i.ibb.co/placeholder-level18.png',
-    19: 'https://i.ibb.co/placeholder-level19.png',
-    20: 'https://i.ibb.co/placeholder-level20.png',
-    21: 'https://i.ibb.co/placeholder-level21.png',
-    22: 'https://i.ibb.co/placeholder-level22.png',
-    23: 'https://i.ibb.co/placeholder-level23.png',
-    24: 'https://i.ibb.co/placeholder-level24.png',
-    25: 'https://i.ibb.co/placeholder-level25.png',
-    26: 'https://i.ibb.co/placeholder-level26.png',
-    27: 'https://i.ibb.co/placeholder-level27.png',
-    28: 'https://i.ibb.co/placeholder-level28.png',
-    29: 'https://i.ibb.co/placeholder-level29.png',
-    30: 'https://i.ibb.co/placeholder-level30.png'
+    1: '/Gui/IMG_Player_Level_/ur1.webp',
+    2: '/Gui/IMG_Player_Level_/ur2.webp',
+    3: '/Gui/IMG_Player_Level_/ur3.webp',
+    4: '/Gui/IMG_Player_Level_/ur4.webp',
+    5: '/Gui/IMG_Player_Level_/ur5.webp',
+    6: '/Gui/IMG_Player_Level_/ur6.webp',
+    7: '/Gui/IMG_Player_Level_/ur7.webp',
+    8: '/Gui/IMG_Player_Level_/ur8.webp',
+    9: '/Gui/IMG_Player_Level_/ur9.webp',
+    10: '/Gui/IMG_Player_Level_/ur10.webp',
+    11: '/Gui/IMG_Player_Level_/ur11.webp',
+    12: '/Gui/IMG_Player_Level_/ur12.webp',
+    13: '/Gui/IMG_Player_Level_/ur13.webp',
+    14: '/Gui/IMG_Player_Level_/ur14.webp',
+    15: '/Gui/IMG_Player_Level_/ur15.webp',
+    16: '/Gui/IMG_Player_Level_/ur15.webp',
+    17: '/Gui/IMG_Player_Level_/ur15.webp',
+    18: '/Gui/IMG_Player_Level_/ur15.webp',
+    19: '/Gui/IMG_Player_Level_/ur15.webp',
+    20: '/Gui/IMG_Player_Level_/ur15.webp',
+    21: '/Gui/IMG_Player_Level_/ur15.webp',
+    22: '/Gui/IMG_Player_Level_/ur15.webp',
+    23: '/Gui/IMG_Player_Level_/ur15.webp',
+    24: '/Gui/IMG_Player_Level_/ur15.webp',
+    25: '/Gui/IMG_Player_Level_/ur15.webp',
+    26: '/Gui/IMG_Player_Level_/ur15.webp',
+    27: '/Gui/IMG_Player_Level_/ur15.webp',
+    28: '/Gui/IMG_Player_Level_/ur15.webp',
+    29: '/Gui/IMG_Player_Level_/ur15.webp',
+    30: '/Gui/IMG_Player_Level_/ur15.webp'
 };
 
 // Player avatar shown below nickname on map (different for each level)
 const PLAYER_AVATAR_URLS: Record<number, string> = {
-    1: 'https://i.ibb.co/HDp8wbwc/ut-K4z-uu-Bjg-1.png',
-    2: 'https://i.ibb.co/5VxsVTK/i-E3j3-y-YS78-1.png',
-    3: 'https://i.ibb.co/0RC715mn/23cy-Wxc-Vbu-Y-1.png',
-    4: 'https://i.ibb.co/TDv9h2sL/4.png',
-    5: 'https://i.ibb.co/LH57wWq/5.png',
-    6: 'https://i.ibb.co/VpYqVbJf/6.png',
-    7: 'https://i.ibb.co/Q7JVPCHX/7.png',
-    8: 'https://i.ibb.co/BWCkfp4/8.png',
-    9: 'https://i.ibb.co/JJBS9m2/9-2.png',
-    10: 'https://i.ibb.co/fd2zKY1w/10-2.png',
-    11: 'https://i.ibb.co/Y4pLHG9L/11.png',
-    12: 'https://i.ibb.co/k6HrscYV/12.png',
-    13: 'https://i.ibb.co/QvTLdc50/13.png',
-    14: 'https://i.ibb.co/xSrbhBwB/14.png',
-    15: 'https://i.ibb.co/cKmZNK2V/15.png',
-    16: 'https://i.ibb.co/placeholder-avatar16.png',
-    17: 'https://i.ibb.co/placeholder-avatar17.png',
-    18: 'https://i.ibb.co/placeholder-avatar18.png',
-    19: 'https://i.ibb.co/placeholder-avatar19.png',
-    20: 'https://i.ibb.co/placeholder-avatar20.png',
-    21: 'https://i.ibb.co/placeholder-avatar21.png',
-    22: 'https://i.ibb.co/placeholder-avatar22.png',
-    23: 'https://i.ibb.co/placeholder-avatar23.png',
-    24: 'https://i.ibb.co/placeholder-avatar24.png',
-    25: 'https://i.ibb.co/placeholder-avatar25.png',
-    26: 'https://i.ibb.co/placeholder-avatar26.png',
-    27: 'https://i.ibb.co/placeholder-avatar27.png',
-    28: 'https://i.ibb.co/placeholder-avatar28.png',
-    29: 'https://i.ibb.co/placeholder-avatar29.png',
-    30: 'https://i.ibb.co/placeholder-avatar30.png'
+    1: '/Gui/Avatar_Player_Level_/ut-K4z-uu-Bjg-1.webp',
+    2: '/Gui/Avatar_Player_Level_/i-E3j3-y-YS78-1.webp',
+    3: '/Gui/Avatar_Player_Level_/23cy-Wxc-Vbu-Y-1.webp',
+    4: '/Gui/Avatar_Player_Level_/4.webp',
+    5: '/Gui/Avatar_Player_Level_/5.webp',
+    6: '/Gui/Avatar_Player_Level_/6.webp',
+    7: '/Gui/Avatar_Player_Level_/7.webp',
+    8: '/Gui/Avatar_Player_Level_/8.webp',
+    9: '/Gui/Avatar_Player_Level_/9-2.webp',
+    10: '/Gui/Avatar_Player_Level_/10-2.webp',
+    11: '/Gui/Avatar_Player_Level_/11.webp',
+    12: '/Gui/Avatar_Player_Level_/12.webp',
+    13: '/Gui/Avatar_Player_Level_/13.webp',
+    14: '/Gui/Avatar_Player_Level_/14.webp',
+    15: '/Gui/Avatar_Player_Level_/15.webp',
+    16: '/Gui/Avatar_Player_Level_/15.webp',
+    17: '/Gui/Avatar_Player_Level_/15.webp',
+    18: '/Gui/Avatar_Player_Level_/15.webp',
+    19: '/Gui/Avatar_Player_Level_/15.webp',
+    20: '/Gui/Avatar_Player_Level_/15.webp',
+    21: '/Gui/Avatar_Player_Level_/15.webp',
+    22: '/Gui/Avatar_Player_Level_/15.webp',
+    23: '/Gui/Avatar_Player_Level_/15.webp',
+    24: '/Gui/Avatar_Player_Level_/15.webp',
+    25: '/Gui/Avatar_Player_Level_/15.webp',
+    26: '/Gui/Avatar_Player_Level_/15.webp',
+    27: '/Gui/Avatar_Player_Level_/15.webp',
+    28: '/Gui/Avatar_Player_Level_/15.webp',
+    29: '/Gui/Avatar_Player_Level_/15.webp',
+    30: '/Gui/Avatar_Player_Level_/15.webp'
 };
 
 // Police skin for sheriff and deputies
-const POLICE_SKIN_URL = 'https://i.ibb.co/SX7RYTJc/16.png';
+const POLICE_SKIN_URL = '/last_appx/polise/16.webp';
 
 // Tree respawn is now instant - no timer needed
 const UPGRADE_EFFECT_DURATION = 1000; // 1 second
@@ -235,7 +235,7 @@ const SHOUT_COST_ENERGY = 60;
 const LOCATION_SHARE_COOLDOWN = 60000; // 1 minute
 const MILITARY_ITEM_IDS = [10010, 10011, 10012, 10013, 10015, 10016, 10017, 10042, 10043];
 const MAX_REPUTATION = 950;
-const PROTECTION_IMAGE_URL = 'https://i.ibb.co/5gbWdk4N/337.png';
+const PROTECTION_IMAGE_URL = '/buildings/защищенная башня/337.webp';
 const TELEPORT_COOLDOWN_MS = 5000;
 const DRAG_COOLDOWN_MS = 1000; // Cooldown after fast drag to prevent building on unloaded cells
 const COLLISION_CHECK_INTERVAL_MS = 121 * 1000; // Check for overlapping buildings every 121 seconds
@@ -297,7 +297,7 @@ const KOLOBOK_EMOJIS = [
     { code: ':P', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/beee.gif' },
     { code: ':cool:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/dirol.gif' },
     { code: ':crazy:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/crazy.gif' },
-    { code: ':mad:', url: 'https://i.ibb.co/gZ3Fx7Sz/aggressive.gif' },
+    { code: ':mad:', url: '/Chat/aggressive.gif' },
     { code: ':blush:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/blush.gif' },
     { code: ':rofl:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/rofl.gif' },
     { code: ':ok:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/ok.gif' },
@@ -590,18 +590,18 @@ const processOfflineTimers = (
 };
 
 // Image assets
-const treeImageUrl = 'https://i.ibb.co/5XtPHtxk/005.png';
-const groundTileImageUrl = 'https://i.ibb.co/dwnTnX5d/IMG-2378-12.png';
-const coinImageUrl = 'https://i.ibb.co/j9YRJpyd/Image-2.png';
-const gloryImageUrl = 'https://i.ibb.co/jZPDbP9W/slav.png';
-const rubyImageUrl = 'https://i.ibb.co/svsPdPpv/Nj7hb.png';
+const treeImageUrl = '/Grid/005.webp';
+const groundTileImageUrl = '/Grid/IMG-2378-12.webp';
+const coinImageUrl = '/Gui/Front/значек монет/Image-2.webp';
+const gloryImageUrl = '/last_appx/glory/slav.webp';
+const rubyImageUrl = '/Gui/Front/значек рубинов/Nj7hb.webp';
 const permitGuideImageUrl = new URL('./GUIBUILDINGmenu/ChatGPT Image 31 мая 2026 г., 02_29_49.png', import.meta.url).href;
 const energyBatteryImageUrl = new URL('./GUIBUILDINGmenu/ChatGPT Image 1 июн. 2026 г., 18_27_12.png', import.meta.url).href;
-const populationImageUrl = 'https://i.ibb.co/LX1wnf04/Image-1.png';
-const oilImageUrl = 'https://i.ibb.co/bMhPjZVp/30000.png';
-const chestImageUrl = 'https://i.ibb.co/9kRL4JWP/10000.png';
-const quarryImageUrl = 'https://i.ibb.co/Pvj6y4ZS/30001.png';
-const builderIconUrl = 'https://i.ibb.co/LX1wnf04/Image-1.png';
+const populationImageUrl = '/Gui/Front/значек популяции/Image-1.webp';
+const oilImageUrl = '/last_appx/oil_lake/30000.webp';
+const chestImageUrl = '/buildings/Сундуки на карте трежер хант/10000.webp';
+const quarryImageUrl = '/buildings/заброшенная каменоломня/30001.webp';
+const builderIconUrl = '/Gui/Front/значек популяции/Image-1.webp';
 const ENERGY_PURCHASE_OPTIONS = [
     { amount: 100, rubies: 1 },
     { amount: 250, rubies: 2 },
@@ -1835,22 +1835,24 @@ const formatTimeRussian = (ms: number): string => {
     }
 };
 
-const level1IconUrl = 'https://i.ibb.co/nNvw3ND1/ur1.png';
-const level2IconUrl = 'https://i.ibb.co/HDjFb8Mk/ur2.png';
-const level3IconUrl = 'https://i.ibb.co/tMhg4bjW/ur3.png'; // TODO: Replace with actual URL
-const level4IconUrl = 'https://i.ibb.co/nqQ0MrK4/ur4.png'; // TODO: Replace with actual URL
-const level5IconUrl = 'https://i.ibb.co/v6dTtgm5/ur5.png'; // TODO: Replace with actual URL
-const level6IconUrl = 'https://i.ibb.co/vvL0nGQS/ur6.png'; // TODO: Replace with actual URL
-const level7IconUrl = 'https://i.ibb.co/7Ntmf43Z/ur7.png'; // TODO: Replace with actual URL
-const level8IconUrl = 'https://i.ibb.co/QykYtCy/ur8.png'; // TODO: Replace with actual URL
-const level9IconUrl = 'https://i.ibb.co/Gw2zwcf/ur9.png'; // TODO: Replace with actual URL
-const level10IconUrl = 'https://i.ibb.co/BHPbKQhy/ur10.png'; // TODO: Replace with actual URL
-const level11IconUrl = 'https://i.ibb.co/LXt2RpSx/ur11.png'; // TODO: Replace with actual URL
-const level12IconUrl = 'https://i.ibb.co/hR30cGF7/ur12.png'; // TODO: Replace with actual URL
-const level13IconUrl = 'https://i.ibb.co/kgCWtVBx/ur13.png'; // TODO: Replace with actual URL
-const level14IconUrl = 'https://i.ibb.co/Wv7RpTwk/ur14.png'; // TODO: Replace with actual URL
-const level15IconUrl = 'https://i.ibb.co/XxWqCZrc/ur15.png'; // TODO: Replace with actual URL
-const loadingIconUrl = 'https://i.ibb.co/Q7Cq6tcL/009-s.png';
+const levelIcons = [
+    '/Gui/IMG_Player_Level_/ur1.webp',
+    '/Gui/IMG_Player_Level_/ur2.webp',
+    '/Gui/IMG_Player_Level_/ur3.webp',
+    '/Gui/IMG_Player_Level_/ur4.webp',
+    '/Gui/IMG_Player_Level_/ur5.webp',
+    '/Gui/IMG_Player_Level_/ur6.webp',
+    '/Gui/IMG_Player_Level_/ur7.webp',
+    '/Gui/IMG_Player_Level_/ur8.webp',
+    '/Gui/IMG_Player_Level_/ur9.webp',
+    '/Gui/IMG_Player_Level_/ur10.webp',
+    '/Gui/IMG_Player_Level_/ur11.webp',
+    '/Gui/IMG_Player_Level_/ur12.webp',
+    '/Gui/IMG_Player_Level_/ur13.webp',
+    '/Gui/IMG_Player_Level_/ur14.webp',
+    '/Gui/IMG_Player_Level_/ur15.webp',
+] as const;
+const loadingIconUrl = '/Gui/IMG_Player_Level_/ruby.webp';
 
 const ConstructionTimer = ({ endTime, cost, onSpeedUp, isMyBuilding }: { endTime: number, cost: number, onSpeedUp: () => void, isMyBuilding: boolean }) => {
     const [, setTick] = useState(0);
@@ -2692,11 +2694,6 @@ const App: React.FC = () => {
     const currentOwnerId = user ? user.uid : GUEST_ID;
 
     const getLevelIcon = useCallback((level: number) => {
-        const levelIcons = [
-            level1IconUrl, level2IconUrl, level3IconUrl, level4IconUrl, level5IconUrl,
-            level6IconUrl, level7IconUrl, level8IconUrl, level9IconUrl, level10IconUrl,
-            level11IconUrl, level12IconUrl, level13IconUrl, level14IconUrl, level15IconUrl
-        ];
         const index = Math.max(0, Math.min(level - 1, levelIcons.length - 1));
         return levelIcons[index];
     }, []);
@@ -6564,21 +6561,7 @@ const App: React.FC = () => {
             rubyImageUrl,
             populationImageUrl,
             builderIconUrl,
-            level1IconUrl,
-            level2IconUrl,
-            level3IconUrl,
-            level4IconUrl,
-            level5IconUrl,
-            level6IconUrl,
-            level7IconUrl,
-            level8IconUrl,
-            level9IconUrl,
-            level10IconUrl,
-            level11IconUrl,
-            level12IconUrl,
-            level13IconUrl,
-            level14IconUrl,
-            level15IconUrl,
+            ...levelIcons,
             loadingIconUrl,
             PROTECTION_IMAGE_URL,
             bronekurIdleFrames[0],
@@ -6586,6 +6569,7 @@ const App: React.FC = () => {
             gorynychIdleFrames[0],
             kolobokIdleFrames[0],
             babaYagaIdleFrames[0],
+            ...Object.values(PLAYER_AVATAR_URLS).filter(u => !u.includes('placeholder')),
         ];
 
         const backgroundStaticUrls = [
@@ -14517,7 +14501,7 @@ const App: React.FC = () => {
             {buildMenu.visible && (
                 // ... (Build Menu content) ...
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -14762,7 +14746,7 @@ const App: React.FC = () => {
             {showInventory && (
                 // ... (Inventory Modal content) ...
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowInventory(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -14813,7 +14797,7 @@ const App: React.FC = () => {
 
             {showShop && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowShop(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -15072,7 +15056,7 @@ const App: React.FC = () => {
 
             {showMap && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowMap(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -15137,7 +15121,7 @@ const App: React.FC = () => {
                     <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
                             <h2 className="text-2xl font-bold text-white flex items-center">
-                                <img src="https://i.ibb.co/nsb3Sn3L/topbottom1.png" alt="Top" className="w-8 h-8 mr-3" />
+                                <img src="/Gui/GUI_Menu/основеное меню/топ/topbottom1.webp" alt="Top" className="w-8 h-8 mr-3" />
                                 Топ игроков
                             </h2>
                             <button onClick={() => setShowTopPlayers(false)} className="text-gray-400 hover:text-white transition-colors">
@@ -15161,7 +15145,7 @@ const App: React.FC = () => {
                                             <span className="text-white font-medium">{u.name}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <img src="https://i.ibb.co/jZPDbP9W/slav.png" alt="Glory" className="w-5 h-5" />
+                                            <img src={gloryImageUrl} alt="Glory" className="w-5 h-5" />
                                             <span className="text-yellow-300 font-bold">{u.uid === user?.uid ? playerGlory : (u.glory || 0)}</span>
                                         </div>
                                     </div>
@@ -15228,7 +15212,7 @@ const App: React.FC = () => {
                         {/* Crown and Title */}
                         <div className="flex items-center gap-4 mb-4 bg-black/30 p-3 rounded-lg">
                             <img
-                                src={royalElectionsTab === 'queen' ? 'https://i.ibb.co/FqHmFKSF/qwincrown.png' : 'https://i.ibb.co/YFW1pKc4/kingcrown.png'}
+                                src={royalElectionsTab === 'queen' ? '/Gui/GUI_Menu/Королевские выборы/qwincrown.webp' : '/Gui/GUI_Menu/Королевские выборы/kingcrown.webp'}
                                 alt="Crown"
                                 className="w-16 h-16 object-contain"
                             />
@@ -15363,7 +15347,7 @@ const App: React.FC = () => {
 
                         {/* Crown */}
                         <div className="flex justify-center mb-4">
-                            <img src="https://i.ibb.co/YFW1pKc4/kingcrown.png" alt="Crown" className="w-20 h-20 object-contain" />
+                            <img src="/Gui/GUI_Menu/Королевские выборы/kingcrown.webp" alt="Crown" className="w-20 h-20 object-contain" />
                         </div>
 
                         {/* Player Info */}
@@ -15481,7 +15465,7 @@ const App: React.FC = () => {
                     <div className="bg-gradient-to-b from-blue-900 to-blue-950 p-4 rounded-lg shadow-2xl w-full max-w-md border-2 border-blue-500 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-2 pb-2 border-b border-blue-700">
                             <h2 className="text-xl font-bold text-blue-200 flex items-center gap-2">
-                                <img src="https://i.ibb.co/8LTkxpPn/325999-2.png" alt="Badge" className="w-6 h-6" />
+                                <img src="/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp" alt="Badge" className="w-6 h-6" />
                                 ПолиСвЂ ия нравов
                             </h2>
                             <button onClick={() => setShowPoliceMorals(false)} className="text-blue-400 hover:text-white transition-colors">
@@ -15497,7 +15481,7 @@ const App: React.FC = () => {
                                     <div className="bg-black/30 p-4 rounded-lg">
                                         <div className="text-center">
                                             <img 
-                                                src="https://i.ibb.co/8LTkxpPn/325999-2.png" 
+                                                src="/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp" 
                                                 alt="Police Badge" 
                                                 className="w-20 h-20 mx-auto mb-4 opacity-50"
                                             />
@@ -15514,7 +15498,7 @@ const App: React.FC = () => {
                                         <h3 className="text-blue-300 font-bold mb-2">ТекуСвЂ°иРв„– ШериСвЂћ</h3>
                                         {sheriffId ? (
                                             <div className="flex items-center gap-3">
-                                                <img src="https://i.ibb.co/SX7RYTJc/16.png" alt="Sheriff" className="w-12 h-12 rounded border-2 border-blue-500" />
+                                                <img src="/last_appx/polise/16.webp" alt="Sheriff" className="w-12 h-12 rounded border-2 border-blue-500" />
                                                 <div>
                                                     <p className="text-white font-bold">{sheriffName || "ШериСвЂћ"}</p>
                                                     <p className="text-xs text-gray-400">РвЂ”аСвЂ°иСвЂљник города</p>
@@ -15581,7 +15565,7 @@ const App: React.FC = () => {
                                                     const depInfo = allUsers[depUid];
                                                     return (
                                                         <div key={depUid} className="bg-blue-800/50 px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-                                                            <img src="https://i.ibb.co/SX7RYTJc/16.png" alt="Deputy" className="w-4 h-4" />
+                                                            <img src="/last_appx/polise/16.webp" alt="Deputy" className="w-4 h-4" />
                                                             {depInfo?.name || "Игрок"}
                                                         </div>
                                                     );
@@ -15620,7 +15604,7 @@ const App: React.FC = () => {
                         </div>
             
                         <div className="flex justify-center mb-4">
-                            <img src="https://i.ibb.co/8LTkxpPn/325999-2.png" alt="Badge" className="w-16 h-16 object-contain" />
+                            <img src="/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp" alt="Badge" className="w-16 h-16 object-contain" />
                         </div>
             
                         <div className="text-center mb-4">
@@ -16073,7 +16057,7 @@ const App: React.FC = () => {
 
             {showProfileModal && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowProfileModal(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -16984,7 +16968,7 @@ const App: React.FC = () => {
                             {activeProfileTab === 'police_elections' && (
                                 <div className="flex flex-col h-full space-y-4 overflow-y-auto">
                                     <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2 flex items-center gap-2">
-                                        <img src="https://i.ibb.co/8LTkxpPn/325999-2.png" alt="Badge" className="w-6 h-6" />
+                                        <img src="/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp" alt="Badge" className="w-6 h-6" />
                                         РвЂ™СвЂ№борСвЂ№ в полиСвЂ ию
                                     </h3>
 
@@ -16993,7 +16977,7 @@ const App: React.FC = () => {
                                         <h4 className="text-blue-300 font-medium mb-2">ТекуСвЂ°иРв„– ШериСвЂћ</h4>
                                         {sheriffId ? (
                                             <div className="flex items-center gap-2">
-                                                <img src="https://i.ibb.co/SX7RYTJc/16.png" alt="Sheriff" className="w-10 h-10 rounded" />
+                                                <img src="/last_appx/polise/16.webp" alt="Sheriff" className="w-10 h-10 rounded" />
                                                 <div>
                                                     <p className="text-white font-bold">{sheriffName || "ШериСвЂћ"}</p>
                                                     <p className="text-xs text-gray-400">ПомоСвЂ°ники: {deputies.length}/6</p>
@@ -17340,7 +17324,7 @@ const App: React.FC = () => {
                     className="relative group"
                 >
                     <div className="w-[150px] h-[150px] rounded-full overflow-hidden shadow-lg cursor-pointer hover:scale-105 transition-all relative">
-                        <img src="https://i.ibb.co/vCbw6cpj/Image-3.png" alt="Profile Menu" className="w-full h-full object-cover" style={{ transform: 'scale(0.88)' }} />
+                        <img src="/Gui/Front/значек личного кабинета вход в личный кабинет/Image-3.webp" alt="Profile Menu" className="w-full h-full object-cover" style={{ transform: 'scale(0.88)' }} />
                         {/* Level Icon Badge */}
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center shadow-md" style={{ marginLeft: '1px', transform: 'translateX(-50%) translateY(-4px)' }}>
                             <img src={getLevelIcon(playerLevel)} alt="Level" className="w-6 h-6 object-contain" />
@@ -17492,7 +17476,7 @@ const App: React.FC = () => {
                         className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button"
                         title="НасСвЂљроРв„–ки"
                     >
-                        <img src="https://i.ibb.co/Lz7mLTNV/Qw5jz.png" alt="НасСвЂљроРв„–ки" className="w-[42px] h-[42px] object-contain" />
+                        <img src="/Gui/Front/значек настроек/Qw5jz.webp" alt="НасСвЂљроРв„–ки" className="w-[42px] h-[42px] object-contain" />
                     </button>
                 </div>
             </div>
@@ -17517,7 +17501,7 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowTutorialInTablet(false); setShowTabletMenu(false); playCloseSound(); }}>
                     <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
                         {/* Tablet background image */}
-                        <img src="/tablet_menu_bg.png" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         
                         {/* Close button */}
                         <button 
@@ -17566,7 +17550,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/4Q6y8J4/6Rw-Ov.png" alt="Police Morals" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src="/Gui/GUI_Menu/жетон полиции нравов в меню/6Rw-Ov.webp" alt="Police Morals" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>ПолиСвЂ ия нравов</span>
                                 </button>
@@ -17578,7 +17562,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/nsb3Sn3L/topbottom1.png" alt="Top Players" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src="/Gui/GUI_Menu/основеное меню/топ/topbottom1.webp" alt="Top Players" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Топ</span>
                                 </button>
@@ -17590,7 +17574,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/TDrJzFg5/vibori1.png" alt="Royal Elections" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src="/Gui/GUI_Menu/основеное меню/Королевские выборы/vibori1.webp" alt="Royal Elections" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Королевские вСвЂ№борСвЂ№</span>
                                 </button>
@@ -17605,7 +17589,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/jP8vDvTg/Image-4.png" alt="Shop" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src="/Gui/GUI_Menu/основеное меню/магазин/Image-4.webp" alt="Shop" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Магазин</span>
                                 </button>
@@ -17617,7 +17601,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/qMdSDJSm/mapbottom1.png" alt="Map" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src="/Gui/GUI_Menu/основеное меню/карта/mapbottom1.webp" alt="Map" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>КарСвЂља</span>
                                 </button>
@@ -17629,7 +17613,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/1tMZTJxS/town-Bottom1.png" alt="My City" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src="/Gui/GUI_Menu/основеное меню/город/town-Bottom1.webp" alt="My City" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>РвЂњород</span>
                                 </button>
@@ -17643,7 +17627,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/XRR6Zcf/Uerc-WWWW.png" alt="Inventory" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src="/Gui/GUI_Menu/основеное меню/инвентарь/Uerc-WWWW.webp" alt="Inventory" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>ИнвенСвЂљарь</span>
                                 </button>
@@ -17863,7 +17847,7 @@ const App: React.FC = () => {
             {energyModalState && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeEnergyModal}>
                     <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
-                        <img src="/tablet_menu_bg.png" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         <button
                             onClick={closeEnergyModal}
                             className="absolute z-10"
@@ -17924,7 +17908,7 @@ const App: React.FC = () => {
             {buildingLimitModalData && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeBuildingLimitModal}>
                     <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
-                        <img src="/tablet_menu_bg.png" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         <button
                             onClick={closeBuildingLimitModal}
                             className="absolute z-10"

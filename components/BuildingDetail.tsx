@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Building, ResourceInfo } from '../types';
+import { getDestructionInfo } from '../data/destructionWeapons';
 import { generateBuildingDescription } from '../services/geminiService';
 import { SparklesIcon } from './IconComponents';
 
@@ -46,6 +47,7 @@ const ResourceList: React.FC<{ title: string; resources?: ResourceInfo[]; onSele
 const BuildingDetail: React.FC<BuildingDetailProps> = ({ building, onSelectEntity }) => {
     const [genDescription, setGenDescription] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const destructionInfo = getDestructionInfo(building);
 
     const handleGenerateDescription = async () => {
         setIsLoading(true);
@@ -116,7 +118,7 @@ const BuildingDetail: React.FC<BuildingDetailProps> = ({ building, onSelectEntit
                 </div>
             </div>
 
-            {building.destructionInfo && building.destructionInfo.length > 0 && (
+            {destructionInfo.length > 0 && (
                 <div className="mt-6">
                     <h3 className="text-lg font-semibold text-blue-300 mb-2">Информация об уничтожении</h3>
                     <div className="overflow-x-auto">
@@ -130,7 +132,7 @@ const BuildingDetail: React.FC<BuildingDetailProps> = ({ building, onSelectEntit
                                 </tr>
                             </thead>
                             <tbody>
-                                {building.destructionInfo.map((info, i) => (
+                                {destructionInfo.map((info, i) => (
                                     <tr key={i} className="bg-gray-800/50 border-b border-gray-700/50">
                                         <td className="px-4 py-2 font-medium">{info.weaponName}</td>
                                         <td className="px-4 py-2">{info.amount}</td>

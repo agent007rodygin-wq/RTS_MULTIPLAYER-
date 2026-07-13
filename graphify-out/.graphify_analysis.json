@@ -1,0 +1,1518 @@
+{
+  "communities": {
+    "0": [
+      "app",
+      "app_alchemy_factory_anim_defs",
+      "app_alchemyfactoryidleframes",
+      "app_alchemyfactoryworkingframes",
+      "app_app_env",
+      "app_babyangelboyanimationframes",
+      "app_babyangelgirlanimationframes",
+      "app_babybearanimationframes",
+      "app_babycatanimationframes",
+      "app_babydinoanimationframes",
+      "app_babyfroganimationframes",
+      "app_babypandaanimationframes",
+      "app_babypigletanimationframes",
+      "app_buildingdata",
+      "app_buildmenutab",
+      "app_buildtimingtrace",
+      "app_chattab",
+      "app_coin_factory_ids",
+      "app_coinfactoryanimationframes",
+      "app_constructiontimer",
+      "app_cp1251decoder",
+      "app_decorsubtab",
+      "app_detonator_factory_all_ids",
+      "app_detonator_factory_id_to_group",
+      "app_detonatorfactoryanimationframes",
+      "app_detonatorfactoryidleframes",
+      "app_detonatorfactoryworkingframes",
+      "app_devilmachineanimationframes",
+      "app_df_group_defs",
+      "app_ef_group_defs",
+      "app_emerald_factory_all_ids",
+      "app_emerald_factory_id_to_group",
+      "app_emeraldfactoryidleframes",
+      "app_emeraldfactoryworkingframes",
+      "app_flag_animation_ids",
+      "app_flaganimationframes",
+      "app_friend",
+      "app_getgeneralmarketbuysectionforitem",
+      "app_getguestid",
+      "app_getregularmonsterplanforzone",
+      "app_giftlambanimationframes",
+      "app_giftslipperanimationframes",
+      "app_giftsubtab",
+      "app_gold_smelter_all_ids",
+      "app_gold_smelter_id_to_group",
+      "app_goldsmelteridleframes",
+      "app_goldsmelterworkingframes",
+      "app_gs_group_defs",
+      "app_lettersubtab",
+      "app_levelicons",
+      "app_lily_pond_all_ids",
+      "app_lily_pond_id_to_group",
+      "app_lilypondidleframes",
+      "app_lilypondworkingframes",
+      "app_lp_group_defs",
+      "app_ma_group_defs",
+      "app_markettab",
+      "app_mb_group_defs",
+      "app_military_factory_ids",
+      "app_militaryfactoryanimationframes",
+      "app_millanimationframes",
+      "app_mine_all_ids",
+      "app_mine_group_defs",
+      "app_mine_id_to_group",
+      "app_mineidleframes",
+      "app_mineworkingframes",
+      "app_mock_user_levels",
+      "app_mojibakefallbackfixes",
+      "app_mojibakereversemap",
+      "app_monster_academy_all_ids",
+      "app_monster_academy_id_to_group",
+      "app_monster_move_intervals",
+      "app_monsteracademyidleframes",
+      "app_monsteracademyworkingframes",
+      "app_monsterdirection",
+      "app_monstermovestep",
+      "app_monsterpatrolmoveresult",
+      "app_monsterteleportspot",
+      "app_mushroom_bed_all_ids",
+      "app_mushroom_bed_id_to_group",
+      "app_mushroombedidleframes",
+      "app_mushroombedworkingframes",
+      "app_offlinetimerssynced",
+      "app_oilriganimationframes",
+      "app_placementguardresult",
+      "app_placementpreviewstate",
+      "app_player_colors",
+      "app_profiletab",
+      "app_rationale_1689",
+      "app_rationale_8522",
+      "app_recommendationfactoryanimationframes",
+      "app_regular_monster_spawn_config",
+      "app_resourceshopcategory",
+      "app_runtimeauditkind",
+      "app_runtimeauditstate",
+      "app_sawmill_id_to_folder_map",
+      "app_sawmill_ids",
+      "app_sawmill_level1_5_ids",
+      "app_sawmill_level6_16_ids",
+      "app_sawmillanimationframes",
+      "app_srm_group_defs",
+      "app_steel_rolling_mill_all_ids",
+      "app_steel_rolling_mill_id_to_group",
+      "app_steel_smelting_ids",
+      "app_steelrollingmillidleframes",
+      "app_steelrollingmillworkingframes",
+      "app_steelsmeltingidleframes",
+      "app_steelsmeltingworkingframes",
+      "app_stone_crusher_id_to_folder",
+      "app_stone_crusher_ids",
+      "app_stonecrusheridleframes",
+      "app_stonecrusherworkingframes",
+      "app_top_players_order_field",
+      "app_topplayerstab",
+      "app_town_hall_flag_ids",
+      "app_townhallflaganimationframes",
+      "app_utf8encoder",
+      "app_wildquarryanimationframes",
+      "app_zonegatedebugsnapshot",
+      "app_zoneplacementstatus",
+      "app_zoom_levels"
+    ],
+    "1": [
+      "src_game_monsters_monsteranimationconfig",
+      "src_game_monsters_monsteranimationconfig_babayagaattackbottomframes",
+      "src_game_monsters_monsteranimationconfig_babayagaattackleftframes",
+      "src_game_monsters_monsteranimationconfig_babayagaattackrightframes",
+      "src_game_monsters_monsteranimationconfig_babayagaattacktopframes",
+      "src_game_monsters_monsteranimationconfig_babayagaidleframes",
+      "src_game_monsters_monsteranimationconfig_babayagawalkdownframes",
+      "src_game_monsters_monsteranimationconfig_babayagawalkleftframes",
+      "src_game_monsters_monsteranimationconfig_babayagawalkrightframes",
+      "src_game_monsters_monsteranimationconfig_babayagawalkupframes",
+      "src_game_monsters_monsteranimationconfig_bronekurattackbottomframes",
+      "src_game_monsters_monsteranimationconfig_bronekurattackleftframes",
+      "src_game_monsters_monsteranimationconfig_bronekurattackrightframes",
+      "src_game_monsters_monsteranimationconfig_bronekurattacktopframes",
+      "src_game_monsters_monsteranimationconfig_bronekuridleframes",
+      "src_game_monsters_monsteranimationconfig_bronekurwalkbottomframes",
+      "src_game_monsters_monsteranimationconfig_bronekurwalkbottomrightframes",
+      "src_game_monsters_monsteranimationconfig_bronekurwalklefttopframes",
+      "src_game_monsters_monsteranimationconfig_bronekurwalktoprightframes",
+      "src_game_monsters_monsteranimationconfig_gorynychattackbottomframes",
+      "src_game_monsters_monsteranimationconfig_gorynychattackleftframes",
+      "src_game_monsters_monsteranimationconfig_gorynychattackrightframes",
+      "src_game_monsters_monsteranimationconfig_gorynychattacktopframes",
+      "src_game_monsters_monsteranimationconfig_gorynychidleframes",
+      "src_game_monsters_monsteranimationconfig_gorynychwalkdownframes",
+      "src_game_monsters_monsteranimationconfig_gorynychwalkleftframes",
+      "src_game_monsters_monsteranimationconfig_gorynychwalkrightframes",
+      "src_game_monsters_monsteranimationconfig_gorynychwalkupframes",
+      "src_game_monsters_monsteranimationconfig_izbushkaattackbottomframes",
+      "src_game_monsters_monsteranimationconfig_izbushkaattackleftframes",
+      "src_game_monsters_monsteranimationconfig_izbushkaattackrightframes",
+      "src_game_monsters_monsteranimationconfig_izbushkaattacktopframes",
+      "src_game_monsters_monsteranimationconfig_izbushkacancelbottomframes",
+      "src_game_monsters_monsteranimationconfig_izbushkacancelleftframes",
+      "src_game_monsters_monsteranimationconfig_izbushkacancelrightframes",
+      "src_game_monsters_monsteranimationconfig_izbushkacanceltopframes",
+      "src_game_monsters_monsteranimationconfig_izbushkaidleframes",
+      "src_game_monsters_monsteranimationconfig_izbushkawalkdownframes",
+      "src_game_monsters_monsteranimationconfig_izbushkawalkleftframes",
+      "src_game_monsters_monsteranimationconfig_izbushkawalkrightframes",
+      "src_game_monsters_monsteranimationconfig_izbushkawalkupframes",
+      "src_game_monsters_monsteranimationconfig_kolobokattackbottomframes",
+      "src_game_monsters_monsteranimationconfig_kolobokattackleftframes",
+      "src_game_monsters_monsteranimationconfig_kolobokattackrightframes",
+      "src_game_monsters_monsteranimationconfig_kolobokattacktopframes",
+      "src_game_monsters_monsteranimationconfig_kolobokidleframes",
+      "src_game_monsters_monsteranimationconfig_kolobokwalkdownframes",
+      "src_game_monsters_monsteranimationconfig_kolobokwalkleftframes",
+      "src_game_monsters_monsteranimationconfig_kolobokwalkrightframes",
+      "src_game_monsters_monsteranimationconfig_kolobokwalkupframes",
+      "src_game_monsters_monsteranimationconfig_santaattackbottomframes",
+      "src_game_monsters_monsteranimationconfig_santaattackleftframes",
+      "src_game_monsters_monsteranimationconfig_santaattackrightframes",
+      "src_game_monsters_monsteranimationconfig_santaattacktopframes",
+      "src_game_monsters_monsteranimationconfig_santawalkdownframes",
+      "src_game_monsters_monsteranimationconfig_santawalkleftframes",
+      "src_game_monsters_monsteranimationconfig_santawalkrightframes",
+      "src_game_monsters_monsteranimationconfig_santawalkupframes"
+    ],
+    "2": [
+      "components_buildingdetail",
+      "components_buildingdetail_buildingdetail",
+      "components_buildingdetail_buildingdetailprops",
+      "components_buildingdetail_detailrow",
+      "components_buildingdetail_resourcelist",
+      "components_iconcomponents_sparklesicon",
+      "components_itemdetail",
+      "components_itemdetail_itemdetail",
+      "components_itemdetail_itemdetailprops",
+      "components_itemdetail_resourcelist",
+      "data_buildings",
+      "data_buildings_buildings",
+      "data_destructionweapons",
+      "data_destructionweapons_destruction_weapons",
+      "data_destructionweapons_destructiontarget",
+      "data_destructionweapons_destructionweapondefinition",
+      "data_destructionweapons_generatedestructioninfo",
+      "data_destructionweapons_getdestructioninfo",
+      "data_destructionweapons_geteffectiveexplosionhp",
+      "data_destructionweapons_picknumber",
+      "data_destructionweapons_readnumber",
+      "data_items",
+      "data_items_items",
+      "data_validatebuildingitemnames",
+      "data_validatebuildingitemnames_canonical_item_names",
+      "data_validatebuildingitemnames_isrecord",
+      "data_validatebuildingitemnames_validatebuildingitemnames",
+      "data_validatebuildingitemnames_walkvalue",
+      "services_geminiservice",
+      "services_geminiservice_ai",
+      "services_geminiservice_generatebuildingdescription",
+      "types",
+      "types_building",
+      "types_buildingtype",
+      "types_clan",
+      "types_destructioninfo",
+      "types_droppeditem",
+      "types_gameentity",
+      "types_historyentry",
+      "types_item",
+      "types_marketlisting",
+      "types_placedbuilding",
+      "types_privatemessage",
+      "types_resourceinfo",
+      "types_visualeffect"
+    ],
+    "3": [
+      "dotenv",
+      "google_auth_library",
+      "google_genai",
+      "lucide_react",
+      "motion",
+      "package",
+      "package_dependencies",
+      "package_dependencies_dotenv",
+      "package_dependencies_google_auth_library",
+      "package_dependencies_google_genai",
+      "package_dependencies_lucide_react",
+      "package_dependencies_motion",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_devdependencies",
+      "package_devdependencies_types_node",
+      "package_devdependencies_types_react",
+      "package_devdependencies_types_react_dom",
+      "package_devdependencies_typescript",
+      "package_devdependencies_vite",
+      "package_devdependencies_vitejs_plugin_react",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_cleanup_overlaps",
+      "package_scripts_dev",
+      "package_scripts_diag_regressions",
+      "package_scripts_lint",
+      "package_scripts_pb_deploy_tree_hooks",
+      "package_scripts_pb_setup_tree_server",
+      "package_scripts_preview",
+      "package_type",
+      "package_version",
+      "react",
+      "react_dom",
+      "types_node",
+      "types_react",
+      "types_react_dom",
+      "typescript",
+      "vite",
+      "vitejs_plugin_react"
+    ],
+    "4": [
+      "src_pocketbase",
+      "src_pocketbase_anyrecord",
+      "src_pocketbase_data_fields_by_collection",
+      "src_pocketbase_deadbuildingids",
+      "src_pocketbase_deaddroppeditemids",
+      "src_pocketbase_deadresourceids",
+      "src_pocketbase_deletedrecordkeys",
+      "src_pocketbase_deletefield",
+      "src_pocketbase_docref",
+      "src_pocketbase_filtered_query_page_size",
+      "src_pocketbase_firebaseuser",
+      "src_pocketbase_firestoreerrorinfo",
+      "src_pocketbase_getdownloadurl",
+      "src_pocketbase_increment",
+      "src_pocketbase_incrementsentinel",
+      "src_pocketbase_inflightdeleterequests",
+      "src_pocketbase_known_fields_by_collection",
+      "src_pocketbase_limit",
+      "src_pocketbase_missinguserids",
+      "src_pocketbase_normalizefinitecounter",
+      "src_pocketbase_orderby",
+      "src_pocketbase_pb",
+      "src_pocketbase_pbuser",
+      "src_pocketbase_queryconstraint",
+      "src_pocketbase_querydescriptor",
+      "src_pocketbase_rationale_1151",
+      "src_pocketbase_rationale_1315",
+      "src_pocketbase_rationale_387",
+      "src_pocketbase_requestqueue",
+      "src_pocketbase_requesttreehit",
+      "src_pocketbase_runtimeauditcontext",
+      "src_pocketbase_runtimeauditkind",
+      "src_pocketbase_sanitizenumericobjectmap",
+      "src_pocketbase_setruntimeauditcontext",
+      "src_pocketbase_testconnection",
+      "src_pocketbase_treehitresponse",
+      "src_pocketbase_unsubscribefn",
+      "src_pocketbase_uploadbytes",
+      "src_pocketbase_uploadbytesresumable",
+      "src_pocketbase_where",
+      "src_pocketbase_zone_query_page_size"
+    ],
+    "5": [
+      "ref",
+      "ref_app_tsx",
+      "ref_components_ts",
+      "ref_components_tsx",
+      "ref_data_ts",
+      "ref_dist",
+      "ref_dom",
+      "ref_dom_iterable",
+      "ref_es2022",
+      "ref_index_tsx",
+      "ref_loadingscreen_tsx",
+      "ref_node",
+      "ref_node_modules",
+      "ref_scratch",
+      "ref_services_ts",
+      "ref_src_ts",
+      "ref_src_tsx",
+      "ref_types_ts",
+      "ref_vite_config_ts",
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowimportingtsextensions",
+      "tsconfig_compileroptions_allowjs",
+      "tsconfig_compileroptions_experimentaldecorators",
+      "tsconfig_compileroptions_isolatedmodules",
+      "tsconfig_compileroptions_jsx",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduledetection",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_target",
+      "tsconfig_compileroptions_types",
+      "tsconfig_compileroptions_usedefineforclassfields",
+      "tsconfig_exclude",
+      "tsconfig_include",
+      "tsconfig_paths"
+    ],
+    "6": [
+      "app_app",
+      "app_baby_max_level_ids",
+      "app_bandit_castle_ids",
+      "app_buildmarketlistingpayload",
+      "app_cannon_ids",
+      "app_casino_ids",
+      "app_chatmessage",
+      "app_createvisualeffect",
+      "app_direct_interaction_factories",
+      "app_drawanimatedcoin",
+      "app_drawloadingspinner",
+      "app_formatbuildduration",
+      "app_formattimerussian",
+      "app_getallowedresourcetypesforbuildingid",
+      "app_getbronekurhomezoneid",
+      "app_getbronekurmonsterid",
+      "app_getcanonicalitemname",
+      "app_getclosestwrappedworldcoords",
+      "app_getplaybackdurationms",
+      "app_getplaybackframeindex",
+      "app_getregularmonsterid",
+      "app_guest_id",
+      "app_handlegamelooperror",
+      "app_hasactivedestructionwindow",
+      "app_isbanditcastlebuildingid",
+      "app_isexpiredchatmessage",
+      "app_isvisualeffectalive",
+      "app_kolobok_emojis",
+      "app_makeplacedentityid",
+      "app_matchesgeneralmarketbuyfilters",
+      "app_normalizeclanidvalue",
+      "app_normalizeinventorycount",
+      "app_normalizeplacedbuildinghealth",
+      "app_pushstartupdebugevent",
+      "app_readlocalstorageflag",
+      "app_sanitizeinventorycounts",
+      "app_shouldpreferserverrevivedbuildingstate",
+      "app_writelocalstorageflag"
+    ],
+    "7": [
+      "components_iconcomponents",
+      "components_iconcomponents_buildingicon",
+      "components_iconcomponents_businessicon",
+      "components_iconcomponents_chatbubbleicon",
+      "components_iconcomponents_chevrondownicon",
+      "components_iconcomponents_chevronupicon",
+      "components_iconcomponents_clanicon",
+      "components_iconcomponents_closeicon",
+      "components_iconcomponents_coinicon",
+      "components_iconcomponents_compassicon",
+      "components_iconcomponents_defenseicon",
+      "components_iconcomponents_energyicon",
+      "components_iconcomponents_factoriesicon",
+      "components_iconcomponents_femaleicon",
+      "components_iconcomponents_giftsicon",
+      "components_iconcomponents_greeneryicon",
+      "components_iconcomponents_homeicon",
+      "components_iconcomponents_inventoryicon",
+      "components_iconcomponents_lettersicon",
+      "components_iconcomponents_maleicon",
+      "components_iconcomponents_mapicon",
+      "components_iconcomponents_monstersicon",
+      "components_iconcomponents_moveicon",
+      "components_iconcomponents_repairicon",
+      "components_iconcomponents_residentialicon",
+      "components_iconcomponents_resourceicon",
+      "components_iconcomponents_roadsicon",
+      "components_iconcomponents_searchicon",
+      "components_iconcomponents_sellicon",
+      "components_iconcomponents_shieldicon",
+      "components_iconcomponents_shoppingcarticon",
+      "components_iconcomponents_smileyicon",
+      "components_iconcomponents_tradeicon",
+      "components_iconcomponents_usericon",
+      "components_iconcomponents_wallsicon",
+      "components_searchbar",
+      "components_searchbar_searchbar",
+      "components_searchbar_searchbarprops"
+    ],
+    "8": [
+      "pb_hooks_tree_server_utils",
+      "pb_hooks_tree_server_utils_addinventoryitem",
+      "pb_hooks_tree_server_utils_builderrorresponse",
+      "pb_hooks_tree_server_utils_buildfreetreecell",
+      "pb_hooks_tree_server_utils_buildrespawnjob",
+      "pb_hooks_tree_server_utils_buildtreehitresponse",
+      "pb_hooks_tree_server_utils_collectoccupiedcells",
+      "pb_hooks_tree_server_utils_debuglog",
+      "pb_hooks_tree_server_utils_decodeutf8bytes",
+      "pb_hooks_tree_server_utils_ensureinventoryobject",
+      "pb_hooks_tree_server_utils_gettreecurrenthp",
+      "pb_hooks_tree_server_utils_gettreerecordsnapshot",
+      "pb_hooks_tree_server_utils_hashtobase36",
+      "pb_hooks_tree_server_utils_isbytearraylike",
+      "pb_hooks_tree_server_utils_normalizestring",
+      "pb_hooks_tree_server_utils_parseresourcecoords",
+      "pb_hooks_tree_server_utils_processduetreerespawns",
+      "pb_hooks_tree_server_utils_processtreehit",
+      "pb_hooks_tree_server_utils_resolvetreerecord",
+      "pb_hooks_tree_server_utils_respawnsingletree",
+      "pb_hooks_tree_server_utils_safepublicexport",
+      "pb_hooks_tree_server_utils_sanitizepbid",
+      "pb_hooks_tree_server_utils_summarizerawvalue",
+      "pb_hooks_tree_server_utils_toint",
+      "pb_hooks_tree_server_utils_tryparseinventoryjson"
+    ],
+    "9": [
+      "src_pocketbase_auth_fields",
+      "src_pocketbase_buildidlookupfilter",
+      "src_pocketbase_cleardeletedrecord",
+      "src_pocketbase_deleteall",
+      "src_pocketbase_deletedoc",
+      "src_pocketbase_handlefirestoreerror",
+      "src_pocketbase_hasinflightdelete",
+      "src_pocketbase_isdeletedrecord",
+      "src_pocketbase_makerecordkey",
+      "src_pocketbase_markdeletedrecord",
+      "src_pocketbase_operationtype",
+      "src_pocketbase_pbtransaction",
+      "src_pocketbase_pbtransaction_delete",
+      "src_pocketbase_pbtransaction_get",
+      "src_pocketbase_pbtransaction_set",
+      "src_pocketbase_pbtransaction_update",
+      "src_pocketbase_ref",
+      "src_pocketbase_runtransaction",
+      "src_pocketbase_setdoc",
+      "src_pocketbase_summarizewritepayloadforaudit",
+      "src_pocketbase_system_fields",
+      "src_pocketbase_unwrapdata",
+      "src_pocketbase_updatedoc",
+      "src_pocketbase_wrapdata",
+      "src_pocketbase_writebatch"
+    ],
+    "10": [
+      "app_isgeneralmarketbuilding",
+      "app_ismilitarymarketbuilding",
+      "app_ismilitarymarketlisting",
+      "app_matchesmarkettype",
+      "src_game_market_marketstaticdata",
+      "src_game_market_marketstaticdata_general_market_bed_section_ids",
+      "src_game_market_marketstaticdata_general_market_english_names",
+      "src_game_market_marketstaticdata_general_market_monster_section_ids",
+      "src_game_market_marketstaticdata_general_market_resource_section_ids",
+      "src_game_market_marketstaticdata_market_bed_section_labels",
+      "src_game_market_marketstaticdata_market_buy_section_labels",
+      "src_game_market_marketstaticdata_market_monster_section_labels",
+      "src_game_market_marketstaticdata_market_resource_section_labels",
+      "src_game_market_marketstaticdata_marketbedsection",
+      "src_game_market_marketstaticdata_marketbuysection",
+      "src_game_market_marketstaticdata_marketmonstersection",
+      "src_game_market_marketstaticdata_marketresourcesection",
+      "src_game_market_marketstaticdata_military_item_ids",
+      "src_game_market_marketstaticdata_military_market_english_names"
+    ],
+    "11": [
+      "diag_monsters",
+      "diag_monsters_check",
+      "diag_monsters_pb",
+      "dump_map_state",
+      "dump_map_state_dumpmapstate",
+      "dump_map_state_pb",
+      "fix_cannons_db",
+      "fix_cannons_db_fixcannonsdb",
+      "fix_cannons_db_pb",
+      "package_dependencies_pocketbase",
+      "pocketbase",
+      "reset_trees_monsters",
+      "reset_trees_monsters_deletefiltered",
+      "reset_trees_monsters_main",
+      "reset_trees_monsters_pb",
+      "test_create_building",
+      "test_create_building_pb",
+      "test_create_building_test"
+    ],
+    "12": [
+      "app_alchemy_factory_id_set",
+      "app_coin_factory_id_set",
+      "app_detonator_factory_id_set",
+      "app_emerald_factory_id_set",
+      "app_flag_animation_id_set",
+      "app_getpriorityanimationurlsforbuilding",
+      "app_gold_smelter_id_set",
+      "app_lily_pond_id_set",
+      "app_military_factory_id_set",
+      "app_mine_id_set",
+      "app_monster_academy_id_set",
+      "app_mushroom_bed_id_set",
+      "app_sawmill_id_set",
+      "app_steel_rolling_mill_id_set",
+      "app_steel_smelting_id_set",
+      "app_stone_crusher_id_set",
+      "app_town_hall_flag_id_set"
+    ],
+    "13": [
+      "src_pocketbase_clearusercache",
+      "src_pocketbase_doc",
+      "src_pocketbase_docsnapshot",
+      "src_pocketbase_docsnapshot_data",
+      "src_pocketbase_docsnapshot_exists",
+      "src_pocketbase_emptysnapshot",
+      "src_pocketbase_forceclearauth",
+      "src_pocketbase_getdocs",
+      "src_pocketbase_onsnapshot",
+      "src_pocketbase_querysnapshot",
+      "src_pocketbase_querysnapshot_docchanges",
+      "src_pocketbase_querysnapshot_foreach",
+      "src_pocketbase_signout",
+      "src_pocketbase_summarizebuildingtimerfields",
+      "src_pocketbase_summarizedocsnapshotforaudit",
+      "src_pocketbase_summarizequerysnapshotforaudit",
+      "src_pocketbase_todocsnapshot"
+    ],
+    "14": [
+      "app_choosemonsterbackgroundmove",
+      "app_choosemonstermovetowardtarget",
+      "app_choosemonsterpatrolmove",
+      "app_getcardinalneighbortiles",
+      "app_getmonsteradjacentattacktarget",
+      "app_getmonsteradjacentholdtarget",
+      "app_getmonsterchasetarget",
+      "app_getmonstermoveinterval",
+      "app_getmonstermoveseed",
+      "app_getmonsterpatroldirection",
+      "app_getwrappedchebyshevdistance",
+      "app_getwrappeddelta",
+      "app_getwrappeddirectiontotarget",
+      "app_getwrappedmanhattandistance",
+      "app_isbuildingalive",
+      "app_ismonsterattacktargetcandidate",
+      "app_ismonsterholdtargetcandidate"
+    ],
+    "15": [
+      "app_buildingtimertracesource",
+      "app_getleaderboardstatscachekey",
+      "app_getusercounter",
+      "app_getuserstatcounters",
+      "app_hashigherleaderboardstats",
+      "app_hashmonsterzoneseed",
+      "app_mergelocaluserstatcounters",
+      "app_mergetopplayersentries",
+      "app_readcachedleaderboardstats",
+      "app_seededshuffle",
+      "app_writecachedleaderboardstats"
+    ],
+    "16": [
+      "repair_live_pocketbase_schema",
+      "repair_live_pocketbase_schema_backfillzoneids",
+      "repair_live_pocketbase_schema_boolfield",
+      "repair_live_pocketbase_schema_desiredfields",
+      "repair_live_pocketbase_schema_ensurecollectionfields",
+      "repair_live_pocketbase_schema_ensureelectionrecord",
+      "repair_live_pocketbase_schema_ensuremapstatestatus",
+      "repair_live_pocketbase_schema_jsonfield",
+      "repair_live_pocketbase_schema_numberfield",
+      "repair_live_pocketbase_schema_pb",
+      "repair_live_pocketbase_schema_textfield",
+      "repair_live_pocketbase_schema_verifyqueries",
+      "repair_live_pocketbase_schema_zoneidfor"
+    ],
+    "17": [
+      "regenerate_world",
+      "regenerate_world_batchcreatebuildings",
+      "regenerate_world_batchcreateresources",
+      "regenerate_world_deletefiltered",
+      "regenerate_world_getzoneid",
+      "regenerate_world_main",
+      "regenerate_world_makerandom",
+      "regenerate_world_monster_stats",
+      "regenerate_world_pb",
+      "regenerate_world_sanitizepbid",
+      "regenerate_world_wrapbuilding",
+      "regenerate_world_wrapresource"
+    ],
+    "18": [
+      "cleanup_building_resource_overlaps",
+      "cleanup_building_resource_overlaps_authenticate",
+      "cleanup_building_resource_overlaps_findfreespot",
+      "cleanup_building_resource_overlaps_getallowedresourcetypesforbuildingid",
+      "cleanup_building_resource_overlaps_getsortscore",
+      "cleanup_building_resource_overlaps_isactivebuilding",
+      "cleanup_building_resource_overlaps_keyof",
+      "cleanup_building_resource_overlaps_limit",
+      "cleanup_building_resource_overlaps_main",
+      "cleanup_building_resource_overlaps_pb",
+      "cleanup_building_resource_overlaps_tomillis"
+    ],
+    "19": [
+      "cleanup_buildings_combat_legacy",
+      "cleanup_buildings_combat_legacy_computepatch",
+      "cleanup_buildings_combat_legacy_isvalidzoneid",
+      "cleanup_buildings_combat_legacy_limit",
+      "cleanup_buildings_combat_legacy_main",
+      "cleanup_buildings_combat_legacy_pb",
+      "cleanup_buildings_combat_legacy_readfield",
+      "cleanup_buildings_combat_legacy_tobool",
+      "cleanup_buildings_combat_legacy_tonumberorundefined",
+      "cleanup_buildings_combat_legacy_zone_size",
+      "cleanup_buildings_combat_legacy_zoneidfromxy"
+    ],
+    "20": [
+      "components_errorboundary",
+      "components_errorboundary_errorboundary",
+      "components_errorboundary_errorboundary_componentdidcatch",
+      "components_errorboundary_errorboundary_getderivedstatefromerror",
+      "components_errorboundary_errorboundary_handlereset",
+      "components_errorboundary_errorboundary_render",
+      "components_errorboundary_props",
+      "components_errorboundary_state",
+      "index",
+      "index_root",
+      "index_rootelement"
+    ],
+    "21": [
+      "reset_monsters_deterministic",
+      "reset_monsters_deterministic_authadmin",
+      "reset_monsters_deterministic_getallrecords",
+      "reset_monsters_deterministic_getbronekurhomezoneid",
+      "reset_monsters_deterministic_getbronekurmonsterid",
+      "reset_monsters_deterministic_getregularmonsterid",
+      "reset_monsters_deterministic_getregularmonsterplanforzone",
+      "reset_monsters_deterministic_main",
+      "reset_monsters_deterministic_pbfetch",
+      "reset_monsters_deterministic_regular_monster_spawn_config",
+      "reset_monsters_deterministic_sanitizepbid"
+    ],
+    "22": [
+      "setup_tree_server_architecture",
+      "setup_tree_server_architecture_ensuremapresourcestreefields",
+      "setup_tree_server_architecture_ensuretreerespawnscollection",
+      "setup_tree_server_architecture_main",
+      "setup_tree_server_architecture_map_resource_tree_fields",
+      "setup_tree_server_architecture_migrateexistingtrees",
+      "setup_tree_server_architecture_normalizeint",
+      "setup_tree_server_architecture_numberfield",
+      "setup_tree_server_architecture_pb",
+      "setup_tree_server_architecture_textfield",
+      "setup_tree_server_architecture_tree_respawn_fields"
+    ],
+    "23": [
+      "respawn_all",
+      "respawn_all_authorize",
+      "respawn_all_boss_config",
+      "respawn_all_createrecord",
+      "respawn_all_deleterecords",
+      "respawn_all_fetchall",
+      "respawn_all_generaterandomid",
+      "respawn_all_main",
+      "respawn_all_monster_config",
+      "respawn_all_sanitizepbid"
+    ],
+    "24": [
+      "src_pocketbase_finduserrecord",
+      "src_pocketbase_getdoc",
+      "src_pocketbase_hashtobase36",
+      "src_pocketbase_pbfilterstring",
+      "src_pocketbase_pbfiltervalue",
+      "src_pocketbase_query",
+      "src_pocketbase_queuedgetlist",
+      "src_pocketbase_queuedgetone",
+      "src_pocketbase_sanitizepbid",
+      "src_pocketbase_sanitizeusersfilter"
+    ],
+    "25": [
+      "quick_reset_map",
+      "quick_reset_map_deleteall",
+      "quick_reset_map_getzoneid",
+      "quick_reset_map_makeid",
+      "quick_reset_map_monster_hp",
+      "quick_reset_map_pb",
+      "quick_reset_map_run",
+      "quick_reset_map_seedbuildings",
+      "quick_reset_map_seedresources"
+    ],
+    "26": [
+      "smoke_pocketbase_startup",
+      "smoke_pocketbase_startup_checkhealth",
+      "smoke_pocketbase_startup_checkrealtimeendpoint",
+      "smoke_pocketbase_startup_fail",
+      "smoke_pocketbase_startup_main",
+      "smoke_pocketbase_startup_pass",
+      "smoke_pocketbase_startup_pb",
+      "smoke_pocketbase_startup_results",
+      "smoke_pocketbase_startup_run"
+    ],
+    "27": [
+      "wipe_all_player_buildings",
+      "wipe_all_player_buildings_buildfilter",
+      "wipe_all_player_buildings_delete_concurrency",
+      "wipe_all_player_buildings_deletechunk",
+      "wipe_all_player_buildings_explainpberror",
+      "wipe_all_player_buildings_fetchallbuildings",
+      "wipe_all_player_buildings_main",
+      "wipe_all_player_buildings_pb",
+      "wipe_all_player_buildings_shoulddeletebyowner"
+    ],
+    "28": [
+      "app_normalizeasseturl",
+      "app_normalizemarketlisting",
+      "app_repairmojibakecp1251utf8",
+      "app_repairmojibakedom",
+      "app_resolveuseravatar",
+      "app_totopplayerentry"
+    ],
+    "29": [
+      "app_buildmonsterzonecounts",
+      "app_findfreemonsterteleportspot",
+      "app_getcrowdingescapemove",
+      "app_getmonsterzoneid",
+      "app_getzoneid",
+      "app_ismonstertileblocked",
+      "app_normalizeworldcoord",
+      "app_wrapcoord"
+    ],
+    "30": [
+      "spawn_monsters_now",
+      "spawn_monsters_now_fetchwithretry",
+      "spawn_monsters_now_monsterconfig",
+      "spawn_monsters_now_pb_url_candidates",
+      "spawn_monsters_now_resolvepocketbaseurl",
+      "spawn_monsters_now_sanitizepbid",
+      "spawn_monsters_now_sleep",
+      "spawn_monsters_now_spawnmonsters"
+    ],
+    "31": [
+      "src_pocketbase_enqueuerequest",
+      "src_pocketbase_fetchqueryrecords",
+      "src_pocketbase_getruntimetracelabel",
+      "src_pocketbase_logpbaudit",
+      "src_pocketbase_processqueue",
+      "src_pocketbase_queuedgetfulllist",
+      "src_pocketbase_summarizequeryoptions",
+      "src_pocketbase_withtimeout"
+    ],
+    "32": [
+      "add_building_schema_fields",
+      "add_building_schema_fields_boolfield",
+      "add_building_schema_fields_fieldstoadd",
+      "add_building_schema_fields_main",
+      "add_building_schema_fields_numberfield",
+      "add_building_schema_fields_pb",
+      "add_building_schema_fields_textfield"
+    ],
+    "33": [
+      "mass_delete_monsters",
+      "mass_delete_monsters_authheaders",
+      "mass_delete_monsters_fetchwithretry",
+      "mass_delete_monsters_massdeletemonsters",
+      "mass_delete_monsters_pb_url_candidates",
+      "mass_delete_monsters_resolvepocketbaseurl",
+      "mass_delete_monsters_sleep"
+    ],
+    "34": [
+      "app_geteffectivedestructionexpiresat",
+      "app_placementguardoptions",
+      "app_processofflinetimers",
+      "app_pushruntimeauditlog",
+      "app_recordbuildingtimertrace",
+      "types_mapresource"
+    ],
+    "35": [
+      "export_firebase",
+      "export_firebase_db",
+      "export_firebase_dirname",
+      "export_firebase_exportall",
+      "export_firebase_filename",
+      "export_firebase_serviceaccount"
+    ],
+    "36": [
+      "migrate_chat_messages_top_level",
+      "migrate_chat_messages_top_level_isblanktext",
+      "migrate_chat_messages_top_level_main",
+      "migrate_chat_messages_top_level_needstoplevelbackfill",
+      "migrate_chat_messages_top_level_normalizetext",
+      "migrate_chat_messages_top_level_normalizetimestamp"
+    ],
+    "37": [
+      "src_pocketbase_collection",
+      "src_pocketbase_createuserwithemailandpassword",
+      "src_pocketbase_onauthstatechanged",
+      "src_pocketbase_signinwithemailandpassword",
+      "src_pocketbase_signinwithpopup",
+      "src_pocketbase_topbuser"
+    ],
+    "38": [
+      "app_town_hall_ids",
+      "diag_townhall",
+      "diag_townhall_getall",
+      "diag_townhall_main",
+      "diag_townhall_pbrequest"
+    ],
+    "39": [
+      "check_idp",
+      "check_idp_dirname",
+      "check_idp_fetchidpconfig",
+      "check_idp_filename",
+      "check_idp_serviceaccount"
+    ],
+    "40": [
+      "check_regressions_worker6",
+      "check_regressions_worker6_checks",
+      "check_regressions_worker6_failed",
+      "check_regressions_worker6_has",
+      "check_regressions_worker6_source"
+    ],
+    "41": [
+      "find_nested",
+      "find_nested_content",
+      "find_nested_fs",
+      "find_nested_lines",
+      "find_nested_results"
+    ],
+    "42": [
+      "import_pocketbase",
+      "import_pocketbase_deriveschemafromrecord",
+      "import_pocketbase_migrate",
+      "import_pocketbase_pb",
+      "import_pocketbase_topbid"
+    ],
+    "43": [
+      "list_dbs",
+      "list_dbs_dirname",
+      "list_dbs_filename",
+      "list_dbs_listdbs",
+      "list_dbs_serviceaccount"
+    ],
+    "44": [
+      "migrate_zones_80",
+      "migrate_zones_80_getzoneid",
+      "migrate_zones_80_migratecollection",
+      "migrate_zones_80_pb",
+      "migrate_zones_80_run"
+    ],
+    "45": [
+      "src_game_ui_actionoptions",
+      "src_game_ui_actionoptions_ban_options",
+      "src_game_ui_actionoptions_curse_options",
+      "src_game_ui_actionoptions_protection_options",
+      "src_game_ui_actionoptions_punishment_options"
+    ],
+    "46": [
+      "fix_monster_hp",
+      "fix_monster_hp_durability_map",
+      "fix_monster_hp_main",
+      "fix_monster_hp_req"
+    ],
+    "47": [
+      "fix_schema_final_v2",
+      "fix_schema_final_v2_main",
+      "fix_schema_final_v2_pb",
+      "fix_schema_final_v2_schema_updates"
+    ],
+    "48": [
+      "import_buildings",
+      "import_buildings_migrate",
+      "import_buildings_pb",
+      "import_buildings_topbid"
+    ],
+    "49": [
+      "respawn_monsters_manual",
+      "respawn_monsters_manual_monsterconfig",
+      "respawn_monsters_manual_respawnmonsters",
+      "respawn_monsters_manual_sanitizepbid"
+    ],
+    "50": [
+      "search_nan",
+      "search_nan_fs",
+      "search_nan_path",
+      "search_nan_search"
+    ],
+    "51": [
+      "test_getone",
+      "test_getone_pb",
+      "test_getone_run",
+      "test_getone_topbid"
+    ],
+    "52": [
+      "test_insert",
+      "test_insert_pb",
+      "test_insert_run",
+      "test_insert_topbid"
+    ],
+    "53": [
+      "add_gender_field",
+      "add_gender_field_main",
+      "add_gender_field_makerequest"
+    ],
+    "54": [
+      "app_getavatarcachekey",
+      "app_readcachedavatar",
+      "app_writecachedavatar"
+    ],
+    "55": [
+      "app_getlastpositioncachekey",
+      "app_readcachedlastposition",
+      "app_writecachedlastposition"
+    ],
+    "56": [
+      "app_getprofilesettingscachekey",
+      "app_readcachedprofilesettings",
+      "app_writecachedprofilesettings"
+    ],
+    "57": [
+      "check_elections",
+      "check_elections_main",
+      "check_elections_makerequest"
+    ],
+    "58": [
+      "check_pb",
+      "check_pb_pb",
+      "check_pb_test"
+    ],
+    "59": [
+      "check_rules",
+      "check_rules_getrules",
+      "check_rules_pb"
+    ],
+    "60": [
+      "check_schema",
+      "check_schema_main",
+      "check_schema_makerequest"
+    ],
+    "61": [
+      "cleanup_elections",
+      "cleanup_elections_main",
+      "cleanup_elections_makerequest"
+    ],
+    "62": [
+      "clear_chat_messages",
+      "clear_chat_messages_clearchatmessages",
+      "clear_chat_messages_pb"
+    ],
+    "63": [
+      "clear_database",
+      "clear_database_clearcollections",
+      "clear_database_pb"
+    ],
+    "64": [
+      "create_elections_collection",
+      "create_elections_collection_createelectionscollection",
+      "create_elections_collection_pb"
+    ],
+    "65": [
+      "create_elections_http",
+      "create_elections_http_main",
+      "create_elections_http_makerequest"
+    ],
+    "66": [
+      "delete_all_cannons",
+      "delete_all_cannons_cannon_building_ids",
+      "delete_all_cannons_deleteallcannons"
+    ],
+    "67": [
+      "diag2",
+      "diag2_main",
+      "diag2_req"
+    ],
+    "68": [
+      "explode_all_cannons",
+      "explode_all_cannons_cannon_building_ids",
+      "explode_all_cannons_explodeallcannons"
+    ],
+    "69": [
+      "find_nan",
+      "find_nan_files",
+      "find_nan_fs"
+    ],
+    "70": [
+      "fix_buildings_migration",
+      "fix_buildings_migration_main",
+      "fix_buildings_migration_pb"
+    ],
+    "71": [
+      "fix_elections",
+      "fix_elections_main",
+      "fix_elections_makerequest"
+    ],
+    "72": [
+      "fix_mail_schema",
+      "fix_mail_schema_pb",
+      "fix_mail_schema_updateschema"
+    ],
+    "73": [
+      "fix_schema",
+      "fix_schema_main",
+      "fix_schema_required_fields"
+    ],
+    "74": [
+      "fix_schema_final",
+      "fix_schema_final_main",
+      "fix_schema_final_schema_updates"
+    ],
+    "75": [
+      "force_reload",
+      "force_reload_pb",
+      "force_reload_triggerreload"
+    ],
+    "76": [
+      "loadingscreen",
+      "loadingscreen_loadingscreen",
+      "loadingscreen_loadingscreenprops"
+    ],
+    "77": [
+      "recreate_elections",
+      "recreate_elections_main",
+      "recreate_elections_makerequest"
+    ],
+    "78": [
+      "setup_elections",
+      "setup_elections_pb",
+      "setup_elections_setupelections"
+    ],
+    "79": [
+      "src_game_ui_playerassets",
+      "src_game_ui_playerassets_level_icon_urls",
+      "src_game_ui_playerassets_player_avatar_urls"
+    ],
+    "80": [
+      "test_create_building_2",
+      "test_create_building_2_pb",
+      "test_create_building_2_test"
+    ],
+    "81": [
+      "test_pb",
+      "test_pb_pb",
+      "test_pb_test"
+    ],
+    "82": [
+      "test_th_create",
+      "test_th_create_main",
+      "test_th_create_pbrequest"
+    ],
+    "83": [
+      "update_schema",
+      "update_schema_main",
+      "update_schema_makerequest"
+    ],
+    "84": [
+      "upload_fornex_animation",
+      "upload_fornex_animation_get_encodedrelativepath",
+      "upload_fornex_animation_write_log"
+    ],
+    "85": [
+      "upload_fornex_animation_resume",
+      "upload_fornex_animation_resume_get_encodedrelativepath",
+      "upload_fornex_animation_resume_write_log"
+    ],
+    "86": [
+      "check_cannon364",
+      "check_cannon364_check"
+    ],
+    "87": [
+      "check_monster_count",
+      "check_monster_count_checkmonsters"
+    ],
+    "88": [
+      "check_monsters",
+      "check_monsters_check"
+    ],
+    "89": [
+      "clean_all_monsters_complete",
+      "clean_all_monsters_complete_cleanallmonsterscomplete"
+    ],
+    "90": [
+      "clean_all_monsters_fresh",
+      "clean_all_monsters_fresh_cleanallmonsters"
+    ],
+    "91": [
+      "clean_monsters_direct",
+      "clean_monsters_direct_cleanallmonsters"
+    ],
+    "92": [
+      "clean_monsters_final",
+      "clean_monsters_final_cleanmonstersloop"
+    ],
+    "93": [
+      "clean_monsters_for_new_spawn",
+      "clean_monsters_for_new_spawn_cleanallmonstersfornewsystem"
+    ],
+    "94": [
+      "clean_orphans",
+      "clean_orphans_cleanorphans"
+    ],
+    "95": [
+      "clear_loot",
+      "clear_loot_clearloot"
+    ],
+    "96": [
+      "count_monsters",
+      "count_monsters_check"
+    ],
+    "97": [
+      "debug_schema",
+      "debug_schema_pb"
+    ],
+    "98": [
+      "debug_spawn",
+      "debug_spawn_debug"
+    ],
+    "99": [
+      "delete_all_monsters_force",
+      "delete_all_monsters_force_deleteallmonstersforce"
+    ],
+    "100": [
+      "delete_duplicate_monsters",
+      "delete_duplicate_monsters_deleteduplicatemonsters"
+    ],
+    "101": [
+      "diagnose_blue",
+      "diagnose_blue_diagnose"
+    ],
+    "102": [
+      "fix_schema2",
+      "fix_schema2_main"
+    ],
+    "103": [
+      "list_types",
+      "list_types_list"
+    ],
+    "104": [
+      "spawn_monsters_manual",
+      "spawn_monsters_manual_spawnmonsters"
+    ],
+    "105": [
+      "src_game_economy_energypurchaseoptions",
+      "src_game_economy_energypurchaseoptions_energy_purchase_options"
+    ],
+    "106": [
+      "src_vite_env_d",
+      "src_vite_env_d_mp4"
+    ],
+    "107": [
+      "unlock_users",
+      "unlock_users_unlock"
+    ],
+    "108": [
+      "verify_world",
+      "verify_world_pb"
+    ],
+    "109": [
+      "apply_restoration_final"
+    ],
+    "110": [
+      "check_build"
+    ],
+    "111": [
+      "deploy"
+    ],
+    "112": [
+      "fix_app_braces"
+    ],
+    "113": [
+      "fix_cannon_debug"
+    ],
+    "114": [
+      "fix_cannon_future_bug"
+    ],
+    "115": [
+      "fix_cannon_log"
+    ],
+    "116": [
+      "fix_cannon_owner"
+    ],
+    "117": [
+      "fix_cannon_range"
+    ],
+    "118": [
+      "pb_hooks_main_pb"
+    ],
+    "119": [
+      "restore_drawing_logic"
+    ],
+    "120": [
+      "update_mail_ui"
+    ],
+    "121": [
+      "update_monster_ai"
+    ],
+    "122": [
+      "update_monster_ai_robust"
+    ],
+    "123": [
+      "vite_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.01652892561983471,
+    "1": 0.034482758620689655,
+    "2": 0.07474747474747474,
+    "3": 0.047619047619047616,
+    "4": 0.05,
+    "5": 0.05128205128205128,
+    "6": 0.06116642958748222,
+    "7": 0.05405405405405406,
+    "8": 0.23666666666666666,
+    "9": 0.17333333333333334,
+    "10": 0.10526315789473684,
+    "11": 0.12418300653594772,
+    "12": 0.11764705882352941,
+    "13": 0.14705882352941177,
+    "14": 0.15441176470588236,
+    "15": 0.2,
+    "16": 0.16666666666666666,
+    "17": 0.3181818181818182,
+    "18": 0.32727272727272727,
+    "19": 0.2909090909090909,
+    "20": 0.2,
+    "21": 0.38181818181818183,
+    "22": 0.2545454545454545,
+    "23": 0.3333333333333333,
+    "24": 0.28888888888888886,
+    "25": 0.3888888888888889,
+    "26": 0.3611111111111111,
+    "27": 0.3333333333333333,
+    "28": 0.3333333333333333,
+    "29": 0.32142857142857145,
+    "30": 0.42857142857142855,
+    "31": 0.32142857142857145,
+    "32": 0.2857142857142857,
+    "33": 0.5714285714285714,
+    "34": 0.3333333333333333,
+    "35": 0.3333333333333333,
+    "36": 0.7333333333333333,
+    "37": 0.4666666666666667,
+    "38": 0.7,
+    "39": 0.4,
+    "40": 0.4,
+    "41": 0.4,
+    "42": 0.6,
+    "43": 0.4,
+    "44": 0.6,
+    "45": 0.4,
+    "46": 0.6666666666666666,
+    "47": 0.5,
+    "48": 0.6666666666666666,
+    "49": 0.6666666666666666,
+    "50": 0.5,
+    "51": 0.6666666666666666,
+    "52": 0.6666666666666666,
+    "53": 1.0,
+    "54": 0.6666666666666666,
+    "55": 0.6666666666666666,
+    "56": 0.6666666666666666,
+    "57": 1.0,
+    "58": 0.6666666666666666,
+    "59": 0.6666666666666666,
+    "60": 1.0,
+    "61": 1.0,
+    "62": 0.6666666666666666,
+    "63": 0.6666666666666666,
+    "64": 0.6666666666666666,
+    "65": 1.0,
+    "66": 0.6666666666666666,
+    "67": 1.0,
+    "68": 0.6666666666666666,
+    "69": 0.6666666666666666,
+    "70": 0.6666666666666666,
+    "71": 1.0,
+    "72": 0.6666666666666666,
+    "73": 0.6666666666666666,
+    "74": 0.6666666666666666,
+    "75": 0.6666666666666666,
+    "76": 0.6666666666666666,
+    "77": 1.0,
+    "78": 0.6666666666666666,
+    "79": 0.6666666666666666,
+    "80": 0.6666666666666666,
+    "81": 0.6666666666666666,
+    "82": 1.0,
+    "83": 1.0,
+    "84": 0.6666666666666666,
+    "85": 0.6666666666666666,
+    "86": 1.0,
+    "87": 1.0,
+    "88": 1.0,
+    "89": 1.0,
+    "90": 1.0,
+    "91": 1.0,
+    "92": 1.0,
+    "93": 1.0,
+    "94": 1.0,
+    "95": 1.0,
+    "96": 1.0,
+    "97": 1.0,
+    "98": 1.0,
+    "99": 1.0,
+    "100": 1.0,
+    "101": 1.0,
+    "102": 1.0,
+    "103": 1.0,
+    "104": 1.0,
+    "105": 1.0,
+    "106": 1.0,
+    "107": 1.0,
+    "108": 1.0,
+    "109": 1.0,
+    "110": 1.0,
+    "111": 1.0,
+    "112": 1.0,
+    "113": 1.0,
+    "114": 1.0,
+    "115": 1.0,
+    "116": 1.0,
+    "117": 1.0,
+    "118": 1.0,
+    "119": 1.0,
+    "120": 1.0,
+    "121": 1.0,
+    "122": 1.0,
+    "123": 1.0
+  },
+  "gods": [
+    {
+      "id": "app_app",
+      "label": "App()",
+      "degree": 131
+    },
+    {
+      "id": "package_dependencies_pocketbase",
+      "label": "pocketbase",
+      "degree": 48
+    },
+    {
+      "id": "src_pocketbase_updatedoc",
+      "label": "updateDoc()",
+      "degree": 25
+    },
+    {
+      "id": "src_pocketbase_setdoc",
+      "label": "setDoc()",
+      "degree": 20
+    },
+    {
+      "id": "app_getpriorityanimationurlsforbuilding",
+      "label": "getPriorityAnimationUrlsForBuilding()",
+      "degree": 18
+    },
+    {
+      "id": "tsconfig_compileroptions",
+      "label": "compilerOptions",
+      "degree": 16
+    },
+    {
+      "id": "pb_hooks_tree_server_utils_processtreehit",
+      "label": "processTreeHit()",
+      "degree": 15
+    },
+    {
+      "id": "src_pocketbase_collection",
+      "label": "collection()",
+      "degree": 15
+    },
+    {
+      "id": "src_pocketbase_getdoc",
+      "label": "getDoc()",
+      "degree": 14
+    },
+    {
+      "id": "src_pocketbase_deletedoc",
+      "label": "deleteDoc()",
+      "degree": 14
+    }
+  ],
+  "surprises": [
+    {
+      "source": "test()",
+      "target": "pocketbase",
+      "source_files": [
+        "check_pb.js",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `test()` unexpectedly reaches hub `pocketbase`"
+    },
+    {
+      "source": "getRules()",
+      "target": "pocketbase",
+      "source_files": [
+        "check_rules.mjs",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `getRules()` unexpectedly reaches hub `pocketbase`"
+    },
+    {
+      "source": "clearChatMessages()",
+      "target": "pocketbase",
+      "source_files": [
+        "clear_chat_messages.mjs",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `clearChatMessages()` unexpectedly reaches hub `pocketbase`"
+    },
+    {
+      "source": "clearCollections()",
+      "target": "pocketbase",
+      "source_files": [
+        "clear_database.js",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `clearCollections()` unexpectedly reaches hub `pocketbase`"
+    },
+    {
+      "source": "createElectionsCollection()",
+      "target": "pocketbase",
+      "source_files": [
+        "create_elections_collection.mjs",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `createElectionsCollection()` unexpectedly reaches hub `pocketbase`"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `pocketbase` connect `pocketbase` to `dependencies`, `repair_live_pocketbase_schema.mjs`, `regenerate_world.mjs`, `cleanup_building_resource_overlaps.mjs`, `cleanup_buildings_combat_legacy.mjs`, `setup_tree_server_architecture.mjs`, `quick_reset_map.mjs`, `smoke_pocketbase_startup.mjs`, `wipe_all_player_buildings.mjs`, `migrate_chat_messages_top_level.mjs`, `import_pocketbase.js`, `migrate_zones_80.mjs`, `fix_schema_final_v2.mjs`, `import_buildings.js`, `test_getone.js`, `test_insert.js`, `check_pb.js`, `check_rules.mjs`, `clear_chat_messages.mjs`, `clear_database.js`, `create_elections_collection.mjs`, `fix_buildings_migration.mjs`, `fix_mail_schema.mjs`, `force_reload.mjs`, `setup_elections.mjs`, `test_create_building_2.mjs`, `test_pb.js`?",
+      "why": "High betweenness centrality (0.041) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `dependencies` connect `dependencies` to `pocketbase`?",
+      "why": "High betweenness centrality (0.015) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `App()` connect `App` to `App.tsx`, `processOfflineTimers`, `types.ts`, `pocketbase.ts`, `collection`, `main`, `updateDoc`, `marketStaticData.ts`, `getPriorityAnimationUrlsForBuilding`, `onSnapshot`, `chooseMonsterBackgroundMove`, `getUserStatCounters`, `getAvatarCacheKey`, `getLastPositionCacheKey`, `getProfileSettingsCacheKey`, `getDoc`, `repairMojibakeCp1251Utf8`, `getCrowdingEscapeMove`?",
+      "why": "High betweenness centrality (0.014) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 3 inferred relationships involving `App()` (e.g. with `createVisualEffect()` and `getPriorityAnimationUrlsForBuilding()`) actually correct?",
+      "why": "`App()` has 3 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `buildingData`, `ZOOM_LEVELS`, `PLAYER_COLORS` to the rest of the system?",
+      "why": "282 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `App.tsx` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.01652892561983471 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `monsterAnimationConfig.ts` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.034482758620689655 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

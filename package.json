@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "diag:regressions": "node check_regressions_worker6.mjs",
-    "cleanup:overlaps": "node cleanup_building_resource_overlaps.mjs"
+    "cleanup:overlaps": "node cleanup_building_resource_overlaps.mjs",
+    "pb:setup:tree-server": "node setup_tree_server_architecture.mjs",
+    "pb:deploy:tree-hooks": "node deploy_tree_server_hooks.cjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",

@@ -1,4 +1,4 @@
-﻿
+
 import LoadingScreen from './LoadingScreen';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { pb } from './src/pocketbase';
@@ -7,7 +7,7 @@ import {
     signInWithEmailAndPassword, createUserWithEmailAndPassword,
     doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, onSnapshot, query, where, orderBy, limit,
     handleFirestoreError, OperationType, testConnection, deleteField, increment, runTransaction, writeBatch, deleteAll, sanitizePbId,
-    clearUserCache, forceClearAuth
+    clearUserCache, forceClearAuth, requestTreeHit, setRuntimeAuditContext
 } from './src/pocketbase';
 import {
     LogIn,
@@ -21,10 +21,120 @@ import {
     SkipForward
 } from 'lucide-react';
 import { buildings as _buildingDataRaw } from './data/buildings';
+import { generateDestructionInfo } from './data/destructionWeapons';
 const buildingData = _buildingDataRaw.filter(Boolean);
 import { items as itemData } from './data/items';
+import {
+    BRONEKUR_WALK_BASE,
+    IZBUSHKA_BASE,
+    SANTA_BASE,
+    GORYNYCH_BASE,
+    KOLOBOK_BASE,
+    BABA_YAGA_BASE,
+    bronekurWalkBottomFrames,
+    bronekurWalkTopRightFrames,
+    bronekurWalkLeftTopFrames,
+    bronekurWalkBottomRightFrames,
+    bronekurIdleFrames,
+    bronekurAttackTopFrames,
+    bronekurAttackLeftFrames,
+    bronekurAttackBottomFrames,
+    bronekurAttackRightFrames,
+    izbushkaWalkLeftFrames,
+    izbushkaWalkRightFrames,
+    izbushkaWalkDownFrames,
+    izbushkaWalkUpFrames,
+    izbushkaIdleFrames,
+    izbushkaAttackTopFrames,
+    izbushkaAttackLeftFrames,
+    izbushkaAttackBottomFrames,
+    izbushkaAttackRightFrames,
+    izbushkaCancelTopFrames,
+    izbushkaCancelLeftFrames,
+    izbushkaCancelBottomFrames,
+    izbushkaCancelRightFrames,
+    santaWalkLeftFrames,
+    santaWalkDownFrames,
+    santaWalkRightFrames,
+    santaWalkUpFrames,
+    santaAttackLeftFrames,
+    santaAttackBottomFrames,
+    santaAttackRightFrames,
+    santaAttackTopFrames,
+    gorynychWalkUpFrames,
+    gorynychWalkDownFrames,
+    gorynychWalkLeftFrames,
+    gorynychWalkRightFrames,
+    gorynychIdleFrames,
+    gorynychAttackTopFrames,
+    gorynychAttackBottomFrames,
+    gorynychAttackLeftFrames,
+    gorynychAttackRightFrames,
+    kolobokWalkUpFrames,
+    kolobokWalkDownFrames,
+    kolobokWalkLeftFrames,
+    kolobokWalkRightFrames,
+    kolobokIdleFrames,
+    kolobokAttackTopFrames,
+    kolobokAttackLeftFrames,
+    kolobokAttackBottomFrames,
+    kolobokAttackRightFrames,
+    babaYagaWalkUpFrames,
+    babaYagaWalkDownFrames,
+    babaYagaWalkLeftFrames,
+    babaYagaWalkRightFrames,
+    babaYagaIdleFrames,
+    babaYagaAttackTopFrames,
+    babaYagaAttackLeftFrames,
+    babaYagaAttackBottomFrames,
+    babaYagaAttackRightFrames,
+} from './src/game/monsters/monsterAnimationConfig';
+import {
+    LEVEL_ICON_URLS,
+    PLAYER_AVATAR_URLS
+} from './src/game/ui/playerAssets';
+import {
+    PROTECTION_OPTIONS,
+    BAN_OPTIONS,
+    PUNISHMENT_OPTIONS,
+    CURSE_OPTIONS
+} from './src/game/ui/actionOptions';
+import { ENERGY_PURCHASE_OPTIONS } from './src/game/economy/energyPurchaseOptions';
+import type {
+    MarketBuySection,
+    MarketResourceSection,
+    MarketBedSection,
+    MarketMonsterSection
+} from './src/game/market/marketStaticData';
+import {
+    GENERAL_MARKET_ENGLISH_NAMES,
+    MILITARY_MARKET_ENGLISH_NAMES,
+    MILITARY_ITEM_IDS,
+    MARKET_BUY_SECTION_LABELS,
+    MARKET_RESOURCE_SECTION_LABELS,
+    MARKET_BED_SECTION_LABELS,
+    MARKET_MONSTER_SECTION_LABELS,
+    GENERAL_MARKET_RESOURCE_SECTION_IDS,
+    GENERAL_MARKET_BED_SECTION_IDS,
+    GENERAL_MARKET_MONSTER_SECTION_IDS
+} from './src/game/market/marketStaticData';
 import { Building, MapResource, BuildingType, PlacedBuilding, VisualEffect, DestructionInfo, Item, MarketListing, Clan, HistoryEntry, DroppedItem, PrivateMessage } from './types';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
+
+const getCanonicalItemName = (itemId: string | number, fallbackName?: string, buildingId?: string | number) => {
+    const numericItemId = Number(itemId);
+    const canonicalItem = Number.isFinite(numericItemId) ? itemData.find(item => item.id === numericItemId) : undefined;
+
+    if (import.meta.env.DEV && !canonicalItem) {
+        console.warn('[App] Missing canonical item for building requirement', {
+            buildingId,
+            reqId: itemId,
+            fallbackName,
+        });
+    }
+
+    return canonicalItem?.name ?? fallbackName ?? `Предмет #${itemId}`;
+};
 
 const handleGameLoopError = (error: unknown, operationType: OperationType, path: string | null) => {
     // Ignore expected race conditions in the game loop
@@ -40,7 +150,7 @@ const handleGameLoopError = (error: unknown, operationType: OperationType, path:
 
 
 // Constants
-const ZOOM_LEVELS = [0.5, 1, 1.5, 2, 2.5];
+const ZOOM_LEVELS = [1, 1.5, 2, 2.5];
 const TILE_WIDTH = 128;
 const TILE_HEIGHT = 64;
 const PLAYER_COLORS = ['#4299E1', '#F56565', '#48BB78', '#ECC94B'];
@@ -49,11 +159,69 @@ const WORLD_HEIGHT_TILES = 200;
 const ZONES_X = 5;
 const ZONES_Y = 5;
 const ZONE_SIZE = 40; // 40x40 tiles per zone to make 200x200 total
+const ZONE_SYNC_MAX_RETRIES = 2;
+const ZONE_SYNC_RETRY_DELAY_MS = 1500;
 const RENDER_RADIUS = 36; // Reduce initial draw work to improve FPS/loading on fresh sessions
 const wrapCoord = (v: number, max: number) => ((v % max) + max) % max;
+const normalizeWorldCoord = (value: number, max: number, isWrappedWorld: boolean) =>
+    isWrappedWorld ? wrapCoord(value, max) : value;
+const getWrappedDelta = (from: number, to: number, size: number, isWrappedWorld: boolean) => {
+    let delta = to - from;
+    if (!isWrappedWorld) return delta;
+    if (delta > size / 2) delta -= size;
+    else if (delta < -size / 2) delta += size;
+    return delta;
+};
+const getWrappedDirectionToTarget = (
+    from: Pick<PlacedBuilding, 'x' | 'y'>,
+    to: Pick<PlacedBuilding, 'x' | 'y'>,
+    isWrappedWorld: boolean
+) => ({
+    dx: getWrappedDelta(from.x, to.x, WORLD_WIDTH_TILES, isWrappedWorld),
+    dy: getWrappedDelta(from.y, to.y, WORLD_HEIGHT_TILES, isWrappedWorld)
+});
+const getWrappedManhattanDistance = (
+    from: Pick<PlacedBuilding, 'x' | 'y'>,
+    to: Pick<PlacedBuilding, 'x' | 'y'>,
+    isWrappedWorld: boolean
+) => Math.abs(getWrappedDelta(from.x, to.x, WORLD_WIDTH_TILES, isWrappedWorld)) +
+    Math.abs(getWrappedDelta(from.y, to.y, WORLD_HEIGHT_TILES, isWrappedWorld));
+const getWrappedChebyshevDistance = (
+    from: Pick<PlacedBuilding, 'x' | 'y'>,
+    to: Pick<PlacedBuilding, 'x' | 'y'>,
+    isWrappedWorld: boolean
+) => Math.max(
+    Math.abs(getWrappedDelta(from.x, to.x, WORLD_WIDTH_TILES, isWrappedWorld)),
+    Math.abs(getWrappedDelta(from.y, to.y, WORLD_HEIGHT_TILES, isWrappedWorld))
+);
+const getCardinalNeighborTiles = (
+    x: number,
+    y: number,
+    isWrappedWorld: boolean
+): Array<{ x: number; y: number; dx: number; dy: number }> => [
+    { x: x + 1, y, dx: 1, dy: 0 },
+    { x: x - 1, y, dx: -1, dy: 0 },
+    { x, y: y + 1, dx: 0, dy: 1 },
+    { x, y: y - 1, dx: 0, dy: -1 }
+].map((neighbor) => ({
+    ...neighbor,
+    x: normalizeWorldCoord(neighbor.x, WORLD_WIDTH_TILES, isWrappedWorld),
+    y: normalizeWorldCoord(neighbor.y, WORLD_HEIGHT_TILES, isWrappedWorld)
+}));
+const getClosestWrappedWorldCoords = (
+    x: number,
+    y: number,
+    refX: number,
+    refY: number,
+    isWrappedWorld: boolean
+) => ({
+    x: isWrappedWorld ? x + Math.round((refX - x) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : x,
+    y: isWrappedWorld ? y + Math.round((refY - y) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : y
+});
 const getZoneId = (x: number, y: number) => `${Math.floor(x / ZONE_SIZE)}_${Math.floor(y / ZONE_SIZE)}`;
 const GOLD_PER_CHOP = 5000000;
 const TREE_HP = 3;
+const TREE_SERVER_HIT_ENERGY_COST = 2;
 const TREES_PER_ZONE = 243; // 243 trees per sector (-10% from 270)
 const NUM_TREES = TREES_PER_ZONE * ZONES_X * ZONES_Y; // 6075 total trees (243 ? 25 sectors)
 const MAX_OIL_DEPOSITS = 8;
@@ -75,6 +243,11 @@ const CANNON_IDS = [700, 701, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385];
 const PROTECTED_TOWER_ID = 702;
 const CLAN_CASTLE_ID = 800;
 const WATCHTOWER_ID = 801;
+const BANDIT_CASTLE_IDS = new Set(
+    buildingData
+        .filter(building => building.category === 'Клан' && building.name.startsWith('Бандитский замок'))
+        .map(building => Number(building.id))
+);
 const PROTECTION_SHIELD_HP = 6666;
 const FINANCIAL_INTELLIGENCE_ID = 340;
 const OIL_RIG_ID = 606;
@@ -108,13 +281,12 @@ const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['
     if (buildingId === WILD_QUARRY_ID) return ['quarry'];
     return [];
 };
+const isBanditCastleBuildingId = (buildingId: number) => BANDIT_CASTLE_IDS.has(Number(buildingId));
 const MONSTER_ACADEMY_ID = 689;
 const MOUNTAIN_ID = 50005;
 const MAX_MOUNTAINS = 70;
 const RIVER_ID = 50004;
 const MAX_RIVERS = 55;
-const MARKET_ID = 315;
-const MILITARY_MARKET_ID = 316;
 const BASE_MAX_ENERGY = 500;
 const ENERGY_COST_PER_CHOP = 1;
 const ENERGY_REGEN_PER_MINUTE = 10;
@@ -149,76 +321,8 @@ const DIRECT_INTERACTION_FACTORIES = [
 // Casino buildings with gambling interaction
 const CASINO_IDS = [328, 329]; // Casino, Ruby Casino 2
 
-// Level icon images for player tags on the map (shown inside nickname tag)
-const LEVEL_ICON_URLS: Record<number, string> = {
-    1: 'https://i.ibb.co/nNvw3ND1/ur1.png',
-    2: 'https://i.ibb.co/HDjFb8Mk/ur2.png',
-    3: 'https://i.ibb.co/tMhg4bjW/ur3.png',
-    4: 'https://i.ibb.co/nqQ0MrK4/ur4.png',
-    5: 'https://i.ibb.co/v6dTtgm5/ur5.png',
-    6: 'https://i.ibb.co/vvL0nGQS/ur6.png',
-    7: 'https://i.ibb.co/7Ntmf43Z/ur7.png',
-    8: 'https://i.ibb.co/QykYtCy/ur8.png',
-    9: 'https://i.ibb.co/Gw2zwcf/ur9.png',
-    10: 'https://i.ibb.co/BHPbKQhy/ur10.png',
-    11: 'https://i.ibb.co/LXt2RpSx/ur11.png',
-    12: 'https://i.ibb.co/hR30cGF7/ur12.png',
-    13: 'https://i.ibb.co/kgCWtVBx/ur13.png',
-    14: 'https://i.ibb.co/Wv7RpTwk/ur14.png',
-    15: 'https://i.ibb.co/XxWqCZrc/ur15.png',
-    16: 'https://i.ibb.co/placeholder-level16.png',
-    17: 'https://i.ibb.co/placeholder-level17.png',
-    18: 'https://i.ibb.co/placeholder-level18.png',
-    19: 'https://i.ibb.co/placeholder-level19.png',
-    20: 'https://i.ibb.co/placeholder-level20.png',
-    21: 'https://i.ibb.co/placeholder-level21.png',
-    22: 'https://i.ibb.co/placeholder-level22.png',
-    23: 'https://i.ibb.co/placeholder-level23.png',
-    24: 'https://i.ibb.co/placeholder-level24.png',
-    25: 'https://i.ibb.co/placeholder-level25.png',
-    26: 'https://i.ibb.co/placeholder-level26.png',
-    27: 'https://i.ibb.co/placeholder-level27.png',
-    28: 'https://i.ibb.co/placeholder-level28.png',
-    29: 'https://i.ibb.co/placeholder-level29.png',
-    30: 'https://i.ibb.co/placeholder-level30.png'
-};
-
-// Player avatar shown below nickname on map (different for each level)
-const PLAYER_AVATAR_URLS: Record<number, string> = {
-    1: 'https://i.ibb.co/HDp8wbwc/ut-K4z-uu-Bjg-1.png',
-    2: 'https://i.ibb.co/5VxsVTK/i-E3j3-y-YS78-1.png',
-    3: 'https://i.ibb.co/0RC715mn/23cy-Wxc-Vbu-Y-1.png',
-    4: 'https://i.ibb.co/TDv9h2sL/4.png',
-    5: 'https://i.ibb.co/LH57wWq/5.png',
-    6: 'https://i.ibb.co/VpYqVbJf/6.png',
-    7: 'https://i.ibb.co/Q7JVPCHX/7.png',
-    8: 'https://i.ibb.co/BWCkfp4/8.png',
-    9: 'https://i.ibb.co/JJBS9m2/9-2.png',
-    10: 'https://i.ibb.co/fd2zKY1w/10-2.png',
-    11: 'https://i.ibb.co/Y4pLHG9L/11.png',
-    12: 'https://i.ibb.co/k6HrscYV/12.png',
-    13: 'https://i.ibb.co/QvTLdc50/13.png',
-    14: 'https://i.ibb.co/xSrbhBwB/14.png',
-    15: 'https://i.ibb.co/cKmZNK2V/15.png',
-    16: 'https://i.ibb.co/placeholder-avatar16.png',
-    17: 'https://i.ibb.co/placeholder-avatar17.png',
-    18: 'https://i.ibb.co/placeholder-avatar18.png',
-    19: 'https://i.ibb.co/placeholder-avatar19.png',
-    20: 'https://i.ibb.co/placeholder-avatar20.png',
-    21: 'https://i.ibb.co/placeholder-avatar21.png',
-    22: 'https://i.ibb.co/placeholder-avatar22.png',
-    23: 'https://i.ibb.co/placeholder-avatar23.png',
-    24: 'https://i.ibb.co/placeholder-avatar24.png',
-    25: 'https://i.ibb.co/placeholder-avatar25.png',
-    26: 'https://i.ibb.co/placeholder-avatar26.png',
-    27: 'https://i.ibb.co/placeholder-avatar27.png',
-    28: 'https://i.ibb.co/placeholder-avatar28.png',
-    29: 'https://i.ibb.co/placeholder-avatar29.png',
-    30: 'https://i.ibb.co/placeholder-avatar30.png'
-};
-
 // Police skin for sheriff and deputies
-const POLICE_SKIN_URL = 'https://i.ibb.co/SX7RYTJc/16.png';
+const POLICE_SKIN_URL = '/last_appx/polise/16.webp';
 
 // Tree respawn is now instant - no timer needed
 const UPGRADE_EFFECT_DURATION = 1000; // 1 second
@@ -233,46 +337,13 @@ const MOUNTAIN_MOVE_COST = 20;
 const SHOUT_COST_GOLD = 1300;
 const SHOUT_COST_ENERGY = 60;
 const LOCATION_SHARE_COOLDOWN = 60000; // 1 minute
-const MILITARY_ITEM_IDS = [10010, 10011, 10012, 10013, 10015, 10016, 10017, 10042, 10043];
 const MAX_REPUTATION = 950;
-const PROTECTION_IMAGE_URL = 'https://i.ibb.co/5gbWdk4N/337.png';
+const PROTECTION_IMAGE_URL = '/buildings/защищенная башня/337.webp';
 const TELEPORT_COOLDOWN_MS = 5000;
 const DRAG_COOLDOWN_MS = 1000; // Cooldown after fast drag to prevent building on unloaded cells
 const COLLISION_CHECK_INTERVAL_MS = 121 * 1000; // Check for overlapping buildings every 121 seconds
 const STICKY_INTERACTION_MS = 15000; // Keep optimistic local state briefly while server catches up
 const PERSISTENT_ENTITY_GRACE_MS = 7000; // Keep system/monster entities briefly if zone snapshot is momentarily stale
-
-const PROTECTION_OPTIONS = [
-    { cost: 2, duration: 10 * 60 * 60 * 1000, label: 'На 10 часов' },
-    { cost: 4, duration: 24 * 60 * 60 * 1000, label: 'На 1 сутки' },
-    { cost: 6, duration: 3 * 24 * 60 * 60 * 1000, label: 'На 3 суток' },
-    { cost: 8, duration: 8 * 24 * 60 * 60 * 1000, label: 'На 8 суток' },
-    { cost: 10, duration: 32 * 24 * 60 * 60 * 1000, label: 'На 32 суток' },
-];
-
-const BAN_OPTIONS = [
-    { label: 'Забанить на 1 минуту', cost: 9000, durationMinutes: 1 },
-    { label: 'Забанить на 5 минут', cost: 15000, durationMinutes: 5 },
-    { label: 'Забанить на 30 минут', cost: 25000, durationMinutes: 30 },
-    { label: 'Забанить на час', cost: 45000, durationMinutes: 60 },
-    { label: 'Забанить на сутки', cost: 100000, durationMinutes: 1440 },
-];
-
-const PUNISHMENT_OPTIONS = [
-    { cost: 1, gloryPenalty: 500, label: 'Отшлепать' },
-    { cost: 2, gloryPenalty: 1000, label: 'Пнуть' },
-    { cost: 3, gloryPenalty: 2400, label: 'Выпороть' },
-    { cost: 4, gloryPenalty: 5500, label: 'Смешать с грязью' },
-    { cost: 5, gloryPenalty: 9000, label: 'Закатать в асфальт' },
-];
-
-const CURSE_OPTIONS = [
-    { label: 'Жаба', cost: 4000, durationMinutes: 1, prefix: '(ква-ква-ква)' },
-    { label: 'Корова', cost: 8000, durationMinutes: 2, prefix: '(му-му-му)' },
-    { label: 'Собака', cost: 12000, durationMinutes: 3, prefix: '(гаф-гаф)' },
-    { label: 'Свинья', cost: 16000, durationMinutes: 4, prefix: '(хрю-хрю)' },
-    { label: 'Барашек', cost: 20000, durationMinutes: 5, prefix: '(бе-бе-бе)' },
-];
 
 const MOCK_USER_LEVELS: Record<string, number> = {
     'Nagibator2000': 5,
@@ -297,7 +368,7 @@ const KOLOBOK_EMOJIS = [
     { code: ':P', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/beee.gif' },
     { code: ':cool:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/dirol.gif' },
     { code: ':crazy:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/crazy.gif' },
-    { code: ':mad:', url: 'https://i.ibb.co/gZ3Fx7Sz/aggressive.gif' },
+    { code: ':mad:', url: '/Chat/aggressive.gif' },
     { code: ':blush:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/blush.gif' },
     { code: ':rofl:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/rofl.gif' },
     { code: ':ok:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/ok.gif' },
@@ -311,8 +382,73 @@ type GiftSubTab = 'main' | 'castles' | 'babies' | 'march8' | 'halloween' | 'vale
 type DecorSubTab = 'flags' | 'other';
 type ChatTab = 'general' | 'banya' | 'loot' | 'clan' | 'police';
 type ProfileTab = 'info' | 'clan' | 'history' | 'friends' | 'mail' | 'private' | 'settings' | 'police_elections';
-type MarketTab = 'buy' | 'sell';
 type TopPlayersTab = 'glory' | 'trees' | 'monsters' | 'buildings' | 'theft';
+type MarketTab = 'buy' | 'sell';
+const isMilitaryMarketListing = (resourceId: number) => MILITARY_ITEM_IDS.includes(resourceId);
+
+const isGeneralMarketBuilding = (buildingInfo: Building) => GENERAL_MARKET_ENGLISH_NAMES.has(buildingInfo.englishName || '');
+
+const isMilitaryMarketBuilding = (buildingInfo: Building) => MILITARY_MARKET_ENGLISH_NAMES.has(buildingInfo.englishName || '');
+
+const matchesMarketType = (listing: MarketListing, type: 'general' | 'military') =>
+    type === 'military'
+        ? isMilitaryMarketListing(listing.resourceId)
+        : !isMilitaryMarketListing(listing.resourceId);
+
+const getGeneralMarketBuySectionForItem = (itemId: number): MarketBuySection | null => {
+    if (Object.values(GENERAL_MARKET_RESOURCE_SECTION_IDS).some(ids => ids.includes(itemId))) return 'resources';
+    if (Object.values(GENERAL_MARKET_BED_SECTION_IDS).some(ids => ids.includes(itemId))) return 'beds';
+    if (Object.values(GENERAL_MARKET_MONSTER_SECTION_IDS).some(ids => ids.includes(itemId))) return 'monsters';
+    return null;
+};
+
+const matchesGeneralMarketBuyFilters = (
+    itemId: number,
+    section: MarketBuySection,
+    resourceSection: MarketResourceSection,
+    bedSection: MarketBedSection,
+    monsterSection: MarketMonsterSection
+) => {
+    if (section === 'resources') return GENERAL_MARKET_RESOURCE_SECTION_IDS[resourceSection].includes(itemId);
+    if (section === 'beds') return GENERAL_MARKET_BED_SECTION_IDS[bedSection].includes(itemId);
+    return GENERAL_MARKET_MONSTER_SECTION_IDS[monsterSection].includes(itemId);
+};
+
+const normalizeMarketListing = (raw: any): MarketListing | null => {
+    const id = Number(raw?.id ?? raw?.gameId);
+    const resourceId = Number(raw?.resourceId ?? raw?.itemId);
+    const amount = Number(raw?.amount ?? raw?.quantity);
+    const price = Number(raw?.price);
+    const sellerName = repairMojibakeCp1251Utf8(String(raw?.sellerName ?? ''));
+    const sellerId = String(raw?.sellerId ?? '0');
+    const currency: 'coins' | 'rubies' = raw?.currency === 'rubies' ? 'rubies' : 'coins';
+
+    if (!Number.isFinite(id) || !Number.isFinite(resourceId) || !Number.isFinite(amount) || !Number.isFinite(price)) {
+        return null;
+    }
+
+    return {
+        id,
+        sellerName,
+        sellerId,
+        resourceId,
+        amount,
+        price,
+        currency
+    };
+};
+
+const buildMarketListingPayload = (listing: MarketListing) => {
+    const itemInfo = itemData.find(i => i.id === listing.resourceId);
+
+    return {
+        ...listing,
+        itemId: String(listing.resourceId),
+        itemName: itemInfo?.name || `Item ${listing.resourceId}`,
+        quantity: listing.amount,
+        timestamp: listing.id
+    };
+};
 
 interface ChatMessage {
     id: number;
@@ -324,7 +460,14 @@ interface ChatMessage {
     tab: ChatTab | 'all';
     teleportCoordinates?: { x: number, y: number };
     clanId?: number | null;
+    localOnly?: boolean;
 }
+
+const SYSTEM_CHAT_MESSAGE_TTL_MS = 60 * 60 * 1000;
+
+const isExpiredChatMessage = (msg: ChatMessage, now = Date.now()) => {
+    return msg.type === 'system' && (now - msg.timestamp) >= SYSTEM_CHAT_MESSAGE_TTL_MS;
+};
 
 interface Friend {
     name: string;
@@ -366,11 +509,17 @@ const hasHigherLeaderboardStats = (candidateData: any, baselineData: any) => {
     );
 };
 
+const normalizeClanIdValue = (value: any): number | null => {
+    if (value === null || value === undefined || value === '') return null;
+    const normalized = Number(value);
+    return Number.isFinite(normalized) ? normalized : null;
+};
+
 const toTopPlayerEntry = (uid: string, data: any) => ({
     uid: String(uid),
     name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
     avatar: resolveUserAvatar(data),
-    glory: Number(data?.glory || 0) || 0,
+    glory: Math.max(0, Number(data?.glory || 0) || 0),
     ...getUserStatCounters(data),
 });
 
@@ -399,7 +548,7 @@ const mergeTopPlayersEntries = (...sources: any[][]) => {
                 uid,
                 name: entry.name || existing.name || 'Неизвестный',
                 avatar: entry.avatar || existing.avatar || null,
-                glory: entry.glory !== undefined ? (Number(entry.glory || 0) || 0) : (Number(existing.glory || 0) || 0),
+                glory: Math.max(Number(existing.glory || 0) || 0, Number(entry.glory || 0) || 0),
                 treesChopped: Math.max(Number(existing.treesChopped || 0) || 0, Number(entry.treesChopped || 0) || 0),
                 monstersDestroyed: Math.max(Number(existing.monstersDestroyed || 0) || 0, Number(entry.monstersDestroyed || 0) || 0),
                 buildingsDestroyed: Math.max(Number(existing.buildingsDestroyed || 0) || 0, Number(entry.buildingsDestroyed || 0) || 0),
@@ -414,6 +563,7 @@ const mergeTopPlayersEntries = (...sources: any[][]) => {
 interface PlacementGuardOptions {
     ignoreBuildingId?: string | number;
     allowedResourceTypes?: MapResource['type'][];
+    traceId?: string;
 }
 
 interface PlacementGuardResult {
@@ -423,13 +573,52 @@ interface PlacementGuardResult {
 }
 
 type PlacementPreviewState = 'free' | 'occupied' | 'syncing';
+type ResourceShopCategory = 'resources' | 'gryadki' | 'bombs' | 'monsters';
 
 interface ZonePlacementStatus {
     buildingsLoaded: boolean;
     resourcesLoaded: boolean;
+    buildingsFailed?: boolean;
+    resourcesFailed?: boolean;
     lastRequestedAt: number;
     lastBuildingsLoadedAt: number;
     lastResourcesLoadedAt: number;
+}
+
+interface ZoneGateDebugSnapshot {
+    centerZoneId: string;
+    zoneLoadRing: number;
+    hoveredTile: string;
+    hoveredZoneId: string;
+    hoveredZoneInCurrentZones: boolean;
+    currentZones: string[];
+    currentBuildingZones: string[];
+    placementStatus: string;
+    buildingsStatus: string;
+    resourcesStatus: string;
+    droppedItemsStatus: string;
+    collisionStatus: string;
+    blocker: string;
+    hoveredZoneStatusFlags: string;
+    hoveredZoneTiming: string;
+    activeRequests: string;
+}
+
+interface BuildTimingTrace {
+    traceId: string;
+    tempId?: string;
+    docId?: string;
+    buildingId: number;
+    x: number;
+    y: number;
+    zoneId: string;
+    clickStartedAt: number;
+    validationDoneAt?: number;
+    optimisticRenderAt?: number;
+    pbCreateStartedAt?: number;
+    pbCreateDoneAt?: number;
+    snapshotReceivedAt?: number;
+    snapshotSources: string[];
 }
 
 // Offline timer processing - calculates overdue building timers when player returns
@@ -440,6 +629,7 @@ const processOfflineTimers = (
     options?: {
         canApplyDestructionTimer?: (building: PlacedBuilding) => boolean;
         resources?: MapResource[];
+        isWrappedWorld?: boolean;
     }
 ): { updated: PlacedBuilding[], updates: { id: string, data: Partial<PlacedBuilding> }[] } => {
     const now = Date.now();
@@ -455,20 +645,33 @@ const processOfflineTimers = (
         if (building.isConstructing && building.constructionEndTime && now >= building.constructionEndTime) {
             updatedBuilding.isConstructing = false;
             updatedBuilding.workState = 'idle';
+            recordBuildingTimerTrace('processOfflineTimers', updatedBuilding, {
+                now,
+                actionType: 'idle',
+                transition: 'construction-complete',
+                previousIsConstructing: building.isConstructing,
+            });
             needsUpdate = true;
         }
 
         // Check work timer (farming/production)
         if (building.workState === 'working' && building.workEndTime && now >= building.workEndTime) {
             updatedBuilding.workState = 'finished';
+            recordBuildingTimerTrace('processOfflineTimers', updatedBuilding, {
+                now,
+                actionType: 'finished',
+                transition: 'work-complete',
+                previousWorkState: building.workState,
+            });
             needsUpdate = true;
         }
 
         // Check destruction/bomb timer
+        const destructionExpiresAt = getEffectiveDestructionExpiresAt(building);
         if (
             building.isDestroying &&
-            building.destructionEndTime &&
-            now >= building.destructionEndTime &&
+            destructionExpiresAt &&
+            now >= destructionExpiresAt &&
             (options?.canApplyDestructionTimer?.(building) ?? true)
         ) {
             const damage = building.pendingDamage || 0;
@@ -484,7 +687,12 @@ const processOfflineTimers = (
             // misread as a migration artifact and restored on next sync.
             updatedBuilding.maxHp = fullHp;
             updatedBuilding.isDestroying = false;
+            updatedBuilding.destructionStartedAt = undefined;
             updatedBuilding.destructionEndTime = undefined;
+            updatedBuilding.destructionExpiresAt = undefined;
+            updatedBuilding.destructionDurationMs = undefined;
+            updatedBuilding.destructionMaxLifetimeMs = undefined;
+            updatedBuilding.destructionStatus = 'finished';
             updatedBuilding.pendingDamage = 0;
             
             // If HP <= 0, mark for deletion (don't delete here, let the game loop handle it)
@@ -514,6 +722,21 @@ const processOfflineTimers = (
                 if (updatedBuilding.destructionEndTime !== building.destructionEndTime) {
                     updateData.destructionEndTime = updatedBuilding.destructionEndTime;
                 }
+                if (updatedBuilding.destructionStartedAt !== building.destructionStartedAt) {
+                    updateData.destructionStartedAt = updatedBuilding.destructionStartedAt;
+                }
+                if (updatedBuilding.destructionExpiresAt !== building.destructionExpiresAt) {
+                    updateData.destructionExpiresAt = updatedBuilding.destructionExpiresAt;
+                }
+                if (updatedBuilding.destructionDurationMs !== building.destructionDurationMs) {
+                    updateData.destructionDurationMs = updatedBuilding.destructionDurationMs;
+                }
+                if (updatedBuilding.destructionMaxLifetimeMs !== building.destructionMaxLifetimeMs) {
+                    updateData.destructionMaxLifetimeMs = updatedBuilding.destructionMaxLifetimeMs;
+                }
+                if (updatedBuilding.destructionStatus !== building.destructionStatus) {
+                    updateData.destructionStatus = updatedBuilding.destructionStatus;
+                }
                 if (updatedBuilding.pendingDamage !== building.pendingDamage) {
                     updateData.pendingDamage = updatedBuilding.pendingDamage;
                 }
@@ -541,9 +764,6 @@ const processOfflineTimers = (
         (options?.resources || []).map(r => `${r.x},${r.y}`)
     );
 
-    const neighbors4 = (a: PlacedBuilding, b: PlacedBuilding) =>
-        Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
-
     const nowTs = now;
     const MAX_OFFLINE_COMBAT_WINDOW_MS = 60 * 1000; // keep catch-up small to avoid burst deletes after lag/tab freeze
     const MAX_OFFLINE_MOVE_WINDOW_MS = 60 * 1000; // keep movement catch-up bounded too
@@ -568,7 +788,9 @@ const processOfflineTimers = (
     for (const monster of monsters) {
         if (appliedHits >= MAX_OFFLINE_TOTAL_HITS) break;
         const monsterId = String(monster.id);
-        const target = getMonsterAdjacentAttackTarget(monster, Array.from(byId.values()), buildingData);
+        const target = getMonsterAdjacentAttackTarget(monster, Array.from(byId.values()), buildingData, {
+            isWrappedWorld: options?.isWrappedWorld
+        });
         if (!target) continue;
 
         const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
@@ -587,6 +809,22 @@ const processOfflineTimers = (
         const targetId = String(target.id);
         const targetCurrent = byId.get(targetId);
         if (!targetCurrent) continue;
+        const source = 'offline_catchup';
+        const combatTraceId = `${source}:${monsterId}:${targetId}:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
+        console.log("[COMBAT TARGET BEFORE HIT]", {
+            combatTraceId,
+            source,
+            monsterId,
+            targetId,
+            targetHp: targetCurrent.hp,
+            targetIsDestroying: targetCurrent.isDestroying,
+            targetPendingDamage: targetCurrent.pendingDamage,
+            targetDestructionEndTime: targetCurrent.destructionEndTime,
+            deleting: null,
+            tombstoned: null,
+            preferredTargetId: null,
+            timestamp: Date.now(),
+        });
         const targetBaseHp = targetCurrent.hp ?? (targetInfo?.stats.durability ?? 100);
         if (targetBaseHp <= 0) continue;
 
@@ -610,6 +848,46 @@ const processOfflineTimers = (
 
         const monsterFatalHit = nextHp <= 0;
         const targetMaxHp = targetCurrent.maxHp ?? (targetInfo?.stats.durability ?? 100);
+        console.log("[COMBAT DAMAGE QUEUED]", {
+            combatTraceId,
+            source,
+            monsterId,
+            targetId,
+            damage: hits * dmg,
+            targetHpBefore: targetBaseHp,
+            targetHpAfter: nextHp,
+            targetShieldBefore: targetBaseShield,
+            targetShieldAfter: nextShield,
+            recipientIds: [targetId],
+            recipientCount: 1,
+            timestamp: Date.now(),
+        });
+        if (monsterFatalHit) {
+            console.log("[COMBAT FATAL HIT]", {
+                combatTraceId,
+                source,
+                monsterId,
+                buildingId: targetId,
+                hpBefore: targetBaseHp,
+                hpAfterCalculated: nextHp,
+                wasAlreadyDestroying: Boolean(targetCurrent.isDestroying),
+                oldDestructionEndTime: targetCurrent.destructionEndTime,
+                timestamp: Date.now(),
+            });
+            if (targetCurrent.isDestroying || targetCurrent.destructionEndTime !== undefined) {
+                console.error("[DESTRUCTION RESTART DETECTED]", {
+                    combatTraceId,
+                    source,
+                    buildingId: targetId,
+                    hp: targetCurrent.hp,
+                    isDestroying: targetCurrent.isDestroying,
+                    destructionEndTime: targetCurrent.destructionEndTime,
+                    pendingDamage: targetCurrent.pendingDamage,
+                    timestamp: Date.now(),
+                    stack: new Error().stack,
+                });
+            }
+        }
 
         byId.set(targetId, {
             ...targetCurrent,
@@ -670,21 +948,22 @@ const processOfflineTimers = (
 };
 
 // Image assets
-const treeImageUrl = 'https://i.ibb.co/5XtPHtxk/005.png';
-const groundTileImageUrl = 'https://i.ibb.co/dwnTnX5d/IMG-2378-12.png';
-const coinImageUrl = 'https://i.ibb.co/j9YRJpyd/Image-2.png';
-const gloryImageUrl = 'https://i.ibb.co/jZPDbP9W/slav.png';
-const rubyImageUrl = 'https://i.ibb.co/svsPdPpv/Nj7hb.png';
-const permitGuideImageUrl = new URL('./GUIBUILDINGmenu/ChatGPT Image 31 мая 2026 г., 02_29_49.png', import.meta.url).href;
-const townHallTutorialImageUrl = new URL('./GUI_Tutorial/TH.png', import.meta.url).href;
-const houseTutorialImageUrl = new URL('./GUI_Tutorial/House.png', import.meta.url).href;
-const houseTutorialCompleteImageUrl = new URL('./GUI_Tutorial/Houseend.png', import.meta.url).href;
-const lilyPondTutorialImageUrl = new URL('./GUI_Tutorial/laik.png', import.meta.url).href;
-const lilyPondTutorialCompleteImageUrl = new URL('./GUI_Tutorial/laikend.png', import.meta.url).href;
-const monsterTutorialImageUrl = new URL('./GUI_Tutorial/monster1.png', import.meta.url).href;
-const monsterTutorialImageUrl2 = new URL('./GUI_Tutorial/monster2.png', import.meta.url).href;
-const tutorialEndImageUrl = new URL('./GUI_Tutorial/tutorialend.png', import.meta.url).href;
-const firecrackerTutorialImageUrl = 'https://i.ibb.co/j997mCCj/10013.png';
+const treeImageUrl = '/Grid/005.webp';
+const groundTileImageUrl = '/Grid/IMG-2378-12.webp';
+const coinImageUrl = '/Gui/Front/значек монет/Image-2.webp';
+const gloryImageUrl = '/last_appx/glory/slav.webp';
+const rubyImageUrl = '/Gui/Front/значек рубинов/Nj7hb.webp';
+const permitGuideImageUrl = '/Gui/Back/permit-guide.webp';
+const townHallTutorialImageUrl = '/Gui/GUI_Tutorial/TH.webp';
+const introTutorialImageUrl = '/Gui/GUI_Tutorial/firsttutorial.webp';
+const houseTutorialImageUrl = '/Gui/GUI_Tutorial/House.webp';
+const houseTutorialCompleteImageUrl = '/Gui/GUI_Tutorial/Houseend.webp';
+const lilyPondTutorialImageUrl = '/Gui/GUI_Tutorial/laik.webp';
+const lilyPondTutorialCompleteImageUrl = '/Gui/GUI_Tutorial/laikend.webp';
+const monsterTutorialImageUrl = '/Gui/GUI_Tutorial/monster1.webp';
+const monsterTutorialImageUrl2 = '/Gui/GUI_Tutorial/monster2.webp';
+const tutorialEndImageUrl = '/Gui/GUI_Tutorial/tutorialend.webp';
+const firecrackerTutorialImageUrl = '/Gui/GUI_Tutorial/tutorialend1.webp';
 
 const formatBuildDuration = (seconds?: number) => {
     const totalSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -723,6 +1002,39 @@ const writeCachedAvatar = (uid: string, avatar: string | null) => {
     }
 };
 
+const getProfileSettingsCacheKey = (uid: string) => `goldwasdx:profileSettings:${uid}`;
+
+const readCachedProfileSettings = (uid?: string | null): { gender: 'male' | 'female' | null; friends: Friend[] } => {
+    if (!uid) return { gender: null, friends: [] };
+    try {
+        const raw = localStorage.getItem(getProfileSettingsCacheKey(uid));
+        if (!raw) return { gender: null, friends: [] };
+        const parsed = JSON.parse(raw);
+        const gender = parsed?.gender === 'male' || parsed?.gender === 'female' ? parsed.gender : null;
+        const friends = Array.isArray(parsed?.friends)
+            ? parsed.friends.filter((friend: any) => friend && typeof friend.name === 'string').map((friend: any) => ({
+                name: friend.name,
+                uid: typeof friend.uid === 'string' ? friend.uid : undefined,
+                addedAt: Number(friend.addedAt) || Date.now()
+            }))
+            : [];
+        return { gender, friends };
+    } catch {
+        return { gender: null, friends: [] };
+    }
+};
+
+const writeCachedProfileSettings = (uid: string, settings: { gender: 'male' | 'female' | null; friends: Friend[] }) => {
+    try {
+        localStorage.setItem(getProfileSettingsCacheKey(uid), JSON.stringify({
+            gender: settings.gender,
+            friends: settings.friends
+        }));
+    } catch {
+        // Ignore localStorage write failures.
+    }
+};
+
 const getLeaderboardStatsCacheKey = (uid: string) => `goldwasdx:leaderboardStats:${uid}`;
 
 const readCachedLeaderboardStats = (uid?: string | null): ReturnType<typeof getUserStatCounters> => {
@@ -744,207 +1056,80 @@ const writeCachedLeaderboardStats = (uid: string, stats: ReturnType<typeof getUs
         // Ignore localStorage write failures.
     }
 };
+
+const getLastPositionCacheKey = (uid: string) => `goldwasdx:lastPosition:${uid}`;
+
+const readCachedLastPosition = (uid?: string | null): { x: number; y: number; savedAt: number } | null => {
+    if (!uid) return null;
+    try {
+        const raw = localStorage.getItem(getLastPositionCacheKey(uid));
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const x = Number(parsed?.x);
+        const y = Number(parsed?.y);
+        const savedAt = Number(parsed?.savedAt) || 0;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return { x, y, savedAt };
+    } catch {
+        return null;
+    }
+};
+
+const writeCachedLastPosition = (uid: string, position: { x: number; y: number; savedAt?: number } | null) => {
+    try {
+        if (!position) {
+            localStorage.removeItem(getLastPositionCacheKey(uid));
+            return;
+        }
+
+        localStorage.setItem(getLastPositionCacheKey(uid), JSON.stringify({
+            x: Number(position.x) || 0,
+            y: Number(position.y) || 0,
+            savedAt: Number(position.savedAt) || Date.now()
+        }));
+    } catch {
+        // Ignore localStorage write failures.
+    }
+};
+
+const MAX_SAFE_INVENTORY_COUNT = Number.MAX_SAFE_INTEGER - 1;
+
+const normalizeInventoryCount = (value: unknown): number => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 0;
+    return Math.max(0, Math.min(MAX_SAFE_INVENTORY_COUNT, Math.floor(numeric)));
+};
+
+const sanitizeInventoryCounts = (rawInventory: unknown): Record<number, number> => {
+    if (!rawInventory || typeof rawInventory !== 'object') return {};
+
+    const sanitized: Record<number, number> = {};
+    for (const [rawId, rawAmount] of Object.entries(rawInventory as Record<string, unknown>)) {
+        const itemId = Number(rawId);
+        if (!Number.isFinite(itemId)) continue;
+        sanitized[itemId] = normalizeInventoryCount(rawAmount);
+    }
+    return sanitized;
+};
+
 const TUTORIAL_FROG_HOUSE_ID = 1;
 const TUTORIAL_LILY_POND_ID = 400;
-const energyBatteryImageUrl = new URL('./GUIBUILDINGmenu/ChatGPT Image 1 июн. 2026 г., 18_27_12.png', import.meta.url).href;
-const populationImageUrl = 'https://i.ibb.co/LX1wnf04/Image-1.png';
-const oilImageUrl = 'https://i.ibb.co/bMhPjZVp/30000.png';
-const chestImageUrl = 'https://i.ibb.co/9kRL4JWP/10000.png';
-const quarryImageUrl = 'https://i.ibb.co/Pvj6y4ZS/30001.png';
-const builderIconUrl = 'https://i.ibb.co/LX1wnf04/Image-1.png';
-const ENERGY_PURCHASE_OPTIONS = [
-    { amount: 100, rubies: 1 },
-    { amount: 250, rubies: 2 },
-    { amount: 450, rubies: 3 },
-    { amount: 700, rubies: 4 }
-] as const;
-
-// Bronekur (ID 70006) walking animation frames - 4 directions
-// Use the real exported filenames here; the old mojibake variants caused 404s for
-// transitional frames such as 187_TOP / 188_RIGHT_BOTTTOM during preload.
-const BRONEKUR_WALK_BASE = '/animation/monsters/bronecur/DefineSprite_962_anim.a70006/ходьба';
-const IZBUSHKA_BASE = '/animation/monsters/Избушка/DefineSprite_1084_anim.a70001';
-const SANTA_BASE = '/animation/monsters/злой санта/DefineSprite_612_anim.a70002';
-const GORYNYCH_BASE = '/animation/monsters/горыныч/DefineSprite_1516_anim.a70003_base';
-const KOLOBOK_BASE = '/animation/monsters/колобок/DefineSprite_653_anim.a70004_base';
-const BABA_YAGA_BASE = '/animation/monsters/баба яга/DefineSprite_1181_anim.a70005';
-// Bottom to top (72 frames: 50_BOTTOM_LEFT, 51-120, 121_TOP)
-const bronekurWalkBottomFrames: string[] = [
-  `${BRONEKUR_WALK_BASE}/ходьба с низу на топ/50_BOTTOM_LEFT.png`,
-  ...Array.from({ length: 70 }, (_, i) => `${BRONEKUR_WALK_BASE}/ходьба с низу на топ/${51 + i}.png`),
-  `${BRONEKUR_WALK_BASE}/ходьба с низу на топ/121_TOP.png`
-];
-// Top-right to top (49 frames: 1_TOPRIGHR, 2-48, 49_TOP)
-const bronekurWalkTopRightFrames: string[] = [
-  `${BRONEKUR_WALK_BASE}/с верхнего правого угла на топ/1_TOPRIGHR.png`,
-  ...Array.from({ length: 47 }, (_, i) => `${BRONEKUR_WALK_BASE}/с верхнего правого угла на топ/${2 + i}.png`),
-  `${BRONEKUR_WALK_BASE}/с верхнего правого угла на топ/49_TOP.png`
-];
-// Left-top to top (66 frames: 122_LEFT, 123-186, 187_TOP)
-const bronekurWalkLeftTopFrames: string[] = [
-  `${BRONEKUR_WALK_BASE}/с левого угла верхнего  двигаеться на топ/122_LEFT.png`,
-  ...Array.from({ length: 64 }, (_, i) => `${BRONEKUR_WALK_BASE}/с левого угла верхнего  двигаеться на топ/${123 + i}.png`),
-  `${BRONEKUR_WALK_BASE}/с левого угла верхнего  двигаеться на топ/187_TOP.png`
-];
-// Bottom-right to top (64 frames: 188_RIGHT_BOTTTOM, 189-250, 251_TOP)
-const bronekurWalkBottomRightFrames: string[] = [
-  `${BRONEKUR_WALK_BASE}/с правого угла нижнего на топ/188_RIGHT_BOTTTOM.png`,
-  ...Array.from({ length: 62 }, (_, i) => `${BRONEKUR_WALK_BASE}/с правого угла нижнего на топ/${189 + i}.png`),
-  `${BRONEKUR_WALK_BASE}/с правого угла нижнего на топ/251_TOP.png`
-];
-
-// Bronekur standing/idle animation (57 frames: 424-480)
-const bronekurIdleFrames: string[] = Array.from({ length: 57 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/стоит/${424 + i}.png`);
-
-// Bronekur attack animations - 4 directions
-// Attack top (Р Р†Р ВµРЎР‚РЎвЂ¦Р Р…Р С‘Р в„– Р С”Р Р†Р В°Р Т‘РЎР‚Р В°РЎвЂљ): 51 frames (374-424) > grid dy=-1 (screen top-right)
-const bronekurAttackTopFrames: string[] = Array.from({ length: 51 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в верхний квадрат/${374 + i}.png`);
-// Attack left (Р В»Р ВµР Р†РЎвЂ№Р в„– Р С”Р Р†Р В°Р Т‘РЎР‚Р В°РЎвЂљ): 34 frames (290-323) > grid dx=-1 (screen top-left)
-const bronekurAttackLeftFrames: string[] = Array.from({ length: 34 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в левый квадрат/${290 + i}.png`);
-// Attack bottom (Р Р…Р С‘Р В¶Р Р…Р С‘Р в„– Р С”Р Р†Р В°Р Т‘РЎР‚Р В°РЎвЂљ): 40 frames (251-290) > grid dy=1 (screen bottom-left)
-const bronekurAttackBottomFrames: string[] = Array.from({ length: 40 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в нижний квадрат/${251 + i}.png`);
-// Attack right (Р С—РЎР‚Р В°Р Р†РЎвЂ№Р в„– Р С”Р Р†Р В°Р Т‘РЎР‚Р В°РЎвЂљ): 52 frames (323-374) > grid dx=1 (screen bottom-right)
-const bronekurAttackRightFrames: string[] = Array.from({ length: 52 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в правый квадрат/${323 + i}.png`);
-
-// Izbushka (ID 70001) walking animation frames - 4 directions
-// Walk left (75 frames: 18-92)
-const izbushkaWalkLeftFrames: string[] = Array.from({ length: 75 }, (_, i) => `${IZBUSHKA_BASE}/ходьба/идет на лево/${18 + i}.png`);
-// Walk right (72 frames: 137-208)
-const izbushkaWalkRightFrames: string[] = Array.from({ length: 72 }, (_, i) => `${IZBUSHKA_BASE}/ходьба/идет на право/${137 + i}.png`);
-// Walk down (top to bottom) (74 frames: 324-397)
-const izbushkaWalkDownFrames: string[] = Array.from({ length: 74 }, (_, i) => `${IZBUSHKA_BASE}/ходьба/с верху идет в низ/${324 + i}.png`);
-// Walk up (bottom to top) (84 frames: 224-307)
-const izbushkaWalkUpFrames: string[] = Array.from({ length: 84 }, (_, i) => `${IZBUSHKA_BASE}/ходьба/с низу идет в верх/${224 + i}.png`);
-
-// Izbushka standing/idle animation (31 frames: 92-122)
-const izbushkaIdleFrames: string[] = Array.from({ length: 31 }, (_, i) => `${IZBUSHKA_BASE}/стоит/${92 + i}.png`);
-
-// Izbushka attack animations - 4 directions
-// Attack up (46 frames: 491-536)
-const izbushkaAttackTopFrames: string[] = Array.from({ length: 46 }, (_, i) => `${IZBUSHKA_BASE}/атвка/выстрел в верх/${491 + i}.png`);
-// Attack left (47 frames: 398-444)
-const izbushkaAttackLeftFrames: string[] = Array.from({ length: 47 }, (_, i) => `${IZBUSHKA_BASE}/атвка/выстрел в лево/${398 + i}.png`);
-// Attack down (45 frames: 537-581)
-const izbushkaAttackBottomFrames: string[] = Array.from({ length: 45 }, (_, i) => `${IZBUSHKA_BASE}/атвка/выстрел в низ/${537 + i}.png`);
-// Attack right (46 frames: 445-490)
-const izbushkaAttackRightFrames: string[] = Array.from({ length: 46 }, (_, i) => `${IZBUSHKA_BASE}/атвка/выстрел в право/${445 + i}.png`);
-
-// Izbushka attack cancellation animations - 4 directions (played after walk when no target nearby)
-// Cancel attack up (16 frames: 308-323)
-const izbushkaCancelTopFrames: string[] = Array.from({ length: 16 }, (_, i) => `${IZBUSHKA_BASE}/отмена атаки/верхняя отмена атаки/${308 + i}.png`);
-// Cancel attack left (15 frames: 123-137)
-const izbushkaCancelLeftFrames: string[] = Array.from({ length: 15 }, (_, i) => `${IZBUSHKA_BASE}/отмена атаки/левая отмена атаки/${123 + i}.png`);
-// Cancel attack down (16 frames: 209-224)
-const izbushkaCancelBottomFrames: string[] = Array.from({ length: 16 }, (_, i) => `${IZBUSHKA_BASE}/отмена атаки/нижняя отмена атаки/${209 + i}.png`);
-// Cancel attack right (16 frames: 2_leftunattak, 3-17)
-const izbushkaCancelRightFrames: string[] = [
-  `${IZBUSHKA_BASE}/отмена атаки/правая отмена атаки/2_leftunattak.png`,
-  ...Array.from({ length: 15 }, (_, i) => `${IZBUSHKA_BASE}/отмена атаки/правая отмена атаки/${3 + i}.png`)
-];
-
-// Evil Santa (ID 70002) walking animation frames - 4 directions
-// Walk left (33 frames: 190-222)
-const santaWalkLeftFrames: string[] = Array.from({ length: 33 }, (_, i) => `${SANTA_BASE}/идет в лево/${190 + i}.png`);
-// Walk down (36 frames: 154-189)
-const santaWalkDownFrames: string[] = Array.from({ length: 36 }, (_, i) => `${SANTA_BASE}/идет в низ/${154 + i}.png`);
-// Walk right (45 frames: 223-267)
-const santaWalkRightFrames: string[] = Array.from({ length: 45 }, (_, i) => `${SANTA_BASE}/идет в право/${223 + i}.png`);
-// Walk up (41 frames: 268-308)
-const santaWalkUpFrames: string[] = Array.from({ length: 41 }, (_, i) => `${SANTA_BASE}/идет на верх/${268 + i}.png`);
-
-// Evil Santa attack animations - 4 directions
-// Attack left (37 frames: 38-74)
-const santaAttackLeftFrames: string[] = Array.from({ length: 37 }, (_, i) => `${SANTA_BASE}/атака/выстрел в лево/${38 + i}.png`);
-// Attack down (38 frames: 1-37, then uses first walk frame as transition)
-const santaAttackBottomFrames: string[] = Array.from({ length: 37 }, (_, i) => `${SANTA_BASE}/атака/выстрел в низ/${1 + i}.png`);
-// Attack right (42 frames: 74-115)
-const santaAttackRightFrames: string[] = Array.from({ length: 42 }, (_, i) => `${SANTA_BASE}/атака/выстрел в право/${74 + i}.png`);
-// Attack up (40 frames: 115-154)
-const santaAttackTopFrames: string[] = Array.from({ length: 40 }, (_, i) => `${SANTA_BASE}/атака/выстрел вверх/${115 + i}.png`);
-
-// Gorynych (ID 70003) walking animation frames - 4 directions
-// Walk up (113 frames: 568-680)
-const gorynychWalkUpFrames: string[] = Array.from({ length: 113 }, (_, i) => `${GORYNYCH_BASE}/анимация ходьбы по клеткам/идет в верх/${568 + i}.png`);
-// Walk down (58 frames: 338-395)
-const gorynychWalkDownFrames: string[] = Array.from({ length: 58 }, (_, i) => `${GORYNYCH_BASE}/анимация ходьбы по клеткам/идет в низ/${338 + i}.png`);
-// Walk left (70 frames: 498-567)
-const gorynychWalkLeftFrames: string[] = Array.from({ length: 70 }, (_, i) => `${GORYNYCH_BASE}/анимация ходьбы по клеткам/идет в лево/${498 + i}.png`);
-// Walk right (102 frames: 396-497)
-const gorynychWalkRightFrames: string[] = Array.from({ length: 102 }, (_, i) => `${GORYNYCH_BASE}/анимация ходьбы по клеткам/идет в право/${396 + i}.png`);
-
-// Gorynych standing/idle animation (31 frames: 307-337)
-const gorynychIdleFrames: string[] = Array.from({ length: 31 }, (_, i) => `${GORYNYCH_BASE}/анимация когда стоит на месте/${307 + i}.png`);
-
-// Gorynych attack animations - 4 directions
-// Attack up (107 frames: 201-307)
-const gorynychAttackTopFrames: string[] = Array.from({ length: 107 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в верх/${201 + i}.png`);
-// Attack down (69 frames: 1-69)
-const gorynychAttackBottomFrames: string[] = Array.from({ length: 69 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в низ/${1 + i}.png`);
-// Attack left (71 frames: 131-201)
-const gorynychAttackLeftFrames: string[] = Array.from({ length: 71 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в лево/${131 + i}.png`);
-// Attack right (63 frames: 69-131)
-const gorynychAttackRightFrames: string[] = Array.from({ length: 63 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в право/${69 + i}.png`);
-
-// Kolobok (ID 70004) walking animation frames - 4 directions
-// Walk up (31 frames: 296-326)
-const kolobokWalkUpFrames: string[] = Array.from({ length: 31 }, (_, i) => `${KOLOBOK_BASE}/анимация ходьбы/идет в верх/${296 + i}.png`);
-// Walk down (31 frames: 203-233)
-const kolobokWalkDownFrames: string[] = Array.from({ length: 31 }, (_, i) => `${KOLOBOK_BASE}/анимация ходьбы/идет в низ/${203 + i}.png`);
-// Walk left (31 frames: 234-264)
-const kolobokWalkLeftFrames: string[] = Array.from({ length: 31 }, (_, i) => `${KOLOBOK_BASE}/анимация ходьбы/идет в лево/${234 + i}.png`);
-// Walk right (31 frames: 265-295)
-const kolobokWalkRightFrames: string[] = Array.from({ length: 31 }, (_, i) => `${KOLOBOK_BASE}/анимация ходьбы/идет в право/${265 + i}.png`);
-
-// Kolobok standing/idle animation (25 frames: 178-202)
-const kolobokIdleFrames: string[] = Array.from({ length: 25 }, (_, i) => `${KOLOBOK_BASE}/анимация когда стоит на месте/${178 + i}.png`);
-
-// Kolobok attack animations - 4 directions
-// Attack up (52 frames: 127-178)
-const kolobokAttackTopFrames: string[] = Array.from({ length: 52 }, (_, i) => `${KOLOBOK_BASE}/атака/атака в верх/${127 + i}.png`);
-// Attack left (43 frames: 85-127)
-const kolobokAttackLeftFrames: string[] = Array.from({ length: 43 }, (_, i) => `${KOLOBOK_BASE}/атака/атака в лево/${85 + i}.png`);
-// Attack down (43 frames: 1-43)
-const kolobokAttackBottomFrames: string[] = Array.from({ length: 43 }, (_, i) => `${KOLOBOK_BASE}/атака/атака в низ/${1 + i}.png`);
-// Attack right (43 frames: 43-84 + 84.2)
-const kolobokAttackRightFrames: string[] = [
-  ...Array.from({ length: 42 }, (_, i) => `${KOLOBOK_BASE}/атака/атака в право/${43 + i}.png`),
-  `${KOLOBOK_BASE}/атака/атака в право/84.2.png`
-];
-
-// Baba Yaga (ID 70005) walking animation frames - 4 directions
-// Walk up (56 frames: 472-527)
-const babaYagaWalkUpFrames: string[] = Array.from({ length: 56 }, (_, i) => `${BABA_YAGA_BASE}/анимация ходьбы монстра/идет вверх/${472 + i}.png`);
-// Walk down (61 frames: 412-472)
-const babaYagaWalkDownFrames: string[] = Array.from({ length: 61 }, (_, i) => `${BABA_YAGA_BASE}/анимация ходьбы монстра/идет в низ/${412 + i}.png`);
-// Walk left (62 frames: 350-411)
-const babaYagaWalkLeftFrames: string[] = Array.from({ length: 62 }, (_, i) => `${BABA_YAGA_BASE}/анимация ходьбы монстра/идет на лево/${350 + i}.png`);
-// Walk right (63 frames: 528-590)
-const babaYagaWalkRightFrames: string[] = Array.from({ length: 63 }, (_, i) => `${BABA_YAGA_BASE}/анимация ходьбы монстра/идет на право/${528 + i}.png`);
-
-// Baba Yaga standing/idle animation (93 frames: 1-93)
-const babaYagaIdleFrames: string[] = Array.from({ length: 93 }, (_, i) => `${BABA_YAGA_BASE}/анимация когда мнстр стоит/${1 + i}.png`);
-
-// Baba Yaga attack animations - 4 directions
-// Attack up (66 frames: 204-269)
-const babaYagaAttackTopFrames: string[] = Array.from({ length: 66 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/атака верх/${204 + i}.png`);
-// Attack left (81 frames: 269-349)
-const babaYagaAttackLeftFrames: string[] = Array.from({ length: 81 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/левая атака атакует левую клетку/${269 + i}.png`);
-// Attack down (49 frames: 91-139)
-const babaYagaAttackBottomFrames: string[] = Array.from({ length: 49 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/нижняя атака/${91 + i}.png`);
-// Attack right (66 frames: 139-204)
-const babaYagaAttackRightFrames: string[] = Array.from({ length: 66 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/правая атака/${139 + i}.png`);
-
-// How long after last move the monster is considered "walking" (show walk anim)
-const MONSTER_WALK_ANIM_DURATION = 5000; // 5 seconds of walk animation after each step
-const MONSTER_ATTACK_INTERVAL_MS = 40000;
-const CANNON_ATTACK_INTERVAL_MS = 40000;
-const CANNON_TICK_INTERVAL_MS = 1000;
-const MONSTER_AI_TICK_INTERVAL_MS = 250;
-const MONSTER_MOVE_BATCH_INTERVAL_MS = 900;
-const MAX_MONSTER_MOVES_PER_BATCH = 6;
-const MAX_MONSTER_WRITE_UPDATES_PER_TICK = 20;
-const MONSTER_WRITE_MIN_INTERVAL_MS = 600;
-const MONSTER_WALK_DURATION_MULTIPLIER = 1.5;
+const energyBatteryImageUrl = '/Gui/Back/energy-battery.webp';
+const populationImageUrl = '/Gui/Front/значек популяции/Image-1.webp';
+const oilImageUrl = '/last_appx/oil_lake/30000.webp';
+const chestImageUrl = '/buildings/Сундуки на карте трежер хант/10000.webp';
+const quarryImageUrl = '/buildings/заброшенная каменоломня/30001.webp';
+const builderIconUrl = '/Gui/Front/значек популяции/Image-1.webp';
+const guiMenuPoliceMoralsImageUrl = '/Gui/GUI_Menu/основеное меню/Полиция нравов/6Rw-Ov.webp';
+const guiMenuTopImageUrl = '/Gui/GUI_Menu/основеное меню/топ/topbottom1.webp';
+const guiMenuRoyalElectionsImageUrl = '/Gui/GUI_Menu/основеное меню/Королевские выборы/vibori1.webp';
+const guiMenuShopImageUrl = '/Gui/GUI_Menu/основеное меню/магазин/Image-4.webp';
+const guiMenuMapImageUrl = '/Gui/GUI_Menu/основеное меню/карта/mapbottom1.webp';
+const guiMenuTownImageUrl = '/Gui/GUI_Menu/основеное меню/город/town-Bottom1.webp';
+const guiMenuInventoryImageUrl = '/Gui/GUI_Menu/основеное меню/инвентарь/Uerc-WWWW.webp';
+const royalQueenCrownImageUrl = '/Gui/GUI_Menu/Королевские выборы/Королева Корона/qwincrown.webp';
+const royalKingCrownImageUrl = '/Gui/GUI_Menu/Королевские выборы/корона короля/kingcrown.webp';
+const policeBadgeImageUrl = '/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp';
 const MONSTER_MOVE_JITTER_RATIO = 0.18;
 const ZONE_RING_ONE_DELAY_MS = 900;
 const ZONE_RING_TWO_DELAY_MS = 2200;
@@ -1011,6 +1196,17 @@ function getPlaybackFrameIndex(elapsedMs: number, frameCount: number, fps: numbe
   return Math.min(Math.floor(elapsedMs / (1000 / effectiveFps)), frameCount - 1);
 }
 
+const MONSTER_WALK_ANIM_DURATION = 5000; // 5 seconds of walk animation after each step
+const MONSTER_ATTACK_INTERVAL_MS = 40000;
+const CANNON_ATTACK_INTERVAL_MS = 40000;
+const CANNON_TICK_INTERVAL_MS = 1000;
+const MONSTER_AI_TICK_INTERVAL_MS = 250;
+const MONSTER_MOVE_BATCH_INTERVAL_MS = 900;
+const MAX_MONSTER_MOVES_PER_BATCH = 6;
+const MAX_MONSTER_WRITE_UPDATES_PER_TICK = 20;
+const MONSTER_WRITE_MIN_INTERVAL_MS = 600;
+const MONSTER_WALK_DURATION_MULTIPLIER = 1.5;
+
 type MonsterMoveStep = { x: number; y: number; dx: number; dy: number };
 type MonsterDirection = { dx: number; dy: number };
 type MonsterPatrolMoveResult = {
@@ -1042,6 +1238,26 @@ function isMonsterAttackTargetCandidate(
     return true;
 }
 
+function isMonsterHoldTargetCandidate(
+    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
+    target: PlacedBuilding,
+    buildingData: Building[],
+    options?: {
+        blockedTargetIds?: Set<string>;
+        pendingDestroyedIds?: Set<string>;
+    }
+): boolean {
+    const targetId = String(target.id);
+    const targetInfo = buildingData.find(i => i.id === target.buildingId);
+    if (target.ownerId === monster.ownerId) return false;
+    if (target.buildingId === RIVER_ID || target.buildingId === MOUNTAIN_ID) return false;
+    if (targetInfo?.stats.isMonster) return false;
+    if (options?.blockedTargetIds?.has(targetId)) return false;
+    if (options?.pendingDestroyedIds?.has(targetId)) return false;
+    if (target.hp !== undefined && target.hp <= 0) return false;
+    return true;
+}
+
 function getMonsterAdjacentAttackTarget(
     monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
     buildings: PlacedBuilding[],
@@ -1049,21 +1265,58 @@ function getMonsterAdjacentAttackTarget(
     options?: {
         blockedTargetIds?: Set<string>;
         pendingDestroyedIds?: Set<string>;
+        preferredTargetId?: string | null;
+        isWrappedWorld?: boolean;
     }
 ): PlacedBuilding | null {
     const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
-    const neighbors = [
-        { x: monster.x + 1, y: monster.y },
-        { x: monster.x - 1, y: monster.y },
-        { x: monster.x, y: monster.y + 1 },
-        { x: monster.x, y: monster.y - 1 }
-    ];
+    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
 
     const candidates = buildings.filter(target =>
         neighbors.some(n => n.x === target.x && n.y === target.y) &&
         isMonsterAttackTargetCandidate(monster, target, buildingData, options)
     );
     if (candidates.length === 0) return null;
+
+    const preferredTargetId = options?.preferredTargetId ? String(options.preferredTargetId) : null;
+    if (preferredTargetId) {
+        const preferredTarget = candidates.find((t) => String(t.id) === preferredTargetId);
+        if (preferredTarget) return preferredTarget;
+    }
+
+    const hates = monsterInfo?.stats.hates;
+    const hatedTarget = candidates.find((t) => {
+        const info = buildingData.find(i => i.id === t.buildingId);
+        return hates && info?.category === hates;
+    });
+    return hatedTarget || candidates[0];
+}
+
+function getMonsterAdjacentHoldTarget(
+    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
+    buildings: PlacedBuilding[],
+    buildingData: Building[],
+    options?: {
+        blockedTargetIds?: Set<string>;
+        pendingDestroyedIds?: Set<string>;
+        preferredTargetId?: string | null;
+        isWrappedWorld?: boolean;
+    }
+): PlacedBuilding | null {
+    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
+
+    const candidates = buildings.filter(target =>
+        neighbors.some(n => n.x === target.x && n.y === target.y) &&
+        isMonsterHoldTargetCandidate(monster, target, buildingData, options)
+    );
+    if (candidates.length === 0) return null;
+
+    const preferredTargetId = options?.preferredTargetId ? String(options.preferredTargetId) : null;
+    if (preferredTargetId) {
+        const preferredTarget = candidates.find((t) => String(t.id) === preferredTargetId);
+        if (preferredTarget) return preferredTarget;
+    }
 
     const hates = monsterInfo?.stats.hates;
     const hatedTarget = candidates.find((t) => {
@@ -1081,6 +1334,7 @@ function getMonsterChaseTarget(
         searchRadius?: number;
         blockedTargetIds?: Set<string>;
         pendingDestroyedIds?: Set<string>;
+        isWrappedWorld?: boolean;
     }
 ): PlacedBuilding | null {
     const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
@@ -1090,7 +1344,7 @@ function getMonsterChaseTarget(
     buildings.forEach((target) => {
         if (String(target.id) === String(monster.id)) return;
         if (!isMonsterAttackTargetCandidate(monster, target, buildingData, options)) return;
-        const dist = Math.abs(target.x - monster.x) + Math.abs(target.y - monster.y);
+        const dist = getWrappedManhattanDistance(monster, target, !!options?.isWrappedWorld);
         if (dist > searchRadius) return;
         const targetInfo = buildingData.find(i => i.id === target.buildingId);
         const hated = Boolean(monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates);
@@ -1110,13 +1364,14 @@ function getMonsterChaseTarget(
 
 function chooseMonsterMoveTowardTarget(
     validMoves: MonsterMoveStep[],
-    target: Pick<PlacedBuilding, 'x' | 'y'>
+    target: Pick<PlacedBuilding, 'x' | 'y'>,
+    isWrappedWorld: boolean
 ): MonsterMoveStep | null {
     if (validMoves.length === 0) return null;
     let bestMove = validMoves[0];
-    let bestDist = Math.abs(validMoves[0].x - target.x) + Math.abs(validMoves[0].y - target.y);
+    let bestDist = getWrappedManhattanDistance(validMoves[0], target, isWrappedWorld);
     validMoves.forEach(move => {
-        const dist = Math.abs(move.x - target.x) + Math.abs(move.y - target.y);
+        const dist = getWrappedManhattanDistance(move, target, isWrappedWorld);
         if (dist < bestDist) {
             bestDist = dist;
             bestMove = move;
@@ -1267,16 +1522,19 @@ function isMonsterTileBlocked(
     y: number,
     occupiedPositions: Set<string>,
     blockedResourcePositions: Set<string>,
-    extraBlocked?: (x: number, y: number) => boolean
+    extraBlocked?: (x: number, y: number) => boolean,
+    isWrappedWorld = false
 ): boolean {
-    if (x < 0 || x >= WORLD_WIDTH_TILES || y < 0 || y >= WORLD_HEIGHT_TILES) {
+    const normalizedX = normalizeWorldCoord(x, WORLD_WIDTH_TILES, isWrappedWorld);
+    const normalizedY = normalizeWorldCoord(y, WORLD_HEIGHT_TILES, isWrappedWorld);
+    if (!isWrappedWorld && (normalizedX < 0 || normalizedX >= WORLD_WIDTH_TILES || normalizedY < 0 || normalizedY >= WORLD_HEIGHT_TILES)) {
         return true;
     }
 
-    const key = `${x},${y}`;
+    const key = `${normalizedX},${normalizedY}`;
     if (occupiedPositions.has(key)) return true;
     if (blockedResourcePositions.has(key)) return true;
-    return extraBlocked ? extraBlocked(x, y) : false;
+    return extraBlocked ? extraBlocked(normalizedX, normalizedY) : false;
 }
 
 function findFreeMonsterTeleportSpot(
@@ -1344,23 +1602,18 @@ function chooseMonsterBackgroundMove(
     recentPositions?: Array<{ x: number; y: number }>
 ): { chosenMove: MonsterMoveStep | null; nextDir: MonsterDirection } {
     const nextDir = lastDir || getMonsterPatrolDirection(monster.id, monster.buildingId);
-    const adjacentTarget = getMonsterAdjacentAttackTarget(monster, buildings, buildingData);
-    if (adjacentTarget) {
+    const adjacentHoldTarget = getMonsterAdjacentHoldTarget(monster, buildings, buildingData, { isWrappedWorld });
+    if (adjacentHoldTarget) {
         return {
             chosenMove: null,
-            nextDir: { dx: adjacentTarget.x - monster.x, dy: adjacentTarget.y - monster.y }
+            nextDir: getWrappedDirectionToTarget(monster, adjacentHoldTarget, isWrappedWorld)
         };
     }
 
-    const neighbors: MonsterMoveStep[] = [
-        { x: monster.x + 1, y: monster.y, dx: 1, dy: 0 },
-        { x: monster.x - 1, y: monster.y, dx: -1, dy: 0 },
-        { x: monster.x, y: monster.y + 1, dx: 0, dy: 1 },
-        { x: monster.x, y: monster.y - 1, dx: 0, dy: -1 }
-    ];
+    const neighbors: MonsterMoveStep[] = getCardinalNeighborTiles(monster.x, monster.y, isWrappedWorld);
 
     const validMoves = neighbors.filter(move =>
-        !isMonsterTileBlocked(move.x, move.y, occupiedPositions, blockedResourcePositions)
+        !isMonsterTileBlocked(move.x, move.y, occupiedPositions, blockedResourcePositions, undefined, isWrappedWorld)
     );
     if (validMoves.length === 0) {
         return { chosenMove: null, nextDir };
@@ -1369,10 +1622,10 @@ function chooseMonsterBackgroundMove(
     const preferredMoves = validMoves.filter(move => !recentKeys.has(`${move.x},${move.y}`));
     const candidateMoves = preferredMoves.length > 0 ? preferredMoves : validMoves;
 
-    const chaseTarget = getMonsterChaseTarget(monster, buildings, buildingData);
+    const chaseTarget = getMonsterChaseTarget(monster, buildings, buildingData, { isWrappedWorld });
     let chosenMove: MonsterMoveStep | null = null;
     if (chaseTarget) {
-        chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget);
+        chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWrappedWorld);
     } else {
         chosenMove = getCrowdingEscapeMove(monster, candidateMoves, zoneCounts, isWrappedWorld);
         if (!chosenMove) {
@@ -1399,11 +1652,27 @@ function chooseMonsterBackgroundMove(
     };
 }
 
+const hasActiveDestructionWindow = (value: unknown, now = Date.now()) =>
+    Number.isFinite(Number(value)) && Number(value) > now;
+
 const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding => {
     if (building.hp === undefined && building.maxHp === undefined) return building;
 
-    const info = buildingData.find(i => i.id === building.buildingId);
-    if (!info || info.id === MOUNTAIN_ID || info.id === RIVER_ID) return building;
+    const durabilityHint = building.maxHp ?? building.hp;
+    let resolvedBuildingId = Number(building.buildingId);
+
+    if (resolvedBuildingId === 619 && durabilityHint === 7376) {
+        resolvedBuildingId = 636;
+    } else if (resolvedBuildingId === 6201 && durabilityHint === 3328) {
+        resolvedBuildingId = 6200;
+    }
+
+    const info = buildingData.find(i => i.id === resolvedBuildingId);
+    if (!info || info.id === MOUNTAIN_ID || info.id === RIVER_ID) {
+        return resolvedBuildingId === Number(building.buildingId)
+            ? building
+            : { ...building, buildingId: resolvedBuildingId };
+    }
 
     const normalizedMaxHp = info.stats.durability;
     // Guard: if durability is undefined for this building type, we can't normalize HP.
@@ -1420,9 +1689,16 @@ const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding
     // IMPORTANT: treat only maxHp=0 as migration artifact.
     // maxHp=undefined can happen in legit destruction pipelines right before delete,
     // and restoring such records to full HP causes "respawn after explosion".
-    if (building.hp === 0 && building.maxHp === 0) {
+    const now = Date.now();
+    const hasPendingTerminalState = Boolean(
+        building.isDestroying ||
+        hasActiveDestructionWindow(building.destructionEndTime, now) ||
+        ((building.pendingDamage || 0) > 0)
+    );
+    if (building.hp === 0 && building.maxHp === 0 && !hasPendingTerminalState) {
         return {
             ...building,
+            buildingId: resolvedBuildingId,
             hp: normalizedMaxHp,
             maxHp: normalizedMaxHp
         };
@@ -1433,17 +1709,59 @@ const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding
         : normalizedMaxHp;
     const normalizedHp = Math.max(0, Math.min(rawHp, normalizedMaxHp));
 
-    if (building.maxHp === normalizedMaxHp && building.hp === normalizedHp) return building;
+    if (
+        Number(building.buildingId) === resolvedBuildingId &&
+        building.maxHp === normalizedMaxHp &&
+        building.hp === normalizedHp &&
+        (!BANDIT_CASTLE_IDS.has(resolvedBuildingId) || (!building.workState && !building.workEndTime))
+    ) {
+        return building;
+    }
+
+    const shouldClearBanditCastleWorkState = BANDIT_CASTLE_IDS.has(resolvedBuildingId);
 
     return {
         ...building,
+        buildingId: resolvedBuildingId,
         hp: normalizedHp,
-        maxHp: normalizedMaxHp
+        maxHp: normalizedMaxHp,
+        ...(shouldClearBanditCastleWorkState ? { workState: undefined, workEndTime: undefined } : {})
     };
 };
 
 const isBuildingAlive = (building: Pick<PlacedBuilding, 'hp'>): boolean =>
     building.hp === undefined || building.hp > 0;
+
+const shouldPreferServerRevivedBuildingState = (localBuilding: PlacedBuilding, serverBuilding: PlacedBuilding): boolean => {
+    const now = Date.now();
+    const localHasTerminalState = Boolean(
+        localBuilding.isDestroying ||
+        ((localBuilding.pendingDamage || 0) > 0) ||
+        hasActiveDestructionWindow(localBuilding.destructionEndTime, now)
+    );
+    if (!localHasTerminalState) return false;
+
+    const serverIsAlive = serverBuilding.hp === undefined || serverBuilding.hp > 0;
+    const serverClearedTerminalState =
+        !serverBuilding.isDestroying &&
+        (Number(serverBuilding.pendingDamage || 0) <= 0) &&
+        !hasActiveDestructionWindow(serverBuilding.destructionEndTime, now);
+
+    if (!serverIsAlive || !serverClearedTerminalState) return false;
+
+    const serverHp = Number(serverBuilding.hp ?? -1);
+    const localHp = Number(localBuilding.hp ?? -1);
+    const serverShield = Number(serverBuilding.shieldHp || 0);
+    const localShield = Number(localBuilding.shieldHp || 0);
+    const serverProtection = Number(serverBuilding.protectionEndTime || 0);
+    const localProtection = Number(localBuilding.protectionEndTime || 0);
+
+    return (
+        serverHp > localHp ||
+        serverShield > localShield ||
+        serverProtection > localProtection
+    );
+};
 
 const REGULAR_MONSTER_SPAWN_CONFIG = [
     { typeId: GORYNYCH_ID, count: 1, name: 'Р С–Р С•РЎР‚РЎвЂ№Р Р…РЎвЂ№РЎвЂЎ' },
@@ -1466,21 +1784,21 @@ const makePlacedEntityId = (uid?: string | null) =>
 
 // Detonator Factory (ID 601) animation frames
 const DETONATOR_FACTORY_ID = 601;
-const detonatorFactoryAnimationFrames: string[] = Array.from({ length: 60 }, (_, i) => `/animation/detonator_factory/${i + 1}.png`);
+const detonatorFactoryAnimationFrames: string[] = Array.from({ length: 60 }, (_, i) => `/animation/detonator_factory/${i + 1}.webp`);
 
 // Devil's Machine (ID 602) animation frames
 const DEVIL_MACHINE_ID = 602;
-const devilMachineAnimationFrames: string[] = Array.from({ length: 60 }, (_, i) => `/animation/devil_machine/${i + 1}.png`);
+const devilMachineAnimationFrames: string[] = Array.from({ length: 60 }, (_, i) => `/animation/devil_machine/${i + 1}.webp`);
 
 // Mill (ID 273) animation frames
 const MILL_ID = 273;
-const millAnimationFrames: string[] = Array.from({ length: 30 }, (_, i) => `/animation/mill/${i + 1}.png`);
+const millAnimationFrames: string[] = Array.from({ length: 30 }, (_, i) => `/animation/mill/${i + 1}.webp`);
 
 // Town Hall Flag animation frames (61 frames, ~2 second loop)
 const TOWN_HALL_FLAG_IDS = [301, 306, 312, 331]; // First 4 levels of Town Hall
 const townHallFlagAnimationFrames: Record<number, string[]> = {};
 for (const id of TOWN_HALL_FLAG_IDS) {
-  townHallFlagAnimationFrames[id] = Array.from({ length: 61 }, (_, i) => `/animation/town_hall_flag/1/${i + 1}.png`);
+  townHallFlagAnimationFrames[id] = Array.from({ length: 61 }, (_, i) => `/animation/town_hall_flag/1/${i + 1}.webp`);
 }
 const TOWN_HALL_FLAG_ID_SET = new Set(TOWN_HALL_FLAG_IDS);
 
@@ -1488,7 +1806,7 @@ const TOWN_HALL_FLAG_ID_SET = new Set(TOWN_HALL_FLAG_IDS);
 const FLAG_ANIMATION_IDS = [21001, 21002, 21004, 21005, 21006, 21007, 21008, 21009, 21010, 21011, 21012, 21013, 21014, 21015, 21017, 21018, 21019, 21020, 21021, 21022, 21023, 21024, 21025, 21026, 21027, 21029];
 const flagAnimationFrames: Record<number, string[]> = {};
 for (const id of FLAG_ANIMATION_IDS) {
-  flagAnimationFrames[id] = Array.from({ length: 61 }, (_, i) => `/animation/flags/${id}/${i + 1}.png`);
+  flagAnimationFrames[id] = Array.from({ length: 61 }, (_, i) => `/animation/flags/${id}/${i + 1}.webp`);
 }
 const FLAG_ANIMATION_ID_SET = new Set(FLAG_ANIMATION_IDS);
 
@@ -1496,7 +1814,7 @@ const FLAG_ANIMATION_ID_SET = new Set(FLAG_ANIMATION_IDS);
 const COIN_FACTORY_IDS = [430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 469];
 const coinFactoryAnimationFrames: Record<number, string[]> = {};
 for (const id of COIN_FACTORY_IDS) {
-  coinFactoryAnimationFrames[id] = Array.from({ length: 80 }, (_, i) => `/animation/coin_factory/${id}/${i + 1}.png`);
+  coinFactoryAnimationFrames[id] = Array.from({ length: 80 }, (_, i) => `/animation/coin_factory/${id}/${i + 1}.webp`);
 }
 const COIN_FACTORY_ID_SET = new Set(COIN_FACTORY_IDS);
 
@@ -1531,11 +1849,11 @@ const SAWMILL_LEVEL6_16_IDS = [394, 395, 396, 397, 398, 399, 453, 454, 468, 470,
 const sawmillAnimationFrames: Record<number, string[]> = {};
 for (const id of SAWMILL_LEVEL1_5_IDS) {
   const folder = SAWMILL_ID_TO_FOLDER_MAP[id];
-  sawmillAnimationFrames[id] = Array.from({ length: 85 }, (_, i) => `/animation/sawmill/${folder}/${i + 1}.png`);
+  sawmillAnimationFrames[id] = Array.from({ length: 85 }, (_, i) => `/animation/sawmill/${folder}/${i + 1}.webp`);
 }
 for (const id of SAWMILL_LEVEL6_16_IDS) {
   const folder = SAWMILL_ID_TO_FOLDER_MAP[id];
-  sawmillAnimationFrames[id] = Array.from({ length: 90 }, (_, i) => `/animation/sawmill/${folder}/${i + 1}.png`);
+  sawmillAnimationFrames[id] = Array.from({ length: 90 }, (_, i) => `/animation/sawmill/${folder}/${i + 1}.webp`);
 }
 const SAWMILL_ID_SET = new Set(SAWMILL_IDS);
 
@@ -1582,14 +1900,14 @@ const ALCHEMY_FACTORY_ID_SET = new Set(ALCHEMY_FACTORY_ANIM_DEFS.map(d => d.id))
 const alchemyFactoryWorkingFrames: Record<number, string[]> = {};
 const alchemyFactoryIdleFrames: Record<number, string[]> = {};
 for (const def of ALCHEMY_FACTORY_ANIM_DEFS) {
-  alchemyFactoryWorkingFrames[def.id] = Array.from({ length: def.workingFrames }, (_, i) => `/animation/alchemy_factory/${def.id}/working/${i + 1}.png`);
-  alchemyFactoryIdleFrames[def.id] = Array.from({ length: def.idleFrames }, (_, i) => `/animation/alchemy_factory/${def.id}/idle/${i + 1}.png`);
+  alchemyFactoryWorkingFrames[def.id] = Array.from({ length: def.workingFrames }, (_, i) => `/animation/alchemy_factory/${def.id}/working/${i + 1}.webp`);
+  alchemyFactoryIdleFrames[def.id] = Array.from({ length: def.idleFrames }, (_, i) => `/animation/alchemy_factory/${def.id}/idle/${i + 1}.webp`);
 }
 
 // Military Factory (Р вЂ™Р С•Р ВµР Р…Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames - 62 frames, working state only
 // Building IDs: 60332 (base), 604 (Secret lvl1), 605 (Secret lvl2)
 const MILITARY_FACTORY_IDS = [60332, 604, 605];
-const militaryFactoryAnimationFrames: string[] = Array.from({ length: 62 }, (_, i) => `/animation/military_factory/${i + 1}.png`);
+const militaryFactoryAnimationFrames: string[] = Array.from({ length: 62 }, (_, i) => `/animation/military_factory/${i + 1}.webp`);
 const MILITARY_FACTORY_ID_SET = new Set(MILITARY_FACTORY_IDS);
 
 // Mushroom Bed (Р вЂњРЎР‚Р С‘Р В±Р Р…Р В°РЎРЏ Р С–РЎР‚РЎРЏР Т‘Р С”Р В°) animation frames (working + idle states)
@@ -1616,8 +1934,8 @@ const MUSHROOM_BED_ID_SET = new Set(MUSHROOM_BED_ALL_IDS);
 const mushroomBedWorkingFrames: Record<string, string[]> = {};
 const mushroomBedIdleFrames: Record<string, string[]> = {};
 for (const group of MB_GROUP_DEFS) {
-  mushroomBedWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/mushroom_bed/${group.folder}/working/${i + 1}.png`);
-  mushroomBedIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/mushroom_bed/${group.folder}/idle/${i + 1}.png`);
+  mushroomBedWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/mushroom_bed/${group.folder}/working/${i + 1}.webp`);
+  mushroomBedIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/mushroom_bed/${group.folder}/idle/${i + 1}.webp`);
 }
 
 // Mine (Р РЃР В°РЎвЂ¦РЎвЂљР В°) animation frames (working + idle states)
@@ -1642,8 +1960,8 @@ const MINE_ID_SET = new Set(MINE_ALL_IDS);
 const mineWorkingFrames: Record<string, string[]> = {};
 const mineIdleFrames: Record<string, string[]> = {};
 for (const group of MINE_GROUP_DEFS) {
-  mineWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/mine/${group.folder}/working/${i + 1}.png`);
-  mineIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/mine/${group.folder}/idle/${i + 1}.png`);
+  mineWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/mine/${group.folder}/working/${i + 1}.webp`);
+  mineIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/mine/${group.folder}/idle/${i + 1}.webp`);
 }
 
 // Emerald Factory (Р ВР В·РЎС“Р СРЎР‚РЎС“Р Т‘Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
@@ -1670,8 +1988,8 @@ const EMERALD_FACTORY_ID_SET = new Set(EMERALD_FACTORY_ALL_IDS);
 const emeraldFactoryWorkingFrames: Record<string, string[]> = {};
 const emeraldFactoryIdleFrames: Record<string, string[]> = {};
 for (const group of EF_GROUP_DEFS) {
-  emeraldFactoryWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/emerald_factory/${group.folder}/working/${i + 1}.png`);
-  emeraldFactoryIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/emerald_factory/${group.folder}/idle/${i + 1}.png`);
+  emeraldFactoryWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/emerald_factory/${group.folder}/working/${i + 1}.webp`);
+  emeraldFactoryIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/emerald_factory/${group.folder}/idle/${i + 1}.webp`);
 }
 
 // Gold Smelter (Р вЂ”Р С•Р В»Р С•РЎвЂљР С•Р С—Р В»Р В°Р Р†Р С‘Р В»РЎРЉР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames
@@ -1700,9 +2018,9 @@ const GOLD_SMELTER_ID_SET = new Set(GOLD_SMELTER_ALL_IDS);
 const goldSmelterWorkingFrames: Record<string, string[]> = {};
 const goldSmelterIdleFrames: Record<string, string[]> = {};
 for (const group of GS_GROUP_DEFS) {
-  goldSmelterWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/gold_smelter/${group.folder}/working/${i + 1}.png`);
+  goldSmelterWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/gold_smelter/${group.folder}/working/${i + 1}.webp`);
   if (group.idleFrames > 0) {
-    goldSmelterIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/gold_smelter/${group.folder}/idle/${i + 1}.png`);
+    goldSmelterIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/gold_smelter/${group.folder}/idle/${i + 1}.webp`);
   }
 }
 
@@ -1730,8 +2048,8 @@ const STEEL_ROLLING_MILL_ID_SET = new Set(STEEL_ROLLING_MILL_ALL_IDS);
 const steelRollingMillWorkingFrames: Record<string, string[]> = {};
 const steelRollingMillIdleFrames: Record<string, string[]> = {};
 for (const group of SRM_GROUP_DEFS) {
-  steelRollingMillWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/steel_rolling_mill/${group.folder}/working/${i + 1}.png`);
-  steelRollingMillIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/steel_rolling_mill/${group.folder}/idle/${i + 1}.png`);
+  steelRollingMillWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/steel_rolling_mill/${group.folder}/working/${i + 1}.webp`);
+  steelRollingMillIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/steel_rolling_mill/${group.folder}/idle/${i + 1}.webp`);
 }
 
 // Steel Smelting Factory (Р РЋРЎвЂљР В°Р В»Р ВµР С—Р В»Р В°Р Р†Р С‘Р В»РЎРЉР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
@@ -1742,14 +2060,14 @@ const STEEL_SMELTING_ID_SET = new Set(STEEL_SMELTING_IDS);
 const steelSmeltingWorkingFrames: Record<number, string[]> = {};
 const steelSmeltingIdleFrames: Record<number, string[]> = {};
 for (const id of STEEL_SMELTING_IDS) {
-  steelSmeltingWorkingFrames[id] = Array.from({ length: 36 }, (_, i) => `/animation/steel_smelting/${id}/working/${i + 1}.png`);
-  steelSmeltingIdleFrames[id] = Array.from({ length: 40 }, (_, i) => `/animation/steel_smelting/${id}/idle/${i + 1}.png`);
+  steelSmeltingWorkingFrames[id] = Array.from({ length: 36 }, (_, i) => `/animation/steel_smelting/${id}/working/${i + 1}.webp`);
+  steelSmeltingIdleFrames[id] = Array.from({ length: 40 }, (_, i) => `/animation/steel_smelting/${id}/idle/${i + 1}.webp`);
 }
 
 // Stone Crusher (Р С™Р В°Р СР Р…Р ВµР Т‘РЎР‚Р С•Р В±Р С‘Р В»Р С”Р В°) animation frames (working + idle states)
-// Building IDs: 6201, 4091, 410-412, 455-467
+// Building IDs: 6200, 4091, 410-412, 455-467
 const STONE_CRUSHER_ID_TO_FOLDER: Record<number, string> = {
-  6201: 'a98',
+  6200: 'a98',
   4091: 'a409',
   410: 'a410',
   411: 'a411',
@@ -1773,8 +2091,8 @@ const STONE_CRUSHER_ID_SET = new Set(STONE_CRUSHER_IDS);
 const stoneCrusherWorkingFrames: Record<string, string[]> = {};
 const stoneCrusherIdleFrames: Record<string, string[]> = {};
 for (const folder of Object.values(STONE_CRUSHER_ID_TO_FOLDER)) {
-  stoneCrusherWorkingFrames[folder] = Array.from({ length: 40 }, (_, i) => `/animation/stone_crusher/${folder}/working/${i + 1}.png`);
-  stoneCrusherIdleFrames[folder] = Array.from({ length: 40 }, (_, i) => `/animation/stone_crusher/${folder}/idle/${i + 1}.png`);
+  stoneCrusherWorkingFrames[folder] = Array.from({ length: 40 }, (_, i) => `/animation/stone_crusher/${folder}/working/${i + 1}.webp`);
+  stoneCrusherIdleFrames[folder] = Array.from({ length: 40 }, (_, i) => `/animation/stone_crusher/${folder}/idle/${i + 1}.webp`);
 }
 
 // Lily Pond (Р СџРЎР‚РЎС“Р Т‘ РЎРѓ Р В»Р С‘Р В»Р С‘РЎРЏР СР С‘) animation frames (working + idle states)
@@ -1801,8 +2119,8 @@ const LILY_POND_ID_SET = new Set(LILY_POND_ALL_IDS);
 const lilyPondWorkingFrames: Record<string, string[]> = {};
 const lilyPondIdleFrames: Record<string, string[]> = {};
 for (const group of LP_GROUP_DEFS) {
-  lilyPondWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/lily_pond/${group.folder}/working/${i + 1}.png`);
-  lilyPondIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/lily_pond/${group.folder}/idle/${i + 1}.png`);
+  lilyPondWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/lily_pond/${group.folder}/working/${i + 1}.webp`);
+  lilyPondIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/lily_pond/${group.folder}/idle/${i + 1}.webp`);
 }
 
 // Detonator Factory (Р СџР ВµРЎвЂљР В°РЎР‚Р Т‘Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames
@@ -1829,51 +2147,51 @@ const DETONATOR_FACTORY_ID_SET = new Set(DETONATOR_FACTORY_ALL_IDS);
 const detonatorFactoryWorkingFrames: Record<string, string[]> = {};
 const detonatorFactoryIdleFrames: Record<string, string[]> = {};
 for (const group of DF_GROUP_DEFS) {
-  detonatorFactoryWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/detonator_factory/${group.folder}/working/${i + 1}.png`);
+  detonatorFactoryWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/detonator_factory/${group.folder}/working/${i + 1}.webp`);
   if (group.idleFrames > 0) {
-    detonatorFactoryIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/detonator_factory/${group.folder}/idle/${i + 1}.png`);
+    detonatorFactoryIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/detonator_factory/${group.folder}/idle/${i + 1}.webp`);
   }
 }
 
 // Wild Quarry (Р вЂќР С‘Р С”Р В°РЎРЏ Р С”Р В°Р СР ВµР Р…Р С•Р В»Р С•Р СР Р…РЎРЏ) animation frames - 91 frames, working state only
 // Building ID: 610 (WILD_QUARRY_ID already defined above)
-const wildQuarryAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/wild_quarry/${i + 1}.png`);
+const wildQuarryAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/wild_quarry/${i + 1}.webp`);
 
 // Recommendation Factory (Р В¤Р В°Р В±РЎР‚Р С‘Р С”Р В° РЎР‚Р ВµР С”Р С•Р СР ВµР Р…Р Т‘Р В°РЎвЂ Р С‘Р в„–) animation frames - 30 frames, working state only
 // Building ID: 330
-const recommendationFactoryAnimationFrames: string[] = Array.from({ length: 30 }, (_, i) => `/animation/recommendation_factory/${i + 1}.png`);
+const recommendationFactoryAnimationFrames: string[] = Array.from({ length: 30 }, (_, i) => `/animation/recommendation_factory/${i + 1}.webp`);
 
 // Gift Lamb (Р вЂР В°РЎР‚Р В°РЎв‚¬Р С”Р В°) animation frames - 101 frames, continuous loop
 // Building ID: 41801
-const giftLambAnimationFrames: string[] = Array.from({ length: 101 }, (_, i) => `/animation/gift_lamb/${i + 1}.png`);
+const giftLambAnimationFrames: string[] = Array.from({ length: 101 }, (_, i) => `/animation/gift_lamb/${i + 1}.webp`);
 
 // Gift Slipper (Р ТђРЎР‚РЎС“РЎРѓРЎвЂљР В°Р В»РЎРЉР Р…Р В°РЎРЏ РЎвЂљРЎС“РЎвЂћР ВµР В»РЎРЉР С”Р В°) animation frames - 20 frames, continuous loop
 // Building ID: 45001
-const giftSlipperAnimationFrames: string[] = Array.from({ length: 20 }, (_, i) => `/animation/gift_slipper/${i + 1}.png`);
+const giftSlipperAnimationFrames: string[] = Array.from({ length: 20 }, (_, i) => `/animation/gift_slipper/${i + 1}.webp`);
 
 // Baby building animation frames - 91 frames each, continuous loop at max level
-const babyBearAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_bear/${i + 1}.png`);
-const babyAngelGirlAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_angel_girl/${i + 1}.png`);
-const babyDinoAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_dino/${i + 1}.png`);
-const babyPigletAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_piglet/${i + 1}.png`);
-const babyCatAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_cat/${i + 1}.png`);
-const babyAngelBoyAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_angel_boy/${i + 1}.png`);
-const babyPandaAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_panda/${i + 1}.png`);
-const babyFrogAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_frog/${i + 1}.png`);
+const babyBearAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_bear/${i + 1}.webp`);
+const babyAngelGirlAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_angel_girl/${i + 1}.webp`);
+const babyDinoAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_dino/${i + 1}.webp`);
+const babyPigletAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_piglet/${i + 1}.webp`);
+const babyCatAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_cat/${i + 1}.webp`);
+const babyAngelBoyAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_angel_boy/${i + 1}.webp`);
+const babyPandaAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_panda/${i + 1}.webp`);
+const babyFrogAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_frog/${i + 1}.webp`);
 
 // Oil Rig (Р СњР ВµРЎвЂћРЎвЂљРЎРЏР Р…Р В°РЎРЏ Р Р†РЎвЂ№РЎв‚¬Р С”Р В°) animation frames - 56 frames, working state only
 // Building IDs: 606 (single), 607 (double)
 const oilRigAnimationFrames: Record<number, string[]> = {
-  [OIL_RIG_ID]: Array.from({ length: 56 }, (_, i) => `/animation/oil_rig/15/${i + 1}.png`),
-  [TWO_OIL_RIGS_ID]: Array.from({ length: 56 }, (_, i) => `/animation/oil_rig/49/${i + 1}.png`),
+  [OIL_RIG_ID]: Array.from({ length: 56 }, (_, i) => `/animation/oil_rig/15/${i + 1}.webp`),
+  [TWO_OIL_RIGS_ID]: Array.from({ length: 56 }, (_, i) => `/animation/oil_rig/49/${i + 1}.webp`),
 };
 
 // Pre-generate frame URL arrays per group (working + idle)
 const monsterAcademyWorkingFrames: Record<string, string[]> = {};
 const monsterAcademyIdleFrames: Record<string, string[]> = {};
 for (const group of MA_GROUP_DEFS) {
-  monsterAcademyWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/monster_academy/${group.folder}/working/${i + 1}.png`);
-  monsterAcademyIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/monster_academy/${group.folder}/idle/${i + 1}.png`);
+  monsterAcademyWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/monster_academy/${group.folder}/working/${i + 1}.webp`);
+  monsterAcademyIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/monster_academy/${group.folder}/idle/${i + 1}.webp`);
 }
 
 const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'buildingId' | 'workState' | 'workEndTime'>): string[] => {
@@ -1953,6 +2271,95 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
     if ((building.buildingId === OIL_RIG_ID || building.buildingId === TWO_OIL_RIGS_ID) && isWorking) return oilRigAnimationFrames[building.buildingId] || [];
     if (building.buildingId === GIFT_LAMB_ID) return giftLambAnimationFrames;
     if (building.buildingId === GIFT_SLIPPER_ID) return giftSlipperAnimationFrames;
+
+    // Monster sprites use special scale / offsets in the renderer, so we must keep
+    // their animation frames available nearby instead of falling back to static card art.
+    if (building.buildingId === KILLING_HUT_ID) {
+        return [
+            ...izbushkaIdleFrames,
+            ...izbushkaWalkLeftFrames,
+            ...izbushkaWalkRightFrames,
+            ...izbushkaWalkDownFrames,
+            ...izbushkaWalkUpFrames,
+            ...izbushkaAttackTopFrames,
+            ...izbushkaAttackLeftFrames,
+            ...izbushkaAttackBottomFrames,
+            ...izbushkaAttackRightFrames,
+            ...izbushkaCancelTopFrames,
+            ...izbushkaCancelLeftFrames,
+            ...izbushkaCancelBottomFrames,
+            ...izbushkaCancelRightFrames,
+        ];
+    }
+
+    if (building.buildingId === KIND_SANTA_ID) {
+        return [
+            ...santaWalkLeftFrames,
+            ...santaWalkDownFrames,
+            ...santaWalkRightFrames,
+            ...santaWalkUpFrames,
+            ...santaAttackLeftFrames,
+            ...santaAttackBottomFrames,
+            ...santaAttackRightFrames,
+            ...santaAttackTopFrames,
+        ];
+    }
+
+    if (building.buildingId === BRONEKUR_ID) {
+        return [
+            ...bronekurIdleFrames,
+            ...bronekurWalkBottomFrames,
+            ...bronekurWalkTopRightFrames,
+            ...bronekurWalkLeftTopFrames,
+            ...bronekurWalkBottomRightFrames,
+            ...bronekurAttackTopFrames,
+            ...bronekurAttackLeftFrames,
+            ...bronekurAttackBottomFrames,
+            ...bronekurAttackRightFrames,
+        ];
+    }
+
+    if (building.buildingId === GORYNYCH_ID) {
+        return [
+            ...gorynychIdleFrames,
+            ...gorynychWalkUpFrames,
+            ...gorynychWalkDownFrames,
+            ...gorynychWalkLeftFrames,
+            ...gorynychWalkRightFrames,
+            ...gorynychAttackTopFrames,
+            ...gorynychAttackBottomFrames,
+            ...gorynychAttackLeftFrames,
+            ...gorynychAttackRightFrames,
+        ];
+    }
+
+    if (building.buildingId === KOLOBOK_ID) {
+        return [
+            ...kolobokIdleFrames,
+            ...kolobokWalkUpFrames,
+            ...kolobokWalkDownFrames,
+            ...kolobokWalkLeftFrames,
+            ...kolobokWalkRightFrames,
+            ...kolobokAttackTopFrames,
+            ...kolobokAttackLeftFrames,
+            ...kolobokAttackBottomFrames,
+            ...kolobokAttackRightFrames,
+        ];
+    }
+
+    if (building.buildingId === BABA_YAGA_ID) {
+        return [
+            ...babaYagaIdleFrames,
+            ...babaYagaWalkUpFrames,
+            ...babaYagaWalkDownFrames,
+            ...babaYagaWalkLeftFrames,
+            ...babaYagaWalkRightFrames,
+            ...babaYagaAttackTopFrames,
+            ...babaYagaAttackLeftFrames,
+            ...babaYagaAttackBottomFrames,
+            ...babaYagaAttackRightFrames,
+        ];
+    }
 
     switch (building.buildingId) {
         case BABY_BEAR_MAX_ID: return babyBearAnimationFrames;
@@ -2067,22 +2474,24 @@ const formatTimeRussian = (ms: number): string => {
     }
 };
 
-const level1IconUrl = 'https://i.ibb.co/nNvw3ND1/ur1.png';
-const level2IconUrl = 'https://i.ibb.co/HDjFb8Mk/ur2.png';
-const level3IconUrl = 'https://i.ibb.co/tMhg4bjW/ur3.png'; // TODO: Replace with actual URL
-const level4IconUrl = 'https://i.ibb.co/nqQ0MrK4/ur4.png'; // TODO: Replace with actual URL
-const level5IconUrl = 'https://i.ibb.co/v6dTtgm5/ur5.png'; // TODO: Replace with actual URL
-const level6IconUrl = 'https://i.ibb.co/vvL0nGQS/ur6.png'; // TODO: Replace with actual URL
-const level7IconUrl = 'https://i.ibb.co/7Ntmf43Z/ur7.png'; // TODO: Replace with actual URL
-const level8IconUrl = 'https://i.ibb.co/QykYtCy/ur8.png'; // TODO: Replace with actual URL
-const level9IconUrl = 'https://i.ibb.co/Gw2zwcf/ur9.png'; // TODO: Replace with actual URL
-const level10IconUrl = 'https://i.ibb.co/BHPbKQhy/ur10.png'; // TODO: Replace with actual URL
-const level11IconUrl = 'https://i.ibb.co/LXt2RpSx/ur11.png'; // TODO: Replace with actual URL
-const level12IconUrl = 'https://i.ibb.co/hR30cGF7/ur12.png'; // TODO: Replace with actual URL
-const level13IconUrl = 'https://i.ibb.co/kgCWtVBx/ur13.png'; // TODO: Replace with actual URL
-const level14IconUrl = 'https://i.ibb.co/Wv7RpTwk/ur14.png'; // TODO: Replace with actual URL
-const level15IconUrl = 'https://i.ibb.co/XxWqCZrc/ur15.png'; // TODO: Replace with actual URL
-const loadingIconUrl = 'https://i.ibb.co/Q7Cq6tcL/009-s.png';
+const levelIcons = [
+    '/Gui/IMG_Player_Level_/ur1.webp',
+    '/Gui/IMG_Player_Level_/ur2.webp',
+    '/Gui/IMG_Player_Level_/ur3.webp',
+    '/Gui/IMG_Player_Level_/ur4.webp',
+    '/Gui/IMG_Player_Level_/ur5.webp',
+    '/Gui/IMG_Player_Level_/ur6.webp',
+    '/Gui/IMG_Player_Level_/ur7.webp',
+    '/Gui/IMG_Player_Level_/ur8.webp',
+    '/Gui/IMG_Player_Level_/ur9.webp',
+    '/Gui/IMG_Player_Level_/ur10.webp',
+    '/Gui/IMG_Player_Level_/ur11.webp',
+    '/Gui/IMG_Player_Level_/ur12.webp',
+    '/Gui/IMG_Player_Level_/ur13.webp',
+    '/Gui/IMG_Player_Level_/ur14.webp',
+    '/Gui/IMG_Player_Level_/ur15.webp',
+] as const;
+const loadingIconUrl = '/Gui/IMG_Player_Level_/ruby.webp';
 
 const ConstructionTimer = ({ endTime, cost, onSpeedUp, isMyBuilding }: { endTime: number, cost: number, onSpeedUp: () => void, isMyBuilding: boolean }) => {
     const [, setTick] = useState(0);
@@ -2128,8 +2537,182 @@ const getGuestId = () => {
     return id;
 };
 export const GUEST_ID = getGuestId();
-const APP_BUILD_MARKER = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_BUILD_MARKER || 'local-dev';
-const APP_BUILD_MODE = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.MODE || 'unknown';
+const TOP_PLAYERS_QUERY_LIMIT = 300;
+const LEADERBOARD_PROFILES_COLLECTION = 'leaderboard_profiles';
+const TOP_PLAYERS_ORDER_FIELD: Record<TopPlayersTab, string> = {
+    glory: 'glory',
+    trees: 'treesChopped',
+    monsters: 'monstersDestroyed',
+    buildings: 'buildingsDestroyed',
+    theft: 'theftsCommitted',
+};
+const APP_BUILD_MARKER = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_BUILD_MARKER || 'local-dev';
+const APP_BUILD_MODE = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.MODE || 'unknown';
+const APP_ENV = ((import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env || {}) as Record<string, string | undefined>;
+const DEBUG_FLAG_ENABLED = APP_ENV.VITE_DEBUG === '1' || APP_ENV.VITE_VERBOSE_DEBUG === '1';
+const RUNTIME_AUDIT_STORAGE_KEY = 'runtimeAudit';
+const STARTUP_DEBUG_STORAGE_KEY = 'startupDebug';
+const ZONE_GATE_DEBUG_LOG_THROTTLE_MS = 1500;
+const ZONE_GATE_DEBUG_STORAGE_KEY = 'zoneGateDebugOpen';
+const ZONE_GATE_DEBUG_LOG_STORAGE_KEY = 'zoneGateDebugLogs';
+const VISUAL_EFFECT_MAX_LIFETIME_MS = 10000;
+const BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+const readLocalStorageFlag = (key: string, fallback: boolean = false): boolean => {
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw === null) return fallback;
+        return raw === '1' || raw.toLowerCase() === 'true';
+    } catch {
+        return fallback;
+    }
+};
+
+const writeLocalStorageFlag = (key: string, value: boolean) => {
+    try {
+        localStorage.setItem(key, value ? '1' : '0');
+    } catch {
+        // Ignore localStorage write failures.
+    }
+};
+
+const RUNTIME_AUDIT_ENABLED = DEBUG_FLAG_ENABLED || readLocalStorageFlag(RUNTIME_AUDIT_STORAGE_KEY, false);
+
+interface RuntimeAuditState {
+    startedAt: number;
+    lastStageAt: number;
+}
+
+type RuntimeAuditKind = 'build' | 'permit' | 'timer';
+
+type BuildingTimerTraceSource =
+    | 'local-start'
+    | 'local-tick'
+    | 'processOfflineTimers'
+    | 'updatePlacedBuildingsFromServer'
+    | 'onSnapshot'
+    | 'realtime-event'
+    | 'refresh-load';
+
+const pushRuntimeAuditLog = (kind: RuntimeAuditKind, entry: Record<string, unknown>) => {
+    try {
+        const win = window as any;
+        const key =
+            kind === 'build' ? '__BUILD_RUNTIME_AUDIT__' :
+            kind === 'permit' ? '__PERMIT_RUNTIME_AUDIT__' :
+            '__TIMER_RUNTIME_AUDIT__';
+        const current = Array.isArray(win[key]) ? win[key] : [];
+        win[key] = [...current.slice(-499), entry];
+    } catch {
+        // Ignore debug log persistence failures.
+    }
+};
+
+const recordBuildingTimerTrace = (
+    source: BuildingTimerTraceSource,
+    building: any,
+    extra?: Record<string, unknown>
+) => {
+    if (!RUNTIME_AUDIT_ENABLED || !building) return;
+
+    const now = Number(extra?.now || Date.now()) || Date.now();
+    const constructionStartTime = Number(building.constructionStartTime || 0) || undefined;
+    const constructionEndTime = Number(building.constructionEndTime || 0) || undefined;
+    const workStartTime = Number(building.workStartTime || 0) || undefined;
+    const workEndTime = Number(building.workEndTime || 0) || undefined;
+    const buildingInfo = Number.isFinite(Number(building.buildingId))
+        ? buildingData.find((info) => info.id === Number(building.buildingId))
+        : undefined;
+    const inferredConstructionStartTime =
+        constructionStartTime ??
+        (constructionEndTime && buildingInfo?.stats.constructionTimeSeconds
+            ? constructionEndTime - (buildingInfo.stats.constructionTimeSeconds || 0) * 1000
+            : undefined);
+    const inferredWorkStartTime =
+        workStartTime ??
+        (workEndTime && buildingInfo?.stats.workTimeSeconds
+            ? workEndTime - (buildingInfo.stats.workTimeSeconds || 0) * 1000
+            : undefined);
+    const actionType = String(
+        extra?.actionType ||
+        building.actionType ||
+        (building.isConstructing ? 'construction' : building.workState || 'idle')
+    );
+    const activeEndTime =
+        actionType === 'construction'
+            ? constructionEndTime
+            : actionType === 'working' || actionType === 'work' || actionType === 'finished'
+                ? workEndTime
+                : undefined;
+    const remainingMs = typeof activeEndTime === 'number' ? Math.max(0, activeEndTime - now) : undefined;
+    const payload = {
+        id: String(building.id),
+        buildingId: Number(building.buildingId || 0) || 0,
+        actionType,
+        constructionStartTime: inferredConstructionStartTime,
+        constructionEndTime,
+        workStartTime: inferredWorkStartTime,
+        workEndTime,
+        now,
+        remainingMs,
+        source,
+        ...(extra || {}),
+    };
+    pushRuntimeAuditLog('timer', payload);
+    console.info('[TimerTrace]', payload);
+};
+
+const getEffectiveDestructionExpiresAt = (building: Pick<PlacedBuilding, 'destructionEndTime' | 'destructionExpiresAt' | 'destructionStartedAt' | 'destructionMaxLifetimeMs'>): number | undefined => {
+    const explicitExpiry = Number(building.destructionExpiresAt || building.destructionEndTime || 0) || 0;
+    const startedAt = Number(building.destructionStartedAt || 0) || 0;
+    const maxLifetimeMs = Number(building.destructionMaxLifetimeMs || 0) || 0;
+    const maxLifetimeExpiry = startedAt > 0 && maxLifetimeMs > 0 ? startedAt + maxLifetimeMs : 0;
+
+    if (explicitExpiry > 0 && maxLifetimeExpiry > 0) return Math.min(explicitExpiry, maxLifetimeExpiry);
+    if (explicitExpiry > 0) return explicitExpiry;
+    if (maxLifetimeExpiry > 0) return maxLifetimeExpiry;
+    return undefined;
+};
+
+const createVisualEffect = (effect: Omit<VisualEffect, 'createdAt' | 'expiresAt' | 'durationMs' | 'maxLifetimeMs' | 'status'>): VisualEffect => {
+    const createdAt = Number(effect.startTime || Date.now()) || Date.now();
+    const durationMs = Math.max(1, Number(effect.duration || 0) || 0);
+    const maxLifetimeMs = Math.max(durationMs, VISUAL_EFFECT_MAX_LIFETIME_MS);
+
+    return {
+        ...effect,
+        createdAt,
+        expiresAt: createdAt + durationMs,
+        durationMs,
+        maxLifetimeMs,
+        status: 'active',
+    };
+};
+
+const isVisualEffectAlive = (effect: VisualEffect, now: number): boolean => {
+    const createdAt = Number(effect.createdAt || effect.startTime || 0) || 0;
+    const expiresAt = Number(effect.expiresAt || 0) || (createdAt + (Number(effect.durationMs || effect.duration || 0) || 0));
+    const maxLifetimeMs = Math.max(Number(effect.maxLifetimeMs || 0) || 0, Number(effect.durationMs || effect.duration || 0) || 0);
+    if (effect.status === 'finished') return false;
+    if (expiresAt > 0 && now >= expiresAt) return false;
+    if (createdAt > 0 && maxLifetimeMs > 0 && now >= (createdAt + maxLifetimeMs)) return false;
+    return true;
+};
+
+const pushStartupDebugEvent = (step: string, details?: Record<string, unknown>) => {
+    try {
+        const win = window as any;
+        const current = win.__APP_STARTUP_DEBUG__ || { lastStep: 'boot', events: [] as any[] };
+        const entry = { step, at: Date.now(), details: details || {} };
+        win.__APP_STARTUP_DEBUG__ = {
+            lastStep: step,
+            events: [...(Array.isArray(current.events) ? current.events.slice(-39) : []), entry],
+        };
+        return entry;
+    } catch {
+        return { step, at: Date.now(), details: details || {} };
+    }
+};
 
 const cp1251Decoder = new TextDecoder('windows-1251');
 const utf8Encoder = new TextEncoder();
@@ -2144,6 +2727,7 @@ for (let cp = 32; cp <= 0x052F; cp++) {
         if (wrong.length > mojibakeMaxTokenLen) mojibakeMaxTokenLen = wrong.length;
     }
 }
+
 for (const ch of ['РІР‚В¦', 'РІР‚вЂњ', 'РІР‚вЂќ', 'РІР‚Сљ', 'РІР‚Сњ', 'РІР‚В', 'РІР‚в„ў', 'РІвЂћвЂ“']) {
     const wrong = cp1251Decoder.decode(utf8Encoder.encode(ch));
     if (wrong !== ch) {
@@ -2151,6 +2735,7 @@ for (const ch of ['РІР‚В¦', 'РІР‚вЂњ', 'РІР‚вЂќ', 'РІР
         if (wrong.length > mojibakeMaxTokenLen) mojibakeMaxTokenLen = wrong.length;
     }
 }
+
 for (const ch of [
     'РІР‚Сћ', '<', '>', '-', 'Р’В¦', '?', '?', '?', '?', '?',
     '?', 'Р’В¦'
@@ -2231,6 +2816,20 @@ function repairMojibakeDom(root: ParentNode): void {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let textNode = walker.nextNode() as Text | null;
     while (textNode) {
+        const parentEl = textNode.parentElement;
+        if (
+            parentEl &&
+            (
+                parentEl instanceof HTMLInputElement ||
+                parentEl instanceof HTMLTextAreaElement ||
+                parentEl instanceof HTMLSelectElement ||
+                parentEl instanceof HTMLButtonElement ||
+                parentEl.isContentEditable
+            )
+        ) {
+            textNode = walker.nextNode() as Text | null;
+            continue;
+        }
         const original = textNode.nodeValue || '';
         const fixed = repairMojibakeCp1251Utf8(original);
         if (fixed !== original) textNode.nodeValue = fixed;
@@ -2241,6 +2840,15 @@ function repairMojibakeDom(root: ParentNode): void {
     if (!nodes) return;
     for (const el of Array.from(nodes)) {
         if (!(el instanceof HTMLElement)) continue;
+        if (
+            el instanceof HTMLInputElement ||
+            el instanceof HTMLTextAreaElement ||
+            el instanceof HTMLSelectElement ||
+            el instanceof HTMLButtonElement ||
+            el.isContentEditable
+        ) {
+            continue;
+        }
         const title = el.getAttribute('title');
         if (title) {
             const fixed = repairMojibakeCp1251Utf8(title);
@@ -2267,9 +2875,10 @@ function repairMojibakeDom(root: ParentNode): void {
 const App: React.FC = () => {
     // Grouping ALL state hooks at the top to satisfy TDZ
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const startupDebugConsoleEnabled = DEBUG_FLAG_ENABLED || readLocalStorageFlag(STARTUP_DEBUG_STORAGE_KEY, false);
     const [cameraOffset, setCameraOffset] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 4 });
     const [throttledCameraOffset, setThrottledCameraOffset] = useState(cameraOffset);
-    const [zoomIndex, setZoomIndex] = useState(2); // Corresponds to 1.0 zoom
+    const [zoomIndex, setZoomIndex] = useState(1); // Corresponds to 1.5 zoom
     const [placedBuildings, setPlacedBuildings] = useState<PlacedBuilding[]>([]);
     const [mapResources, setMapResources] = useState<MapResource[]>([]);
     const [droppedItems, setDroppedItems] = useState<DroppedItem[]>([]);
@@ -2296,22 +2905,89 @@ const App: React.FC = () => {
     const [playerGender, setPlayerGender] = useState<'male' | 'female' | null>(null);
     const [inventory, setInventory] = useState<Record<number, number>>({ [FIRECRACKER_ID]: 30, [RECOMMENDATION_ID]: 5 });
     const [banEndTime, setBanEndTime] = useState(0);
+    const [playerActiveCurse, setPlayerActiveCurse] = useState<{ prefix: string, endTime: number } | null>(null);
     const [currentTime, setCurrentTime] = useState(Date.now());
     const [gameAlertMessage, setGameAlertMessage] = useState<string | null>(null);
     const [buildingLimitModalData, setBuildingLimitModalData] = useState<{ currentLimit: number; nextLimit: number } | null>(null);
     const [energyModalState, setEnergyModalState] = useState<{ mode: 'warning' | 'shop'; requiredEnergy?: number } | null>(null);
+    const [rubyModalState, setRubyModalState] = useState<{ mode: 'warning' | 'shop'; requiredRubies?: number } | null>(null);
     const gameAlertQueueRef = useRef<string[]>([]);
     const gameAlertOkRef = useRef<HTMLButtonElement | null>(null);
 
     useEffect(() => {
-        console.log(`[APP STARTUP] buildMarker=${APP_BUILD_MARKER} mode=${APP_BUILD_MODE} origin=${window.location.origin}`);
+        const localStorageAvailable = (() => {
+            try {
+                localStorage.setItem('__startup_probe__', '1');
+                localStorage.removeItem('__startup_probe__');
+                return true;
+            } catch {
+                return false;
+            }
+        })();
+        const probeCanvas = document.createElement('canvas');
+        const canvas2dAvailable = !!probeCanvas.getContext('2d');
+        const webglAvailable = !!(probeCanvas.getContext('webgl') || probeCanvas.getContext('experimental-webgl'));
+        const entry = pushStartupDebugEvent('app_mounted', {
+            buildMarker: APP_BUILD_MARKER,
+            mode: APP_BUILD_MODE,
+            origin: window.location.origin,
+            userAgent: navigator.userAgent,
+            viewport: `${window.innerWidth}x${window.innerHeight}`,
+            devicePixelRatio: window.devicePixelRatio,
+            localStorageAvailable,
+            canvas2dAvailable,
+            webglAvailable,
+        });
+        if (startupDebugConsoleEnabled) {
+            console.info('[StartupDebug]', entry);
+        }
     }, []);
 
     useEffect(() => {
-        return () => {
-            if (permitPurchaseToastTimerRef.current !== null) {
-                window.clearTimeout(permitPurchaseToastTimerRef.current);
+        const onWindowError = (event: Event) => {
+            const errorEvent = event as ErrorEvent;
+            const target = event.target as HTMLElement | null;
+            if (target instanceof HTMLImageElement || target instanceof HTMLVideoElement || target instanceof HTMLAudioElement) {
+                if (startupAssetErrorCountRef.current >= 8) return;
+                startupAssetErrorCountRef.current += 1;
+                const entry = pushStartupDebugEvent('asset_error', {
+                    tag: target.tagName.toLowerCase(),
+                    src: (target as any).currentSrc || (target as any).src || null,
+                    lastStep: ((window as any).__APP_STARTUP_DEBUG__?.lastStep) || 'unknown',
+                });
+                if (startupDebugConsoleEnabled) {
+                    console.info('[StartupDebug]', entry);
+                }
+                return;
             }
+
+            const entry = pushStartupDebugEvent('window_error', {
+                message: errorEvent.message || 'unknown',
+                source: errorEvent.filename || null,
+                line: errorEvent.lineno || null,
+                column: errorEvent.colno || null,
+                lastStep: ((window as any).__APP_STARTUP_DEBUG__?.lastStep) || 'unknown',
+            });
+            if (startupDebugConsoleEnabled) {
+                console.info('[StartupDebug]', entry);
+            }
+        };
+
+        const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+            const entry = pushStartupDebugEvent('unhandled_rejection', {
+                reason: String(event.reason || 'unknown'),
+                lastStep: ((window as any).__APP_STARTUP_DEBUG__?.lastStep) || 'unknown',
+            });
+            if (startupDebugConsoleEnabled) {
+                console.info('[StartupDebug]', entry);
+            }
+        };
+
+        window.addEventListener('error', onWindowError, true);
+        window.addEventListener('unhandledrejection', onUnhandledRejection);
+        return () => {
+            window.removeEventListener('error', onWindowError, true);
+            window.removeEventListener('unhandledrejection', onUnhandledRejection);
         };
     }, []);
 
@@ -2376,11 +3052,15 @@ const App: React.FC = () => {
     const [selectedPlayerBuildings, setSelectedPlayerBuildings] = useState<PlacedBuilding[]>([]);
     const [showInventory, setShowInventory] = useState(false);
     const [showShop, setShowShop] = useState(false);
+    const [activeResourceShopCategory, setActiveResourceShopCategory] = useState<ResourceShopCategory>('resources');
+    const [resourceShopPressedButtons, setResourceShopPressedButtons] = useState<Record<string, boolean>>({});
     const [shopQuantities, setShopQuantities] = useState<Record<number, number>>({});
     const [showMap, setShowMap] = useState(false);
     const [showTopPlayers, setShowTopPlayers] = useState(false);
     const [activeTopPlayersTab, setActiveTopPlayersTab] = useState<TopPlayersTab>('glory');
     const [topPlayersData, setTopPlayersData] = useState<any[]>([]);
+    const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+    const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
     const [showRoyalElections, setShowRoyalElections] = useState(false);
     const [royalElectionsTab, setRoyalElectionsTab] = useState<'queen' | 'king'>('queen');
     const [showRoyalVotingModal, setShowRoyalVotingModal] = useState(false);
@@ -2396,6 +3076,7 @@ const App: React.FC = () => {
     const [firstRoyalElectionCompleted, setFirstRoyalElectionCompleted] = useState(false);
     const [buildMenu, setBuildMenu] = useState<{ visible: boolean, x: number, y: number }>({ visible: false, x: 0, y: 0 });
     const [activeBuildTab, setActiveBuildTab] = useState<BuildMenuTab>('Жилье');
+    const [buildMenuSearch, setBuildMenuSearch] = useState('');
         const [letterSubTab, setLetterSubTab] = useState<LetterSubTab>('english');
             const [giftSubTab, setGiftSubTab] = useState<GiftSubTab>('main');
             const [decorSubTab, setDecorSubTab] = useState<DecorSubTab>('other');
@@ -2525,6 +3206,8 @@ const App: React.FC = () => {
     const [activeTabletTutorial, setActiveTabletTutorial] = useState<'intro' | 'townHallBuilt' | 'housePrompt' | 'houseBuilt' | 'pondPrompt' | 'pondBuilt' | 'monsterWarning' | 'firecrackerWarning' | null>(null);
     const [tutorialCompleted, setTutorialCompleted] = useState<boolean | null>(null);
     const [townHallTutorialCompleted, setTownHallTutorialCompleted] = useState<boolean | null>(null);
+    const tutorialCompletedRef = useRef<boolean | null>(tutorialCompleted);
+    const townHallTutorialCompletedRef = useRef<boolean | null>(townHallTutorialCompleted);
     const [townHallTutorialStep, setTownHallTutorialStep] = useState<'townHallBuilt' | 'housePrompt' | 'houseBuilt' | 'pondPrompt' | 'pondBuilt' | 'monsterWarning' | 'firecrackerWarning' | null>(null);
     const [tutorialForcedBuildingId, setTutorialForcedBuildingId] = useState<string | null>(null);
     const [tutorialAutoBuildMode, setTutorialAutoBuildMode] = useState<'frogHouse' | 'lilyPond' | null>(null);
@@ -2534,6 +3217,7 @@ const App: React.FC = () => {
     const tutorialPersistStartedRef = useRef(false);
     const townHallTutorialPersistStartedRef = useRef(false);
     const leaderboardStatsRecoveryAttemptedRef = useRef<string | null>(null);
+    const leaderboardProfileSyncSignatureRef = useRef<string | null>(null);
     const lastInitializedAuthUidRef = useRef<string | null>(null);
     const lastMigratedGuestBuildingsUidRef = useRef<string | null>(null);
     const lastRecoveredBuildingsUidRef = useRef<string | null>(null);
@@ -2564,6 +3248,10 @@ const App: React.FC = () => {
     const [showMonsterAcademyModal, setShowMonsterAcademyModal] = useState(false);
     const [activeMarketTab, setActiveMarketTab] = useState<MarketTab>('buy');
     const [marketType, setMarketType] = useState<'general' | 'military'>('general');
+    const [activeMarketBuySection, setActiveMarketBuySection] = useState<MarketBuySection>('resources');
+    const [activeMarketResourceSection, setActiveMarketResourceSection] = useState<MarketResourceSection>('wood');
+    const [activeMarketBedSection, setActiveMarketBedSection] = useState<MarketBedSection>('mushroom');
+    const [activeMarketMonsterSection, setActiveMarketMonsterSection] = useState<MarketMonsterSection>('hut');
     const [marketListings, setMarketListings] = useState<MarketListing[]>([]);
     const [sellItemSelection, setSellItemSelection] = useState<{ itemId: number | null, amount: number, price: number, currency: 'coins' | 'rubies' }>({
         itemId: null, amount: 1, price: 10, currency: 'coins'
@@ -2599,6 +3287,12 @@ const App: React.FC = () => {
     const [loadPhase, setLoadPhase] = useState(0);
     const loadPhaseRef = useRef(0);
     useEffect(() => { loadPhaseRef.current = loadPhase; }, [loadPhase]);
+    useEffect(() => {
+        const entry = pushStartupDebugEvent('load_phase_changed', { loadPhase });
+        if (startupDebugConsoleEnabled) {
+            console.info('[StartupDebug]', entry);
+        }
+    }, [loadPhase, startupDebugConsoleEnabled]);
 
     // Chat/Social State
     const [chatCollapseState, setChatCollapseState] = useState<'open' | 'tabs' | 'button'>('button');
@@ -2608,10 +3302,7 @@ const App: React.FC = () => {
     const [activeChatTab, setActiveChatTab] = useState<ChatTab>('general');
     const [chatInput, setChatInput] = useState('');
     const [showShoutModal, setShowShoutModal] = useState(false);
-    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-        { id: 1, sender: 'Система', text: 'Добро пожаловать в игру!', type: 'system', timestamp: Date.now(), tab: 'general' },
-        { id: 2, sender: 'Система', text: 'Здесь будут отображаться ваши находки.', type: 'system', timestamp: Date.now(), tab: 'loot' }
-    ]);
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [lastLocationShareTime, setLastLocationShareTime] = useState<number>(0);
     const [privateMessages, setPrivateMessages] = useState<PrivateMessage[]>([]);
     const [activePrivateChat, setActivePrivateChat] = useState<string | null>(null);
@@ -2677,6 +3368,8 @@ const App: React.FC = () => {
     }, [isBuildingDeleting]);
     const serverZoneBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
     const serverMyBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+    const optimisticBuildDocIdByTempIdRef = useRef<Map<string, string>>(new Map());
+    const optimisticBuildTempIdByDocIdRef = useRef<Map<string, string>>(new Map());
     const townHallCleanupFirstSeenRef = useRef<Map<string, number>>(new Map());
     const townHallLogThrottleRef = useRef<Map<string, number>>(new Map());
     const shouldLogTownHallEvent = useCallback((key: string, cooldownMs: number): boolean => {
@@ -2696,12 +3389,22 @@ const App: React.FC = () => {
     const monsterAttackTimeRef = useRef<Map<string | number, number>>(new Map()); // Track last attack time for attack animation
     const monsterAttackDirectionRef = useRef<Map<string | number, {dx: number, dy: number}>>(new Map()); // Preserve actual attack facing separately from walk direction
     const monsterAttackCancelTimeRef = useRef<Map<string | number, number>>(new Map()); // Track when attack cancel anim should play (after walk, no target)
+    const monsterTargetLockRef = useRef<Map<string | number, string>>(new Map()); // Keep monsters focused on the same adjacent target until it dies or moves away
+    const clearMonsterTargetLocksForBuilding = (buildingId: string) => {
+        const targetId = String(buildingId);
+        Array.from(monsterTargetLockRef.current.entries()).forEach(([monsterId, lockedTargetId]) => {
+            if (lockedTargetId === targetId) {
+                monsterTargetLockRef.current.delete(monsterId);
+            }
+        });
+    };
     const monsterWriteCooldownRef = useRef<Map<string, number>>(new Map()); // Throttle monster write bursts per entity
     const monsterIdleDelayRef = useRef<Map<string | number, number>>(new Map()); // Random delay before idle animation starts (5-15s)
     const monsterTeleportCooldownRef = useRef<Map<string | number, number>>(new Map()); // Prevent teleport loops: monsterId -> lastTeleportTime
     const monsterStuckCountRef = useRef<Map<string | number, number>>(new Map()); // Track consecutive stuck checks per monster
     const speedUpInFlightRef = useRef<Set<string>>(new Set());
     const monsterDiagLogThrottleRef = useRef<Map<string, number>>(new Map()); // monsterId+reason -> last log time
+    const snapshotMergeDecisionLogRef = useRef<Map<string, string>>(new Map()); // buildingId -> last logged snapshot merge decision
     const lastInteractionRef = useRef<Map<string | number, number>>(new Map());
     const recentMoveInteractionRef = useRef<Map<string, number>>(new Map());
     const monsterSpawnRunningRef = useRef(false);
@@ -2709,7 +3412,8 @@ const App: React.FC = () => {
     const monsterSpawnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const monsterSpawnInitialTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const monsterWorldSweepCursorRef = useRef(0);
-    const placeBuildingAtTileRef = useRef<((building: Building, x: number, y: number) => Promise<PlacedBuilding | null>) | null>(null);
+    const currentZonesRef = useRef<string[]>([]);
+    const placeBuildingAtTileRef = useRef<((building: Building, x: number, y: number, traceId?: string) => Promise<PlacedBuilding | null>) | null>(null);
     const updatePlayerResourcesRef = useRef<((goldDelta: number, rubiesDelta: number, inventoryDeltas: Record<number, number>) => void) | null>(null);
     const addHistoryLogRef = useRef<((message: string, type: HistoryEntry['type']) => void) | null>(null);
     const lastServerSyncRef = useRef<Map<string, number>>(new Map()); // Track when each building was last seen from server
@@ -2717,8 +3421,11 @@ const App: React.FC = () => {
     const missingOwnersRef = useRef<Set<string>>(new Set()); // Skip-list for owner IDs that return 404
     const MISSING_OWNER_TTL_MS = 24 * 60 * 60 * 1000; // 24h
     const zonePlacementStatusRef = useRef<Map<string, ZonePlacementStatus>>(new Map());
+    const zoneSyncRetryCountsRef = useRef<Map<string, number>>(new Map());
+    const zoneSyncRetryTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
     const activeZoneBuildingsRequestRef = useRef(0);
     const activeZoneResourcesRequestRef = useRef(0);
+    const activeDroppedItemsRequestRef = useRef(0);
     const lastForceReloadAt = useRef<number>(0);
     const initialLoadDone = useRef(false);
     // High-watermark: the highest level ever loaded from DB or achieved locally.
@@ -2731,24 +3438,44 @@ const App: React.FC = () => {
     const [allUsers, setAllUsers] = useState<Record<string, any>>({});
     const allUsersRef = useRef<Record<string, any>>({});
     const audioRef = useRef<HTMLAudioElement>(null);
+    const [zoneSyncRetryNonce, setZoneSyncRetryNonce] = useState(0);
+    const [zoneGateDebug, setZoneGateDebug] = useState<ZoneGateDebugSnapshot | null>(null);
+    const [zoneGateDebugOpen, setZoneGateDebugOpen] = useState<boolean>(() => readLocalStorageFlag(ZONE_GATE_DEBUG_STORAGE_KEY, false));
+    const zoneGateDebugLogsEnabled = DEBUG_FLAG_ENABLED || readLocalStorageFlag(ZONE_GATE_DEBUG_LOG_STORAGE_KEY, false);
+    const zoneGateDebugLastLogSignatureRef = useRef('');
+    const zoneGateDebugLastLogAtRef = useRef(0);
+    const logSnapshotMergeDecision = useCallback((buildingId: string, payload: Record<string, unknown>) => {
+        const decision = String(payload.decision || '');
+        const lastDecision = snapshotMergeDecisionLogRef.current.get(buildingId);
+        if (lastDecision === decision) return;
+        snapshotMergeDecisionLogRef.current.set(buildingId, decision);
+        console.log("[SNAPSHOT MERGE DECISION]", payload);
+    }, []);
+    const buildTimingTracesRef = useRef<Map<string, BuildTimingTrace>>(new Map());
+    const runtimeTraceStateRef = useRef<Map<string, RuntimeAuditState>>(new Map());
+    const startupLastStepRef = useRef('boot');
+    const startupEventsRef = useRef<any[]>([]);
+    const startupAssetErrorCountRef = useRef(0);
+    const startupFirstDrawLoggedRef = useRef(false);
+    const startupCanvasFailureLoggedRef = useRef(false);
 
-    // Preload game UI sounds and critical images during loading screen (not after)
+    // Preload only the HUD assets the player can see immediately after entering the world.
     useEffect(() => {
         // Preload sounds immediately
         gameSoundOpenRef.current = new Audio('/game_sounds/building_menu/open.mp3');
         gameSoundCloseRef.current = new Audio('/game_sounds/building_menu/close.mp3');
         gameSoundCoinRef.current = new Audio('/game_sounds/coin/collect.mp3');
         
-        // Preload level icons and player avatars into browser cache
         const preloadUrls = [
-            ...Object.values(LEVEL_ICON_URLS).filter(u => !u.includes('placeholder')),
-            ...Object.values(PLAYER_AVATAR_URLS).filter(u => !u.includes('placeholder')),
-        ];
+            LEVEL_ICON_URLS[playerLevel] || LEVEL_ICON_URLS[1],
+            PLAYER_AVATAR_URLS[playerLevel] || PLAYER_AVATAR_URLS[1],
+        ].filter((url): url is string => Boolean(url) && !url.includes('placeholder'));
+
         preloadUrls.forEach(url => {
             const img = new Image();
             img.src = normalizeAssetUrl(url);
         });
-    }, []);
+    }, [playerLevel]);
 
     const playOpenSound = useCallback(() => {
         if (gameSoundOpenRef.current && gameSoundsVolume > 0) {
@@ -2790,10 +3517,84 @@ const App: React.FC = () => {
     }, []);
     const cameraOffsetRef = useRef(cameraOffset);
     const zoomIndexRef = useRef(zoomIndex);
+    const lastPersistedPlayerPositionRef = useRef<{ x: number; y: number; savedAt: number } | null>(null);
 
 
     // Sync allUsersRef
     useEffect(() => { allUsersRef.current = allUsers; }, [allUsers]);
+
+    const logStartupStep = useCallback((step: string, details?: Record<string, unknown>) => {
+        const entry = pushStartupDebugEvent(step, details);
+        startupLastStepRef.current = step;
+        startupEventsRef.current = [...startupEventsRef.current.slice(-39), entry];
+        if (startupDebugConsoleEnabled) {
+            console.info('[StartupDebug]', entry);
+        }
+    }, [startupDebugConsoleEnabled]);
+
+    const logBuildTiming = useCallback((stage: string, trace: BuildTimingTrace, extra?: Record<string, unknown>) => {
+        if (RUNTIME_AUDIT_ENABLED) {
+            console.info('[BuildTiming]', {
+                stage,
+                traceId: trace.traceId,
+                tempId: trace.tempId || null,
+                docId: trace.docId || null,
+                buildingId: trace.buildingId,
+                x: trace.x,
+                y: trace.y,
+                zoneId: trace.zoneId,
+                elapsedMs: Date.now() - trace.clickStartedAt,
+                ...extra,
+            });
+        }
+    }, []);
+
+    const recordRuntimeTraceStage = useCallback((
+        kind: RuntimeAuditKind,
+        traceId: string,
+        stage: string,
+        details?: Record<string, unknown>
+    ) => {
+        if (!RUNTIME_AUDIT_ENABLED) return null;
+
+        const stateKey = `${kind}:${traceId}`;
+        const now = Date.now();
+        const existing = runtimeTraceStateRef.current.get(stateKey);
+        const startedAt = existing?.startedAt || now;
+        const lastStageAt = existing?.lastStageAt || startedAt;
+        const entry = {
+            kind,
+            traceId,
+            stage,
+            startedAt,
+            now,
+            durationFromPreviousMs: now - lastStageAt,
+            totalDurationMs: now - startedAt,
+            ...(details || {}),
+        };
+
+        runtimeTraceStateRef.current.set(stateKey, { startedAt, lastStageAt: now });
+        pushRuntimeAuditLog(kind, entry);
+        console.info(`[${kind.toUpperCase()} TRACE]`, entry);
+        return entry;
+    }, []);
+
+    const recordBuildTimingStage = useCallback((
+        traceKey: string,
+        stage: 'validationDoneAt' | 'optimisticRenderAt' | 'pbCreateStartedAt' | 'pbCreateDoneAt' | 'snapshotReceivedAt',
+        extra?: Partial<BuildTimingTrace> & Record<string, unknown>
+    ) => {
+        const trace = buildTimingTracesRef.current.get(traceKey);
+        if (!trace) return null;
+        const nextTrace: BuildTimingTrace = {
+            ...trace,
+            ...extra,
+            [stage]: Date.now(),
+        };
+        buildTimingTracesRef.current.set(traceKey, nextTrace);
+        logBuildTiming(stage, nextTrace, extra);
+        return nextTrace;
+    }, [logBuildTiming]);
 
     // Fast owner hydration for building card: avoids long "Unknown player" waits on slow zone batches.
     useEffect(() => {
@@ -2865,9 +3666,67 @@ const App: React.FC = () => {
         return b.ownerId === GUEST_ID || b.ownerId === "0";
     }, [user]);
 
+    const clearZoneSyncRetry = useCallback((retryKey: string, resetCount: boolean = true) => {
+        const timer = zoneSyncRetryTimeoutsRef.current.get(retryKey);
+        if (timer) {
+            clearTimeout(timer);
+            zoneSyncRetryTimeoutsRef.current.delete(retryKey);
+        }
+        if (resetCount) {
+            zoneSyncRetryCountsRef.current.delete(retryKey);
+        }
+    }, []);
+
+    const markZoneStatuses = useCallback((
+        zoneIds: string[],
+        kind: 'buildings' | 'resources',
+        loaded: boolean,
+        failed: boolean
+    ) => {
+        const settledAt = Date.now();
+        const nextStatus = new Map(zonePlacementStatusRef.current);
+
+        zoneIds.forEach(zoneId => {
+            const previousStatus = nextStatus.get(zoneId) || {
+                buildingsLoaded: false,
+                resourcesLoaded: false,
+                buildingsFailed: false,
+                resourcesFailed: false,
+                lastRequestedAt: settledAt,
+                lastBuildingsLoadedAt: 0,
+                lastResourcesLoadedAt: 0,
+            };
+
+            nextStatus.set(zoneId, {
+                ...previousStatus,
+                ...(kind === 'buildings'
+                    ? {
+                        buildingsLoaded: loaded,
+                        buildingsFailed: failed,
+                        lastBuildingsLoadedAt: settledAt,
+                    }
+                    : {
+                        resourcesLoaded: loaded,
+                        resourcesFailed: failed,
+                        lastResourcesLoadedAt: settledAt,
+                    }),
+            });
+        });
+
+        zonePlacementStatusRef.current = nextStatus;
+    }, []);
+
     const isZoneReadyForPlacement = useCallback((zoneId: string) => {
         const status = zonePlacementStatusRef.current.get(zoneId);
-        return !!status?.buildingsLoaded && !!status?.resourcesLoaded;
+        return !!(status?.buildingsLoaded || status?.buildingsFailed) && !!(status?.resourcesLoaded || status?.resourcesFailed);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            zoneSyncRetryTimeoutsRef.current.forEach((timer) => clearTimeout(timer));
+            zoneSyncRetryTimeoutsRef.current.clear();
+            zoneSyncRetryCountsRef.current.clear();
+        };
     }, []);
 
     const getPlacementPreviewState = useCallback((
@@ -2909,40 +3768,95 @@ const App: React.FC = () => {
         y: number,
         options?: PlacementGuardOptions
     ): Promise<PlacementGuardResult> => {
+        const traceId = options?.traceId;
         const previewState = getPlacementPreviewState(x, y, options);
         const ignoreBuildingId = options?.ignoreBuildingId !== undefined ? String(options.ignoreBuildingId) : null;
         const allowedResourceTypes = new Set(options?.allowedResourceTypes || []);
+        const finish = (result: PlacementGuardResult, extra?: Record<string, unknown>) => {
+            if (traceId) {
+                recordRuntimeTraceStage('build', traceId, 'validatePlacementTarget end', {
+                    ok: result.ok,
+                    reason: result.reason || 'ok',
+                    ...extra,
+                });
+            }
+            return result;
+        };
+
+        if (traceId) {
+            recordRuntimeTraceStage('build', traceId, 'validatePlacementTarget start', {
+                x,
+                y,
+                previewState,
+                ignoreBuildingId,
+                allowedResourceTypes: Array.from(allowedResourceTypes),
+            });
+        }
 
         if (previewState === 'occupied') {
-            return {
+            return finish({
                 ok: false,
                 reason: 'occupied',
                 message: "Это место уже занято другим объектом!"
-            };
+            }, { cause: 'previewState' });
         }
 
         const localResource = mapResourcesRef.current.find(r => r.x === x && r.y === y);
         if (localResource && !allowedResourceTypes.has(localResource.type)) {
-            return {
+            return finish({
                 ok: false,
                 reason: 'occupied',
                 message: "Это место уже занято ресурсом!"
-            };
+            }, { cause: 'localResource' });
         }
 
         if (!isAuthReadyRef.current || !userRef.current) {
-            return { ok: true };
+            return finish({ ok: true }, { cause: 'auth-not-ready' });
         }
 
         const zoneId = getZoneId(x, y);
         if (isZoneReadyForPlacement(zoneId)) {
-            return { ok: true };
+            return finish({ ok: true }, { cause: 'zone-ready', zoneId });
         }
 
         try {
+            const trackedQuery = async <T,>(label: string, promiseFactory: () => Promise<T>): Promise<T> => {
+                const queryStartedAt = Date.now();
+                if (traceId) {
+                    recordRuntimeTraceStage('build', traceId, `${label} start`, {
+                        x,
+                        y,
+                        zoneId,
+                    });
+                }
+                try {
+                    const result = await promiseFactory();
+                    if (traceId) {
+                        recordRuntimeTraceStage('build', traceId, `${label} end`, {
+                            x,
+                            y,
+                            zoneId,
+                            queryDurationMs: Date.now() - queryStartedAt,
+                        });
+                    }
+                    return result;
+                } catch (error) {
+                    if (traceId) {
+                        recordRuntimeTraceStage('build', traceId, `${label} end`, {
+                            x,
+                            y,
+                            zoneId,
+                            queryDurationMs: Date.now() - queryStartedAt,
+                            error: String(error),
+                        });
+                    }
+                    throw error;
+                }
+            };
+
             const [serverBuildingsSnap, serverResourcesSnap] = await Promise.all([
-                getDocs(query(collection(db, 'buildings'), where('x', '==', x), where('y', '==', y))),
-                getDocs(query(collection(db, 'map_resources'), where('x', '==', x), where('y', '==', y)))
+                trackedQuery('buildings-at-tile read', () => getDocs(query(collection(db, 'buildings'), where('x', '==', x), where('y', '==', y)))),
+                trackedQuery('map_resources-at-tile read', () => getDocs(query(collection(db, 'map_resources'), where('x', '==', x), where('y', '==', y))))
             ]);
 
             const blockingBuilding = serverBuildingsSnap.docs.find(d => {
@@ -2950,11 +3864,11 @@ const App: React.FC = () => {
                 return (data.hp === undefined || data.hp > 0) && String(d.id) !== ignoreBuildingId;
             });
             if (blockingBuilding) {
-                return {
+                return finish({
                     ok: false,
                     reason: 'occupied',
-                    message: "Это место уже занято другим объектом! (сервер)"
-                };
+                    message: "This tile is already occupied by another object (server)."
+                }, { cause: 'serverBuilding', blockingBuildingId: String(blockingBuilding.id) });
             }
 
             const blockingResource = serverResourcesSnap.docs.find(d => {
@@ -2962,32 +3876,31 @@ const App: React.FC = () => {
                 return !allowedResourceTypes.has(data.type);
             });
             if (blockingResource) {
-                return {
+                return finish({
                     ok: false,
                     reason: 'occupied',
-                    message: "Это место уже занято ресурсом! (сервер)"
-                };
+                    message: "This tile is already occupied by a resource (server)."
+                }, { cause: 'serverResource', blockingResourceId: String(blockingResource.id) });
             }
 
-            return { ok: true };
+            return finish({ ok: true }, {
+                cause: 'server-ok',
+                serverBuildingsCount: serverBuildingsSnap.docs.length,
+                serverResourcesCount: serverResourcesSnap.docs.length,
+            });
         } catch (error) {
             handleFirestoreError(error, OperationType.GET, `placement_probe/${x}_${y}`);
-            return {
+            return finish({
                 ok: false,
                 reason: 'syncing',
-                message: "Р С™Р В»Р ВµРЎвЂљР С”Р В° Р ВµРЎвЂ°Р Вµ Р Т‘Р С•Р С–РЎР‚РЎС“Р В¶Р В°Р ВµРЎвЂљРЎРѓРЎРЏ. Р РЋРЎвЂљРЎР‚Р С•Р в„–Р С”Р В° Р Р…Р В° Р Р…Р ВµР С—РЎР‚Р С•Р Р†Р ВµРЎР‚Р ВµР Р…Р Р…Р С•Р в„– Р С”Р В»Р ВµРЎвЂљР С”Р Вµ Р Р†РЎР‚Р ВµР СР ВµР Р…Р Р…Р С• Р В·Р В°Р В±Р В»Р С•Р С”Р С‘РЎР‚Р С•Р Р†Р В°Р Р…Р В°."
-            };
+                message: 'Placement check is still syncing. Please try again in a moment.'
+            }, { cause: 'placement-check-error' });
         }
     }, [getPlacementPreviewState, isZoneReadyForPlacement]);
 
     const currentOwnerId = user ? user.uid : GUEST_ID;
 
     const getLevelIcon = useCallback((level: number) => {
-        const levelIcons = [
-            level1IconUrl, level2IconUrl, level3IconUrl, level4IconUrl, level5IconUrl,
-            level6IconUrl, level7IconUrl, level8IconUrl, level9IconUrl, level10IconUrl,
-            level11IconUrl, level12IconUrl, level13IconUrl, level14IconUrl, level15IconUrl
-        ];
         const index = Math.max(0, Math.min(level - 1, levelIcons.length - 1));
         return levelIcons[index];
     }, []);
@@ -3045,13 +3958,40 @@ const App: React.FC = () => {
     ), [placedBuildings, isMyBuilding, user]);
 
     const tutorialForcedBuildingCompleted = useMemo(() => {
-        if (!tutorialForcedBuildingId) return false;
-        return placedBuildings.some(b =>
-            String(b.id) === tutorialForcedBuildingId &&
-            isBuildingAlive(b) &&
-            !b.isConstructing
-        );
-    }, [placedBuildings, tutorialForcedBuildingId]);
+        const hasCompletedTrackedTutorialBuilding = tutorialForcedBuildingId
+            ? placedBuildings.some(b =>
+                String(b.id) === tutorialForcedBuildingId &&
+                isBuildingAlive(b) &&
+                !b.isConstructing
+            )
+            : false;
+
+        if (hasCompletedTrackedTutorialBuilding) {
+            return true;
+        }
+
+        // Fallback for cases where the placed building is re-synced with a different record id
+        // before the tutorial step advances.
+        if (townHallTutorialStep === 'housePrompt') {
+            return placedBuildings.some(b =>
+                Number(b.buildingId) === TUTORIAL_FROG_HOUSE_ID &&
+                isMyBuilding(b) &&
+                isBuildingAlive(b) &&
+                !b.isConstructing
+            );
+        }
+
+        if (townHallTutorialStep === 'pondPrompt') {
+            return placedBuildings.some(b =>
+                Number(b.buildingId) === TUTORIAL_LILY_POND_ID &&
+                isMyBuilding(b) &&
+                isBuildingAlive(b) &&
+                !b.isConstructing
+            );
+        }
+
+        return false;
+    }, [placedBuildings, tutorialForcedBuildingId, townHallTutorialStep, isMyBuilding]);
 
     const currentPopulation = useMemo(() => {
         return placedBuildings
@@ -3156,10 +4096,28 @@ const App: React.FC = () => {
         return null;
     }, [clans, localClanOverride, playerClanId, user]);
 
+    const canRepairBuilding = useCallback((b: PlacedBuilding) => {
+        if (isMyBuilding(b)) return true;
+        if (!user) return false;
+
+        const activeClanId = currentClan?.id ?? playerClanId;
+        if (activeClanId === null || activeClanId === undefined) return false;
+
+        const ownerId = String(b.ownerId || '');
+        if (!ownerId || ownerId === '0' || ownerId === GUEST_ID || ownerId === 'monster' || ownerId === '-1') return false;
+
+        if (currentClan?.leaderUid && ownerId === currentClan.leaderUid) {
+            return true;
+        }
+
+        const ownerClanId = normalizeClanIdValue(allUsers[ownerId]?.clanId);
+        return ownerClanId !== null && ownerClanId === Number(activeClanId);
+    }, [allUsers, currentClan?.id, isMyBuilding, playerClanId, user]);
+
     const isInClan = useMemo(() => playerClanId !== null || currentClan !== null, [currentClan, playerClanId]);
 
     const hasClanCastle = useMemo(() => {
-        return placedBuildings.some(b => b.buildingId === CLAN_CASTLE_ID && isMyBuilding(b) && !b.isConstructing);
+        return placedBuildings.some(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing);
     }, [placedBuildings, isMyBuilding]);
 
     const hasFinancialIntelligence = useMemo(() => {
@@ -3177,6 +4135,16 @@ const App: React.FC = () => {
     useEffect(() => { mapResourcesRef.current = mapResources; }, [mapResources]);
     const playerEnergyRef = useRef(playerEnergy);
     useEffect(() => { playerEnergyRef.current = playerEnergy; }, [playerEnergy]);
+    const deletingDroppedItemsRef = useRef<Map<string, number>>(new Map());
+    const isDroppedItemDeleting = useCallback((id: string): boolean => {
+        const deleteTime = deletingDroppedItemsRef.current.get(id);
+        if (!deleteTime) return false;
+        if ((Date.now() - deleteTime) > 15000) {
+            deletingDroppedItemsRef.current.delete(id);
+            return false;
+        }
+        return true;
+    }, []);
     const playerGloryRef = useRef(playerGlory);
     const playerLevelRef = useRef(playerLevel);
     const playerGoldRef = useRef(playerGold);
@@ -3188,6 +4156,9 @@ const App: React.FC = () => {
             leaderboardStatsRecoveryAttemptedRef.current = null;
         }
     }, [user]);
+    useEffect(() => {
+        leaderboardProfileSyncSignatureRef.current = null;
+    }, [user?.uid]);
     useEffect(() => {
         if (!user?.uid) return;
         writeCachedLeaderboardStats(user.uid, playerLeaderboardStats);
@@ -3215,6 +4186,9 @@ const App: React.FC = () => {
     }, [getPermitCacheKey]);
     useEffect(() => {
         if (!user?.uid) return;
+        // Don't overwrite cached purchased permits with the initial default 0
+        // before the first user snapshot has been applied.
+        if (!initialLoadDone.current && extraBuildingPermits <= 0) return;
         writeCachedExtraBuildingPermits(user.uid, extraBuildingPermits);
     }, [user?.uid, extraBuildingPermits, writeCachedExtraBuildingPermits]);
     useEffect(() => { playerLevelRef.current = playerLevel; peakLevelRef.current = Math.max(peakLevelRef.current, playerLevel); }, [playerLevel]);
@@ -3352,11 +4326,11 @@ const App: React.FC = () => {
     ], []);
 
 
-    // Throttle camera offset for zone calculation to reduce PocketBase re-subscriptions
+    // Keep nearby sector subscriptions responsive so map changes show up almost immediately.
     useEffect(() => {
         const timer = setTimeout(() => {
             setThrottledCameraOffset(cameraOffset);
-        }, 400); // 20% faster zone sync response while dragging
+        }, 80);
         return () => clearTimeout(timer);
     }, [cameraOffset]);
 
@@ -3539,6 +4513,7 @@ const App: React.FC = () => {
     const [centerZone, setCenterZone] = useState<string>(''); // Track current center zone for ring reset
     const zoneLoadRingRef = useRef(0);
     useEffect(() => { zoneLoadRingRef.current = zoneLoadRing; }, [zoneLoadRing]);
+    useEffect(() => { currentZonesRef.current = currentZones; }, [currentZones]);
     useEffect(() => {
         const now = Date.now();
         const nextStatus = new Map<string, ZonePlacementStatus>();
@@ -3547,6 +4522,8 @@ const App: React.FC = () => {
             nextStatus.set(zoneId, {
                 buildingsLoaded: previousStatus?.buildingsLoaded ?? false,
                 resourcesLoaded: previousStatus?.resourcesLoaded ?? false,
+                buildingsFailed: previousStatus?.buildingsFailed ?? false,
+                resourcesFailed: previousStatus?.resourcesFailed ?? false,
                 lastRequestedAt: now,
                 lastBuildingsLoadedAt: previousStatus?.lastBuildingsLoadedAt ?? 0,
                 lastResourcesLoadedAt: previousStatus?.lastResourcesLoadedAt ?? 0,
@@ -3594,41 +4571,52 @@ const App: React.FC = () => {
         return () => { clearTimeout(t1); clearTimeout(t2); };
     }, [centerZone]);
 
-    // Build currentZones based on centerZone + zoneLoadRing
+    const buildZoneList = useCallback((zoneId: string, maxRing: number): string[] => {
+        if (!zoneId) return [];
+        const [czx, czy] = zoneId.split('_').map(Number);
+        const zones: string[] = [zoneId];
+
+        if (maxRing >= 1) {
+            const cardinals = [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
+            cardinals.forEach(({ dx, dy }) => {
+                const nx = czx + dx;
+                const ny = czy + dy;
+                if (isWorldWrapped) {
+                    zones.push(`${wrapCoord(nx, ZONES_X)}_${wrapCoord(ny, ZONES_Y)}`);
+                } else if (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y) {
+                    zones.push(`${nx}_${ny}`);
+                }
+            });
+        }
+
+        if (maxRing >= 2) {
+            const diagonals = [{ dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }];
+            diagonals.forEach(({ dx, dy }) => {
+                const nx = czx + dx;
+                const ny = czy + dy;
+                if (isWorldWrapped) {
+                    zones.push(`${wrapCoord(nx, ZONES_X)}_${wrapCoord(ny, ZONES_Y)}`);
+                } else if (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y) {
+                    zones.push(`${nx}_${ny}`);
+                }
+            });
+        }
+
+        return Array.from(new Set(zones));
+    }, [isWorldWrapped]);
+
+    const currentBuildingZones = useMemo(
+        () => buildZoneList(centerZone, zoneLoadRing),
+        [buildZoneList, centerZone, zoneLoadRing]
+    );
+
+    // Keep initial zone load scoped to the visible ring first, then expand progressively.
     useEffect(() => {
         if (!centerZone) return;
-        const [czx, czy] = centerZone.split('_').map(Number);
-
-        const zones: string[] = [centerZone]; // Ring 0: always include center
-
-        if (zoneLoadRing >= 1) {
-            // Ring 1: cardinal neighbors (N, S, E, W)
-            const cardinals = [{dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}];
-            cardinals.forEach(({dx, dy}) => {
-                const nx = czx + dx, ny = czy + dy;
-                if (isWorldWrapped) {
-                    zones.push(`${wrapCoord(nx, ZONES_X)}_${wrapCoord(ny, ZONES_Y)}`);
-                } else if (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y) {
-                    zones.push(`${nx}_${ny}`);
-                }
-            });
-        }
-
-        if (zoneLoadRing >= 2) {
-            // Ring 2: diagonal neighbors
-            const diagonals = [{dx: -1, dy: -1}, {dx: -1, dy: 1}, {dx: 1, dy: -1}, {dx: 1, dy: 1}];
-            diagonals.forEach(({dx, dy}) => {
-                const nx = czx + dx, ny = czy + dy;
-                if (isWorldWrapped) {
-                    zones.push(`${wrapCoord(nx, ZONES_X)}_${wrapCoord(ny, ZONES_Y)}`);
-                } else if (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y) {
-                    zones.push(`${nx}_${ny}`);
-                }
-            });
-        }
+        const zones = currentBuildingZones;
 
         // Only update if the set of zones has changed
-            setCurrentZones(prev => {
+        setCurrentZones(prev => {
             if (prev.length === zones.length && zones.every(z => prev.includes(z))) {
                 return prev;
             }
@@ -3638,18 +4626,178 @@ const App: React.FC = () => {
             setLastZoneChangeTime(zoneChangeNow);
             return zones;
         });
-    }, [centerZone, zoneLoadRing, isWorldWrapped]);
+    }, [centerZone, currentBuildingZones]);
+
+    const buildZoneGateDebugSnapshot = useCallback((): ZoneGateDebugSnapshot => {
+        const hoveredZoneId = hoveredTile ? getZoneId(hoveredTile.x, hoveredTile.y) : '';
+        const hoveredTileLabel = hoveredTile ? `${hoveredTile.x},${hoveredTile.y}` : 'none';
+        const status = hoveredZoneId ? zonePlacementStatusRef.current.get(hoveredZoneId) : undefined;
+        const hoveredZoneInCurrentZones = hoveredZoneId ? currentZones.includes(hoveredZoneId) : false;
+        const placementStatus = hoveredTile ? getPlacementPreviewState(hoveredTile.x, hoveredTile.y) : 'no_hover';
+        const now = Date.now();
+
+        const buildingsStatus = !hoveredZoneId
+            ? 'n/a'
+            : !status
+                ? 'missing'
+                : status.buildingsLoaded
+                    ? 'loaded'
+                    : status.buildingsFailed
+                        ? 'failed-fallback'
+                        : 'loading';
+
+        const resourcesStatus = !hoveredZoneId
+            ? 'n/a'
+            : !status
+                ? 'missing'
+                : status.resourcesLoaded
+                    ? 'loaded'
+                    : status.resourcesFailed
+                        ? 'failed-fallback'
+                        : 'loading';
+
+        const droppedItemsInHoveredZone = hoveredZoneId
+            ? droppedItems.filter(item => (item.zoneId || getZoneId(item.x, item.y)) === hoveredZoneId).length
+            : 0;
+        const hoveredZoneStatusFlags = !hoveredZoneId
+            ? 'hoveredZone=none'
+            : !status
+                ? 'status=missing'
+                : [
+                    `buildingsLoaded=${status.buildingsLoaded}`,
+                    `buildingsFailed=${Boolean(status.buildingsFailed)}`,
+                    `resourcesLoaded=${status.resourcesLoaded}`,
+                    `resourcesFailed=${Boolean(status.resourcesFailed)}`,
+                ].join(' ');
+        const hoveredZoneTiming = !hoveredZoneId
+            ? 'n/a'
+            : !status
+                ? 'status=missing'
+                : [
+                    `requested=${Math.max(0, now - status.lastRequestedAt)}ms ago`,
+                    `buildings=${status.lastBuildingsLoadedAt ? `${Math.max(0, now - status.lastBuildingsLoadedAt)}ms ago` : 'never'}`,
+                    `resources=${status.lastResourcesLoadedAt ? `${Math.max(0, now - status.lastResourcesLoadedAt)}ms ago` : 'never'}`,
+                ].join(' | ');
+
+        const blockers: string[] = [];
+        if (placementStatus === 'syncing') {
+            if (!hoveredZoneId) blockers.push('no_hovered_zone');
+            if (hoveredZoneId && !hoveredZoneInCurrentZones) blockers.push('zone_not_in_currentZones');
+            if (hoveredZoneId && !status) blockers.push('zone_status_missing');
+            if (hoveredZoneId && status && !status.buildingsLoaded && !status.buildingsFailed) blockers.push('buildings_pending');
+            if (hoveredZoneId && status && !status.resourcesLoaded && !status.resourcesFailed) blockers.push('resources_pending');
+        }
+
+        return {
+            centerZoneId: centerZone || 'none',
+            zoneLoadRing,
+            hoveredTile: hoveredTileLabel,
+            hoveredZoneId: hoveredZoneId || 'none',
+            hoveredZoneInCurrentZones,
+            currentZones,
+            currentBuildingZones,
+            placementStatus,
+            buildingsStatus,
+            resourcesStatus,
+            droppedItemsStatus: hoveredZoneId ? `observed=${droppedItemsInHoveredZone}, gate=ignored` : 'gate=ignored',
+            collisionStatus: 'gate=ignored',
+            blocker: blockers.length > 0 ? blockers.join(', ') : 'none',
+            hoveredZoneStatusFlags,
+            hoveredZoneTiming,
+            activeRequests: `buildingsReq=${activeZoneBuildingsRequestRef.current} resourcesReq=${activeZoneResourcesRequestRef.current}`,
+        };
+    }, [centerZone, currentZones, currentBuildingZones, droppedItems, getPlacementPreviewState, hoveredTile, zoneLoadRing]);
+
+    useEffect(() => {
+        writeLocalStorageFlag(ZONE_GATE_DEBUG_STORAGE_KEY, zoneGateDebugOpen);
+    }, [zoneGateDebugOpen]);
+
+    useEffect(() => {
+        const handleHotkey = (event: KeyboardEvent) => {
+            if (event.shiftKey && event.code === 'KeyG') {
+                event.preventDefault();
+                setZoneGateDebugOpen(prev => !prev);
+            }
+        };
+
+        window.addEventListener('keydown', handleHotkey);
+        return () => window.removeEventListener('keydown', handleHotkey);
+    }, []);
+
+    useEffect(() => {
+        if (!zoneGateDebugOpen && !zoneGateDebugLogsEnabled) {
+            if (zoneGateDebug !== null) {
+                setZoneGateDebug(null);
+            }
+            return;
+        }
+
+        const updateDebug = () => {
+            const snapshot = buildZoneGateDebugSnapshot();
+            const logSignature = [
+                snapshot.centerZoneId,
+                snapshot.hoveredZoneId,
+                snapshot.placementStatus,
+                snapshot.buildingsStatus,
+                snapshot.resourcesStatus,
+                snapshot.blocker,
+                snapshot.activeRequests,
+            ].join('|');
+
+            setZoneGateDebug((prev) => {
+                if (
+                    prev &&
+                    prev.centerZoneId === snapshot.centerZoneId &&
+                    prev.zoneLoadRing === snapshot.zoneLoadRing &&
+                    prev.hoveredTile === snapshot.hoveredTile &&
+                    prev.hoveredZoneId === snapshot.hoveredZoneId &&
+                    prev.hoveredZoneInCurrentZones === snapshot.hoveredZoneInCurrentZones &&
+                    prev.placementStatus === snapshot.placementStatus &&
+                    prev.buildingsStatus === snapshot.buildingsStatus &&
+                    prev.resourcesStatus === snapshot.resourcesStatus &&
+                    prev.blocker === snapshot.blocker &&
+                    prev.hoveredZoneStatusFlags === snapshot.hoveredZoneStatusFlags &&
+                    prev.activeRequests === snapshot.activeRequests &&
+                    prev.currentZones.join('|') === snapshot.currentZones.join('|') &&
+                    prev.currentBuildingZones.join('|') === snapshot.currentBuildingZones.join('|')
+                ) {
+                    return prev;
+                }
+                return snapshot;
+            });
+
+            if (!zoneGateDebugLogsEnabled) return;
+
+            const now = Date.now();
+            const lastSignature = zoneGateDebugLastLogSignatureRef.current;
+            const lastLoggedAt = zoneGateDebugLastLogAtRef.current;
+            const signatureChanged = logSignature !== lastSignature;
+            const throttlePassed = (now - lastLoggedAt) >= ZONE_GATE_DEBUG_LOG_THROTTLE_MS;
+
+            if (signatureChanged && throttlePassed) {
+                zoneGateDebugLastLogSignatureRef.current = logSignature;
+                zoneGateDebugLastLogAtRef.current = now;
+                console.log('[ZoneGateDebug]', snapshot);
+            }
+        };
+
+        updateDebug();
+        const intervalId = setInterval(updateDebug, 1000);
+        return () => clearInterval(intervalId);
+    }, [buildZoneGateDebugSnapshot, zoneGateDebugLogsEnabled, zoneGateDebugOpen]);
 
     // Sync Map Resources
     useEffect(() => {
         if (!isAuthReady || !user || currentZones.length === 0) return;
         const requestedZones = [...currentZones];
         const requestId = ++activeZoneResourcesRequestRef.current;
+        const retryKey = `resources:${requestedZones.slice().sort().join('|')}`;
         const resourcesCol = collection(db, 'map_resources');
         const q = query(resourcesCol, where('zoneId', 'in', currentZones));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (requestId !== activeZoneResourcesRequestRef.current) return;
+            clearZoneSyncRetry(retryKey);
             const resourcesData: MapResource[] = [];
             snapshot.forEach((doc) => {
                 resourcesData.push(doc.data() as MapResource);
@@ -3685,7 +4833,8 @@ const App: React.FC = () => {
                                         type: 'system',
                                         timestamp: Date.now(),
                                         tab: 'loot',
-                                        teleportCoordinates: { x: (sectorX - 1) * ZONE_SIZE + ZONE_SIZE / 2, y: (sectorY - 1) * ZONE_SIZE + ZONE_SIZE / 2 }
+                                        teleportCoordinates: { x: (sectorX - 1) * ZONE_SIZE + ZONE_SIZE / 2, y: (sectorY - 1) * ZONE_SIZE + ZONE_SIZE / 2 },
+                                        localOnly: true
                                     };
                                     return [...history, msg];
                                 });
@@ -3697,42 +4846,56 @@ const App: React.FC = () => {
                 initialResourcesLoaded.current = true;
             }
 
-            const loadedAt = Date.now();
-            const nextStatus = new Map(zonePlacementStatusRef.current);
-            requestedZones.forEach(zoneId => {
-                const previousStatus = nextStatus.get(zoneId) || {
-                    buildingsLoaded: false,
-                    resourcesLoaded: false,
-                    lastRequestedAt: loadedAt,
-                    lastBuildingsLoadedAt: 0,
-                    lastResourcesLoadedAt: 0,
-                };
-                nextStatus.set(zoneId, {
-                    ...previousStatus,
-                    resourcesLoaded: true,
-                    lastResourcesLoadedAt: loadedAt,
-                });
-            });
-            zonePlacementStatusRef.current = nextStatus;
-        }, (error) => handleFirestoreError(error, OperationType.GET, 'map_resources'));
-        return () => unsubscribe();
-    }, [isAuthReady, user, currentZones]); // FIX: currentZones added so subscription updates when camera moves to new zones
+            markZoneStatuses(requestedZones, 'resources', true, false);
+        }, (error) => {
+            if (requestId !== activeZoneResourcesRequestRef.current) return;
+            handleFirestoreError(error, OperationType.GET, 'map_resources');
+
+            const nextAttempt = (zoneSyncRetryCountsRef.current.get(retryKey) || 0) + 1;
+            zoneSyncRetryCountsRef.current.set(retryKey, nextAttempt);
+
+            if (nextAttempt <= ZONE_SYNC_MAX_RETRIES) {
+                const retryDelay = ZONE_SYNC_RETRY_DELAY_MS * nextAttempt;
+                clearZoneSyncRetry(retryKey);
+                zoneSyncRetryCountsRef.current.set(retryKey, nextAttempt);
+                const timer = setTimeout(() => {
+                    if (requestId === activeZoneResourcesRequestRef.current) {
+                        setZoneSyncRetryNonce((value) => value + 1);
+                    }
+                }, retryDelay);
+                zoneSyncRetryTimeoutsRef.current.set(retryKey, timer);
+                return;
+            }
+
+            console.warn(`[ZoneSync] map_resources failed for zones ${requestedZones.join(', ')} after ${nextAttempt - 1} retries. Using fail-open fallback.`);
+            clearZoneSyncRetry(retryKey);
+            markZoneStatuses(requestedZones, 'resources', false, true);
+        });
+        return () => {
+            unsubscribe();
+            clearZoneSyncRetry(retryKey, false);
+        };
+    }, [isAuthReady, user, currentZones, clearZoneSyncRetry, markZoneStatuses, zoneSyncRetryNonce]); // FIX: currentZones added so subscription updates when camera moves to new zones
 
     // Sync Dropped Items
     useEffect(() => {
         if (!isAuthReady || !user || currentZones.length === 0) return;
+        const requestId = activeDroppedItemsRequestRef.current + 1;
+        activeDroppedItemsRequestRef.current = requestId;
         const droppedItemsCol = collection(db, 'dropped_items');
         const q = query(droppedItemsCol, where('zoneId', 'in', currentZones));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
+            if (activeDroppedItemsRequestRef.current !== requestId) return;
             const itemsData: DroppedItem[] = [];
             snapshot.forEach((doc) => {
+                if (isDroppedItemDeleting(String(doc.id))) return;
                 itemsData.push({ id: doc.id, ...doc.data() } as DroppedItem);
             });
             setDroppedItems(itemsData);
         }, (error) => handleFirestoreError(error, OperationType.GET, 'dropped_items'));
         return () => unsubscribe();
-    }, [isAuthReady, user, currentZones]);
+    }, [isAuthReady, user, currentZones, isDroppedItemDeleting]);
     // Trees are now pre-generated on server deploy via quick_reset_map.mjs
     // No need to seed zones when players join - all 7500 trees (300 per sector) are already there
 
@@ -3792,14 +4955,16 @@ const App: React.FC = () => {
     // Function to detect and resolve overlapping buildings
     const detectAndResolveCollisions = useCallback(async () => {
         if (!isAuthReady || !user) return;
+        const collisionZoneIds = currentZonesRef.current;
+        if (collisionZoneIds.length === 0) return;
         
         console.log('[CollisionDetect] Starting collision detection...');
         
         try {
-            // Get all buildings/resources from server
+            // Only inspect the currently loaded world slice instead of scanning the whole map.
             const [allBuildingsSnap, allResourcesSnap] = await Promise.all([
-                getDocs(collection(db, 'buildings')),
-                getDocs(collection(db, 'map_resources'))
+                getDocs(query(collection(db, 'buildings'), where('zoneId', 'in', collisionZoneIds))),
+                getDocs(query(collection(db, 'map_resources'), where('zoneId', 'in', collisionZoneIds)))
             ]);
             const allBuildings = allBuildingsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PlacedBuilding));
             const movableBuildings = allBuildings.filter(b => b.ownerId !== 'monster' && b.ownerId !== '-1');
@@ -4016,13 +5181,15 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const handleMouseUp = useCallback(async (event: React.MouseEvent<HTMLCanvasElement>) => {
-        // Prevent ghost click on mobile - ignore mouse events within 500ms after touch end
-        const timeSinceLastTouch = Date.now() - lastTouchEndRef.current;
-        if (timeSinceLastTouch < 500) {
-            return;
+    const handleCanvasPointerUp = useCallback(async (clientX: number, clientY: number, skipGhostClickProtection = false) => {
+        // Ignore synthetic mouse events that mobile browsers can emit right after touchend.
+        if (!skipGhostClickProtection) {
+            const timeSinceLastTouch = Date.now() - lastTouchEndRef.current;
+            if (timeSinceLastTouch < 500) {
+                return;
+            }
         }
-        
+
         const wasDragging = hasDraggedRef.current;
         isDraggingRef.current = false;
         hasDraggedRef.current = false;
@@ -4036,13 +5203,18 @@ const App: React.FC = () => {
             }
 
             const zoom = ZOOM_LEVELS[zoomIndex];
-            const { x: gridX, y: gridY } = screenToWorld(event.clientX, event.clientY, zoom);
+            const { x: gridX, y: gridY } = screenToWorld(clientX, clientY, zoom);
 
             if (moveMode.active && moveMode.building) {
                 if (isMoveActionProcessing) return;
                 if (!isWorldWrapped && (gridX < 0 || gridX >= WORLD_WIDTH_TILES || gridY < 0 || gridY >= WORLD_HEIGHT_TILES)) return;
 
                 const buildingToMove = moveMode.building;
+                if (!isMyBuilding(buildingToMove)) {
+                    setMoveMode({ active: false, building: null });
+                    alert("Перемещать можно только свои постройки.");
+                    return;
+                }
                 setIsMoveActionProcessing(true);
                 try {
                     const placementGuard = await validatePlacementTarget(gridX, gridY, {
@@ -4066,17 +5238,10 @@ const App: React.FC = () => {
                     const isMountainOrRiver = Number(buildingToMove.buildingId) === MOUNTAIN_ID || Number(buildingToMove.buildingId) === RIVER_ID;
                     const newZoneId = getZoneId(gridX, gridY);
 
-                    if (isAuthReady && user) {
-                        const docId = String(buildingToMove.id);
-                        const updates: any = { x: gridX, y: gridY, zoneId: newZoneId };
-                        if (isMountainOrRiver) {
-                            updates.ownerId = user.uid;
-                        }
-
-                        lastInteractionRef.current.set(docId, Date.now());
-                        recentMoveInteractionRef.current.set(docId, Date.now());
-                        await updateDoc(doc(db, 'buildings', docId), updates);
-                    }
+                    const docId = String(buildingToMove.id);
+                    const moveStartedAt = Date.now();
+                    lastInteractionRef.current.set(docId, moveStartedAt);
+                    recentMoveInteractionRef.current.set(docId, moveStartedAt);
 
                     setPlacedBuildings(prev => prev.map(b => {
                         if (String(b.id) === String(buildingToMove.id)) {
@@ -4096,7 +5261,27 @@ const App: React.FC = () => {
                     const buildingInfo = buildingData.find(b => b.id === buildingToMove.buildingId);
                     addHistoryLog(`Перемещен объект "${buildingInfo?.name}" с [${buildingToMove.x}, ${buildingToMove.y}] на [${gridX}, ${gridY}]. Расход: ${moveCost} энергии.`, 'move');
                     setMoveMode({ active: false, building: null });
+
+                    if (isAuthReady && user) {
+                        const updates: any = { x: gridX, y: gridY, zoneId: newZoneId };
+                        if (isMountainOrRiver) {
+                            updates.ownerId = user.uid;
+                        }
+                        await updateDoc(doc(db, 'buildings', docId), updates);
+                    }
                 } catch (error) {
+                    setPlacedBuildings(prev => prev.map(b => {
+                        if (String(b.id) !== String(buildingToMove.id)) return b;
+                        return {
+                            ...b,
+                            x: buildingToMove.x,
+                            y: buildingToMove.y,
+                            zoneId: buildingToMove.zoneId,
+                            ...(buildingToMove.ownerId !== undefined ? { ownerId: buildingToMove.ownerId } : {})
+                        };
+                    }));
+                    setPlayerEnergy(prev => prev + ((Number(buildingToMove.buildingId) === MOUNTAIN_ID || Number(buildingToMove.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST));
+                    setMoveMode({ active: false, building: null });
                     handleFirestoreError(error, OperationType.UPDATE, `buildings/${String(buildingToMove.id)}`);
                 } finally {
                     setIsMoveActionProcessing(false);
@@ -4119,6 +5304,10 @@ const App: React.FC = () => {
                 }
 
                 const item = droppedItems[droppedItemIndex];
+                if (isDroppedItemDeleting(String(item.id))) {
+                    return;
+                }
+                deletingDroppedItemsRef.current.set(String(item.id), Date.now());
 
                 // Add to inventory or gold
                 if (item.itemId === 999) {
@@ -4144,7 +5333,11 @@ const App: React.FC = () => {
                 // Remove from map
                 setDroppedItems(prev => prev.filter(i => i.id !== item.id));
                 if (isAuthReadyRef.current && userRef.current) {
-                    deleteDoc(doc(db, 'dropped_items', item.id)).catch(e => handleFirestoreError(e, OperationType.DELETE, `dropped_items/${item.id}`));
+                    deleteDoc(doc(db, 'dropped_items', item.id))
+                        .catch(e => handleFirestoreError(e, OperationType.DELETE, `dropped_items/${item.id}`))
+                        .finally(() => {
+                            setTimeout(() => deletingDroppedItemsRef.current.delete(String(item.id)), 2000);
+                        });
                 }
                 return;
             }
@@ -4158,7 +5351,7 @@ const App: React.FC = () => {
 
                 // Special direct interaction for Lilly/Mushroom and Factories
                 const buildingIdNum = Number(buildingAtTile.buildingId);
-                const isLilyOrMushroom = [500, 393, 394, 395, 396, 397, 398, 399, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingIdNum);
+                const isLilyOrMushroom = [500, 393, 394, 395, 396, 397, 398, 399, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingIdNum);
                 const isDirectFactory = DIRECT_INTERACTION_FACTORIES.includes(buildingIdNum);
 
                 if ((isLilyOrMushroom || isDirectFactory) && isMyBuilding(buildingAtTile)) {
@@ -4175,6 +5368,14 @@ const App: React.FC = () => {
                     const lastActionTime = lastInteractionRef.current.get(String(buildingAtTile.id)) || 0;
                     if (now - lastActionTime < 500) return;
                     lastInteractionRef.current.set(String(buildingAtTile.id), now);
+
+                    if (isBanditCastleBuildingId(buildingAtTile.buildingId)) {
+                        const info = buildingData.find(bd => bd.id === buildingAtTile.buildingId);
+                        if (info) {
+                            setSelectedBuilding({ building: buildingAtTile, info });
+                        }
+                        return;
+                    }
 
                     if (!buildingAtTile.workState || buildingAtTile.workState === 'idle') {
                         const info = buildingData.find(bd => bd.id === buildingAtTile.buildingId);
@@ -4220,6 +5421,132 @@ const App: React.FC = () => {
                     return;
                 }
 
+                if (resource.type === 'tree') {
+                    if (playerEnergy < TREE_SERVER_HIT_ENERGY_COST) {
+                        openEnergyWarningModal(TREE_SERVER_HIT_ENERGY_COST);
+                        return;
+                    }
+
+                    const resourceId = `${resource.x}_${resource.y}`;
+
+                    try {
+                        const hitResult = await requestTreeHit(resourceId);
+                        if (!hitResult.applied) {
+                            return;
+                        }
+
+                        playCoinSound();
+
+                        if (typeof hitResult.playerEnergy === 'number') {
+                            setPlayerEnergy(Math.max(0, hitResult.playerEnergy));
+                        }
+
+                        if (typeof hitResult.playerGold === 'number') {
+                            setPlayerGold(Math.max(0, hitResult.playerGold));
+                        }
+
+                        const nextGlory = typeof hitResult.playerGlory === 'number'
+                            ? Math.max(0, hitResult.playerGlory)
+                            : playerGloryRef.current;
+                        playerGloryRef.current = nextGlory;
+                        setPlayerGlory(nextGlory);
+
+                        if (hitResult.inventory) {
+                            setInventory(sanitizeInventoryCounts(hitResult.inventory));
+                        }
+
+                        const nextTreesChopped =
+                            typeof hitResult.playerTreesChopped === 'number'
+                                ? Math.max(0, hitResult.playerTreesChopped)
+                                : Math.max(
+                                    0,
+                                    (playerLeaderboardStatsRef.current.treesChopped || 0) +
+                                    (hitResult.treesChoppedIncrement || 0)
+                                );
+
+                        const nextStats = {
+                            ...playerLeaderboardStatsRef.current,
+                            treesChopped: nextTreesChopped,
+                        };
+                        setPlayerLeaderboardStats(nextStats);
+
+                        if (user) {
+                            setAllUsers(prev => ({
+                                ...prev,
+                                [user.uid]: {
+                                    ...prev[user.uid],
+                                    glory: nextGlory,
+                                    treesChopped: nextTreesChopped,
+                                }
+                            }));
+                        }
+
+                        addHistoryLog(
+                            `Рубка дерева. Получено: дерево (+${hitResult.rewardWood || 1}) и ${Math.max(0, hitResult.rewardGold || 0)} монет.`,
+                            'economy'
+                        );
+
+                        const resourceZone = getZoneId(resource.x, resource.y);
+                        const sectorOwnerBuilding = placedBuildings.find(b =>
+                            b.buildingId === WATCHTOWER_ID &&
+                            b.zoneId === resourceZone &&
+                            b.ownerId !== (user?.uid ?? '0') &&
+                            b.ownerId !== '-1' &&
+                            b.ownerId !== 'monster' &&
+                            !b.isConstructing
+                        );
+                        if (sectorOwnerBuilding) {
+                            const sectorX = Math.floor(resource.x / ZONE_SIZE) + 1;
+                            const sectorY = Math.floor(resource.y / ZONE_SIZE) + 1;
+                            const theftMsg: ChatMessage = {
+                                id: Date.now() + Math.random(),
+                                sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°',
+                                text: `?? Р СљР В°РЎР‚Р С•Р Т‘РЎвЂРЎР‚! Р ВР С–РЎР‚Р С•Р С” "${playerName}" РЎРѓРЎР‚РЎС“Р В±Р С‘Р В» Р Т‘Р ВµРЎР‚Р ВµР Р†Р С• Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} [${resource.x}, ${resource.y}]!`,
+                                type: 'system',
+                                timestamp: Date.now(),
+                                tab: 'loot',
+                                teleportCoordinates: { x: resource.x, y: resource.y },
+                                localOnly: true
+                            };
+                            setChatHistory(prev => [...prev, theftMsg]);
+                        }
+
+                        return;
+                    } catch (error) {
+                        const status = typeof (error as { status?: unknown })?.status === 'number'
+                            ? Number((error as { status?: number }).status)
+                            : null;
+                        const details = (error as { details?: any })?.details || {};
+                        const errorCode = String(details?.error || details?.code || '');
+                        const requiredEnergy = Number(details?.requiredEnergy);
+                        const currentEnergy = Number(details?.currentEnergy);
+
+                        if (typeof details?.playerEnergy === 'number') {
+                            setPlayerEnergy(Math.max(0, details.playerEnergy));
+                        } else if (Number.isFinite(currentEnergy)) {
+                            setPlayerEnergy(Math.max(0, currentEnergy));
+                        }
+
+                        if (status === 401) {
+                            alert('Нужно заново войти в аккаунт, чтобы рубить деревья.');
+                            return;
+                        }
+
+                        if (errorCode === 'NOT_ENOUGH_ENERGY') {
+                            openEnergyWarningModal(Number.isFinite(requiredEnergy) ? requiredEnergy : TREE_SERVER_HIT_ENERGY_COST);
+                            return;
+                        }
+
+                        if (errorCode === 'TREE_NOT_FOUND' || errorCode === 'TREE_NOT_ALIVE') {
+                            console.warn('[TreeHit][client] Tree already changed on server:', { resourceId, status, details });
+                            return;
+                        }
+
+                        console.error('[TreeHit][client] Request failed:', { resourceId, status, details, error });
+                        return;
+                    }
+                }
+
                 if (playerEnergy < ENERGY_COST_PER_CHOP) {
                     openEnergyWarningModal(ENERGY_COST_PER_CHOP);
                     return;
@@ -4227,6 +5554,7 @@ const App: React.FC = () => {
 
                 setPlayerEnergy(prev => prev - ENERGY_COST_PER_CHOP);
                 const newGlory = playerGloryRef.current + GLORY_PER_CHOP;
+                playerGloryRef.current = newGlory;
                 setPlayerGlory(newGlory);
                 // Update allUsers for immediate sync
                 if (user) {
@@ -4246,55 +5574,6 @@ const App: React.FC = () => {
                 const currentHp = (typeof resource.hp === 'number' && !isNaN(resource.hp)) ? resource.hp : TREE_HP;
                 const newHp = currentHp - 1;
 
-                if (resource.type === 'tree') {
-                    playCoinSound();
-                    const actualGold = Math.min(GOLD_PER_CHOP, goldCapacity - playerGold);
-                    updatePlayerResources(GOLD_PER_CHOP, 0, { [WOOD_ITEM_ID]: 1 });
-                    if (isAuthReady && user) {
-                        updateDoc(doc(db, 'users', user.uid), { treesChopped: increment(1) }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
-                    }
-                    if (user) {
-                        const nextStats = {
-                            ...playerLeaderboardStatsRef.current,
-                            treesChopped: (playerLeaderboardStatsRef.current.treesChopped || 0) + 1,
-                        };
-                        setPlayerLeaderboardStats(nextStats);
-                        setAllUsers(prev => ({
-                            ...prev,
-                            [user.uid]: {
-                                ...prev[user.uid],
-                                ...nextStats
-                            }
-                        }));
-                    }
-                    addHistoryLog(`Рубка дерева. Получено: дерево (+1) и ${actualGold > 0 ? actualGold : 0} монет.`, 'economy');
-
-                    // Theft notification logic (abbreviated here for safety, but aiming for full restoration)
-                    const resourceZone = getZoneId(resource.x, resource.y);
-                    const sectorOwnerBuilding = placedBuildings.find(b =>
-                        b.buildingId === WATCHTOWER_ID &&
-                        b.zoneId === resourceZone &&
-                        b.ownerId !== (user?.uid ?? '0') &&
-                        b.ownerId !== '-1' &&
-                        b.ownerId !== 'monster' &&
-                        !b.isConstructing
-                    );
-                    if (sectorOwnerBuilding) {
-                        const sectorX = Math.floor(resource.x / ZONE_SIZE) + 1;
-                        const sectorY = Math.floor(resource.y / ZONE_SIZE) + 1;
-                        const theftMsg: ChatMessage = {
-                            id: Date.now() + Math.random(),
-                            sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°',
-                            text: `?? Р СљР В°РЎР‚Р С•Р Т‘РЎвЂРЎР‚! Р ВР С–РЎР‚Р С•Р С” "${playerName}" РЎРѓРЎР‚РЎС“Р В±Р С‘Р В» Р Т‘Р ВµРЎР‚Р ВµР Р†Р С• Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} [${resource.x}, ${resource.y}]!`,
-                            type: 'system',
-                            timestamp: Date.now(),
-                            tab: 'loot',
-                            teleportCoordinates: { x: resource.x, y: resource.y }
-                        };
-                        setChatHistory(prev => [...prev, theftMsg]);
-                    }
-                }
-
                 if (resource.type === 'chest') {
                     const coinRewards = [100, 500, 1000, 2000];
                     const randomCoins = coinRewards[Math.floor(Math.random() * coinRewards.length)];
@@ -4306,75 +5585,6 @@ const App: React.FC = () => {
                     setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
                     if (isAuthReady && user) {
                         deleteDoc(resourceRef).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${resourceId}`));
-                    }
-
-                    if (resource.type === 'tree') {
-                        // Instant respawn: spawn a new tree immediately in the same sector
-                        const sectorZoneId = resource.zoneId;
-                        const [zx, zy] = sectorZoneId.split('_').map(Number);
-                        
-                        // Check current tree count in this sector (from DB to be accurate)
-                        const checkAndRespawn = async () => {
-                            try {
-                                // Count trees in this sector from DB
-                                const sectorTreesQuery = query(
-                                    collection(db, 'map_resources'), 
-                                    where('zoneId', '==', sectorZoneId),
-                                    where('type', '==', 'tree')
-                                );
-                                const sectorTreesSnap = await getDocs(sectorTreesQuery);
-                                
-                                // Only respawn if below limit
-                                if (sectorTreesSnap.size >= TREES_PER_ZONE) {
-                                    console.log(`[Tree Respawn] Sector ${sectorZoneId} already has ${sectorTreesSnap.size} trees, skipping respawn`);
-                                    return;
-                                }
-                                
-                                // Get fresh data for occupied positions
-                                const allResourcesSnap = await getDocs(collection(db, 'map_resources'));
-                                const allBuildingsSnap = await getDocs(collection(db, 'buildings'));
-                                
-                                const occupied = new Set<string>();
-                                allResourcesSnap.docs.forEach(d => {
-                                    const data = d.data();
-                                    occupied.add(`${data.x},${data.y}`);
-                                });
-                                allBuildingsSnap.docs.forEach(d => {
-                                    const data = d.data();
-                                    if (data.hp === undefined || data.hp > 0) {
-                                        occupied.add(`${data.x},${data.y}`);
-                                    }
-                                });
-                                
-                                // Find a free spot in the same sector
-                                let newX, newY, key;
-                                const maxTries = 100;
-                                let tries = 0;
-                                
-                                do {
-                                    newX = zx * ZONE_SIZE + Math.floor(Math.random() * ZONE_SIZE);
-                                    newY = zy * ZONE_SIZE + Math.floor(Math.random() * ZONE_SIZE);
-                                    key = `${newX},${newY}`;
-                                    tries++;
-                                } while (occupied.has(key) && tries < maxTries);
-                                
-                                if (!occupied.has(key)) {
-                                    const newResourceId = `${newX}_${newY}`;
-                                    const newTree: MapResource = { x: newX, y: newY, zoneId: sectorZoneId, hp: TREE_HP, type: 'tree' };
-                                    setMapResources(prev => [...prev, newTree]);
-                                    if (isAuthReady && user) {
-                                        await setDoc(doc(db, 'map_resources', newResourceId), newTree);
-                                        console.log(`[Tree Respawn] New tree spawned at [${newX},${newY}] in sector ${sectorZoneId}, total: ${sectorTreesSnap.size + 1}`);
-                                    }
-                                } else {
-                                    console.log(`[Tree Respawn] Could not find free spot in sector ${sectorZoneId}`);
-                                }
-                            } catch (e) {
-                                console.error('[Tree Respawn] Error:', e);
-                            }
-                        };
-                        
-                        checkAndRespawn();
                     }
                 } else {
                     setMapResources(prev => prev.map(r => r.x === resource.x && r.y === resource.y ? { ...r, hp: newHp } : r));
@@ -4453,7 +5663,7 @@ const App: React.FC = () => {
                             if (placedHouse) {
                                 setTutorialForcedBuildingId(String(placedHouse.id));
                                 setTutorialAutoBuildMode(null);
-                                await new Promise(resolve => window.setTimeout(resolve, 350));
+                                await new Promise(resolve => window.setTimeout(resolve, 1000));
                                 setPlacedBuildings(prev => prev.map(b => String(b.id) === String(placedHouse.id)
                                     ? { ...b, isConstructing: false, constructionEndTime: 0, workState: 'idle' }
                                     : b
@@ -4486,7 +5696,7 @@ const App: React.FC = () => {
                             if (placedLilyPond) {
                                 setTutorialForcedBuildingId(String(placedLilyPond.id));
                                 setTutorialAutoBuildMode(null);
-                                await new Promise(resolve => window.setTimeout(resolve, 350));
+                                await new Promise(resolve => window.setTimeout(resolve, 1000));
                                 setPlacedBuildings(prev => prev.map(b => String(b.id) === String(placedLilyPond.id)
                                     ? { ...b, isConstructing: false, constructionEndTime: 0, workState: 'idle' }
                                     : b
@@ -4512,25 +5722,21 @@ const App: React.FC = () => {
         }
     }, [cameraOffset, placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
 
+    const handleMouseUp = useCallback(async (event: React.MouseEvent<HTMLCanvasElement>) => {
+        await handleCanvasPointerUp(event.clientX, event.clientY);
+    }, [handleCanvasPointerUp]);
+
     const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
         const wasDragging = hasDraggedRef.current;
+        lastTouchEndRef.current = Date.now();
         isDraggingRef.current = false;
         hasDraggedRef.current = false;
 
         if (!wasDragging) {
             const touch = event.changedTouches[0];
-            // Simulate mouse up with touch coordinates
-            void handleMouseUp({
-                clientX: touch.clientX,
-                clientY: touch.clientY,
-                preventDefault: () => { },
-                stopPropagation: () => { }
-            } as unknown as React.MouseEvent<HTMLCanvasElement>);
-            
-            // Record touch end time AFTER processing to block subsequent ghost clicks
-            lastTouchEndRef.current = Date.now();
+            void handleCanvasPointerUp(touch.clientX, touch.clientY, true);
         }
-    }, [handleMouseUp]);
+    }, [handleCanvasPointerUp]);
 
     const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
         setLastPointerPos({ x: event.clientX, y: event.clientY });
@@ -4560,7 +5766,7 @@ const App: React.FC = () => {
         if (isWorldWrapped || (gridX >= 0 && gridX < WORLD_WIDTH_TILES && gridY >= 0 && gridY < WORLD_HEIGHT_TILES)) {
             setHoveredOutOfBounds(false);
             setHoveredTile({ x: gridX, y: gridY });
-            const hoveredBuilding = placedBuildings.find(b => b.x === gridX && b.y === gridY);
+            const hoveredBuilding = placedBuildings.find(b => b.x === gridX && b.y === gridY && isBuildingAlive(b));
             if (hoveredBuilding && !hoveredBuilding.isConstructing && !hoveredBuilding.isDestroying) {
                 const buildingInfo = buildingData.find(b => b.id === hoveredBuilding.buildingId);
                 if (buildingInfo) {
@@ -4653,9 +5859,17 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const placeBuildingAtTile = useCallback(async (building: Building, x: number, y: number): Promise<PlacedBuilding | null> => {
+    const placeBuildingAtTile = useCallback(async (building: Building, x: number, y: number, traceId?: string): Promise<PlacedBuilding | null> => {
+        if (traceId) {
+            recordRuntimeTraceStage('build', traceId, 'placeBuildingAtTile entered', {
+                buildingId: building.id,
+                x,
+                y,
+            });
+        }
         const placementGuard = await validatePlacementTarget(x, y, {
-            allowedResourceTypes: getAllowedResourceTypesForBuildingId(Number(building.id))
+            allowedResourceTypes: getAllowedResourceTypesForBuildingId(Number(building.id)),
+            traceId,
         });
         if (!placementGuard.ok) {
             alert(placementGuard.message);
@@ -4668,7 +5882,22 @@ const App: React.FC = () => {
         const isTownHallBuild = TOWN_HALL_IDS.includes(Number(building.id));
         if (isTownHallBuild) {
             if (user) {
+                if (traceId) {
+                    recordRuntimeTraceStage('build', traceId, 'owner building count start', {
+                        buildingId: building.id,
+                        mode: 'townhall-check',
+                    });
+                }
+                const ownerCountStartedAt = Date.now();
                 const userBuildingsSnap = await getDocs(query(collection(db, 'buildings'), where('ownerId', '==', user.uid)));
+                if (traceId) {
+                    recordRuntimeTraceStage('build', traceId, 'owner building count end', {
+                        buildingId: building.id,
+                        mode: 'townhall-check',
+                        queryDurationMs: Date.now() - ownerCountStartedAt,
+                        ownerBuildingCount: userBuildingsSnap.docs.length,
+                    });
+                }
                 const hasTownHallOnServer = userBuildingsSnap.docs.some(d => {
                     const b = d.data() as PlacedBuilding;
                     return TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b);
@@ -4692,8 +5921,23 @@ const App: React.FC = () => {
 
         if (user && !isTownHallBuild) {
             try {
+                if (traceId) {
+                    recordRuntimeTraceStage('build', traceId, 'owner building count start', {
+                        buildingId: building.id,
+                        mode: 'limit-check',
+                    });
+                }
+                const ownerCountStartedAt = Date.now();
                 const userBuildingsSnap = await getDocs(query(collection(db, 'buildings'), where('ownerId', '==', user.uid)));
                 const serverBuildingCount = userBuildingsSnap.docs.length;
+                if (traceId) {
+                    recordRuntimeTraceStage('build', traceId, 'owner building count end', {
+                        buildingId: building.id,
+                        mode: 'limit-check',
+                        queryDurationMs: Date.now() - ownerCountStartedAt,
+                        ownerBuildingCount: serverBuildingCount,
+                    });
+                }
                 effectiveBuildingCount = Math.max(localBuildingCount, serverBuildingCount);
             } catch (countErr) {
                 console.warn('[BuildLimit] Failed to load server building count, fallback to local count:', countErr);
@@ -4701,6 +5945,18 @@ const App: React.FC = () => {
         }
 
         if (effectiveBuildingCount >= maxBuildings && !isTownHallBuild) {
+            if (traceId) {
+                recordRuntimeTraceStage('build', traceId, 'building limit decision', {
+                    allowed: false,
+                    currentLimit: maxBuildings,
+                    nextLimit: Math.max(1, maxBuildings + 1),
+                    effectiveBuildingCount,
+                });
+                recordRuntimeTraceStage('build', traceId, 'building permit modal opened', {
+                    currentLimit: Math.max(0, maxBuildings),
+                    nextLimit: Math.max(1, maxBuildings + 1),
+                });
+            }
             setBuildingLimitModalData({
                 currentLimit: Math.max(0, maxBuildings),
                 nextLimit: Math.max(1, maxBuildings + 1)
@@ -4709,11 +5965,20 @@ const App: React.FC = () => {
             return null;
         }
 
+        if (traceId) {
+            recordRuntimeTraceStage('build', traceId, 'building limit decision', {
+                allowed: true,
+                currentLimit: maxBuildings,
+                effectiveBuildingCount,
+                isTownHallBuild,
+            });
+        }
+
         if (building.id === CLAN_CASTLE_ID || building.id === WATCHTOWER_ID) {
             const zoneX = Math.floor(x / ZONE_SIZE);
             const zoneY = Math.floor(y / ZONE_SIZE);
             const zoneClanBuildings = placedBuildings.filter(b => {
-                const isClanBuilding = b.buildingId === CLAN_CASTLE_ID || b.buildingId === WATCHTOWER_ID;
+                const isClanBuilding = BANDIT_CASTLE_IDS.has(Number(b.buildingId)) || b.buildingId === WATCHTOWER_ID;
                 const bZoneX = Math.floor(b.x / ZONE_SIZE);
                 const bZoneY = Math.floor(b.y / ZONE_SIZE);
                 return isClanBuilding && bZoneX === zoneX && bZoneY === zoneY && !b.isConstructing;
@@ -4723,7 +5988,7 @@ const App: React.FC = () => {
             const foreignZoneClanBuilding = zoneClanBuildings.find(b => !isMyBuilding(b));
 
             if (building.id === WATCHTOWER_ID) {
-                const hasClanCastle = placedBuildings.some(b => b.buildingId === CLAN_CASTLE_ID && isMyBuilding(b) && !b.isConstructing);
+                const hasClanCastle = placedBuildings.some(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing);
                 if (!hasClanCastle) {
                     alert('Для постройки «Сторожевой башни» требуется «Бандитский замок».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
@@ -4737,7 +6002,7 @@ const App: React.FC = () => {
                     return null;
                 }
 
-                const ownClanCastleInZone = ownZoneClanBuildings.find(b => b.buildingId === CLAN_CASTLE_ID);
+                const ownClanCastleInZone = ownZoneClanBuildings.find(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)));
                 if (!ownClanCastleInZone) {
                     alert('«Сторожевую башню» можно построить только в том секторе, где уже стоит ваш «Бандитский замок».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
@@ -4760,7 +6025,7 @@ const App: React.FC = () => {
                     return null;
                 }
 
-                const ownClanCastleInZone = ownZoneClanBuildings.find(b => b.buildingId === CLAN_CASTLE_ID);
+                const ownClanCastleInZone = ownZoneClanBuildings.find(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)));
                 if (ownClanCastleInZone) {
                     alert('В этом секторе уже построен ваш «Бандитский замок».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
@@ -4774,7 +6039,7 @@ const App: React.FC = () => {
 
         if (rubyCost > 0) {
             if (playerRubies < rubyCost) {
-                alert(`Недостаточно рубинов! Требуется: ${rubyCost}`);
+                openRubyWarningModal(rubyCost);
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                 return null;
             }
@@ -4820,23 +6085,34 @@ const App: React.FC = () => {
             }
         }
 
-        const priceText = rubyCost > 0 ? `${rubyCost} рубинов` : `${goldCost} монет`;
-        addHistoryLogRef.current?.(`Построено здание "${building.name}" в клетке [${x}, ${y}]. Стоимость: ${priceText}.`, 'build');
+        if (traceId) {
+            recordBuildTimingStage(traceId, 'validationDoneAt', {
+                zoneId: getZoneId(x, y),
+            });
+        }
 
         const currentUser = userRef.current;
         const currentAuthReady = isAuthReadyRef.current;
+        const tempId = traceId || `temp-${makePlacedEntityId(currentUser?.uid)}`;
+        const docId = makePlacedEntityId(currentUser?.uid);
+        const nowTs = Date.now();
+        const constructionEndTime = nowTs + (building.stats.constructionTimeSeconds || 0) * 1000;
         const newBuilding: PlacedBuilding = {
-            id: makePlacedEntityId(currentUser?.uid),
+            id: tempId,
+            tempId,
+            clientBuildTraceId: tempId,
             x,
             y,
             zoneId: getZoneId(x, y),
             buildingId: building.id,
             ownerId: currentUser ? currentUser.uid : "0",
             ownerName: playerName,
-            timestamp: Date.now(),
+            timestamp: nowTs,
+            status: 'pending',
+            syncState: 'creating',
             isConstructing: true,
-            constructionEndTime: Date.now() + (building.stats.constructionTimeSeconds || 0) * 1000,
-            ...([...CANNON_IDS, PROTECTED_TOWER_ID, WATCHTOWER_ID].includes(building.id) ? { lastAttackTime: Date.now() } : {}),
+            constructionEndTime,
+            ...([...CANNON_IDS, PROTECTED_TOWER_ID, WATCHTOWER_ID].includes(building.id) ? { lastAttackTime: nowTs } : {}),
             ...(building.type ? { type: building.type } : {}),
             workState: 'idle',
             ...(building.stats.durability !== undefined ? { hp: building.stats.durability, maxHp: building.stats.durability } : {}),
@@ -4845,33 +6121,136 @@ const App: React.FC = () => {
             isLocal: true
         };
 
-        const docId = String(newBuilding.id);
-        setPlacedBuildings(prev => [...prev, newBuilding]);
+        if (traceId) {
+            recordBuildingTimerTrace('local-start', newBuilding, {
+                now: nowTs,
+                actionType: 'construction',
+                constructionStartTime: nowTs,
+                constructionEndTime,
+                sourceCode: 'placeBuildingAtTile',
+            });
+        }
 
-        if (currentAuthReady && currentUser) {
-            try {
-                await setDoc(doc(db, 'buildings', docId), newBuilding);
-            } catch (e) {
-                setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
-                const inventoryRefundDeltas: Record<number, number> = {};
-                Object.entries(inventoryCostDeltas).forEach(([id, amount]) => {
-                    inventoryRefundDeltas[Number(id)] = -amount;
-                });
-                if (rubyCost > 0) {
-                    updatePlayerResourcesRef.current?.(0, rubyCost, inventoryRefundDeltas);
-                } else {
-                    updatePlayerResourcesRef.current?.(goldCost, 0, inventoryRefundDeltas);
-                }
-                throw e;
+        lastInteractionRef.current.set(tempId, nowTs);
+        setPlacedBuildings(prev => [...prev, newBuilding]);
+        if (traceId) {
+            recordRuntimeTraceStage('build', traceId, 'optimistic render', {
+                tempId,
+                docId,
+                zoneId: newBuilding.zoneId,
+            });
+            recordBuildTimingStage(traceId, 'optimisticRenderAt', {
+                tempId,
+                zoneId: newBuilding.zoneId,
+            });
+            const existingTrace = buildTimingTracesRef.current.get(traceId);
+            if (existingTrace) {
+                const nextTrace: BuildTimingTrace = {
+                    ...existingTrace,
+                    tempId,
+                    docId,
+                    zoneId: newBuilding.zoneId || existingTrace.zoneId,
+                };
+                buildTimingTracesRef.current.set(traceId, nextTrace);
+                buildTimingTracesRef.current.set(docId, nextTrace);
             }
         }
 
+        const priceText = rubyCost > 0 ? `${rubyCost} рубинов` : `${goldCost} монет`;
+        addHistoryLogRef.current?.(`Построено здание "${building.name}" в клетке [${x}, ${y}]. Стоимость: ${priceText}.`, 'build');
+
+        const serverBuilding: PlacedBuilding = {
+            ...newBuilding,
+            id: docId,
+            tempId: undefined,
+            status: 'normal',
+            syncState: 'synced',
+        };
+
+        if (currentAuthReady && currentUser) {
+            optimisticBuildDocIdByTempIdRef.current.set(tempId, docId);
+            optimisticBuildTempIdByDocIdRef.current.set(docId, tempId);
+            if (traceId) {
+                recordBuildTimingStage(docId, 'pbCreateStartedAt', { docId, tempId });
+                recordRuntimeTraceStage('build', traceId, 'setDoc start', {
+                    docId,
+                    tempId,
+                });
+            }
+            setDoc(doc(db, 'buildings', docId), serverBuilding)
+                .then(() => {
+                    if (traceId) {
+                        recordRuntimeTraceStage('build', traceId, 'setDoc end', {
+                            docId,
+                            tempId,
+                        });
+                    }
+                    const lastInteractionAt = lastInteractionRef.current.get(tempId) || Date.now();
+                    lastInteractionRef.current.delete(tempId);
+                    lastInteractionRef.current.set(docId, lastInteractionAt);
+                    optimisticBuildDocIdByTempIdRef.current.delete(tempId);
+                    optimisticBuildTempIdByDocIdRef.current.delete(docId);
+                    setPlacedBuildings(prev => prev.map(b => (
+                        String(b.id) === tempId
+                            ? {
+                                ...b,
+                                id: docId,
+                                tempId: undefined,
+                                status: 'normal',
+                                syncState: 'synced',
+                            }
+                            : b
+                    )));
+                    if (traceId) {
+                        recordBuildTimingStage(docId, 'pbCreateDoneAt', { docId, tempId });
+                        recordRuntimeTraceStage('build', traceId, 'promise resolved', {
+                            docId,
+                            tempId,
+                        });
+                        buildTimingTracesRef.current.delete(traceId);
+                    }
+                })
+                .catch((e) => {
+                    const failedTrace = buildTimingTracesRef.current.get(docId);
+                    if (failedTrace) {
+                        logBuildTiming('pb_create_failed', failedTrace, { error: String(e) });
+                    }
+                    optimisticBuildDocIdByTempIdRef.current.delete(tempId);
+                    optimisticBuildTempIdByDocIdRef.current.delete(docId);
+                    lastInteractionRef.current.delete(tempId);
+                    lastInteractionRef.current.delete(docId);
+                    setPlacedBuildings(prev => prev.filter(b => String(b.id) !== tempId && String(b.id) !== docId));
+                    buildTimingTracesRef.current.delete(traceId || tempId);
+                    buildTimingTracesRef.current.delete(docId);
+                    const inventoryRefundDeltas: Record<number, number> = {};
+                    Object.entries(inventoryCostDeltas).forEach(([id, amount]) => {
+                        inventoryRefundDeltas[Number(id)] = -amount;
+                    });
+                    if (rubyCost > 0) {
+                        updatePlayerResourcesRef.current?.(0, rubyCost, inventoryRefundDeltas);
+                    } else {
+                        updatePlayerResourcesRef.current?.(goldCost, 0, inventoryRefundDeltas);
+                    }
+                    handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
+                });
+        } else {
+            setPlacedBuildings(prev => prev.map(b => (
+                String(b.id) === tempId
+                    ? {
+                        ...b,
+                        status: 'normal',
+                        syncState: 'synced',
+                    }
+                    : b
+            )));
+        }
+
         return newBuilding;
-    }, [validatePlacementTarget, user, hasTownHall, maxBuildings, placedBuildings, playerRubies, playerGold, maxPopulation, currentPopulation, inventory, playerName, isMyBuilding, isBuildingDeleting]);
+    }, [validatePlacementTarget, user, hasTownHall, maxBuildings, placedBuildings, playerRubies, playerGold, maxPopulation, currentPopulation, inventory, playerName, isMyBuilding, isBuildingDeleting, recordBuildTimingStage]);
 
     placeBuildingAtTileRef.current = placeBuildingAtTile;
 
-    const handleConfirmBuild = async () => {
+    const handleConfirmBuild = async (incomingTraceId?: string) => {
         if (isBuildingActionProcessing) return;
         setIsBuildingActionProcessing(true);
 
@@ -4879,12 +6258,35 @@ const App: React.FC = () => {
             if (!buildConfirmation.building) return;
 
             const { building, x, y } = buildConfirmation;
-            const placedBuilding = await placeBuildingAtTile(building, x, y);
-            if (!placedBuilding) return;
+            const traceId = incomingTraceId || `build-${Date.now()}-${building.id}-${x}-${y}`;
+            const initialTrace: BuildTimingTrace = {
+                traceId,
+                buildingId: building.id,
+                x,
+                y,
+                zoneId: getZoneId(x, y),
+                clickStartedAt: Date.now(),
+                snapshotSources: [],
+            };
+            buildTimingTracesRef.current.set(traceId, initialTrace);
+            logBuildTiming('click_start', initialTrace);
+            recordRuntimeTraceStage('build', traceId, 'handleConfirmBuild entered', {
+                buildingId: building.id,
+                x,
+                y,
+            });
+
+            setRuntimeAuditContext({ kind: 'build', traceId });
+            const placedBuilding = await placeBuildingAtTile(building, x, y, traceId);
+            if (!placedBuilding) {
+                buildTimingTracesRef.current.delete(traceId);
+                return;
+            }
             setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
         } catch (e) {
             handleFirestoreError(e, OperationType.CREATE, "buildings");
         } finally {
+            setRuntimeAuditContext(null);
             setIsBuildingActionProcessing(false);
         }
     };
@@ -4899,14 +6301,32 @@ const App: React.FC = () => {
             window.location.reload();
         };
         console.log('?? Tip: Call window.forceClearAuth() to clear auth cache and reload');
+        logStartupStep('auth_listener_attached');
         
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             console.log('[App] Auth state changed:', currentUser?.uid, currentUser?.displayName);
+            logStartupStep('auth_state_resolved', {
+                uid: currentUser?.uid || null,
+                hasUser: Boolean(currentUser),
+            });
             setUser(currentUser);
             setIsAuthReady(true);
             if (currentUser) {
+                if (lastInitializedAuthUidRef.current && lastInitializedAuthUidRef.current !== currentUser.uid) {
+                    setPlayerActiveCurse(null);
+                    setActiveCurses({});
+                    setVisualEffects([]);
+                }
+                logStartupStep('user_init_started', { uid: currentUser.uid });
                 const cachedAvatar = readCachedAvatar(currentUser.uid);
+                const cachedProfile = readCachedProfileSettings(currentUser.uid);
                 const cachedLeaderboardStats = readCachedLeaderboardStats(currentUser.uid);
+                if (cachedProfile.gender === 'male' || cachedProfile.gender === 'female') {
+                    setPlayerGender(cachedProfile.gender);
+                }
+                if (cachedProfile.friends.length > 0) {
+                    setFriends(cachedProfile.friends);
+                }
                 if (cachedAvatar) {
                     setPlayerAvatar(cachedAvatar);
                     setAllUsers(prev => ({
@@ -4966,6 +6386,7 @@ const App: React.FC = () => {
                             gold: 100,
                             rubies: 10,
                             extraBuildingPermits: 0,
+                            clanId: null,
                             level: 1,
                             glory: 0,
                             reputation: 0,
@@ -4976,6 +6397,9 @@ const App: React.FC = () => {
                             energy: BASE_MAX_ENERGY,
                             inventory: { [FIRECRACKER_ID]: 30, [RECOMMENDATION_ID]: 5 },
                             lastSaveTime: Date.now(),
+                            lastX: 0,
+                            lastY: 0,
+                            lastPositionUpdatedAt: 0,
                             gameId: currentUser.uid,
                             tutorialCompleted: false,
                             townHallTutorialCompleted: false
@@ -5040,7 +6464,12 @@ const App: React.FC = () => {
                     }
                 } catch (initErr) {
                     console.error("Failed to auto-init user:", initErr);
+                    logStartupStep('user_init_failed', {
+                        uid: currentUser.uid,
+                        error: String(initErr),
+                    });
                 }
+                logStartupStep('user_init_finished', { uid: currentUser.uid });
             } else {
                 lastInitializedAuthUidRef.current = null;
                 lastMigratedGuestBuildingsUidRef.current = null;
@@ -5051,11 +6480,59 @@ const App: React.FC = () => {
                 townHallTutorialPersistStartedRef.current = false;
                 setTownHallTutorialStep(null);
                 setPlayerName(repairMojibakeCp1251Utf8('Р вЂњР С•РЎРѓРЎвЂљРЎРЉ') + ' ' + GUEST_ID.slice(-4).toUpperCase());
+                setPlayerActiveCurse(null);
+                setActiveCurses({});
+                setVisualEffects([]);
+                logStartupStep('auth_cleared');
             }
         });
-        testConnection();
+        logStartupStep('pb_health_check_started');
+        testConnection().then((ok) => {
+            logStartupStep(ok ? 'pb_health_check_ok' : 'pb_health_check_failed');
+        });
         return () => unsubscribe();
-    }, []);
+    }, [logStartupStep]);
+
+    const persistProfileSettings = useCallback(async (updates: {
+        gender?: 'male' | 'female' | null;
+        friends?: Friend[];
+    }) => {
+        if (!user) return;
+
+        const cachedProfile = readCachedProfileSettings(user.uid);
+        const nextGender = updates.gender !== undefined ? updates.gender : cachedProfile.gender;
+        const nextFriends = updates.friends ?? cachedProfile.friends;
+        writeCachedProfileSettings(user.uid, {
+            gender: nextGender,
+            friends: nextFriends
+        });
+
+        const userDocRef = doc(db, 'users', user.uid);
+        const dbUpdates: Record<string, unknown> = {
+            'data.timestamp': Date.now()
+        };
+
+        if (updates.gender === 'male' || updates.gender === 'female') {
+            dbUpdates.gender = updates.gender;
+            dbUpdates['data.gender'] = updates.gender;
+        }
+
+        if (updates.friends) {
+            dbUpdates.friends = updates.friends;
+            dbUpdates['data.friends'] = updates.friends;
+        }
+
+        await updateDoc(userDocRef, dbUpdates);
+
+        setAllUsers(prev => ({
+            ...prev,
+            [user.uid]: {
+                ...prev[user.uid],
+                ...(updates.gender !== undefined ? { gender: updates.gender } : {}),
+                ...(updates.friends ? { friends: updates.friends } : {})
+            }
+        }));
+    }, [user]);
 
     // Save User Data function
     const saveUserData = useCallback(async () => {
@@ -5080,6 +6557,7 @@ const App: React.FC = () => {
                 gold: playerGoldRef.current,
                 rubies: playerRubiesRef.current,
                 extraBuildingPermits: Math.max(0, Number(extraBuildingPermitsRef.current) || 0),
+                clanId: normalizeClanIdValue(playerClanIdRef.current),
                 lastSaveTime: Date.now()
             };
             // Save gender if set (use current state value)
@@ -5089,6 +6567,7 @@ const App: React.FC = () => {
             } else {
                 console.log('[SaveUserData] Gender not set, playerGender:', playerGender);
             }
+            updateData.friends = friends;
             console.log('[SaveUserData] updateData:', updateData);
             await updateDoc(userDocRef, updateData);
         } catch (e) {
@@ -5097,7 +6576,7 @@ const App: React.FC = () => {
         } finally {
             setIsSaving(false);
         }
-    }, [user, playerGender]);
+    }, [user, playerGender, friends]);
 
     // Auto-save every minute
     useEffect(() => {
@@ -5111,7 +6590,27 @@ const App: React.FC = () => {
     const updatePlayerResources = (goldDelta: number, rubiesDelta: number, inventoryDeltas: Record<number, number>) => {
         let actualGoldDelta = goldDelta;
         if (goldDelta > 0) {
-            actualGoldDelta = Math.min(goldDelta, goldCapacity - playerGold);
+            // Never convert a reward into a negative debit if the cap is stale.
+            actualGoldDelta = Math.max(0, Math.min(goldDelta, goldCapacity - playerGold));
+        }
+
+        if (actualGoldDelta !== 0) {
+            setPlayerGold(prev => prev + actualGoldDelta);
+        }
+        if (rubiesDelta !== 0) {
+            setPlayerRubies(prev => prev + rubiesDelta);
+        }
+        if (Object.keys(inventoryDeltas).length > 0) {
+            setInventory(prev => {
+                const next = sanitizeInventoryCounts(prev);
+                Object.entries(inventoryDeltas).forEach(([id, amount]) => {
+                    const numericId = Number(id);
+                    if (!Number.isFinite(numericId)) return;
+                    const currentAmount = normalizeInventoryCount(next[numericId] || 0);
+                    next[numericId] = normalizeInventoryCount(currentAmount + amount);
+                });
+                return next;
+            });
         }
 
         if (isAuthReady && user) {
@@ -5124,18 +6623,6 @@ const App: React.FC = () => {
             if (Object.keys(updates).length > 0) {
                 updateDoc(doc(db, 'users', user.uid), updates).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
             }
-        } else {
-            if (actualGoldDelta !== 0) setPlayerGold(prev => prev + actualGoldDelta);
-            if (rubiesDelta !== 0) setPlayerRubies(prev => prev + rubiesDelta);
-            if (Object.keys(inventoryDeltas).length > 0) {
-                setInventory(prev => {
-                    const next = { ...prev };
-                    Object.entries(inventoryDeltas).forEach(([id, amount]) => {
-                        next[Number(id)] = (next[Number(id)] || 0) + amount;
-                    });
-                    return next;
-                });
-            }
         }
     };
 
@@ -5143,6 +6630,7 @@ const App: React.FC = () => {
         e.preventDefault();
         if (isLoggingIn) return;
         setAuthError(null);
+        logStartupStep('auth_submit', { mode: isRegisterMode ? 'register' : 'login' });
 
         // Validate registration inputs
         if (isRegisterMode) {
@@ -5183,6 +6671,7 @@ const App: React.FC = () => {
                         gold: 100,
                         rubies: 10,
                         extraBuildingPermits: 0,
+                        clanId: null,
                         level: 1,
                         glory: 0,
                         reputation: 0,
@@ -5196,6 +6685,7 @@ const App: React.FC = () => {
                         gameId: newUser.uid,
                         lastX: 0,
                         lastY: 0,
+                        lastPositionUpdatedAt: 0,
                         tutorialCompleted: false,
                         townHallTutorialCompleted: false
                     });
@@ -5204,6 +6694,7 @@ const App: React.FC = () => {
             } else {
                 await signInWithEmailAndPassword(authEmail, authPassword);
             }
+            logStartupStep('auth_success', { mode: isRegisterMode ? 'register' : 'login' });
         } catch (error: any) {
             console.error("Auth error:", error);
             let msg = "Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р В°Р Р†РЎвЂљР С•РЎР‚Р С‘Р В·Р В°РЎвЂ Р С‘Р С‘";
@@ -5220,6 +6711,10 @@ const App: React.FC = () => {
             if (msg.includes("8 characters")) msg = "Р СџР В°РЎР‚Р С•Р В»РЎРЉ Р Т‘Р С•Р В»Р В¶Р ВµР Р… Р В±РЎвЂ№РЎвЂљРЎРЉ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 8 РЎРѓР С‘Р СР Р†Р С•Р В»Р С•Р Р†";
 
             setAuthError(msg);
+            logStartupStep('auth_error', {
+                mode: isRegisterMode ? 'register' : 'login',
+                error: msg,
+            });
         } finally {
             setIsLoggingIn(false);
         }
@@ -5231,14 +6726,18 @@ const App: React.FC = () => {
     };
 
     const handleLogout = async () => {
+        logStartupStep('logout_started', { uid: user?.uid || null });
         // Save player position before logout
-        if (user) {
+        if (user && initialLoadDone.current) {
             try {
-                const zoom = ZOOM_LEVELS[zoomIndexRef.current];
-                const worldCenter = screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
+                const worldCenter = getCurrentWorldCenter();
+                const savedAt = Date.now();
+                writeCachedLastPosition(user.uid, { ...worldCenter, savedAt });
+                lastPersistedPlayerPositionRef.current = { ...worldCenter, savedAt };
                 await updateDoc(doc(db, 'users', user.uid), {
                     lastX: worldCenter.x,
-                    lastY: worldCenter.y
+                    lastY: worldCenter.y,
+                    lastPositionUpdatedAt: savedAt
                 });
             } catch (e) {
                 console.error("Failed to save position on logout:", e);
@@ -5248,6 +6747,7 @@ const App: React.FC = () => {
             await signOut(auth);
         } catch (error) {
             console.error("Logout error:", error);
+            logStartupStep('logout_failed', { error: String(error) });
         }
     };
     
@@ -5264,38 +6764,85 @@ const App: React.FC = () => {
         }
         return { x, y };
     };
+
+    const getCurrentWorldCenter = (): { x: number; y: number } => {
+        const zoom = ZOOM_LEVELS[zoomIndexRef.current];
+        return screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
+    };
+
+    const persistLastPlayerPosition = useCallback(async (force = false) => {
+        if (!user || !initialLoadDone.current) return;
+
+        const worldCenter = getCurrentWorldCenter();
+        const savedAt = Date.now();
+        const lastSaved = lastPersistedPlayerPositionRef.current;
+
+        writeCachedLastPosition(user.uid, { ...worldCenter, savedAt });
+
+        if (
+            !force &&
+            lastSaved &&
+            lastSaved.x === worldCenter.x &&
+            lastSaved.y === worldCenter.y &&
+            savedAt - lastSaved.savedAt < 15000
+        ) {
+            return;
+        }
+
+        lastPersistedPlayerPositionRef.current = { ...worldCenter, savedAt };
+
+        try {
+            await updateDoc(doc(db, 'users', user.uid), {
+                lastX: worldCenter.x,
+                lastY: worldCenter.y,
+                lastPositionUpdatedAt: savedAt
+            });
+        } catch (e) {
+            console.error("Failed to persist player position:", e);
+        }
+    }, [user, isWorldWrapped]);
     
     // Save player position on page close/refresh
     useEffect(() => {
-        const savePositionOnUnload = async () => {
-            if (!user) return;
-            try {
-                const zoom = ZOOM_LEVELS[zoomIndexRef.current];
-                const worldCenter = screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
-                // Use navigator.sendBeacon for reliability on page close
-                const data = JSON.stringify({
-                    lastX: worldCenter.x,
-                    lastY: worldCenter.y
-                });
-                // We'll use updateDoc with merge for beforeunload
-                updateDoc(doc(db, 'users', user.uid), {
-                    lastX: worldCenter.x,
-                    lastY: worldCenter.y
-                }).catch(e => console.error("Failed to save position on unload:", e));
-            } catch (e) {
-                console.error("Error in savePositionOnUnload:", e);
+        if (!user) return;
+
+        const flushPosition = () => {
+            void persistLastPlayerPosition(true);
+        };
+
+        const handleBeforeUnload = () => {
+            flushPosition();
+        };
+
+        const handlePageHide = () => {
+            flushPosition();
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                flushPosition();
             }
         };
-        
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            savePositionOnUnload();
-        };
-        
+
         window.addEventListener('beforeunload', handleBeforeUnload);
+        window.addEventListener('pagehide', handlePageHide);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.removeEventListener('pagehide', handlePageHide);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [user]);
+    }, [user, persistLastPlayerPosition]);
+
+    useEffect(() => {
+        if (!user || !initialLoadDone.current) return;
+
+        const interval = setInterval(() => {
+            void persistLastPlayerPosition();
+        }, 15000);
+
+        return () => clearInterval(interval);
+    }, [user, persistLastPlayerPosition]);
     
     // Load User Data
     useEffect(() => {
@@ -5303,29 +6850,59 @@ const App: React.FC = () => {
 
         const userDocRef = doc(db, 'users', user.uid);
         const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (!initialLoadDone.current) {
-                    const loadedLevel = Math.max(data.level || 1, 1);
-                    setPlayerLevel(loadedLevel);
-                    // Set peak-level watermark so no future save can write a lower value
-                    peakLevelRef.current = loadedLevel;
-                    setPlayerGlory(data.glory || 0);
-                    const maxE = BASE_MAX_ENERGY + (loadedLevel - 1) * 50;
-                    setPlayerEnergy(Math.min(data.energy || BASE_MAX_ENERGY, maxE));
-                    
-                    // Load player's last position and set camera
-                    if (typeof data.lastX === 'number' && typeof data.lastY === 'number') {
-                        const zoom = ZOOM_LEVELS[zoomIndex];
-                        const screenX = (data.lastX - data.lastY) * (TILE_WIDTH * zoom / 2);
-                        const screenY = (data.lastX + data.lastY) * (TILE_HEIGHT * zoom / 2);
-                        setCameraOffset({
-                            x: window.innerWidth / 2 - screenX,
-                            y: window.innerHeight / 2 - screenY
-                        });
-                    }
-                    
-                    initialLoadDone.current = true;
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const dbGlory = Math.max(0, Number(data.glory) || 0);
+                    if (!initialLoadDone.current) {
+                        const cachedLastPosition = readCachedLastPosition(user.uid);
+                        const hasServerPosition = typeof data.lastX === 'number' && typeof data.lastY === 'number';
+                        const serverLastPosition = hasServerPosition
+                            ? {
+                                x: data.lastX,
+                                y: data.lastY,
+                                savedAt: Number(data.lastPositionUpdatedAt) || 0
+                            }
+                            : null;
+                        const resolvedLastPosition =
+                            cachedLastPosition && (!serverLastPosition || cachedLastPosition.savedAt > serverLastPosition.savedAt)
+                                ? cachedLastPosition
+                                : serverLastPosition;
+
+                        const loadedLevel = Math.max(data.level || 1, 1);
+                        setPlayerLevel(loadedLevel);
+                        // Set peak-level watermark so no future save can write a lower value
+                        peakLevelRef.current = loadedLevel;
+                        setPlayerGlory(dbGlory);
+                        setPlayerEnergy(Number(data.energy) || BASE_MAX_ENERGY);
+                        
+                        // Load player's last position and set camera
+                        if (resolvedLastPosition) {
+                            const zoom = ZOOM_LEVELS[zoomIndex];
+                            const screenX = (resolvedLastPosition.x - resolvedLastPosition.y) * (TILE_WIDTH * zoom / 2);
+                            const screenY = (resolvedLastPosition.x + resolvedLastPosition.y) * (TILE_HEIGHT * zoom / 2);
+                            setCameraOffset({
+                                x: window.innerWidth / 2 - screenX,
+                                y: window.innerHeight / 2 - screenY
+                            });
+                            lastPersistedPlayerPositionRef.current = resolvedLastPosition;
+                            writeCachedLastPosition(user.uid, resolvedLastPosition);
+                        } else {
+                            lastPersistedPlayerPositionRef.current = null;
+                        }
+
+                        if (
+                            cachedLastPosition &&
+                            serverLastPosition &&
+                            cachedLastPosition.savedAt > serverLastPosition.savedAt
+                        ) {
+                            updateDoc(userDocRef, {
+                                lastX: cachedLastPosition.x,
+                                lastY: cachedLastPosition.y,
+                                lastPositionUpdatedAt: cachedLastPosition.savedAt
+                            }).catch(e => console.warn('[LoadUserData] Failed to restore fresher cached position:', e));
+                        }
+                        
+                        initialLoadDone.current = true;
                 } else {
                     // After initial load: if DB level is HIGHER than local (e.g. leveled up in another tab),
                     // accept the higher level. Never accept a LOWER level from DB.
@@ -5335,8 +6912,11 @@ const App: React.FC = () => {
                         setPlayerLevel(dbLevel);
                         peakLevelRef.current = Math.max(peakLevelRef.current, dbLevel);
                     }
+                    if (dbGlory !== playerGloryRef.current) {
+                        setPlayerGlory(dbGlory);
+                    }
                 }
-                setPlayerReputation(data.reputation || 0);
+                setPlayerReputation(Math.max(0, Number(data.reputation) || 0));
                 const cachedLeaderboardStats = readCachedLeaderboardStats(user.uid);
                 const mergedLeaderboardStats = mergeLocalUserStatCounters(data, cachedLeaderboardStats);
                 setPlayerLeaderboardStats(mergedLeaderboardStats);
@@ -5373,25 +6953,62 @@ const App: React.FC = () => {
                         rubies: rubiesValue < 0 ? 0 : (Number(data.rubies) || 0)
                     }).catch(e => console.error("Failed to heal corrupted user data:", e));
                 }
-                setInventory(data.inventory || {});
+                setInventory(sanitizeInventoryCounts(data.inventory || {}));
+                const cachedProfile = readCachedProfileSettings(user.uid);
                 // Load gender from data.gender (JSON field) or direct gender field
-                const genderValue = data.data?.gender || data.gender || null;
-                if (genderValue === 'male' || genderValue === 'female') {
-                    setPlayerGender(genderValue);
-                }
+                const serverGender = data.data?.gender || data.gender || null;
+                const resolvedGender =
+                    serverGender === 'male' || serverGender === 'female'
+                        ? serverGender
+                        : cachedProfile.gender;
+                setPlayerGender(resolvedGender);
                 // Load friends from data.friends (JSON field) or direct friends field
-                const friendsList = data.data?.friends || data.friends || [];
-                setFriends(friendsList);
-                setPlayerClanId(data.clanId || null);
+                const serverFriends = Array.isArray(data.data?.friends)
+                    ? data.data.friends
+                    : (Array.isArray(data.friends) ? data.friends : []);
+                const resolvedFriends = serverFriends.length > 0 ? serverFriends : cachedProfile.friends;
+                setFriends(resolvedFriends);
+                writeCachedProfileSettings(user.uid, {
+                    gender: resolvedGender,
+                    friends: resolvedFriends
+                });
+                if ((resolvedGender && resolvedGender !== serverGender) || (resolvedFriends.length > 0 && serverFriends.length === 0)) {
+                    persistProfileSettings({
+                        ...(resolvedGender ? { gender: resolvedGender } : {}),
+                        ...(resolvedFriends.length > 0 ? { friends: resolvedFriends } : {})
+                    }).catch(e => console.warn('[ProfileSettings] Failed to heal profile settings from cache:', e));
+                }
+                setPlayerClanId(prev => {
+                    const snapshotClanId = normalizeClanIdValue(data.clanId);
+                    return snapshotClanId ?? prev ?? null;
+                });
                 setBanEndTime(data.banEndTime || 0);
+                setPlayerActiveCurse(data.activeCurse || null);
                 if (data.name) setPlayerName(repairMojibakeCp1251Utf8(data.name));
                 const resolvedOwnAvatar = resolveUserAvatar(data, readCachedAvatar(user?.uid) || user?.photoURL || null);
                 if (resolvedOwnAvatar) {
                     setPlayerAvatar(resolvedOwnAvatar);
                     writeCachedAvatar(user.uid, resolvedOwnAvatar);
                 }
-                setTutorialCompleted(data.tutorialCompleted !== false);
-                setTownHallTutorialCompleted(data.townHallTutorialCompleted !== false);
+                const nextTutorialCompleted =
+                    data.tutorialCompleted === true
+                        ? true
+                        : data.tutorialCompleted === false
+                            ? false
+                            : null;
+                const nextTownHallTutorialCompleted =
+                    data.townHallTutorialCompleted === true
+                        ? true
+                        : data.townHallTutorialCompleted === false
+                            ? false
+                            : null;
+
+                if (!(tutorialCompletedRef.current === true && nextTutorialCompleted !== true)) {
+                    setTutorialCompleted(nextTutorialCompleted);
+                }
+                if (!(townHallTutorialCompletedRef.current === true && nextTownHallTutorialCompleted !== true)) {
+                    setTownHallTutorialCompleted(nextTownHallTutorialCompleted);
+                }
                 if (data.tutorialCompleted === true) {
                     tutorialPersistStartedRef.current = true;
                 }
@@ -5401,11 +7018,10 @@ const App: React.FC = () => {
                     shownTownHallTutorialForSessionRef.current = true;
                 }
                 
-                // Update allUsers with own user data including clanId and activeCurse
-                // Use authoritative local level/glory refs Р Р†Р вЂљРІР‚Сњ DB snapshot may carry stale values
+                // Update allUsers with own user data including clanId and activeCurse.
+                // Keep level authoritative locally, but accept server glory so punishments sync instantly.
                 if (user) {
                     const authoritativeLevel = Math.max(playerLevelRef.current, peakLevelRef.current, data.level || 1);
-                    const authoritativeGlory = playerGloryRef.current;
                     setAllUsers(prev => ({
                         ...prev,
                         [user.uid]: {
@@ -5413,10 +7029,10 @@ const App: React.FC = () => {
                             uid: user.uid,
                             name: data.name || "Р ВР С–РЎР‚Р С•Р С”",
                             level: authoritativeLevel,
-                            glory: authoritativeGlory,
-                            reputation: data.reputation || 0,
+                            glory: dbGlory,
+                            reputation: Math.max(0, Number(data.reputation) || 0),
                             avatar: resolvedOwnAvatar,
-                            clanId: data.clanId || null,
+                            clanId: normalizeClanIdValue(data.clanId),
                             rank: data.rank ?? 0,
                             clanPermissions: data.clanPermissions || { canInvite: false, canGrantStars: false },
                             activeCurse: data.activeCurse || null,
@@ -5469,13 +7085,24 @@ const App: React.FC = () => {
         }
     }, [user]);
 
-    const closeTabletModal = useCallback(() => {
-        setActiveTabletTutorial(null);
-        setShowMainTabletMenu(false);
-        playCloseSound();
-    }, []);
-
     // One-time onboarding tutorial for newly registered players
+    useEffect(() => {
+        if (!user || !isAuthReady || loadPhase < 2) return;
+        if (tutorialCompleted !== null) return;
+
+        if (hasTownHall) {
+            tutorialDismissedRef.current = true;
+            setTutorialCompleted(true);
+            setActiveTabletTutorial(null);
+            if (!tutorialPersistStartedRef.current) {
+                void persistTutorialCompleted();
+            }
+            return;
+        }
+
+        setTutorialCompleted(false);
+    }, [user, isAuthReady, loadPhase, tutorialCompleted, hasTownHall, persistTutorialCompleted]);
+
     useEffect(() => {
         if (!user || !isAuthReady || loadPhase < 2) return;
 
@@ -5496,6 +7123,12 @@ const App: React.FC = () => {
 
     useEffect(() => {
         if (!user || !isAuthReady || loadPhase < 2) return;
+        if (townHallTutorialCompleted !== null) return;
+        setTownHallTutorialCompleted(false);
+    }, [user, isAuthReady, loadPhase, townHallTutorialCompleted]);
+
+    useEffect(() => {
+        if (!user || !isAuthReady || loadPhase < 2) return;
         if (activeTabletTutorial === 'intro') return;
 
         if (townHallTutorialCompleted === true) {
@@ -5504,12 +7137,12 @@ const App: React.FC = () => {
             return;
         }
 
-        if (townHallTutorialCompleted === false && hasCompletedTownHall && !townHallTutorialDismissedRef.current && !shownTownHallTutorialForSessionRef.current) {
+        if (townHallTutorialCompleted === false && hasTownHall && !townHallTutorialDismissedRef.current && !shownTownHallTutorialForSessionRef.current) {
             shownTownHallTutorialForSessionRef.current = true;
             setTownHallTutorialStep('townHallBuilt');
             setActiveTabletTutorial('townHallBuilt');
         }
-    }, [user, isAuthReady, loadPhase, activeTabletTutorial, townHallTutorialCompleted, hasCompletedTownHall]);
+    }, [user, isAuthReady, loadPhase, activeTabletTutorial, townHallTutorialCompleted, hasTownHall]);
 
     useEffect(() => {
         if (!tutorialForcedBuildingCompleted) return;
@@ -5529,6 +7162,7 @@ const App: React.FC = () => {
 
     const handleCompleteTutorial = async () => {
         tutorialDismissedRef.current = true;
+        tutorialCompletedRef.current = true;
         setTutorialCompleted(true);
         setActiveTabletTutorial(null);
         setShowMainTabletMenu(false);
@@ -5581,6 +7215,7 @@ const App: React.FC = () => {
 
         townHallTutorialDismissedRef.current = true;
         shownTownHallTutorialForSessionRef.current = true;
+        townHallTutorialCompletedRef.current = true;
         setTownHallTutorialCompleted(true);
         setTownHallTutorialStep(null);
         setTutorialForcedBuildingId(null);
@@ -5591,7 +7226,7 @@ const App: React.FC = () => {
         await persistTownHallTutorialCompleted();
     };
 
-    const handleDismissTabletModal = useCallback(() => {
+    const closeTabletModal = useCallback(() => {
         if (activeTabletTutorial === 'intro') {
             void handleCompleteTutorial();
             return;
@@ -5600,8 +7235,14 @@ const App: React.FC = () => {
             void handleCompleteTownHallTutorial();
             return;
         }
+        setActiveTabletTutorial(null);
+        setShowMainTabletMenu(false);
+        playCloseSound();
+    }, [activeTabletTutorial, handleCompleteTutorial, handleCompleteTownHallTutorial, playCloseSound]);
+
+    const handleDismissTabletModal = useCallback(() => {
         closeTabletModal();
-    }, [activeTabletTutorial, closeTabletModal, handleCompleteTutorial, handleCompleteTownHallTutorial]);
+    }, [closeTabletModal]);
 
     // Listen to CURRENT USER only for ban/curse updates in real-time (Phase 2 - Gameplay)
     // Other players' data comes from: presence (online), zone building owners (on-demand), profiles (on-demand)
@@ -5615,24 +7256,28 @@ const App: React.FC = () => {
 
             // Update ban state
             if (data.banEndTime !== undefined) {
-                setBanEndTime(data.banEndTime || 0);
+                const normalizedBanEndTime = Number(data.banEndTime || 0) || 0;
+                setBanEndTime(normalizedBanEndTime);
+                if (normalizedBanEndTime > Date.now()) {
+                    setActiveChatTab('banya');
+                }
             }
+            setPlayerActiveCurse(data.activeCurse || null);
             const cachedLeaderboardStats = readCachedLeaderboardStats(user.uid);
             const mergedLeaderboardStats = mergeLocalUserStatCounters(data, cachedLeaderboardStats);
             setPlayerLeaderboardStats(mergedLeaderboardStats);
             writeCachedLeaderboardStats(user.uid, mergedLeaderboardStats);
 
-            // Update allUsers for current user with authoritative local level/glory
+            // Update allUsers for current user with live glory from server
             setAllUsers(prev => {
                 const existing = prev[user.uid] || {};
                 const resolvedLevel = playerLevelRef.current;
-                const resolvedGlory = playerGloryRef.current;
                 const newActiveCurse = data.activeCurse || null;
                 const newBanEndTime = data.banEndTime || 0;
 
                 if (existing.uid === user.uid &&
                     existing.level === resolvedLevel &&
-                    existing.glory === resolvedGlory &&
+                    existing.glory === playerGloryRef.current &&
                     existing.activeCurse?.endTime === newActiveCurse?.endTime &&
                     existing.banEndTime === newBanEndTime) {
                     return prev;
@@ -5645,10 +7290,10 @@ const App: React.FC = () => {
                         uid: user.uid,
                         name: data.name || existing.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
                         level: resolvedLevel,
-                        glory: resolvedGlory,
-                        reputation: data.reputation ?? existing.reputation ?? 0,
+                        glory: playerGloryRef.current,
+                        reputation: Math.max(0, Number(data.reputation) || 0),
                         avatar: resolveUserAvatar(data, existing.avatar || null),
-                        clanId: data.clanId || existing.clanId || null,
+                        clanId: normalizeClanIdValue(data.clanId) ?? existing.clanId ?? null,
                         rank: data.rank ?? existing.rank ?? 0,
                         clanPermissions: data.clanPermissions || existing.clanPermissions || { canInvite: false, canGrantStars: false },
                         activeCurse: newActiveCurse,
@@ -5746,15 +7391,12 @@ const App: React.FC = () => {
                     });
                 });
                 
-                console.log('[ClanFetch] Loaded', clanMembersData.length, 'clan members from DB');
-                
                 // Update allUsers with clan members data
                 setAllUsers(prev => {
                     const updated = { ...prev };
                     clanMembersData.forEach(memberData => {
                         const uid = memberData.id || memberData.uid;
                         const avatar = memberData.extractedAvatar || resolveUserAvatar(memberData);
-                        console.log(`[ClanFetch] Member ${memberData.name}: direct avatar=${memberData.avatar ? 'YES' : 'NO'}, data.avatar=${memberData.data?.avatar ? 'YES' : 'NO'}, extractedAvatar=${memberData.extractedAvatar ? 'YES' : 'NO'}`);
                         
                         updated[uid] = {
                             ...updated[uid],
@@ -5772,7 +7414,6 @@ const App: React.FC = () => {
                             gender: memberData.gender || memberData.data?.gender || null,
                             ...getUserStatCounters(memberData),
                         };
-                        console.log(`[ClanFetch] Loaded member ${memberData.name}: rank=${memberData.rank}, final avatar=${updated[uid].avatar ? 'YES (' + updated[uid].avatar.substring(0, 30) + '...)' : 'NO'}`);
                     });
                     return updated;
                 });
@@ -5800,34 +7441,105 @@ const App: React.FC = () => {
             snapshot.forEach((doc) => {
                 messages.push(doc.data() as ChatMessage);
             });
-            // Sort by timestamp ascending for display
+            // Keep server messages authoritative and append only temporary local-only notices.
             setChatHistory(prev => {
-                const sysMsgs = prev.filter(m => m.type === 'system');
-                const firestoreMsgs = messages.sort((a, b) => a.timestamp - b.timestamp);
-                return [...sysMsgs, ...firestoreMsgs];
+                const now = Date.now();
+                const localOnlyMsgs = prev.filter(m => m.localOnly === true && !isExpiredChatMessage(m, now));
+                const firestoreMsgs = messages
+                    .filter(m => !isExpiredChatMessage(m, now))
+                    .sort((a, b) => a.timestamp - b.timestamp);
+                const deduped = new Map<string, ChatMessage>();
+
+                [...firestoreMsgs, ...localOnlyMsgs].forEach((msg) => {
+                    const key = `${String(msg.id)}|${msg.tab}|${msg.timestamp}|${msg.sender}|${msg.text}`;
+                    if (!deduped.has(key)) {
+                        deduped.set(key, msg);
+                    }
+                });
+
+                return Array.from(deduped.values());
             });
         }, (error) => handleFirestoreError(error, OperationType.GET, 'chat_messages'));
 
         return () => unsubscribe();
     }, [isAuthReady, user, loadPhase]);
 
+    useEffect(() => {
+        if (!isAuthReady || !user || loadPhase < 4) return;
+
+        const cleanupExpiredSystemMessages = async () => {
+            try {
+                const cutoff = Date.now() - SYSTEM_CHAT_MESSAGE_TTL_MS;
+                const chatCol = collection(db, 'chat_messages');
+                const snapshot = await getDocs(query(chatCol, where('type', '==', 'system')));
+
+                const deletions = snapshot.docs
+                    .filter(docSnap => {
+                        const data = docSnap.data() as Partial<ChatMessage>;
+                        return Number(data.timestamp || 0) > 0 && Number(data.timestamp) < cutoff;
+                    })
+                    .map(docSnap => deleteDoc(doc(db, 'chat_messages', String(docSnap.id))).catch(err => {
+                        handleFirestoreError(err, OperationType.DELETE, `chat_messages/${docSnap.id}`);
+                    }));
+
+                if (deletions.length > 0) {
+                    await Promise.all(deletions);
+                }
+
+                setChatHistory(prev => prev.filter(msg => !isExpiredChatMessage(msg)));
+            } catch (error) {
+                handleFirestoreError(error, OperationType.GET, 'chat_messages_cleanup');
+            }
+        };
+
+        cleanupExpiredSystemMessages();
+        const timer = setInterval(cleanupExpiredSystemMessages, 10 * 60 * 1000);
+        return () => clearInterval(timer);
+    }, [isAuthReady, loadPhase, user]);
+
     // Update Presence
     useEffect(() => {
         if (!isAuthReady || !user || !playerName) return;
 
         const presenceDocRef = doc(db, 'presence', user.uid);
+        const leaderboardProfileDocRef = doc(db, LEADERBOARD_PROFILES_COLLECTION, user.uid);
+        const syncLeaderboardProfile = async () => {
+            if (!initialLoadDone.current) return;
+
+            const leaderboardStats = getUserStatCounters(playerLeaderboardStatsRef.current);
+            const payload = {
+                userId: user.uid,
+                name: repairMojibakeCp1251Utf8(String(playerName || 'Неизвестный')),
+                avatar: playerAvatar || '',
+                glory: Math.max(0, Number(playerGloryRef.current) || 0),
+                treesChopped: leaderboardStats.treesChopped,
+                monstersDestroyed: leaderboardStats.monstersDestroyed,
+                buildingsDestroyed: leaderboardStats.buildingsDestroyed,
+                theftsCommitted: leaderboardStats.theftsCommitted,
+                level: Math.max(1, Number(playerLevelRef.current) || 1),
+                clanId: playerClanIdRef.current === null || playerClanIdRef.current === undefined
+                    ? ''
+                    : String(playerClanIdRef.current),
+            };
+            const nextSignature = JSON.stringify(payload);
+            if (leaderboardProfileSyncSignatureRef.current === nextSignature) return;
+
+            await setDoc(leaderboardProfileDocRef, payload);
+            leaderboardProfileSyncSignatureRef.current = nextSignature;
+        };
+
         const updatePresence = async () => {
             try {
                 const zoom = ZOOM_LEVELS[zoomIndexRef.current];
                 const worldCenter = screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
-                const myCurse = user ? allUsersRef.current[user.uid]?.activeCurse : null;
+                const myCurse = playerActiveCurse;
 
                 // Update presence with current position
                 await setDoc(presenceDocRef, {
                     uid: user.uid,
                     name: playerName,
                     activeTab: activeChatTab,
-                    clanId: playerClanId,
+                    clanId: normalizeClanIdValue(playerClanId),
                     lastSeen: Date.now(),
                     x: worldCenter.x,
                     y: worldCenter.y,
@@ -5844,6 +7556,12 @@ const App: React.FC = () => {
             } catch (e) {
                 // Ignore presence errors to keep game flow
             }
+
+            try {
+                await syncLeaderboardProfile();
+            } catch (e) {
+                console.warn('[Leaderboard] Failed to sync public profile:', e);
+            }
         };
 
         updatePresence();
@@ -5852,7 +7570,7 @@ const App: React.FC = () => {
         return () => {
             clearInterval(interval);
         };
-    }, [isAuthReady, user, playerName, activeChatTab, playerClanId, playerLevel, playerGlory, playerReputation, playerAvatar]);
+    }, [isAuthReady, user, playerName, activeChatTab, playerClanId, playerLevel, playerGlory, playerReputation, playerAvatar, playerActiveCurse]);
 
     const [onlinePlayersData, setOnlinePlayersData] = useState<any[]>([]);
     const [interpolatedPlayers, setInterpolatedPlayers] = useState<Record<string, { x: number, y: number }>>({});
@@ -5864,39 +7582,134 @@ const App: React.FC = () => {
     useEffect(() => {
         onlinePlayersDataRef.current = onlinePlayersData;
     }, [onlinePlayersData]);
+    useEffect(() => { tutorialCompletedRef.current = tutorialCompleted; }, [tutorialCompleted]);
+    useEffect(() => { townHallTutorialCompletedRef.current = townHallTutorialCompleted; }, [townHallTutorialCompleted]);
+
+    useEffect(() => {
+        if (!isAuthReady || !user) return;
+
+        const unsubscribe = onSnapshot(query(collection(db, 'users')), (snapshot) => {
+            const loadedUsers = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data() as any;
+                const uid = String(docSnap.id);
+                return {
+                    uid,
+                    name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
+                    level: Number(data?.level || 1) || 1,
+                    glory: Math.max(0, Number(data?.glory || 0) || 0),
+                    reputation: Math.max(0, Number(data?.reputation || 0) || 0),
+                    avatar: resolveUserAvatar(data),
+                    activeCurse: data?.activeCurse || null,
+                    banEndTime: Number(data?.banEndTime || 0) || 0,
+                    clanId: normalizeClanIdValue(data?.clanId),
+                    rank: data?.rank ?? 0,
+                    clanPermissions: data?.clanPermissions || { canInvite: false, canGrantStars: false },
+                    gender: data?.gender || null,
+                    ...getUserStatCounters(data),
+                };
+            });
+
+            if (loadedUsers.length === 0) return;
+
+            setAllUsers((prev) => {
+                const updated = { ...prev };
+                loadedUsers.forEach((entry) => {
+                    const current = updated[entry.uid] || {};
+                    updated[entry.uid] = {
+                        ...current,
+                        ...entry,
+                        uid: entry.uid,
+                        name: entry.name || current.name || 'Неизвестный',
+                        avatar: entry.avatar || current.avatar || null,
+                        clanId: entry.clanId ?? current.clanId ?? null,
+                        rank: entry.rank ?? current.rank ?? 0,
+                        clanPermissions: entry.clanPermissions || current.clanPermissions || { canInvite: false, canGrantStars: false },
+                        glory: Math.max(0, Number(entry.glory || 0) || 0),
+                        reputation: Math.max(0, Number(entry.reputation || 0) || 0),
+                        treesChopped: Math.max(Number(current.treesChopped || 0) || 0, Number(entry.treesChopped || 0) || 0),
+                        monstersDestroyed: Math.max(Number(current.monstersDestroyed || 0) || 0, Number(entry.monstersDestroyed || 0) || 0),
+                        buildingsDestroyed: Math.max(Number(current.buildingsDestroyed || 0) || 0, Number(entry.buildingsDestroyed || 0) || 0),
+                        theftsCommitted: Math.max(Number(current.theftsCommitted || 0) || 0, Number(entry.theftsCommitted || 0) || 0),
+                    };
+                });
+                return updated;
+            });
+        }, (error) => handleFirestoreError(error, OperationType.GET, 'users_leaderboard_sync'));
+
+        return () => unsubscribe();
+    }, [isAuthReady, user]);
 
     useEffect(() => {
         if (!showTopPlayers) return;
-        let cancelled = false;
 
-        const loadTopPlayersLive = async () => {
-            try {
-                const fiveMinutesAgo = Date.now() - 300000;
-                const [usersSnap, presenceSnap] = await Promise.all([
-                    getDocs(query(collection(db, 'users'))),
-                    getDocs(query(collection(db, 'presence'), where('lastSeen', '>', fiveMinutesAgo), limit(100))),
-                ]);
+        let isActive = true;
+        setLeaderboardLoading(true);
+        setLeaderboardError(null);
 
-                if (cancelled) return;
+        const orderField = TOP_PLAYERS_ORDER_FIELD[activeTopPlayersTab];
+        const leaderboardUsersQuery = query(
+            collection(db, LEADERBOARD_PROFILES_COLLECTION),
+            orderBy(orderField, 'desc'),
+            limit(TOP_PLAYERS_QUERY_LIMIT)
+        );
 
-                const loadedUsers = usersSnap.docs.map(docSnap => toTopPlayerEntry(String(docSnap.id), docSnap.data() as any));
-                const livePresenceUsers = presenceSnap.docs.map(docSnap => toTopPlayerEntry(String(docSnap.id), docSnap.data() as any));
-                setTopPlayersData(mergeTopPlayersEntries(loadedUsers, livePresenceUsers));
-            } catch (error) {
-                if (!cancelled) {
-                    handleFirestoreError(error, OperationType.GET, 'users_top_live');
-                }
-            }
-        };
+        const unsubscribe = onSnapshot(leaderboardUsersQuery, (snapshot) => {
+            if (!isActive) return;
 
-        loadTopPlayersLive();
-        const intervalId = setInterval(loadTopPlayersLive, 15000);
+            const loadedUsers = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data() as any;
+                const uid = String(data?.userId || docSnap.id);
+                return {
+                    uid,
+                    name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
+                    level: Number(data?.level || 1) || 1,
+                    glory: Math.max(0, Number(data?.glory || 0) || 0),
+                    avatar: resolveUserAvatar(data),
+                    clanId: normalizeClanIdValue(data?.clanId),
+                    ...getUserStatCounters(data),
+                };
+            });
+
+            const normalizedTopPlayersData = loadedUsers.map((entry) => toTopPlayerEntry(entry.uid, entry));
+            setTopPlayersData(normalizedTopPlayersData);
+            setLeaderboardLoading(false);
+            setLeaderboardError(null);
+
+            if (loadedUsers.length === 0) return;
+
+            setAllUsers((prev) => {
+                const updated = { ...prev };
+                loadedUsers.forEach((entry) => {
+                    const current = updated[entry.uid] || {};
+                    updated[entry.uid] = {
+                        ...current,
+                        ...entry,
+                        uid: entry.uid,
+                        name: entry.name || current.name || 'Неизвестный',
+                        avatar: entry.avatar || current.avatar || null,
+                        clanId: entry.clanId ?? current.clanId ?? null,
+                        level: Math.max(1, Number(entry.level || current.level || 1) || 1),
+                        glory: Math.max(0, Number(entry.glory || 0) || 0),
+                        treesChopped: Math.max(Number(current.treesChopped || 0) || 0, Number(entry.treesChopped || 0) || 0),
+                        monstersDestroyed: Math.max(Number(current.monstersDestroyed || 0) || 0, Number(entry.monstersDestroyed || 0) || 0),
+                        buildingsDestroyed: Math.max(Number(current.buildingsDestroyed || 0) || 0, Number(entry.buildingsDestroyed || 0) || 0),
+                        theftsCommitted: Math.max(Number(current.theftsCommitted || 0) || 0, Number(entry.theftsCommitted || 0) || 0),
+                    };
+                });
+                return updated;
+            });
+        }, (error) => {
+            if (!isActive) return;
+            setLeaderboardLoading(false);
+            setLeaderboardError(error instanceof Error ? error.message : String(error));
+            handleFirestoreError(error, OperationType.GET, `leaderboard_profiles_${activeTopPlayersTab}`);
+        });
 
         return () => {
-            cancelled = true;
-            clearInterval(intervalId);
+            isActive = false;
+            unsubscribe();
         };
-    }, [showTopPlayers]);
+    }, [showTopPlayers, activeTopPlayersTab]);
 
     // Interpolation for smooth player movement using frame-time aware RAF.
     useEffect(() => {
@@ -5942,17 +7755,10 @@ const App: React.FC = () => {
     useEffect(() => {
         if (!isAuthReady || !user || loadPhase < 2) return;
         const presenceCol = collection(db, 'presence');
-        // Only fetch users active in the last 5 minutes, and limit to 50
-        const fiveMinutesAgo = Date.now() - 300000;
-        const q = query(presenceCol, where('lastSeen', '>', fiveMinutesAgo), limit(50));
+        const q = query(presenceCol, orderBy('lastSeen', 'desc'), limit(200));
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const usersByTab: Record<ChatTab, { name: string, uid: string }[]> = {
-                general: [],
-                banya: [],
-                loot: [],
-                clan: [],
-                police: []
-            };
+            const allOnlineUsers: { name: string, uid: string }[] = [];
+            const clanOnlineUsers: { name: string, uid: string }[] = [];
 
             const playersData: any[] = [];
             const now = Date.now();
@@ -5962,23 +7768,23 @@ const App: React.FC = () => {
                 // Only count as online if seen in last 2 minutes
                 if (data && data.lastSeen && (now - data.lastSeen < 120000)) {
                     const repairedPresenceName = repairMojibakeCp1251Utf8(String(data.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–"));
-                    const tab = (data.activeTab || 'general') as ChatTab;
-                    if (usersByTab[tab]) {
-                        // For clan tab, only show if same clan
-                        if (tab === 'clan') {
-                            if ((data.clanId || null) === (playerClanId || null)) {
-                                usersByTab[tab].push({ name: repairedPresenceName, uid: data.uid });
-                            }
-                        } else {
-                            usersByTab[tab].push({ name: repairedPresenceName, uid: data.uid });
-                        }
+                    const uid = String(data.uid || doc.id);
+                    const normalizedPresenceClanId = normalizeClanIdValue(data.clanId);
+
+                    allOnlineUsers.push({ name: repairedPresenceName, uid });
+                    if (
+                        normalizedPresenceClanId !== null &&
+                        normalizeClanIdValue(playerClanId) !== null &&
+                        normalizedPresenceClanId === normalizeClanIdValue(playerClanId)
+                    ) {
+                        clanOnlineUsers.push({ name: repairedPresenceName, uid });
                     }
 
-                    if (data.uid !== user.uid) {
-                        playersData.push({ ...data, name: repairedPresenceName });
+                    if (uid !== user.uid) {
+                        playersData.push({ ...data, uid, clanId: normalizedPresenceClanId, name: repairedPresenceName });
                     }
 
-                    presencePatch[data.uid] = { ...data, name: repairedPresenceName };
+                    presencePatch[uid] = { ...data, uid, clanId: normalizedPresenceClanId, name: repairedPresenceName };
                 }
             });
             if (Object.keys(presencePatch).length > 0) {
@@ -5991,13 +7797,14 @@ const App: React.FC = () => {
                             uid,
                             name: repairMojibakeCp1251Utf8(String(data.name || current.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
                             level: data.level,
+                            lastSeen: Math.max(Number(current.lastSeen || 0) || 0, Number(data.lastSeen || 0) || 0),
                             // Preserve local glory/reputation values - don't overwrite with stale presence data
                             glory: current.glory ?? data.glory,
                             reputation: current.reputation ?? data.reputation,
                             avatar: resolveUserAvatar(data, current.avatar || null),
                             activeCurse: data.activeCurse || current.activeCurse || null,
                             banEndTime: data.banEndTime || current.banEndTime || 0,
-                            clanId: data.clanId || current.clanId || null,
+                            clanId: data.clanId ?? current.clanId ?? null,
                             rank: data.rank ?? current.rank ?? 0,
                             clanPermissions: data.clanPermissions || current.clanPermissions || { canInvite: false, canGrantStars: false },
                             gender: data.gender || current.gender || null,
@@ -6010,7 +7817,23 @@ const App: React.FC = () => {
                     return updated;
                 });
             }
-            setOnlineUsers(usersByTab);
+            const dedupeUsers = (users: { name: string, uid: string }[]) => {
+                const map = new Map<string, { name: string, uid: string }>();
+                users.forEach((entry) => {
+                    if (!entry.uid) return;
+                    map.set(entry.uid, entry);
+                });
+                return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+            };
+            const sharedOnlineUsers = dedupeUsers(allOnlineUsers);
+            const sharedClanUsers = dedupeUsers(clanOnlineUsers);
+            setOnlineUsers({
+                general: sharedOnlineUsers,
+                banya: sharedOnlineUsers,
+                loot: sharedOnlineUsers,
+                police: sharedOnlineUsers,
+                clan: sharedClanUsers
+            });
             setOnlinePlayersData(playersData);
         }, (error) => handleFirestoreError(error, OperationType.GET, 'presence'));
 
@@ -6079,6 +7902,25 @@ const App: React.FC = () => {
                         }));
                     }
 
+                    const presenceDoc = await getDoc(doc(db, 'presence', selectedPlayerId));
+                    if (presenceDoc.exists()) {
+                        const presenceData = presenceDoc.data();
+                        setAllUsers(prev => ({
+                            ...prev,
+                            [selectedPlayerId]: {
+                                ...prev[selectedPlayerId],
+                                uid: selectedPlayerId,
+                                name: prev[selectedPlayerId]?.name || repairMojibakeCp1251Utf8(String(presenceData.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
+                                level: prev[selectedPlayerId]?.level ?? presenceData.level ?? 1,
+                                lastSeen: Math.max(
+                                    Number(prev[selectedPlayerId]?.lastSeen || 0) || 0,
+                                    Number(presenceData.lastSeen || 0) || 0
+                                ),
+                                avatar: prev[selectedPlayerId]?.avatar || resolveUserAvatar(presenceData),
+                            }
+                        }));
+                    }
+
                     // Fetch player's buildings from database
                     const buildingsCol = collection(db, 'buildings');
                     const buildingsQuery = query(buildingsCol, where('ownerId', '==', selectedPlayerId));
@@ -6109,11 +7951,20 @@ const App: React.FC = () => {
             setSelectedPlayerBuildings([]);
         }
     }, [showPlayerProfile, selectedPlayerId]);
-    const updatePlacedBuildingsFromServer = useCallback(() => {
+    const updatePlacedBuildingsFromServer = useCallback((source: BuildingTimerTraceSource = 'updatePlacedBuildingsFromServer') => {
         setPlacedBuildings(prev => {
             const merged = new Map<string, PlacedBuilding>();
             const nowMs = Date.now();
             const currentUserId = userRef.current?.uid;
+            const findLocalMatchForServerBuilding = (serverBuilding: PlacedBuilding): PlacedBuilding | undefined => {
+                const serverId = String(serverBuilding.id);
+                const traceId = String(serverBuilding.clientBuildTraceId || '');
+                return prev.find((localBuilding) => {
+                    if (String(localBuilding.id) === serverId) return true;
+                    if (!traceId) return false;
+                    return String(localBuilding.id) === traceId || String(localBuilding.tempId || '') === traceId;
+                });
+            };
 
             serverZoneBuildingsRef.current.forEach((b, id) => {
                 const strId = String(id);
@@ -6139,6 +7990,7 @@ const App: React.FC = () => {
             const allBuildings = Array.from(merged.values());
             const { updated: processedBuildings, updates } = processOfflineTimers(allBuildings, {
                 resources: mapResources,
+                isWrappedWorld: isWorldWrapped,
                 canApplyDestructionTimer: (building) => {
                     const info = buildingData.find(i => i.id === building.buildingId);
                     if (!info?.stats.isMonster) return true;
@@ -6154,6 +8006,19 @@ const App: React.FC = () => {
             // Sync processed updates to server (fire and forget)
             if (updates.length > 0) {
                 updates.forEach(({ id, data }) => {
+                    const sourceBuilding = processedBuildings.find(b => String(b.id) === String(id));
+                    const touchesHealthState =
+                        Object.prototype.hasOwnProperty.call(data, 'hp') ||
+                        Object.prototype.hasOwnProperty.call(data, 'maxHp') ||
+                        Object.prototype.hasOwnProperty.call(data, 'shieldHp') ||
+                        Object.prototype.hasOwnProperty.call(data, 'shieldMaxHp') ||
+                        Object.prototype.hasOwnProperty.call(data, 'protectionEndTime') ||
+                        Object.prototype.hasOwnProperty.call(data, 'isDestroying') ||
+                        Object.prototype.hasOwnProperty.call(data, 'destructionEndTime') ||
+                        Object.prototype.hasOwnProperty.call(data, 'pendingDamage');
+                    if (sourceBuilding && touchesHealthState && shouldDeferBuildingAuthorityToOwner(sourceBuilding)) {
+                        return;
+                    }
                     updateDoc(doc(db, 'buildings', id), data)
                         .catch(e => {
                             if (isNotFoundBuildingError(e)) {
@@ -6168,6 +8033,15 @@ const App: React.FC = () => {
             // CRITICAL: Protect recently placed buildings from being wiped by sync delay
             const localOnlyBuildings = prev.filter(b => {
                 const strId = String(b.id);
+                const traceId = String(b.tempId || b.clientBuildTraceId || '');
+                const linkedDocId =
+                    (traceId ? optimisticBuildDocIdByTempIdRef.current.get(traceId) : undefined) ||
+                    optimisticBuildDocIdByTempIdRef.current.get(strId);
+                const hasMatchingServerBuilding =
+                    (!!linkedDocId && merged.has(String(linkedDocId))) ||
+                    (!!traceId && Array.from(merged.values()).some(serverBuilding =>
+                        String(serverBuilding.clientBuildTraceId || '') === traceId
+                    ));
                 if (isBuildingTombstoned(strId)) return false;
                 if ((b.hp ?? 1) <= 0) return false;
                 const isTownHall = TOWN_HALL_IDS.includes(Number(b.buildingId));
@@ -6184,8 +8058,8 @@ const App: React.FC = () => {
                     (nowMs - lastSeenOnServerAt) < 20000;
 
                 // Keep only short-lived optimistic entries. Never keep Town Hall forever from local cache.
-                const shouldKeep = (b.isLocal || isRecentlySyncedMyTH) && !merged.has(strId);
-                const shouldKeepOwnTownHall = isMyTH && !merged.has(strId);
+                const shouldKeep = (b.isLocal || isRecentlySyncedMyTH) && !merged.has(strId) && !hasMatchingServerBuilding;
+                const shouldKeepOwnTownHall = isMyTH && !merged.has(strId) && !hasMatchingServerBuilding;
 
                 // Rare diagnostic log only when a Town Hall is about to be dropped from merge.
                 // Do not keep neutral/monster entities from local cache without a live server snapshot:
@@ -6216,13 +8090,53 @@ const App: React.FC = () => {
             // PROTECT: Sticky Interaction Logic (Anti-Jitter & Rollback Fix)
             const finalBuildings = Array.from(merged.values()).map(serverB => {
                 const strId = String(serverB.id);
-                const lastIntAt = lastInteractionRef.current.get(strId) || 0;
+                const linkedTempId =
+                    optimisticBuildTempIdByDocIdRef.current.get(strId) ||
+                    String(serverB.clientBuildTraceId || '');
+                const lastIntAt =
+                    lastInteractionRef.current.get(strId) ||
+                    (linkedTempId ? lastInteractionRef.current.get(linkedTempId) || 0 : 0);
                 const timeSinceInt = Date.now() - lastIntAt;
-                const localB = prev.find(p => String(p.id) === strId);
+                const localB = findLocalMatchForServerBuilding(serverB);
                 const localInteractionAllowed = !!localB && (
                     !!localB.isLocal ||
                     (!!currentUserId && localB.ownerId === currentUserId)
                 );
+                const hasActiveLocalDestructionWindow = !!localB &&
+                    hasActiveDestructionWindow(localB.destructionEndTime, nowMs);
+                const localIsProtectedByCombat = !!localB && (
+                    localB.isDestroying ||
+                    (Number(localB.pendingDamage || 0) > 0) ||
+                    hasActiveLocalDestructionWindow ||
+                    isBuildingDeleting(strId) ||
+                    isBuildingTombstoned(strId)
+                );
+                if (RUNTIME_AUDIT_ENABLED && localB && localB.destructionEndTime !== undefined) {
+                    console.info('[ACTIVE_DESTRUCTION_WINDOW]', {
+                        buildingId: strId,
+                        destructionEndTime: localB.destructionEndTime,
+                        now: nowMs,
+                        hasActiveDestructionWindow: hasActiveLocalDestructionWindow,
+                        localIsProtectedByCombat,
+                    });
+                }
+                if (localIsProtectedByCombat) {
+                    logSnapshotMergeDecision(strId, {
+                        source: "snapshot_merge",
+                        buildingId: strId,
+                        decision: "keep_local_protected",
+                        localIsProtectedByCombat,
+                        localIsDestroying: localB?.isDestroying,
+                        localDestructionEndTime: localB?.destructionEndTime,
+                        deleting: isBuildingDeleting(strId),
+                        tombstoned: isBuildingTombstoned(strId),
+                        timestamp: Date.now(),
+                    });
+                    return normalizePlacedBuildingHealth({
+                        ...localB,
+                        isLocal: false
+                    });
+                }
 
                 // If we interacted locally < 15000ms ago, the server version might be "stale"
                 const constructionStickyMs =
@@ -6233,12 +8147,37 @@ const App: React.FC = () => {
                     if (localB) {
                         // Never override an already-dead server entity with stale optimistic local state.
                         if (serverB.hp !== undefined && serverB.hp <= 0) {
+                            if (localIsProtectedByCombat) {
+                                logSnapshotMergeDecision(strId, {
+                                    source: "snapshot_merge",
+                                    buildingId: strId,
+                                    decision: "skip_server_dead",
+                                    timestamp: Date.now(),
+                                });
+                            }
                             return normalizePlacedBuildingHealth(serverB);
+                        }
+                        if (shouldPreferServerRevivedBuildingState(localB, serverB)) {
+                            lastInteractionRef.current.delete(strId);
+                            if (localIsProtectedByCombat) {
+                                logSnapshotMergeDecision(strId, {
+                                    source: "snapshot_merge",
+                                    buildingId: strId,
+                                    decision: "replace_local_with_server",
+                                    timestamp: Date.now(),
+                                });
+                            }
+                            return normalizePlacedBuildingHealth({
+                                ...serverB,
+                                isLocal: false
+                            });
                         }
                         // SMART SYNC: If the server caught up (states match), we can stop being "sticky" early
                         const serverMatchesLocal = serverB.workState === localB.workState && 
+                                                 serverB.workEndTime === localB.workEndTime &&
                                                  serverB.buildingId === localB.buildingId &&
                                                  serverB.x === localB.x && serverB.y === localB.y &&
+                                                 serverB.zoneId === localB.zoneId &&
                                                  serverB.hp === localB.hp &&
                                                  serverB.lastAttackTime === localB.lastAttackTime &&
                                                  serverB.lastMoveTime === localB.lastMoveTime &&
@@ -6262,6 +8201,14 @@ const App: React.FC = () => {
                                 localB.isDestroying !== serverB.isDestroying ||
                                 localB.pendingDamage !== serverB.pendingDamage ||
                                 localB.destructionEndTime !== serverB.destructionEndTime;
+                            if (localIsProtectedByCombat) {
+                                logSnapshotMergeDecision(strId, {
+                                    source: "snapshot_merge",
+                                    buildingId: strId,
+                                    decision: shouldStickHealthState ? "keep_local_sticky" : "accept_server_update",
+                                    timestamp: Date.now(),
+                                });
+                            }
                             // Still waiting for server to catch up; persist local optimistic state
                             return normalizePlacedBuildingHealth({
                                 ...serverB, 
@@ -6285,11 +8232,21 @@ const App: React.FC = () => {
                                 destructionEndTime: shouldStickHealthState ? localB.destructionEndTime : serverB.destructionEndTime,
                                 initiatorId: shouldStickHealthState ? localB.initiatorId : serverB.initiatorId,
                                 timestamp: localB.timestamp ?? serverB.timestamp,
-                                isLocal: localB.isLocal
+                                // The entity already exists in a live server snapshot, so it should no
+                                // longer be treated as a local-only optimistic building.
+                                isLocal: false
                             });
                         } else {
                             // Server confirmed our change! Clear the interaction ref to resume normal sync
                             lastInteractionRef.current.delete(strId);
+                            if (localIsProtectedByCombat) {
+                                logSnapshotMergeDecision(strId, {
+                                    source: "snapshot_merge",
+                                    buildingId: strId,
+                                    decision: "accepted_server_matches_local",
+                                    timestamp: Date.now(),
+                                });
+                            }
                         }
                     }
                 }
@@ -6354,6 +8311,22 @@ const App: React.FC = () => {
                 }
             });
             const dedupedBuildings = Array.from(tileDedup.values());
+            if (RUNTIME_AUDIT_ENABLED) {
+                const timerBuildings = dedupedBuildings.filter((building) =>
+                    building.isConstructing ||
+                    building.workState === 'working' ||
+                    building.workState === 'finished' ||
+                    typeof building.constructionEndTime === 'number' ||
+                    typeof building.workEndTime === 'number'
+                );
+                timerBuildings.forEach((building) => {
+                    recordBuildingTimerTrace(source, building, {
+                        now: nowMs,
+                        sourceCode: 'updatePlacedBuildingsFromServer',
+                        mergedBuildings: dedupedBuildings.length,
+                    });
+                });
+            }
 
             // DEBUG: Check if TH survived the merge
             const thInPrev = prev.filter(b =>
@@ -6392,10 +8365,13 @@ const App: React.FC = () => {
                     const a = prev[i], b = dedupedBuildings[i];
                     if (String(a.id) !== String(b?.id) || a.x !== b?.x || a.y !== b?.y || 
                         a.buildingId !== b?.buildingId || a.hp !== b?.hp || 
+                        a.maxHp !== b?.maxHp ||
                         a.workState !== b?.workState || a.isConstructing !== b?.isConstructing ||
                         a.isDestroying !== b?.isDestroying || a.shieldHp !== b?.shieldHp ||
                         a.shieldMaxHp !== b?.shieldMaxHp || a.pendingDamage !== b?.pendingDamage ||
                         a.protectionEndTime !== b?.protectionEndTime ||
+                        a.destructionEndTime !== b?.destructionEndTime ||
+                        a.initiatorId !== b?.initiatorId ||
                         a.lastAttackTime !== b?.lastAttackTime ||
                         a.lastMoveTime !== b?.lastMoveTime) {
                         same = false;
@@ -6423,7 +8399,13 @@ const App: React.FC = () => {
                 const strId = String(docSnap.id);
                 
                 if (isBuildingTombstoned(strId)) return;
-                myBuildingsMap.set(strId, { ...data, id: strId } as PlacedBuilding);
+                myBuildingsMap.set(strId, {
+                    ...data,
+                    id: strId,
+                    isLocal: false,
+                    status: 'normal',
+                    syncState: 'synced'
+                } as PlacedBuilding);
                 
                 // Self-healing: Update zoneId if it's incorrect for the current coordinates
                 const correctZoneId = getZoneId(data.x, data.y);
@@ -6432,14 +8414,29 @@ const App: React.FC = () => {
                     updateDoc(doc(db, 'buildings', strId), { zoneId: correctZoneId })
                         .catch(e => console.error("Failed to heal zoneId:", e));
                 }
+
+                const trace = buildTimingTracesRef.current.get(strId);
+                if (trace && !trace.snapshotSources.includes('my')) {
+                    const nextTrace: BuildTimingTrace = {
+                        ...trace,
+                        snapshotReceivedAt: trace.snapshotReceivedAt || Date.now(),
+                        snapshotSources: [...trace.snapshotSources, 'my'],
+                    };
+                    logBuildTiming('snapshot_received', nextTrace, { source: 'my' });
+                    if (trace.tempId) {
+                        buildTimingTracesRef.current.delete(trace.tempId);
+                    }
+                    buildTimingTracesRef.current.delete(strId);
+                }
             });
 
             serverMyBuildingsRef.current = myBuildingsMap;
-            updatePlacedBuildingsFromServer();
+            updatePlacedBuildingsFromServer(((snapshot as any).__auditSource as BuildingTimerTraceSource | undefined) || 'onSnapshot');
             
             // PROGRESSIVE LOADING: When critical buildings data arrives, trigger phased loading
             if (!phasedLoadingTriggeredRef.current) {
                 phasedLoadingTriggeredRef.current = true;
+                logStartupStep('critical_buildings_snapshot_received', { source: 'my_buildings' });
                 setLoadPhase(1); // Phase 1: critical data loaded
                 // If the 60s timer already elapsed, allow entry now
                 if (loadTimerDone.current) {
@@ -6462,21 +8459,26 @@ const App: React.FC = () => {
                     setChatCollapseState('open');
                 }, 3000); // Chat opens after 3s
             }
-        }, (error) => handleFirestoreError(error, OperationType.GET, 'buildings_my'));
+        }, (error) => {
+            logStartupStep('critical_buildings_snapshot_failed', { error: String(error) });
+            handleFirestoreError(error, OperationType.GET, 'buildings_my');
+        });
 
         return () => unsubscribeMy();
-    }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
+    }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned, logBuildTiming, logStartupStep]);
 
     // Sync Zone Buildings from PocketBase
     useEffect(() => {
-        if (!isAuthReady || !user || currentZones.length === 0) return;
-        const requestedZones = [...currentZones];
+        if (!isAuthReady || !user || currentBuildingZones.length === 0) return;
+        const requestedZones = [...currentBuildingZones];
         const requestId = ++activeZoneBuildingsRequestRef.current;
+        const retryKey = `buildings:${requestedZones.slice().sort().join('|')}`;
         const buildingsCol = collection(db, 'buildings');
-        const qZone = query(buildingsCol, where('zoneId', 'in', currentZones));
+        const qZone = query(buildingsCol, where('zoneId', 'in', currentBuildingZones));
 
         const unsubscribeZone = onSnapshot(qZone, async (snapshot) => {
             if (requestId !== activeZoneBuildingsRequestRef.current) return;
+            clearZoneSyncRetry(retryKey);
             const zoneBuildingsMap = new Map<string, PlacedBuilding>();
             const ownerIds = new Set<string>();
             
@@ -6486,12 +8488,32 @@ const App: React.FC = () => {
                 
                 // Skip buildings that are being deleted (prevents monsters/buildings from reappearing after sell)
                 if (isBuildingTombstoned(strId)) return;
-                zoneBuildingsMap.set(strId, { ...data, id: strId } as PlacedBuilding);
+                zoneBuildingsMap.set(strId, {
+                    ...data,
+                    id: strId,
+                    isLocal: false,
+                    status: 'normal',
+                    syncState: 'synced'
+                } as PlacedBuilding);
                 
                 // Collect unique owner IDs
                 if (data.ownerId && data.ownerId !== '-1' && data.ownerId !== 'monster' && data.ownerId !== GUEST_ID && data.ownerId !== '0') {
                     if (missingOwnersRef.current.has(data.ownerId)) return;
                     ownerIds.add(data.ownerId);
+                }
+
+                const trace = buildTimingTracesRef.current.get(strId);
+                if (trace && !trace.snapshotSources.includes('zone')) {
+                    const nextTrace: BuildTimingTrace = {
+                        ...trace,
+                        snapshotReceivedAt: trace.snapshotReceivedAt || Date.now(),
+                        snapshotSources: [...trace.snapshotSources, 'zone'],
+                    };
+                    logBuildTiming('snapshot_received', nextTrace, { source: 'zone' });
+                    if (trace.tempId) {
+                        buildTimingTracesRef.current.delete(trace.tempId);
+                    }
+                    buildTimingTracesRef.current.delete(strId);
                 }
             });
 
@@ -6499,29 +8521,43 @@ const App: React.FC = () => {
             
             // NOTE: Zone owner hydration via users/getDoc is disabled to avoid repeated 404 spam
             // for orphaned ownerId references in legacy building records.
-            
-            const loadedAt = Date.now();
-            const nextStatus = new Map(zonePlacementStatusRef.current);
-            requestedZones.forEach(zoneId => {
-                const previousStatus = nextStatus.get(zoneId) || {
-                    buildingsLoaded: false,
-                    resourcesLoaded: false,
-                    lastRequestedAt: loadedAt,
-                    lastBuildingsLoadedAt: 0,
-                    lastResourcesLoadedAt: 0,
-                };
-                nextStatus.set(zoneId, {
-                    ...previousStatus,
-                    buildingsLoaded: true,
-                    lastBuildingsLoadedAt: loadedAt,
-                });
-            });
-            zonePlacementStatusRef.current = nextStatus;
-            updatePlacedBuildingsFromServer();
-        }, (error) => handleFirestoreError(error, OperationType.GET, 'buildings_zone'));
 
-        return () => unsubscribeZone();
-    }, [isAuthReady, user, currentZones, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
+            markZoneStatuses(requestedZones, 'buildings', true, false);
+            updatePlacedBuildingsFromServer(((snapshot as any).__auditSource as BuildingTimerTraceSource | undefined) || 'onSnapshot');
+        }, (error) => {
+            if (requestId !== activeZoneBuildingsRequestRef.current) return;
+            handleFirestoreError(error, OperationType.GET, 'buildings_zone');
+
+            const nextAttempt = (zoneSyncRetryCountsRef.current.get(retryKey) || 0) + 1;
+            zoneSyncRetryCountsRef.current.set(retryKey, nextAttempt);
+            console.warn(
+                `[ZoneSync] buildings snapshot error zones=${requestedZones.join(', ')} attempt=${nextAttempt}/${ZONE_SYNC_MAX_RETRIES} requestId=${requestId}`,
+                error
+            );
+
+            if (nextAttempt <= ZONE_SYNC_MAX_RETRIES) {
+                const retryDelay = ZONE_SYNC_RETRY_DELAY_MS * nextAttempt;
+                clearZoneSyncRetry(retryKey);
+                zoneSyncRetryCountsRef.current.set(retryKey, nextAttempt);
+                const timer = setTimeout(() => {
+                    if (requestId === activeZoneBuildingsRequestRef.current) {
+                        setZoneSyncRetryNonce((value) => value + 1);
+                    }
+                }, retryDelay);
+                zoneSyncRetryTimeoutsRef.current.set(retryKey, timer);
+                return;
+            }
+
+            console.warn(`[ZoneSync] buildings failed for zones ${requestedZones.join(', ')} after ${nextAttempt - 1} retries. Using fail-open fallback.`);
+            clearZoneSyncRetry(retryKey);
+            markZoneStatuses(requestedZones, 'buildings', false, true);
+        });
+
+        return () => {
+            unsubscribeZone();
+            clearZoneSyncRetry(retryKey, false);
+        };
+    }, [currentBuildingZones, isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned, clearZoneSyncRetry, markZoneStatuses, zoneSyncRetryNonce, logBuildTiming]);
 
     // Sync Market from PocketBase - CHANGED to getDocs for optimization (Phase 3 - Social)
     const fetchMarketListings = useCallback(async () => {
@@ -6531,9 +8567,12 @@ const App: React.FC = () => {
             const snapshot = await getDocs(marketCol);
             const listings: MarketListing[] = [];
             snapshot.forEach((doc) => {
-                listings.push(doc.data() as MarketListing);
+                const listing = normalizeMarketListing(doc.data());
+                if (listing) {
+                    listings.push(listing);
+                }
             });
-            setMarketListings(listings);
+            setMarketListings(listings.sort((a, b) => b.id - a.id));
         } catch (error) {
             handleFirestoreError(error, OperationType.GET, 'market');
         }
@@ -6542,6 +8581,19 @@ const App: React.FC = () => {
     useEffect(() => {
         fetchMarketListings();
     }, [fetchMarketListings]);
+
+    useEffect(() => {
+        if (!showMarketModal) return;
+        fetchMarketListings();
+    }, [showMarketModal, fetchMarketListings]);
+
+    useEffect(() => {
+        if (!showMarketModal || activeMarketTab !== 'buy' || marketType !== 'general') return;
+        setActiveMarketBuySection('resources');
+        setActiveMarketResourceSection('wood');
+        setActiveMarketBedSection('mushroom');
+        setActiveMarketMonsterSection('hut');
+    }, [showMarketModal, activeMarketTab, marketType]);
 
     // Sync Police Election State from Firebase (Phase 3 - Social)
     useEffect(() => {
@@ -6864,17 +8916,28 @@ const App: React.FC = () => {
     useEffect(() => {
         // Sync selected building with latest data from placedBuildings
         if (selectedBuilding) {
-            const latest = placedBuildings.find(b => b.id === selectedBuilding.building.id);
+            const latest = placedBuildings.find(b => String(b.id) === String(selectedBuilding.building.id));
             if (latest) {
                 // Check if buildingId changed (upgrade happened)
                 const buildingIdChanged = latest.buildingId !== selectedBuilding.building.buildingId;
                 
                 // Only update if something actually changed to avoid infinite loops
                 const hasChanged = buildingIdChanged ||
+                    !Object.is(latest.x, selectedBuilding.building.x) ||
+                    !Object.is(latest.y, selectedBuilding.building.y) ||
+                    !Object.is(latest.zoneId, selectedBuilding.building.zoneId) ||
                     !Object.is(latest.bank, selectedBuilding.building.bank) ||
                     !Object.is(latest.taxRate, selectedBuilding.building.taxRate) ||
                     !Object.is(latest.hp, selectedBuilding.building.hp) ||
-                    latest.isConstructing !== selectedBuilding.building.isConstructing;
+                    !Object.is(latest.maxHp, selectedBuilding.building.maxHp) ||
+                    !Object.is(latest.pendingDamage, selectedBuilding.building.pendingDamage) ||
+                    !Object.is(latest.destructionEndTime, selectedBuilding.building.destructionEndTime) ||
+                    !Object.is(latest.shieldHp, selectedBuilding.building.shieldHp) ||
+                    !Object.is(latest.shieldMaxHp, selectedBuilding.building.shieldMaxHp) ||
+                    !Object.is(latest.protectionEndTime, selectedBuilding.building.protectionEndTime) ||
+                    latest.isConstructing !== selectedBuilding.building.isConstructing ||
+                    latest.isDestroying !== selectedBuilding.building.isDestroying ||
+                    latest.workState !== selectedBuilding.building.workState;
 
                 if (hasChanged) {
                     // If buildingId changed, also update the info
@@ -6887,6 +8950,10 @@ const App: React.FC = () => {
                         info: newInfo
                     } : null);
                 }
+            } else {
+                setSelectedBuilding(null);
+                setShowExplosionMenu(false);
+                setShowProtectionMenu(false);
             }
         }
     }, [placedBuildings, selectedBuilding]);
@@ -7216,6 +9283,9 @@ const App: React.FC = () => {
                     activeCurse
                 }
             }));
+            if (targetUid === user.uid) {
+                setPlayerActiveCurse(activeCurse);
+            }
 
             alert(`Игрок ${targetName} успешно заколдован!`);
         } catch (e) {
@@ -7226,16 +9296,20 @@ const App: React.FC = () => {
     const maxEnergy = useMemo(() => {
         return BASE_MAX_ENERGY + ((playerLevel - 1) * 50);
     }, [playerLevel]);
+    const displayedEnergyCapacity = useMemo(() => {
+        return Math.max(maxEnergy, playerEnergy, 1);
+    }, [maxEnergy, playerEnergy]);
 
 
     // Force switch to 'banya' tab if banned
     useEffect(() => {
-        if (isBanned()) {
+        const normalizedBanEndTime = Number(banEndTime || 0) || 0;
+        if (normalizedBanEndTime > Date.now()) {
             if (activeChatTab !== 'banya') {
                 setActiveChatTab('banya');
             }
         }
-    }, [banEndTime, activeChatTab, isBanned]);
+    }, [banEndTime, activeChatTab]);
 
 
 
@@ -7244,9 +9318,24 @@ const App: React.FC = () => {
 
     const getCanvasContext = (): [HTMLCanvasElement, CanvasRenderingContext2D] | [null, null] => {
         const canvas = canvasRef.current;
-        if (!canvas) return [null, null];
+        if (!canvas) {
+            if (!startupCanvasFailureLoggedRef.current) {
+                startupCanvasFailureLoggedRef.current = true;
+                logStartupStep('canvas_missing');
+            }
+            return [null, null];
+        }
         const context = canvas.getContext('2d');
-        if (!context) return [null, null];
+        if (!context) {
+            if (!startupCanvasFailureLoggedRef.current) {
+                startupCanvasFailureLoggedRef.current = true;
+                logStartupStep('canvas_context_unavailable');
+            }
+            return [null, null];
+        }
+        if (startupCanvasFailureLoggedRef.current) {
+            startupCanvasFailureLoggedRef.current = false;
+        }
         return [canvas, context];
     }
 
@@ -7337,8 +9426,10 @@ const App: React.FC = () => {
             duplicates.forEach(async (dup) => {
                 try {
                     const docId = String(dup.id);
-                    // Mark as deleting locally to prevent flicker (with timestamp)
-                    deletingBuildingsRef.current.set(docId, Date.now());
+                    // Mark as deleted locally immediately so the duplicate cannot linger or resurrect.
+                    removeBuildingFromSnapshotCaches(docId);
+                    setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
+                    setSelectedBuilding(prev => prev && String(prev.building.id) === docId ? null : prev);
 
                     // Delete from DB
                     await deleteDoc(doc(db, 'buildings', docId));
@@ -7349,7 +9440,7 @@ const App: React.FC = () => {
                 }
             });
         }
-    }, [placedBuildings, user, isAuthReady, isMyBuilding, playerName, shouldLogTownHallEvent]);
+    }, [placedBuildings, user, isAuthReady, isMyBuilding, playerName, shouldLogTownHallEvent, removeBuildingFromSnapshotCaches]);
 
 
     // Mark messages as read when chat is open
@@ -7369,155 +9460,43 @@ const App: React.FC = () => {
         }
     }, [showPrivateChatModal, activePrivateChatId, privateMessages, user]);
 
-    // Preload images in waves: base terrain/UI first, nearby zone assets second, everything else later.
+    // Preload only the assets needed to render the first visible seconds of the world.
     useEffect(() => {
         const baseCriticalUrls = [
-            treeImageUrl,
-            oilImageUrl,
-            chestImageUrl,
-            quarryImageUrl,
             groundTileImageUrl,
+            treeImageUrl,
             coinImageUrl,
-            gloryImageUrl,
             rubyImageUrl,
             populationImageUrl,
             builderIconUrl,
-            level1IconUrl,
-            level2IconUrl,
-            level3IconUrl,
-            level4IconUrl,
-            level5IconUrl,
-            level6IconUrl,
-            level7IconUrl,
-            level8IconUrl,
-            level9IconUrl,
-            level10IconUrl,
-            level11IconUrl,
-            level12IconUrl,
-            level13IconUrl,
-            level14IconUrl,
-            level15IconUrl,
             loadingIconUrl,
             PROTECTION_IMAGE_URL,
-            bronekurIdleFrames[0],
-            izbushkaIdleFrames[0],
-            gorynychIdleFrames[0],
-            kolobokIdleFrames[0],
-            babaYagaIdleFrames[0],
-        ];
-
-        const backgroundStaticUrls = [
-            ...buildingData.map(b => b.imageUrl),
-            ...itemData.map(i => i.imageUrl).filter(Boolean) as string[],
-        ];
-
-        const backgroundAnimationUrls = [
-            ...detonatorFactoryAnimationFrames,
-            ...devilMachineAnimationFrames,
-            ...millAnimationFrames,
-            ...TOWN_HALL_FLAG_IDS.flatMap(id => townHallFlagAnimationFrames[id]),
-            ...FLAG_ANIMATION_IDS.flatMap(id => flagAnimationFrames[id]),
-            ...COIN_FACTORY_IDS.flatMap(id => coinFactoryAnimationFrames[id]),
-            ...SAWMILL_IDS.flatMap(id => sawmillAnimationFrames[id]),
-            ...MA_GROUP_DEFS.flatMap(g => [...monsterAcademyWorkingFrames[g.folder], ...monsterAcademyIdleFrames[g.folder]]),
-            ...ALCHEMY_FACTORY_ANIM_DEFS.flatMap(d => [...alchemyFactoryWorkingFrames[d.id], ...alchemyFactoryIdleFrames[d.id]]),
-            ...militaryFactoryAnimationFrames,
-            ...MB_GROUP_DEFS.flatMap(g => [...mushroomBedWorkingFrames[g.folder], ...mushroomBedIdleFrames[g.folder]]),
-            ...MINE_GROUP_DEFS.flatMap(g => [...mineWorkingFrames[g.folder], ...mineIdleFrames[g.folder]]),
-            ...EF_GROUP_DEFS.flatMap(g => [...emeraldFactoryWorkingFrames[g.folder], ...emeraldFactoryIdleFrames[g.folder]]),
-            ...GS_GROUP_DEFS.flatMap(g => [...goldSmelterWorkingFrames[g.folder], ...(goldSmelterIdleFrames[g.folder] || [])]),
-            ...SRM_GROUP_DEFS.flatMap(g => [...steelRollingMillWorkingFrames[g.folder], ...steelRollingMillIdleFrames[g.folder]]),
-            ...STEEL_SMELTING_IDS.flatMap(id => [...steelSmeltingWorkingFrames[id], ...steelSmeltingIdleFrames[id]]),
-            ...Object.values(stoneCrusherWorkingFrames).flat(),
-            ...Object.values(stoneCrusherIdleFrames).flat(),
-            ...LP_GROUP_DEFS.flatMap(g => [...lilyPondWorkingFrames[g.folder], ...lilyPondIdleFrames[g.folder]]),
-            ...DF_GROUP_DEFS.flatMap(g => [...detonatorFactoryWorkingFrames[g.folder], ...(detonatorFactoryIdleFrames[g.folder] || [])]),
-            ...wildQuarryAnimationFrames,
-            ...recommendationFactoryAnimationFrames,
-            ...giftLambAnimationFrames,
-            ...giftSlipperAnimationFrames,
-            ...babyBearAnimationFrames,
-            ...babyAngelGirlAnimationFrames,
-            ...babyDinoAnimationFrames,
-            ...babyPigletAnimationFrames,
-            ...babyCatAnimationFrames,
-            ...babyAngelBoyAnimationFrames,
-            ...babyPandaAnimationFrames,
-            ...babyFrogAnimationFrames,
-            ...oilRigAnimationFrames[OIL_RIG_ID],
-            ...oilRigAnimationFrames[TWO_OIL_RIGS_ID],
-            ...bronekurWalkBottomFrames,
-            ...bronekurWalkTopRightFrames,
-            ...bronekurWalkLeftTopFrames,
-            ...bronekurWalkBottomRightFrames,
-            ...bronekurIdleFrames,
-            ...bronekurAttackTopFrames,
-            ...bronekurAttackLeftFrames,
-            ...bronekurAttackBottomFrames,
-            ...bronekurAttackRightFrames,
-            ...izbushkaIdleFrames,
-            ...izbushkaWalkLeftFrames,
-            ...izbushkaWalkRightFrames,
-            ...izbushkaWalkDownFrames,
-            ...izbushkaWalkUpFrames,
-            ...izbushkaAttackTopFrames,
-            ...izbushkaAttackLeftFrames,
-            ...izbushkaAttackBottomFrames,
-            ...izbushkaAttackRightFrames,
-            ...izbushkaCancelTopFrames,
-            ...izbushkaCancelLeftFrames,
-            ...izbushkaCancelBottomFrames,
-            ...izbushkaCancelRightFrames,
-            ...santaWalkLeftFrames,
-            ...santaWalkDownFrames,
-            ...santaWalkRightFrames,
-            ...santaWalkUpFrames,
-            ...santaAttackLeftFrames,
-            ...santaAttackBottomFrames,
-            ...santaAttackRightFrames,
-            ...santaAttackTopFrames,
-            ...gorynychIdleFrames,
-            ...gorynychWalkUpFrames,
-            ...gorynychWalkDownFrames,
-            ...gorynychWalkLeftFrames,
-            ...gorynychWalkRightFrames,
-            ...gorynychAttackTopFrames,
-            ...gorynychAttackBottomFrames,
-            ...gorynychAttackLeftFrames,
-            ...gorynychAttackRightFrames,
-            ...kolobokIdleFrames,
-            ...kolobokWalkUpFrames,
-            ...kolobokWalkDownFrames,
-            ...kolobokWalkLeftFrames,
-            ...kolobokWalkRightFrames,
-            ...kolobokAttackTopFrames,
-            ...kolobokAttackLeftFrames,
-            ...kolobokAttackBottomFrames,
-            ...kolobokAttackRightFrames,
-            ...babaYagaIdleFrames,
-            ...babaYagaWalkUpFrames,
-            ...babaYagaWalkDownFrames,
-            ...babaYagaWalkLeftFrames,
-            ...babaYagaWalkRightFrames,
-            ...babaYagaAttackTopFrames,
-            ...babaYagaAttackLeftFrames,
-            ...babaYagaAttackBottomFrames,
-            ...babaYagaAttackRightFrames,
+            LEVEL_ICON_URLS[1],
+            LEVEL_ICON_URLS[playerLevel] || LEVEL_ICON_URLS[1],
+            PLAYER_AVATAR_URLS[1],
+            PLAYER_AVATAR_URLS[playerLevel] || PLAYER_AVATAR_URLS[1],
         ];
 
         enqueueImagePreload(baseCriticalUrls, {
             batchSize: 8,
-            onComplete: () => {
-                enqueueImagePreload(backgroundStaticUrls, { batchSize: 24, delayMs: 400 });
-                enqueueImagePreload(backgroundAnimationUrls, { batchSize: 48, delayMs: 1500 });
-            }
         });
-    }, [enqueueImagePreload]);
+    }, [enqueueImagePreload, playerLevel]);
 
     useEffect(() => {
         if (currentZones.length === 0) return;
 
         const zoneSet = new Set(currentZones);
+        const nearbyResourceUrls = mapResources
+            .filter(resource => zoneSet.has(resource.zoneId || getZoneId(resource.x, resource.y)))
+            .map(resource => {
+                if (resource.type === 'tree') return treeImageUrl;
+                if (resource.type === 'oil') return oilImageUrl;
+                if (resource.type === 'chest') return chestImageUrl;
+                if (resource.type === 'quarry') return quarryImageUrl;
+                return null;
+            })
+            .filter(Boolean) as string[];
+
         const nearbyBuildings = placedBuildings.filter(b => {
             const zoneId = b.zoneId || getZoneId(b.x, b.y);
             return zoneSet.has(zoneId);
@@ -7534,14 +9513,20 @@ const App: React.FC = () => {
 
         const nearbyAnimationUrls = nearbyBuildings.flatMap(getPriorityAnimationUrlsForBuilding);
 
-        enqueueImagePreload([...nearbyStaticUrls, ...nearbyDroppedItemUrls], { batchSize: 16 });
+        enqueueImagePreload([...nearbyResourceUrls, ...nearbyStaticUrls, ...nearbyDroppedItemUrls], { batchSize: 16 });
         enqueueImagePreload(nearbyAnimationUrls, { batchSize: 20 });
-    }, [currentZones, placedBuildings, droppedItems, enqueueImagePreload]);
-
+    }, [currentZones, mapResources, placedBuildings, droppedItems, enqueueImagePreload]);
 
     const isUserOnline = (name: string) => {
         if (name === playerName) return true;
         return (Object.values(onlineUsers) as { name: string, uid: string }[][]).some(list => list.some(u => u.name === name));
+    };
+
+    const shouldDeferBuildingAuthorityToOwner = (building: Pick<PlacedBuilding, 'ownerId'>) => {
+        const ownerId = String(building.ownerId || '');
+        if (!ownerId || ownerId === '0' || ownerId === '-1' || ownerId === 'monster') return false;
+        if (!userRef.current?.uid || ownerId === userRef.current.uid) return false;
+        return onlinePlayersDataRef.current.some(player => player.uid === ownerId);
     };
 
     const handleAddFriend = async () => {
@@ -7563,11 +9548,7 @@ const App: React.FC = () => {
         const updatedFriends = [...friends, newFriend];
 
         try {
-            const userDocRef = doc(db, 'users', user.uid);
-            await updateDoc(userDocRef, {
-                friends: updatedFriends
-            });
-
+            await persistProfileSettings({ friends: updatedFriends });
             setFriends(updatedFriends);
             addHistoryLog(`Пользователь ${selectedChatUser} добавлен в друзья.`, 'social');
             alert(`Р СџР С•Р В»РЎРЉР В·Р С•Р Р†Р В°РЎвЂљР ВµР В»РЎРЉ ${selectedChatUser} Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р… Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!`);
@@ -7583,10 +9564,7 @@ const App: React.FC = () => {
         const updatedFriends = friends.filter(f => f.name !== friendName);
 
         try {
-            const userDocRef = doc(db, 'users', user.uid);
-            await updateDoc(userDocRef, {
-                friends: updatedFriends
-            });
+            await persistProfileSettings({ friends: updatedFriends });
             setFriends(updatedFriends); // Update local state immediately
             addHistoryLog(`Пользователь ${friendName} удален из друзей.`, 'social');
         } catch (e) {
@@ -7602,7 +9580,7 @@ const App: React.FC = () => {
 
     const handlePunishPlayerByUid = async (targetUid: string, cost: number, penalty: number, actionName: string) => {
         if (playerRubies < cost) {
-            alert("Недостаточно рубинов!");
+            openRubyWarningModal(cost);
             return;
         }
 
@@ -7610,7 +9588,7 @@ const App: React.FC = () => {
 
         if (targetUid === user?.uid) {
             // Self-punishment: update local state AND Firestore
-            const newGlory = Math.max(0, playerGlory - penalty);
+            const newGlory = Math.max(0, playerGloryRef.current - penalty);
             setPlayerGlory(newGlory);
             // Also update allUsers for immediate profile/top sync
             setAllUsers(prev => ({
@@ -7626,17 +9604,27 @@ const App: React.FC = () => {
                 glory: newGlory
             });
         } else {
-            // Update target player's glory in Firestore
             const targetUserRef = doc(db, 'users', targetUid);
+            let currentTargetGlory = Math.max(0, Number(allUsersRef.current[targetUid]?.glory || 0) || 0);
+            try {
+                const targetUserSnap = await getDoc(targetUserRef);
+                if (targetUserSnap.exists()) {
+                    currentTargetGlory = Math.max(0, Number(targetUserSnap.data().glory || 0) || 0);
+                }
+            } catch (error) {
+                console.warn('[Punish] Failed to refresh target glory before penalty:', error);
+            }
+            const nextTargetGlory = Math.max(0, currentTargetGlory - penalty);
+            // Update target player's glory in Firestore
             await updateDoc(targetUserRef, {
-                glory: increment(-penalty)
+                glory: nextTargetGlory
             });
             // Update allUsers locally for immediate profile/top sync
             setAllUsers(prev => ({
                 ...prev,
                 [targetUid]: {
                     ...prev[targetUid],
-                    glory: Math.max(0, (prev[targetUid]?.glory || 0) - penalty)
+                    glory: nextTargetGlory
                 }
             }));
         }
@@ -7644,7 +9632,7 @@ const App: React.FC = () => {
         console.log(`Punished ${targetUid} with ${actionName}`);
         const punishedName = allUsersRef.current[targetUid]?.name || targetUid;
         addHistoryLog(`Вы наказали игрока ${punishedName}: ${actionName}. Потрачено ${cost} рубинов.`, 'social');
-        alert(`Р ВР С–РЎР‚Р С•Р С” ${punishedName} Р С—Р С•РЎвЂљР ВµРЎР‚РЎРЏР В» ${penalty} РЎРѓР В»Р В°Р Р†РЎвЂ№!`);
+        alert(`Игрок ${punishedName} потерял ${penalty} славы!`);
     };
 
     const handleAddFriendByUid = async (targetUid: string) => {
@@ -7694,32 +9682,32 @@ const App: React.FC = () => {
         console.log('[Friends] Updated friends list:', updatedFriends);
 
         try {
-            const userDocRef = doc(db, 'users', user.uid);
             console.log('[Friends] Saving to DB, friends count:', updatedFriends.length);
-            
-            // Save to data.friends (JSON field) using dot notation to avoid overwriting other data fields
-            await updateDoc(userDocRef, {
-                friends: updatedFriends,
-                'data.friends': updatedFriends,
-                'data.timestamp': Date.now()
-            });
+            await persistProfileSettings({ friends: updatedFriends });
             console.log('[Friends] Save successful!');
 
             setFriends(updatedFriends); // Update local state immediately
-            
-            // Also update allUsers state
-            setAllUsers(prev => ({
-                ...prev,
-                [user.uid]: {
-                    ...prev[user.uid],
-                    friends: updatedFriends
-                }
-            }));
             
             addHistoryLog(`Пользователь ${targetName} добавлен в друзья.`, 'social');
             alert(`${targetName} Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р… Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!`);
         } catch (e) {
             console.error('[Friends] Save failed:', e);
+            handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
+        }
+    };
+
+    const handleGenderSelect = async (gender: 'male' | 'female') => {
+        const previousGender = playerGender;
+        setPlayerGender(gender);
+
+        if (!user) {
+            return;
+        }
+
+        try {
+            await persistProfileSettings({ gender });
+        } catch (e) {
+            setPlayerGender(previousGender);
             handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
         }
     };
@@ -7743,6 +9731,9 @@ const App: React.FC = () => {
                 };
                 updateDoc(doc(db, 'users', targetUid), { activeCurse })
                     .catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`));
+                if (targetUid === user?.uid) {
+                    setPlayerActiveCurse(activeCurse);
+                }
             }
 
             setActiveCurses(prev => ({
@@ -7763,23 +9754,20 @@ const App: React.FC = () => {
     // ... (draw function and game loop are unchanged, skipping for brevity in this response) ...
     // Memoize drawableEntities so it's NOT rebuilt on every camera move (only when data changes)
     const memoizedDrawableEntities = useMemo(() => {
-        const entities = [
+        return [
             ...mapResources.map(r => ({ ...r, entityType: 'resource' as const })),
             ...droppedItems.map(i => ({ ...i, entityType: 'dropped_item' as const })),
             ...placedBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => ({ ...b, entityType: 'building' as const }))
         ];
-        entities.sort((a, b) => {
-            const posDiff = (a.x + a.y) - (b.x + b.y);
-            if (posDiff !== 0) return posDiff;
-            const typeOrder: Record<string, number> = { 'resource': 0, 'building': 1, 'dropped_item': 2 };
-            return typeOrder[a.entityType] - typeOrder[b.entityType];
-        });
-        return entities;
     }, [mapResources, droppedItems, placedBuildings]);
 
     const draw = useCallback(() => {
         const [canvas, context] = getCanvasContext();
         if (!canvas || !context) return;
+        if (!startupFirstDrawLoggedRef.current) {
+            startupFirstDrawLoggedRef.current = true;
+            logStartupStep('first_draw');
+        }
 
         const zoom = ZOOM_LEVELS[zoomIndex];
         const scaledTileWidth = TILE_WIDTH * zoom;
@@ -7848,55 +9836,21 @@ const App: React.FC = () => {
             }
         }
 
-        if (isAuthReadyRef.current && userRef.current) {
-            const minTileX = isWorldWrapped ? renderCenterX - RENDER_RADIUS : Math.max(0, renderCenterX - RENDER_RADIUS);
-            const maxTileX = isWorldWrapped ? renderCenterX + RENDER_RADIUS : Math.min(WORLD_WIDTH_TILES - 1, renderCenterX + RENDER_RADIUS);
-            const minTileY = isWorldWrapped ? renderCenterY - RENDER_RADIUS : Math.max(0, renderCenterY - RENDER_RADIUS);
-            const maxTileY = isWorldWrapped ? renderCenterY + RENDER_RADIUS : Math.min(WORLD_HEIGHT_TILES - 1, renderCenterY + RENDER_RADIUS);
-
-            for (let i = minTileX; i <= maxTileX; i++) {
-                for (let j = minTileY; j <= maxTileY; j++) {
-                    const tileX = isWorldWrapped ? wrapCoord(i, WORLD_WIDTH_TILES) : i;
-                    const tileY = isWorldWrapped ? wrapCoord(j, WORLD_HEIGHT_TILES) : j;
-                    if (isZoneReadyForPlacement(getZoneId(tileX, tileY))) continue;
-
-                    const { screenX, screenY } = worldToScreen(i, j, zoom);
-                    if (
-                        screenX + scaledTileWidth / 2 < -cameraOffset.x ||
-                        screenX - scaledTileWidth / 2 > canvas.width - cameraOffset.x ||
-                        screenY + scaledTileHeight / 2 < -cameraOffset.y ||
-                        screenY - scaledTileHeight / 2 > canvas.height - cameraOffset.y
-                    ) {
-                        continue;
-                    }
-
-                    const isHoveredUnsafe = hoveredTile && hoveredTile.x === tileX && hoveredTile.y === tileY;
-                    context.beginPath();
-                    context.moveTo(screenX, screenY - scaledTileHeight / 2);
-                    context.lineTo(screenX + scaledTileWidth / 2, screenY);
-                    context.lineTo(screenX, screenY + scaledTileHeight / 2);
-                    context.lineTo(screenX - scaledTileWidth / 2, screenY);
-                    context.closePath();
-                    context.fillStyle = isHoveredUnsafe ? 'rgba(56, 189, 248, 0.28)' : 'rgba(56, 189, 248, 0.16)';
-                    context.strokeStyle = isHoveredUnsafe ? 'rgba(186, 230, 253, 0.95)' : 'rgba(125, 211, 252, 0.38)';
-                    context.lineWidth = (isHoveredUnsafe ? 2 : 1) * zoom;
-                    context.fill();
-                    context.stroke();
-                }
-            }
-        }
-
         // Use pre-sorted memoized entities (avoids rebuilding 6000+ element arrays every frame)
-        const drawableEntities = memoizedDrawableEntities;
+        const drawableEntities = [...memoizedDrawableEntities].sort((a, b) => {
+            const aDisplay = getClosestWrappedWorldCoords(a.x, a.y, renderCenterX, renderCenterY, isWorldWrapped);
+            const bDisplay = getClosestWrappedWorldCoords(b.x, b.y, renderCenterX, renderCenterY, isWorldWrapped);
+            const posDiff = (aDisplay.x + aDisplay.y) - (bDisplay.x + bDisplay.y);
+            if (posDiff !== 0) return posDiff;
+            const typeOrder: Record<string, number> = { 'resource': 0, 'building': 1, 'dropped_item': 2 };
+            return typeOrder[a.entityType] - typeOrder[b.entityType];
+        });
 
         drawableEntities.forEach(entity => {
             // For wrapped world, compute virtual position closest to camera center
-            let entityVX = entity.x;
-            let entityVY = entity.y;
-            if (isWorldWrapped) {
-                entityVX = entity.x + Math.round((renderCenterX - entity.x) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES;
-                entityVY = entity.y + Math.round((renderCenterY - entity.y) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES;
-            }
+            const wrappedCoords = getClosestWrappedWorldCoords(entity.x, entity.y, renderCenterX, renderCenterY, isWorldWrapped);
+            let entityVX = wrappedCoords.x;
+            let entityVY = wrappedCoords.y;
             // Check distance from render center
             const distX = Math.abs(entityVX - renderCenterX);
             const distY = Math.abs(entityVY - renderCenterY);
@@ -7916,6 +9870,7 @@ const App: React.FC = () => {
             }
 
             let img: HTMLImageElement | undefined;
+            let overlayImg: HTMLImageElement | undefined;
             let color: string = 'blue';
             let buildingInfo: Building | undefined;
 
@@ -8164,12 +10119,14 @@ const App: React.FC = () => {
                             // For levels without idle animation (1-6), keep the static building image when not working
                         }
                     } else if (entity.buildingId === WILD_QUARRY_ID && isWorking) {
-                        // Wild Quarry animation: 91 frames at 30 FPS when working
+                        // Wild Quarry: keep the base building aligned to the tile
+                        // and draw the animation as a smaller overlay on top.
                         const now = Date.now();
                         const animationDuration = wildQuarryAnimationFrames.length * (1000 / 30); // ~3.03s at 30 FPS
                         const frameIndex = Math.floor((now % animationDuration) / (animationDuration / wildQuarryAnimationFrames.length)) % wildQuarryAnimationFrames.length;
                         const frameUrl = wildQuarryAnimationFrames[frameIndex];
-                        img = images[frameUrl];
+                        overlayImg = images[frameUrl];
+                        img = images[buildingInfo.imageUrl];
                     } else if (entity.buildingId === RECOMMENDATION_FACTORY_ID && isWorking) {
                         // Recommendation Factory animation: 30 frames at 30 FPS when working
                         const now = Date.now();
@@ -8842,6 +10799,7 @@ const App: React.FC = () => {
             const isGorynychMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === GORYNYCH_ID && buildingInfo?.stats.isMonster;
             const isKolobokMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === KOLOBOK_ID && buildingInfo?.stats.isMonster;
             const isBabaYagaMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === BABA_YAGA_ID && buildingInfo?.stats.isMonster;
+            const isWildQuarryBuilding = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === WILD_QUARRY_ID;
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
             // Santa's sprite set has more empty padding than the other monsters, so its
@@ -8855,8 +10813,9 @@ const App: React.FC = () => {
                 : santaAnimState === 'walk'
                     ? SANTA_WALK_SCALE
                     : SANTA_IDLE_SCALE;
+            const specialScale = 1;
             const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? 1.4 : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : isSantaMonster ? santaScale : 1;
-            const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale;
+            const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * specialScale;
             const imageScaledHeight = imageScaledWidth * aspectRatio;
 
             let drawX = screenX - imageScaledWidth / 2;
@@ -8949,6 +10908,15 @@ const App: React.FC = () => {
                     context.globalAlpha = ('isConstructing' in entity && entity.isConstructing) ? 0.6 : 1.0;
                     context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
                     context.globalAlpha = 1.0;
+
+                    if (overlayImg && isWildQuarryBuilding) {
+                        const overlayAspectRatio = overlayImg.naturalWidth > 0 ? overlayImg.naturalHeight / overlayImg.naturalWidth : aspectRatio;
+                        const overlayWidth = imageScaledWidth * 0.64;
+                        const overlayHeight = overlayWidth * overlayAspectRatio;
+                        const overlayX = screenX - overlayWidth / 2 - (scaledTileWidth * 0.045);
+                        const overlayY = screenY + (scaledTileHeight / 2) - overlayHeight - (scaledTileHeight * 0.315);
+                        context.drawImage(overlayImg, overlayX, overlayY, overlayWidth, overlayHeight);
+                    }
                     
                     // Town Hall Flag Animation - draw only when no active protection shield.
                     if ('buildingId' in entity && TOWN_HALL_FLAG_ID_SET.has(entity.buildingId) && !(((entity.shieldHp || 0) > 0) || (entity.protectionEndTime && entity.protectionEndTime > Date.now()))) {
@@ -9168,20 +11136,25 @@ const App: React.FC = () => {
 
                 const isBombDestructionTimer =
                     entity.isDestroying &&
-                    entity.destructionEndTime &&
+                    getEffectiveDestructionExpiresAt(entity) &&
                     Boolean(entity.initiatorId) &&
-                    (entity.destructionEndTime - now) > (MONSTER_FATAL_HIT_DELAY_MS + 250);
-                if (isBombDestructionTimer && entity.destructionEndTime) {
-                    const timeRemaining = Math.max(0, entity.destructionEndTime - now);
+                    ((getEffectiveDestructionExpiresAt(entity) || 0) - now) > (MONSTER_FATAL_HIT_DELAY_MS + 250);
+                if (isBombDestructionTimer) {
+                    const destructionExpiresAt = getEffectiveDestructionExpiresAt(entity);
+                    const destructionStartedAt = Number(entity.destructionStartedAt || 0) || 0;
+                    const destructionDurationMs = Math.max(1, Number(entity.destructionDurationMs || 0) || ((destructionExpiresAt || now) - destructionStartedAt) || 1);
+                    const timeRemaining = Math.max(0, (destructionExpiresAt || now) - now);
                     const barWidth = scaledTileWidth * 0.8;
                     const barHeight = 10 * zoom;
                     const barX = screenX - barWidth / 2;
                     const barY = drawY - barHeight - (5 * zoom);
+                    const elapsedMs = destructionStartedAt > 0 ? Math.max(0, now - destructionStartedAt) : 0;
+                    const progress = Math.min(1, Math.max(0, elapsedMs / destructionDurationMs));
 
                     context.fillStyle = 'rgba(0, 0, 0, 0.5)';
                     context.fillRect(barX, barY, barWidth, barHeight);
                     context.fillStyle = '#EF4444';
-                    context.fillRect(barX, barY, barWidth * ((now % 1000) / 1000), barHeight);
+                    context.fillRect(barX, barY, barWidth * progress, barHeight);
 
                     context.fillStyle = 'red';
                     context.fillText(formatTimeRussian(timeRemaining), screenX, barY - (2 * zoom));
@@ -9236,18 +11209,18 @@ const App: React.FC = () => {
                     // Skip coin for cannons - they don't have production
                     const isCannon = CANNON_IDS.includes(Number(entity.buildingId));
                     if (!isCannon && buildingInfo) {
-                        const isMushroomOrLily = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingInfo.id);
+                        const isMushroomOrLily = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingInfo.id);
                         const isDirectFactory = DIRECT_INTERACTION_FACTORIES.includes(buildingInfo.id);
 
                         // Skip coin icon for buildings that don't produce coins
                         const NO_COIN_BUILDINGS = [300, 340, 341, 342, 343, 344];
-                        if ((isMushroomOrLily || isDirectFactory) && !NO_COIN_BUILDINGS.includes(buildingInfo.id)) {
+                        if ((isMushroomOrLily || isDirectFactory) && !NO_COIN_BUILDINGS.includes(buildingInfo.id) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
                             // Draw animated canvas coin for production buildings
                             const iconSize = 18 * zoom; // Half size
                             const iconX = screenX;
                             const iconY = drawY - iconSize / 2 + (10 * zoom); // Lower position
                             drawAnimatedCoin(context, iconX, iconY, iconSize, Date.now());
-                        } else if (isMyBuilding(entity) && !NO_COIN_BUILDINGS.includes(buildingInfo.id)) {
+                        } else if (isMyBuilding(entity) && !NO_COIN_BUILDINGS.includes(buildingInfo.id) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
                             // Draw animated canvas coin for other finished buildings
                             const iconSize = 18 * zoom; // Half size
                             const iconX = screenX;
@@ -9259,9 +11232,9 @@ const App: React.FC = () => {
                     // Skip builder icon for cannons
                     const isCannon = CANNON_IDS.includes(Number(entity.buildingId));
                     if (!isCannon && buildingInfo) {
-                        const isMushroomOrLily = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingInfo.id);
+                        const isMushroomOrLily = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingInfo.id);
                         const isDirectFactory = DIRECT_INTERACTION_FACTORIES.includes(buildingInfo.id);
-                        if ((isMushroomOrLily || isDirectFactory) && isMyBuilding(entity)) {
+                        if ((isMushroomOrLily || isDirectFactory) && isMyBuilding(entity) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
                             const builderImg = images[builderIconUrl];
                             if (builderImg) {
                                 const iconSize = 17.9 * zoom; // Slightly smaller (0.5% less than 18)
@@ -9293,8 +11266,10 @@ const App: React.FC = () => {
 
         visualEffects.forEach(effect => {
             const now = Date.now();
-            const elapsedTime = now - effect.startTime;
-            const progress = Math.min(elapsedTime / effect.duration, 1.0);
+            const effectStart = Number(effect.createdAt || effect.startTime || now) || now;
+            const effectDuration = Math.max(1, Number(effect.durationMs || effect.duration || 1) || 1);
+            const elapsedTime = now - effectStart;
+            const progress = Math.min(elapsedTime / effectDuration, 1.0);
             const { screenX, screenY } = worldToScreen(effect.x, effect.y, zoom);
 
             if (effect.type === 'upgrade') {
@@ -9345,28 +11320,45 @@ const App: React.FC = () => {
             const isOccupied = placementPreviewState === 'occupied';
             const isSyncingPlacement = placementPreviewState === 'syncing';
             const canPlaceByTownHall = hasTownHall || !!townHallLocation;
+            const hoverDisplayCoords = getClosestWrappedWorldCoords(
+                hoveredTile.x,
+                hoveredTile.y,
+                renderCenterX,
+                renderCenterY,
+                isWorldWrapped
+            );
 
             if (!isOccupied && canPlaceByTownHall && !moveMode.active) {
-                const { screenX, screenY } = worldToScreen(hoveredTile.x, hoveredTile.y, zoom);
+                const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
                 
-                // Find clan castle in this zone
-                const clanCastle = placedBuildings.find(b => {
-                    const info = buildingData.find(i => i.id === b.buildingId);
-                    return info && info.category === 'Р С™Р В»Р В°Р Р…' &&
-                        Math.floor(b.x / ZONE_SIZE) === Math.floor(hoveredTile.x / ZONE_SIZE) &&
-                        Math.floor(b.y / ZONE_SIZE) === Math.floor(hoveredTile.y / ZONE_SIZE);
-                });
-                
-                // Get clan avatar if clan castle exists
-                const clan = clanCastle ? clans.find(c => c.leaderUid === clanCastle.ownerId) : null;
-                const clanAvatarUrl = clan?.avatarUrl;
+                const hoveredZoneX = Math.floor(hoveredTile.x / ZONE_SIZE);
+                const hoveredZoneY = Math.floor(hoveredTile.y / ZONE_SIZE);
+
+                // Find a bandit castle that controls this sector.
+                const clanCastle = placedBuildings.find((b) =>
+                    BANDIT_CASTLE_IDS.has(Number(b.buildingId)) &&
+                    isBuildingAlive(b) &&
+                    !b.isConstructing &&
+                    Math.floor(b.x / ZONE_SIZE) === hoveredZoneX &&
+                    Math.floor(b.y / ZONE_SIZE) === hoveredZoneY
+                );
+
+                // Resolve clan by leader first, then by owner's clanId as a fallback.
+                const clanCastleOwner = clanCastle ? allUsers[String(clanCastle.ownerId || '')] : null;
+                const clan = clanCastle
+                    ? (
+                        clans.find(c => c.leaderUid === String(clanCastle.ownerId || '')) ||
+                        clans.find(c => Number(c.id) === Number(normalizeClanIdValue(clanCastleOwner?.clanId)))
+                    )
+                    : null;
+                const clanAvatarUrl = clan?.avatarUrl || null;
                 
                 // Base Y position for text (higher than before)
                 const textY = screenY + 5 * zoom;
                 
-                // Draw clan avatar if exists (above the text, no border)
+                // Draw clan avatar if this sector belongs to a clan with an avatar.
                 if (clanAvatarUrl && images[clanAvatarUrl]) {
-                    const avatarSize = 28 * zoom;
+                    const avatarSize = 22 * zoom;
                     const avatarX = screenX - avatarSize / 2;
                     const avatarY = textY - avatarSize - 8 * zoom;
                     
@@ -9421,7 +11413,7 @@ const App: React.FC = () => {
                     context.fillText('Построить', screenX, textY);
                 }
             } else if (isOccupied && (canPlaceByTownHall || moveMode.active)) {
-                const { screenX, screenY } = worldToScreen(hoveredTile.x, hoveredTile.y, zoom);
+                const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
                 context.font = `bold ${14 * zoom}px sans-serif`;
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
@@ -9432,7 +11424,7 @@ const App: React.FC = () => {
                 context.strokeText(occupiedText, screenX, screenY + 5 * zoom);
                 context.fillText(occupiedText, screenX, screenY + 5 * zoom);
             } else if (!isOccupied && moveMode.active) {
-                const { screenX, screenY } = worldToScreen(hoveredTile.x, hoveredTile.y, zoom);
+                const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
                 context.font = `bold ${14 * zoom}px sans-serif`;
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
@@ -9517,7 +11509,7 @@ const App: React.FC = () => {
 
                 return (b.isConstructing && now >= b.constructionEndTime) ||
                     (b.workState === 'working' && b.workEndTime && now >= b.workEndTime) ||
-                    (b.isDestroying && b.destructionEndTime && now >= b.destructionEndTime);
+                    (b.isDestroying && !!getEffectiveDestructionExpiresAt(b) && now >= (getEffectiveDestructionExpiresAt(b) || 0));
             });
 
             const tryClaimNeutralHost = (b: PlacedBuilding) => {
@@ -9639,6 +11631,7 @@ const App: React.FC = () => {
                 if (pendingDestroyedIds?.has(String(target.id))) return false;
                 return true;
             };
+            const pendingDestroyedIds = new Set<string>();
 
             const monstersMoving = monsterAiTickReady ? placedBuildingsRef.current.filter(b => {
                 if (b.isConstructing || b.isDestroying) return false;
@@ -9662,21 +11655,18 @@ const App: React.FC = () => {
                 const info = buildingData.find(i => i.id === monster.buildingId);
                 if (!info || !info.stats.isMonster) return false;
                 if (!getIsMonsterHost(monster)) return false;
-                const lastAttackTime = monster.lastAttackTime || 0;
+                const monsterId = String(monster.id || '');
+                const lastAttackTime = Math.max(
+                    monster.lastAttackTime || 0,
+                    monsterAttackTimeRef.current.get(monsterId) || 0
+                );
                 if (lastAttackTime > now) return false;
                 if ((now - lastAttackTime) < MONSTER_ATTACK_INTERVAL_MS) return false;
 
-                const neighbors = [
-                    { x: monster.x + 1, y: monster.y },
-                    { x: monster.x - 1, y: monster.y },
-                    { x: monster.x, y: monster.y + 1 },
-                    { x: monster.x, y: monster.y - 1 }
-                ];
-
-                return placedBuildingsRef.current.some(target =>
-                    neighbors.some(n => n.x === target.x && n.y === target.y) &&
-                    isValidMonsterAttackTarget(monster, target)
-                );
+                return !!getMonsterAdjacentAttackTarget(monster, placedBuildingsRef.current, buildingData, {
+                    isWrappedWorld: isWorldWrapped,
+                    pendingDestroyedIds
+                });
             });
 
             // Cannon defense - lightweight frequent checks, but firing itself is still cooldown-limited.
@@ -9725,6 +11715,7 @@ const App: React.FC = () => {
                     const info = buildingData.find(i => i.id === b.buildingId);
                     if (!info || !info.stats.isMonster) return;
                     if (b.hp !== undefined && b.hp <= 0) return;
+                    if (b.isDestroying || (b.pendingDamage || 0) > 0 || (typeof b.destructionEndTime === 'number' && b.destructionEndTime > now)) return;
                     // Skip monsters that are being deleted (sold)
                     if (deletingBuildingsRef.current.has(String(b.id))) return;
                     if (!getIsMonsterHost(b)) return;
@@ -9741,8 +11732,8 @@ const App: React.FC = () => {
                     // This avoids "attack then sudden jump" while engaged with adjacent targets.
                     const hasAdjacentCombatTarget = allBuildings.some(target => {
                         if (String(target.id) === String(b.id)) return false;
-                        return isValidMonsterAttackTarget(b, target) &&
-                            Math.abs(target.x - b.x) + Math.abs(target.y - b.y) === 1;
+                        return isMonsterHoldTargetCandidate(b, target, buildingData) &&
+                            getWrappedManhattanDistance(b, target, isWorldWrapped) === 1;
                     });
                     if (hasAdjacentCombatTarget) {
                         monsterStuckCountRef.current.delete(b.id || '');
@@ -9757,6 +11748,9 @@ const App: React.FC = () => {
 
                     // Only teleport after being stuck for 3 consecutive checks (15 seconds)
                     if (stuckCount < 3) return;
+                    if (Number(b.buildingId) === BRONEKUR_ID) {
+                        return;
+                    }
 
                     const teleportSpot = findFreeMonsterTeleportSpot(
                         b,
@@ -9765,7 +11759,7 @@ const App: React.FC = () => {
                         (x, y) => isAuthReadyRef.current && userRef.current && !isZoneReadyForPlacement(getZoneId(x, y))
                     );
 
-                    if (teleportSpot) {
+                        if (teleportSpot) {
                         stuckTeleported++;
                         console.log(`[MONSTER TELEPORT] Monster ${b.id} stuck on building at (${b.x},${b.y}) for ${stuckCount} checks, teleporting to (${teleportSpot.x},${teleportSpot.y})`);
                         allOccupied.delete(`${b.x},${b.y}`);
@@ -9806,8 +11800,9 @@ const App: React.FC = () => {
 
             if (buildingsToUpdate.length > 0 || monstersMoving.length > 0 || monstersReadyToAttack.length > 0 || cannonsAttacking.length > 0) {
                 let gloryGained = 0;
-                const newExplosions: VisualEffect[] = [];
+                const newExplosions: Array<Omit<VisualEffect, 'createdAt' | 'expiresAt' | 'durationMs' | 'maxLifetimeMs' | 'status'>> = [];
                 const damageInitiatorMap = new Map<string, string | null>();
+                const monsterAttackSourceMap = new Map<string, string>();
 
                 const currentBuildings = placedBuildingsRef.current;
                 const occupiedPositions = new Set(currentBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`));
@@ -9820,16 +11815,11 @@ const App: React.FC = () => {
                 // Key damage by entity id, not by tile coordinates.
                 // Using coordinates caused cross-damage when multiple entities shared a tile.
                 const damageMap = new Map<string, number>();
-                const getPendingDestroyedIds = () => {
-                    const ids = new Set<string>();
-                    damageMap.forEach((incomingDamage, entityId) => {
-                        const targetEntity = currentBuildings.find(b => String(b.id) === entityId);
-                        const currentHp = targetEntity?.hp;
-                        if (currentHp !== undefined && currentHp > 0 && incomingDamage >= currentHp) {
-                            ids.add(entityId);
-                        }
-                    });
-                    return ids;
+                const markPendingDestroyed = (entityId: string) => {
+                    const targetId = String(entityId);
+                    if (pendingDestroyedIds.has(targetId)) return;
+                    pendingDestroyedIds.add(targetId);
+                    clearMonsterTargetLocksForBuilding(targetId);
                 };
                 const monsterUpdates = new Map<string, PlacedBuilding>();
                 const cannonUpdates = new Map<string, PlacedBuilding>();
@@ -9838,24 +11828,56 @@ const App: React.FC = () => {
                 monstersReadyToAttack.forEach(monster => {
                     const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
                     const monsterId = monster.id || '';
-                    const neighbors = [
-                        { x: monster.x + 1, y: monster.y },
-                        { x: monster.x - 1, y: monster.y },
-                        { x: monster.x, y: monster.y + 1 },
-                        { x: monster.x, y: monster.y - 1 }
-                    ];
-                    const candidates = currentBuildings.filter(target =>
-                        neighbors.some(n => n.x === target.x && n.y === target.y) &&
-                        isValidMonsterAttackTarget(monster, target)
-                    );
-                    const monsterInfoHates = monsterInfo?.stats.hates;
-                    const hatedTarget = candidates.find((t) => {
-                        const info = buildingData.find(i => i.id === t.buildingId);
-                        return monsterInfoHates && info?.category === monsterInfoHates;
+                    const attackId = `${monsterId}:${now}:${Math.random().toString(36).slice(2, 8)}`;
+                    const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
+                    const target = getMonsterAdjacentAttackTarget(monster, currentBuildings, buildingData, {
+                        preferredTargetId,
+                        isWrappedWorld: isWorldWrapped,
+                        pendingDestroyedIds
                     });
-                    const target = hatedTarget || candidates[0];
 
-                    if (!target) return;
+                    if (!target) {
+                        monsterTargetLockRef.current.delete(monsterId);
+                        return;
+                    }
+                    const targetId = String(target.id);
+                    const source = 'raf_combat';
+                    console.log("[COMBAT TARGET BEFORE HIT]", {
+                        combatTraceId: attackId,
+                        source,
+                        monsterId,
+                        targetId,
+                        targetHp: target.hp,
+                        targetIsDestroying: target.isDestroying,
+                        targetPendingDamage: target.pendingDamage,
+                        targetDestructionEndTime: target.destructionEndTime,
+                        deleting: targetId ? isBuildingDeleting(String(targetId)) : false,
+                        tombstoned: targetId ? isBuildingTombstoned(String(targetId)) : false,
+                        preferredTargetId: monsterTargetLockRef.current.get(monsterId),
+                        timestamp: Date.now(),
+                    });
+                    if (
+                        target.isDestroying ||
+                        (target.hp !== undefined && target.hp <= 0) ||
+                        pendingDestroyedIds.has(targetId) ||
+                        isBuildingDeleting(targetId) ||
+                        isBuildingTombstoned(targetId)
+                    ) {
+                        console.error("[DESTRUCTION RESTART DETECTED]", {
+                            combatTraceId: attackId,
+                            source,
+                            buildingId: targetId,
+                            hp: target.hp,
+                            isDestroying: target.isDestroying,
+                            destructionEndTime: target.destructionEndTime,
+                            pendingDamage: target.pendingDamage,
+                            timestamp: Date.now(),
+                            stack: new Error().stack,
+                        });
+                        monsterTargetLockRef.current.delete(monsterId);
+                        return;
+                    }
+                    monsterTargetLockRef.current.set(monsterId, targetId);
 
                     let dmg = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
                     const targetInfo = buildingData.find(i => i.id === target.buildingId);
@@ -9863,13 +11885,49 @@ const App: React.FC = () => {
                         dmg *= 2;
                     }
 
-                    const targetDamageKey = String(target.id);
+                    const targetDamageKey = targetId;
                     damageMap.set(targetDamageKey, (damageMap.get(targetDamageKey) || 0) + dmg);
+                    const targetCurrentHp = target.hp ?? (targetInfo?.stats.durability ?? 100);
+                    console.log("[COMBAT DAMAGE QUEUED]", {
+                        combatTraceId: attackId,
+                        source,
+                        monsterId,
+                        targetId: targetDamageKey,
+                        damage: dmg,
+                        damageMapTotal: damageMap?.get?.(String(targetDamageKey)),
+                        recipientIds: [targetDamageKey],
+                        recipientCount: 1,
+                        timestamp: Date.now(),
+                    });
+                    if ((damageMap.get(targetDamageKey) || 0) >= targetCurrentHp) {
+            console.log("[COMBAT FATAL HIT]", {
+                            combatTraceId: attackId,
+                            source,
+                            monsterId,
+                            buildingId: targetDamageKey,
+                            hpBefore: targetCurrentHp,
+                            hpAfterCalculated: 0,
+                            wasAlreadyDestroying: Boolean(target.isDestroying),
+                            oldDestructionEndTime: target.destructionEndTime,
+                            timestamp: Date.now(),
+                        });
+                        markPendingDestroyed(targetDamageKey);
+                    }
+                    monsterAttackSourceMap.set(targetDamageKey, monsterId);
                     const monsterOwnerId = String(monster.ownerId || '');
                     const monsterIsNeutral = monsterOwnerId === 'monster' || monsterOwnerId === '-1' || monsterOwnerId === '0';
                     damageInitiatorMap.set(targetDamageKey, monsterIsNeutral ? null : monsterOwnerId);
+                    const recipientIds = [targetDamageKey];
+                    console.log("[MONSTER DAMAGE RECIPIENTS]", {
+                        attackId,
+                        monsterId,
+                        selectedTargetId: targetDamageKey,
+                        recipientIds,
+                        recipientCount: recipientIds.length,
+                        timestamp: Date.now(),
+                    });
 
-                    const attackDir = { dx: target.x - monster.x, dy: target.y - monster.y };
+                    const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
                     monsterDirectionRef.current.set(monsterId, attackDir);
                     monsterAttackDirectionRef.current.set(monsterId, attackDir);
                     monsterAttackTimeRef.current.set(monsterId, now);
@@ -9879,6 +11937,7 @@ const App: React.FC = () => {
                     monsterUpdates.set(String(monster.id), newMonsterState);
                     monster.lastAttackTime = now;
                     monster.hostId = userRef.current?.uid || null;
+                    monsterLastActionRef.current.set(monsterId, now);
                     monstersActedThisCycle.add(String(monsterId));
 
                     if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
@@ -9959,31 +12018,29 @@ const App: React.FC = () => {
                         lastDir = dirs[Math.floor(Math.random() * dirs.length)];
                         monsterDirectionRef.current.set(monsterId, lastDir);
                     }
-                    const neighbors = [
-                        { x: monster.x + 1, y: monster.y, dx: 1, dy: 0 },
-                        { x: monster.x - 1, y: monster.y, dx: -1, dy: 0 },
-                        { x: monster.x, y: monster.y + 1, dx: 0, dy: 1 },
-                        { x: monster.x, y: monster.y - 1, dx: 0, dy: -1 }
-                    ];
-                    const attackCandidates = currentBuildings.filter(target =>
-                        neighbors.some(n => n.x === target.x && n.y === target.y) &&
-                        isValidMonsterAttackTarget(monster, target)
-                    );
-                    const monsterHates = monsterInfo?.stats.hates;
-                    const hatedAttackTarget = attackCandidates.find((t) => {
-                        const info = buildingData.find(i => i.id === t.buildingId);
-                        return monsterHates && info?.category === monsterHates;
+                    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, isWorldWrapped);
+                    const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
+                    const target = getMonsterAdjacentAttackTarget(monster, currentBuildings, buildingData, {
+                        preferredTargetId,
+                        isWrappedWorld: isWorldWrapped
                     });
-                    const target = hatedAttackTarget || attackCandidates[0];
+                        if (target) {
+                            monsterTargetLockRef.current.set(monsterId, String(target.id));
+                        } else {
+                            monsterTargetLockRef.current.delete(monsterId);
+                        }
 
-                    const lastAttackTime = monster.lastAttackTime || 0;
+                    const lastAttackTime = Math.max(
+                        monster.lastAttackTime || 0,
+                        monsterAttackTimeRef.current.get(monsterId) || 0
+                    );
                     const canAttackNow = lastAttackTime <= now && (now - lastAttackTime) >= MONSTER_ATTACK_INTERVAL_MS;
                     // If a target is adjacent, keep pressure on it instead of wandering away.
                     // Actual damage is still applied only when canAttackNow in the attack pass.
                     const shouldHoldPositionForAttack = Boolean(target);
 
                     if (shouldHoldPositionForAttack && target) {
-                        const attackDir = { dx: target.x - monster.x, dy: target.y - monster.y };
+                        const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
                         monsterDirectionRef.current.set(monsterId, attackDir);
                         logMonsterDiag(monster, 'attack_instead_of_move', `targetId=${String(target.id || 'unknown')} targetPos=(${target.x},${target.y})`);
                     } else {
@@ -9994,7 +12051,8 @@ const App: React.FC = () => {
                                 move.y,
                                 occupiedPositions,
                                 blockedResourcePositions,
-                                (x, y) => isAuthReadyRef.current && userRef.current && !isZoneReadyForPlacement(getZoneId(x, y))
+                                (x, y) => isAuthReadyRef.current && userRef.current && !isZoneReadyForPlacement(getZoneId(x, y)),
+                                isWorldWrapped
                             )
                         );
                         const recentKeys = new Set(recentPositions.map(pos => `${pos.x},${pos.y}`));
@@ -10005,7 +12063,6 @@ const App: React.FC = () => {
                             // SMART AI: Look for buildings within search radius and move toward them
                             // Bronekur boss gets a much larger search radius (10 tiles vs 5 for regular monsters)
                             const SEARCH_RADIUS = monster.buildingId === BRONEKUR_ID ? 10 : 5;
-                            const pendingDestroyedIds = getPendingDestroyedIds();
                             let nearestTarget: PlacedBuilding | null = null;
                             let nearestTargetDist = Infinity;
                             let nearestTargetIsHated = false;
@@ -10013,7 +12070,7 @@ const App: React.FC = () => {
                             currentBuildings.forEach((targetBuilding) => {
                                 if (String(targetBuilding.id) === String(monster.id)) return;
                                 if (!isValidMonsterChaseTarget(monster, targetBuilding, pendingDestroyedIds)) return;
-                                const dist = Math.abs(targetBuilding.x - monster.x) + Math.abs(targetBuilding.y - monster.y);
+                                const dist = getWrappedManhattanDistance(monster, targetBuilding, isWorldWrapped);
                                 if (dist > SEARCH_RADIUS) return;
                                 const targetInfo = buildingData.find(i => i.id === targetBuilding.buildingId);
                                 const isHated = Boolean(monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates);
@@ -10032,7 +12089,7 @@ const App: React.FC = () => {
                             if (nearestTarget) {
                                 let bestDist = Infinity;
                                 candidateMoves.forEach(move => {
-                                    const dist = Math.abs(move.x - nearestTarget!.x) + Math.abs(move.y - nearestTarget!.y);
+                                    const dist = getWrappedManhattanDistance(move, nearestTarget!, isWorldWrapped);
                                     if (dist < bestDist) {
                                         bestDist = dist;
                                         chosenMove = move;
@@ -10153,7 +12210,7 @@ const App: React.FC = () => {
 
                     monsters.forEach(monster => {
                         if (cannon.ownerId !== "monster" && cannon.ownerId !== "0" && monster.ownerId === cannon.ownerId) return;
-                        const dist = Math.max(Math.abs(monster.x - cannon.x), Math.abs(monster.y - cannon.y));
+                        const dist = getWrappedChebyshevDistance(cannon, monster, isWorldWrapped);
                         if (dist <= range && dist < minDistance) {
                             minDistance = dist;
                             targetMonster = monster;
@@ -10198,7 +12255,23 @@ const App: React.FC = () => {
                     let isDestroyed = false;
 
                     // Check if building is destroying via timer
-                    if (updatedB.isDestroying && updatedB.destructionEndTime && now >= updatedB.destructionEndTime) {
+                    if (updatedB.isDestroying && !!getEffectiveDestructionExpiresAt(updatedB) && now >= (getEffectiveDestructionExpiresAt(updatedB) || 0)) {
+                        const rawServerBuilding =
+                            serverMyBuildingsRef.current.get(entityId) ||
+                            serverZoneBuildingsRef.current.get(entityId);
+                        if (rawServerBuilding && shouldPreferServerRevivedBuildingState(updatedB, rawServerBuilding)) {
+                            lastInteractionRef.current.delete(entityId);
+                            nextBuildings.push(normalizePlacedBuildingHealth({
+                                ...rawServerBuilding,
+                                isLocal: false
+                            }));
+                            stateChanged = true;
+                            return;
+                        }
+                        if (shouldDeferBuildingAuthorityToOwner(updatedB)) {
+                            nextBuildings.push(updatedB);
+                            return;
+                        }
                         const damage = updatedB.pendingDamage || 0;
                         // Use maxHp as fallback if hp is undefined Р Р†Р вЂљРІР‚Сњ never default to 0
                         const bInfo = buildingData.find(i => i.id === updatedB.buildingId);
@@ -10207,8 +12280,21 @@ const App: React.FC = () => {
                         const remainingHp = currentHp - damage;
                         updatedB.hp = remainingHp;
                         updatedB.isDestroying = false;
+                        updatedB.destructionStartedAt = undefined;
                         updatedB.destructionEndTime = undefined;
+                        updatedB.destructionExpiresAt = undefined;
+                        updatedB.destructionDurationMs = undefined;
+                        updatedB.destructionMaxLifetimeMs = undefined;
+                        updatedB.destructionStatus = 'finished';
                         updatedB.pendingDamage = 0;
+                        console.log("[BUILDING DESTRUCTION FINALIZE]", {
+                            buildingId: String(updatedB.id),
+                            hp: updatedB.hp,
+                            isDestroying: updatedB.isDestroying,
+                            pendingDamage: updatedB.pendingDamage,
+                            destructionEndTime: updatedB.destructionEndTime,
+                            timestamp: Date.now(),
+                        });
 
                         // Protect local HP from being overwritten by stale server data
                         lastInteractionRef.current.set(String(updatedB.id), now);
@@ -10219,7 +12305,17 @@ const App: React.FC = () => {
 
                             if (isOwner || isHost) {
                                 const docId = String(updatedB.id);
-                                updateBuildingDocSafe(docId, { hp: remainingHp, isDestroying: false, destructionEndTime: deleteField(), pendingDamage: 0 });
+                                updateBuildingDocSafe(docId, {
+                                    hp: remainingHp,
+                                    isDestroying: false,
+                                    destructionStartedAt: deleteField(),
+                                    destructionEndTime: deleteField(),
+                                    destructionExpiresAt: deleteField(),
+                                    destructionDurationMs: deleteField(),
+                                    destructionMaxLifetimeMs: deleteField(),
+                                    destructionStatus: 'finished',
+                                    pendingDamage: 0
+                                });
                             }
                         }
                         stateChanged = true;
@@ -10229,12 +12325,30 @@ const App: React.FC = () => {
                         
                         // Fix: Allow anyone to finalize construction if the timer is up.
                         // This prevents the "0s stuck" bug for observers if the owner is offline.
+                        if (RUNTIME_AUDIT_ENABLED) {
+                            recordBuildingTimerTrace('local-tick', updatedB, {
+                                now,
+                                actionType: 'idle',
+                                remainingMs: 0,
+                                transition: 'construction-complete',
+                                sourceCode: 'building-state-loop',
+                            });
+                        }
                         const docId = String(updatedB.id);
                         updateBuildingDocSafe(docId, { isConstructing: false, workState: 'idle' });
                         
                         stateChanged = true;
                     } else if (updatedB.workState === 'working' && updatedB.workEndTime && now >= updatedB.workEndTime) {
                         updatedB.workState = 'finished';
+                        if (RUNTIME_AUDIT_ENABLED) {
+                            recordBuildingTimerTrace('local-tick', updatedB, {
+                                now,
+                                actionType: 'finished',
+                                remainingMs: 0,
+                                transition: 'work-complete',
+                                sourceCode: 'building-state-loop',
+                            });
+                        }
                         if (updatedB.ownerId === "0" || updatedB.ownerId === "monster" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid)) {
                             const docId = String(updatedB.id);
                             updateBuildingDocSafe(docId, { workState: 'finished' });
@@ -10267,7 +12381,12 @@ const App: React.FC = () => {
                             updatedB.hp = currentHpBeforeHit;
                             updatedB.maxHp = updatedB.maxHp ?? fullHp;
                             updatedB.isDestroying = true;
+                            updatedB.destructionStartedAt = now;
                             updatedB.destructionEndTime = now + MONSTER_FATAL_HIT_DELAY_MS;
+                            updatedB.destructionExpiresAt = now + MONSTER_FATAL_HIT_DELAY_MS;
+                            updatedB.destructionDurationMs = MONSTER_FATAL_HIT_DELAY_MS;
+                            updatedB.destructionMaxLifetimeMs = Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS);
+                            updatedB.destructionStatus = 'active';
                             updatedB.pendingDamage = currentHpBeforeHit;
                         } else if (overflowDamage > 0) {
                             updatedB.hp = nextHpAfterHit;
@@ -10310,7 +12429,12 @@ const App: React.FC = () => {
                                     hp: currentHpBeforeHit,
                                     maxHp: updatedB.maxHp ?? fullHp,
                                     isDestroying: true,
+                                    destructionStartedAt: now,
                                     destructionEndTime: now + MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionExpiresAt: now + MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionDurationMs: MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionMaxLifetimeMs: Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                                    destructionStatus: 'active',
                                     pendingDamage: currentHpBeforeHit
                                 }
                                 : (overflowDamage > 0 ? { hp: increment(-overflowDamage) } : {});
@@ -10321,29 +12445,33 @@ const App: React.FC = () => {
                         const isDefenseBuilding = [...CANNON_IDS, PROTECTED_TOWER_ID, WATCHTOWER_ID].includes(Number(updatedB.buildingId));
                         const defenseLastAttackTime = updatedB.lastAttackTime || 0;
                         const defenseCanFire = defenseLastAttackTime <= now && (now - defenseLastAttackTime >= CANNON_ATTACK_INTERVAL_MS);
-                        if (isDefenseBuilding && defenseCanFire && (updatedB.hp ?? fullHp) > 0 && !updatedB.isConstructing && !updatedB.isDestroying) {
-                            const cannonInfo = buildingData.find(i => i.id === updatedB.buildingId);
-                            let counterDmg = cannonInfo?.stats.damage ? parseInt(cannonInfo.stats.damage) : 1;
-                            if (updatedB.buildingId === CANNON_ID) counterDmg = 5;
-                            // Find nearest monster within range to counter-attack
-                            const adjMonster = currentBuildings.find(m => {
-                                if (m.ownerId !== 'monster' && m.ownerId !== '-1') return false;
-                                const mInfo = buildingData.find(i => i.id === m.buildingId);
-                                if (!mInfo || !mInfo.stats.isMonster) return false;
-                                if (m.hp !== undefined && m.hp <= 0) return false;
-                                return Math.max(Math.abs(m.x - updatedB.x), Math.abs(m.y - updatedB.y)) <= 3;
-                            });
-                            if (adjMonster) {
-                                const counterKey = String(adjMonster.id);
-                                damageMap.set(counterKey, (damageMap.get(counterKey) || 0) + counterDmg);
-                                updatedB.lastAttackTime = now;
-                                const docId2 = String(updatedB.id);
+                            if (isDefenseBuilding && defenseCanFire && (updatedB.hp ?? fullHp) > 0 && !updatedB.isConstructing && !updatedB.isDestroying) {
+                                const cannonInfo = buildingData.find(i => i.id === updatedB.buildingId);
+                                let counterDmg = cannonInfo?.stats.damage ? parseInt(cannonInfo.stats.damage) : 1;
+                                if (updatedB.buildingId === CANNON_ID) counterDmg = 5;
+                                // Find nearest monster within range to counter-attack
+                                const sourceMonsterId = monsterAttackSourceMap.get(entityDamageKey);
+                                const directAttacker = sourceMonsterId
+                                    ? currentBuildings.find(m => String(m.id) === sourceMonsterId)
+                                    : null;
+                                const adjMonster = directAttacker || currentBuildings.find(m => {
+                                    if (m.ownerId !== 'monster' && m.ownerId !== '-1') return false;
+                                    const mInfo = buildingData.find(i => i.id === m.buildingId);
+                                    if (!mInfo || !mInfo.stats.isMonster) return false;
+                                    if (m.hp !== undefined && m.hp <= 0) return false;
+                                    return getWrappedChebyshevDistance(updatedB, m, isWorldWrapped) <= 3;
+                                });
+                                if (adjMonster) {
+                                    const counterKey = String(adjMonster.id);
+                                    damageMap.set(counterKey, (damageMap.get(counterKey) || 0) + counterDmg);
+                                    updatedB.lastAttackTime = now;
+                                    const docId2 = String(updatedB.id);
                                 updateBuildingDocSafe(docId2, { lastAttackTime: now });
                             }
                         }
                     }
 
-                    if (updatedB.hp !== undefined && updatedB.hp <= 0) {
+                        if (updatedB.hp !== undefined && updatedB.hp <= 0) {
                         const isTownHall = TOWN_HALL_IDS.includes(Number(updatedB.buildingId));
                         const inTownHallSafetyWindow =
                             isTownHall &&
@@ -10364,12 +12492,14 @@ const App: React.FC = () => {
                             updatedB.destructionEndTime = undefined;
                             updatedB.pendingDamage = 0;
                             isDestroyed = true;
+                            clearMonsterTargetLocksForBuilding(entityId);
                         }
                     }
 
                     if (isDestroyed) {
                         stateChanged = true;
                         const docId = String(updatedB.id);
+                        clearMonsterTargetLocksForBuilding(docId);
                         // If this building is already in delete pipeline, do not process
                         // destruction side-effects again (prevents duplicate loot/explosions).
                         if (deletingBuildingsRef.current.has(docId)) {
@@ -10393,11 +12523,12 @@ const App: React.FC = () => {
                             const isInitiator = updatedB.initiatorId === userRef.current?.uid;
                             const isNeutralMonsterKillHost =
                                 damageInitiatorId === null &&
+                                Boolean(buildingInfo.stats.isMonster) &&
                                 isAuthReadyRef.current &&
                                 Boolean(userRef.current);
-                            const canFinalizeDelete = isInitiator || isNeutralMonsterKillHost;
+                            const canFinalizeDelete = isAuthReadyRef.current && Boolean(userRef.current) && (isInitiator || isNeutralMonsterKillHost || !buildingInfo.stats.isMonster);
                             if (canFinalizeDelete) {
-                                deletingBuildingsRef.current.set(docId, Date.now());
+                                removeBuildingFromSnapshotCaches(docId);
                             }
                             if (isInitiator) {
                                 gloryGained += buildingInfo.stats.gloryOnExplosion || 0;
@@ -10456,12 +12587,23 @@ const App: React.FC = () => {
                                 // has not yet reached <= 0. First persist hp=0, then delete.
                                 const isDirectOwnerDelete = isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid;
                                 const buildingRef = doc(db, 'buildings', docId);
+                                console.log("[BUILDING DELETE PIPELINE START]", {
+                                    buildingId: docId,
+                                    deleting: isBuildingDeleting(docId),
+                                    tombstoned: isBuildingTombstoned(docId),
+                                    timestamp: Date.now(),
+                                });
                                 const finalizeDelete = isDirectOwnerDelete
                                     ? deleteDoc(buildingRef)
                                     : updateDoc(buildingRef, {
                                         hp: 0,
                                         isDestroying: false,
+                                        destructionStartedAt: deleteField(),
                                         destructionEndTime: deleteField(),
+                                        destructionExpiresAt: deleteField(),
+                                        destructionDurationMs: deleteField(),
+                                        destructionMaxLifetimeMs: deleteField(),
+                                        destructionStatus: 'finished',
                                         pendingDamage: 0,
                                         hostId: userRef.current?.uid || null
                                     }).then(() => deleteDoc(buildingRef));
@@ -10472,7 +12614,7 @@ const App: React.FC = () => {
                                     .catch(e => handleGameLoopError(e, OperationType.DELETE, `buildings/${docId}`));
 
                                 // If Clan Castle is destroyed, disband the clan
-                                if (updatedB.buildingId === CLAN_CASTLE_ID) {
+                                if (BANDIT_CASTLE_IDS.has(Number(updatedB.buildingId))) {
                                     const destroyedClan = clansRef.current.find(c => c.leaderUid === updatedB.ownerId);
                                     if (destroyedClan) {
                                         deleteDoc(doc(db, 'clans', String(destroyedClan.id))).catch(e => handleGameLoopError(e, OperationType.DELETE, `clans/${destroyedClan.id}`));
@@ -10484,11 +12626,23 @@ const App: React.FC = () => {
                                     }
                                 }
                             } else if (canFinalizeDelete) {
+                                removeBuildingFromSnapshotCaches(docId);
                                 const buildingRef = doc(db, 'buildings', docId);
+                                console.log("[BUILDING DELETE PIPELINE START]", {
+                                    buildingId: docId,
+                                    deleting: isBuildingDeleting(docId),
+                                    tombstoned: isBuildingTombstoned(docId),
+                                    timestamp: Date.now(),
+                                });
                                 updateDoc(buildingRef, {
                                     hp: 0,
                                     isDestroying: false,
+                                    destructionStartedAt: deleteField(),
                                     destructionEndTime: deleteField(),
+                                    destructionExpiresAt: deleteField(),
+                                    destructionDurationMs: deleteField(),
+                                    destructionMaxLifetimeMs: deleteField(),
+                                    destructionStatus: 'finished',
                                     pendingDamage: 0,
                                     hostId: userRef.current?.uid || null
                                 })
@@ -10559,7 +12713,7 @@ const App: React.FC = () => {
                 }
 
                 if (newExplosions.length > 0) {
-                    setVisualEffects(prev => [...prev, ...newExplosions]);
+                    setVisualEffects(prev => [...prev, ...newExplosions.map(createVisualEffect)]);
                 }
 
                 if (gloryGained > 0) {
@@ -10582,7 +12736,10 @@ const App: React.FC = () => {
             }
 
             setVisualEffects(prev => {
-                const next = prev.filter(effect => Date.now() - effect.startTime < effect.duration);
+                const nowTs = Date.now();
+                const next = prev
+                    .map(effect => (isVisualEffectAlive(effect, nowTs) ? effect : { ...effect, status: 'finished' as const }))
+                    .filter(effect => effect.status === 'active');
                 if (next.length === prev.length) return prev;
                 return next;
             });
@@ -10634,21 +12791,33 @@ const App: React.FC = () => {
                 !TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
                 b.ownerId === user.uid &&
                 !b.isConstructing &&
-                !b.isDestroying
+                !b.isDestroying &&
+                !shouldPreferServerRevivedBuildingState(
+                    b,
+                    serverMyBuildingsRef.current.get(String(b.id)) ||
+                    serverZoneBuildingsRef.current.get(String(b.id)) ||
+                    b
+                )
         );
         if (deadBuildings.length > 0) {
             deadBuildings.forEach(b => {
                 const docId = String(b.id);
                 if (!isBuildingDeleting(docId)) {
                     deletingBuildingsRef.current.set(docId, Date.now());
-                    deleteDoc(doc(db, 'buildings', docId)).catch(e => {
-                        handleFirestoreError(e, OperationType.DELETE, `buildings/${docId}`);
-                        // Don't remove from set, so we don't retry and loop infinitely
-                    });
+                    deleteDoc(doc(db, 'buildings', docId))
+                        .then(() => {
+                            removeBuildingFromSnapshotCaches(docId);
+                            setPlacedBuildings(prev => prev.filter(pb => String(pb.id) !== docId));
+                            setSelectedBuilding(prev => prev && String(prev.building.id) === docId ? null : prev);
+                        })
+                        .catch(e => {
+                            handleFirestoreError(e, OperationType.DELETE, `buildings/${docId}`);
+                            // Don't remove from set, so we don't retry and loop infinitely
+                        });
                 }
             });
         }
-    }, [placedBuildings, isAuthReady, user]);
+    }, [placedBuildings, isAuthReady, user, isBuildingDeleting, removeBuildingFromSnapshotCaches]);
 
     // Oil Deposit Spawning Logic
     useEffect(() => {
@@ -10804,23 +12973,57 @@ const App: React.FC = () => {
             const users = Object.keys(allUsersRef.current).sort();
             if (users.length > 0 && userRef.current.uid !== users[0]) return;
 
-            console.log('[MonsterSpawn] Tick starting...');
+            if (DEBUG_FLAG_ENABLED) {
+                console.log('[MonsterSpawn] Tick starting...');
+            }
 
             if (monsterSpawnRunningRef.current) return;
             monsterSpawnRunningRef.current = true;
 
             try {
-                const [allBuildingsSnap, allResourcesSnap] = await Promise.all([
-                    getDocs(collection(db, 'buildings')),
-                    getDocs(collection(db, 'map_resources'))
+                // Background monster sweep for remote sectors:
+                // piggybacks on the existing global spawn read instead of adding a new world-wide loop.
+                const sweepZoneIds: string[] = [];
+                const totalWorldZones = ZONES_X * ZONES_Y;
+                for (let i = 0; i < WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE; i++) {
+                    const zoneIndex = (monsterWorldSweepCursorRef.current + i) % totalWorldZones;
+                    sweepZoneIds.push(`${zoneIndex % ZONES_X}_${Math.floor(zoneIndex / ZONES_X)}`);
+                }
+                monsterWorldSweepCursorRef.current =
+                    (monsterWorldSweepCursorRef.current + WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE) % totalWorldZones;
+
+                const managedZoneIds = Array.from(new Set([
+                    ...currentZonesRef.current,
+                    ...sweepZoneIds
+                ]));
+                const buildingsCol = collection(db, 'buildings');
+                const resourcesCol = collection(db, 'map_resources');
+                const [zoneBuildingsSnap, zoneResourcesSnap, bronekurSnap] = await Promise.all([
+                    getDocs(query(buildingsCol, where('zoneId', 'in', managedZoneIds))),
+                    getDocs(query(resourcesCol, where('zoneId', 'in', managedZoneIds))),
+                    getDocs(query(buildingsCol, where('buildingId', '==', BRONEKUR_ID)))
                 ]);
                 if (effectId !== monsterSpawnEffectIdRef.current) return;
 
-                const allBuildings = allBuildingsSnap.docs.map(docSnap => ({
-                    ...(docSnap.data() as any),
-                    id: String(docSnap.id)
-                })) as PlacedBuilding[];
-                const allResources = allResourcesSnap.docs.map(docSnap => docSnap.data() as MapResource);
+                const allBuildingsMap = new Map<string, PlacedBuilding>();
+                zoneBuildingsSnap.docs.forEach((docSnap) => {
+                    allBuildingsMap.set(String(docSnap.id), {
+                        ...(docSnap.data() as any),
+                        id: String(docSnap.id)
+                    } as PlacedBuilding);
+                });
+                bronekurSnap.docs.forEach((docSnap) => {
+                    const data = {
+                        ...(docSnap.data() as any),
+                        id: String(docSnap.id)
+                    } as PlacedBuilding;
+                    if (Number(data.buildingId) === BRONEKUR_ID && (data.ownerId === '-1' || data.ownerId === 'monster')) {
+                        allBuildingsMap.set(String(docSnap.id), data);
+                    }
+                });
+
+                const allBuildings = Array.from(allBuildingsMap.values());
+                const allResources = zoneResourcesSnap.docs.map(docSnap => docSnap.data() as MapResource);
 
                 const occupied = new Set([
                     ...allBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`),
@@ -10843,17 +13046,6 @@ const App: React.FC = () => {
                 let returnedToHomeSector = 0;
                 let deletedDuplicates = 0;
                 let trimmedExcess = 0;
-
-                // Background monster sweep for remote sectors:
-                // piggybacks on the existing global spawn read instead of adding a new world-wide loop.
-                const sweepZoneIds: string[] = [];
-                const totalWorldZones = ZONES_X * ZONES_Y;
-                for (let i = 0; i < WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE; i++) {
-                    const zoneIndex = (monsterWorldSweepCursorRef.current + i) % totalWorldZones;
-                    sweepZoneIds.push(`${zoneIndex % ZONES_X}_${Math.floor(zoneIndex / ZONES_X)}`);
-                }
-                monsterWorldSweepCursorRef.current =
-                    (monsterWorldSweepCursorRef.current + WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE) % totalWorldZones;
 
                 const monsterZoneCounts = buildMonsterZoneCounts(allBuildings, buildingData);
                 let worldSweepActions = 0;
@@ -10889,11 +13081,43 @@ const App: React.FC = () => {
                             await updateDoc(doc(db, 'buildings', monsterId), { zoneId: actualZoneId });
                         }
 
-                        const attackTarget = getMonsterAdjacentAttackTarget(monster, allBuildings, buildingData);
-                        const lastAttackTime = monster.lastAttackTime || 0;
+                        const attackTarget = getMonsterAdjacentAttackTarget(monster, allBuildings, buildingData, {
+                            preferredTargetId: monsterTargetLockRef.current.get(monsterId) || null,
+                            isWrappedWorld: isWorldWrapped
+                        });
+                        const holdTarget = attackTarget || getMonsterAdjacentHoldTarget(monster, allBuildings, buildingData, {
+                            preferredTargetId: monsterTargetLockRef.current.get(monsterId) || null,
+                            isWrappedWorld: isWorldWrapped
+                        });
+                        if (holdTarget) {
+                            monsterTargetLockRef.current.set(monsterId, String(holdTarget.id));
+                        } else {
+                            monsterTargetLockRef.current.delete(monsterId);
+                        }
+                        const lastAttackTime = Math.max(
+                            monster.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0
+                        );
                         if (attackTarget && (nowTs - lastAttackTime) >= MONSTER_ATTACK_INTERVAL_MS) {
+                            const source = 'background_sweep';
+                            const combatTraceId = `${source}:${monsterId}:${String(attackTarget.id)}:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
                             const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
                             const targetInfo = buildingData.find(i => i.id === attackTarget.buildingId);
+                            const selectedTargetId = String(attackTarget.id);
+                            console.log("[COMBAT TARGET BEFORE HIT]", {
+                                combatTraceId,
+                                source,
+                                monsterId,
+                                targetId: selectedTargetId,
+                                targetHp: attackTarget.hp,
+                                targetIsDestroying: attackTarget.isDestroying,
+                                targetPendingDamage: attackTarget.pendingDamage,
+                                targetDestructionEndTime: attackTarget.destructionEndTime,
+                                deleting: isBuildingDeleting(selectedTargetId),
+                                tombstoned: isBuildingTombstoned(selectedTargetId),
+                                preferredTargetId: monsterTargetLockRef.current.get(monsterId),
+                                timestamp: Date.now(),
+                            });
                             let damage = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
                             if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
                                 damage *= 2;
@@ -10911,6 +13135,46 @@ const App: React.FC = () => {
                             const targetBaseHp = attackTarget.hp ?? (targetInfo?.stats.durability ?? 100);
                             const nextHp = Math.max(0, targetBaseHp - remainingDamage);
                             const isFatalHit = remainingDamage > 0 && nextHp <= 0;
+                            console.log("[COMBAT DAMAGE QUEUED]", {
+                                combatTraceId,
+                                source,
+                                monsterId,
+                                targetId: selectedTargetId,
+                                damage,
+                                targetHpBefore: targetBaseHp,
+                                targetHpAfter: nextHp,
+                                targetShieldBefore: targetCurrentShield,
+                                targetShieldAfter: nextShield,
+                                recipientIds: [selectedTargetId],
+                                recipientCount: 1,
+                                timestamp: Date.now(),
+                            });
+                            if (isFatalHit) {
+                        console.log("[COMBAT FATAL HIT]", {
+                                    combatTraceId,
+                                    source,
+                                    monsterId,
+                                    buildingId: selectedTargetId,
+                                    hpBefore: targetBaseHp,
+                                    hpAfterCalculated: nextHp,
+                                    wasAlreadyDestroying: Boolean(attackTarget.isDestroying),
+                                    oldDestructionEndTime: attackTarget.destructionEndTime,
+                                    timestamp: Date.now(),
+                                });
+                                if (attackTarget.isDestroying || attackTarget.destructionEndTime !== undefined) {
+                                    console.error("[DESTRUCTION RESTART DETECTED]", {
+                                        combatTraceId,
+                                        source,
+                                        buildingId: selectedTargetId,
+                                        hp: attackTarget.hp,
+                                        isDestroying: attackTarget.isDestroying,
+                                        destructionEndTime: attackTarget.destructionEndTime,
+                                        pendingDamage: attackTarget.pendingDamage,
+                                        timestamp: Date.now(),
+                                        stack: new Error().stack,
+                                    });
+                                }
+                            }
                             const targetUpdate = isFatalHit
                                 ? {
                                     hp: targetBaseHp,
@@ -10919,7 +13183,12 @@ const App: React.FC = () => {
                                     shieldMaxHp: nextShield > 0 ? attackTarget.shieldMaxHp : deleteField(),
                                     protectionEndTime: nextShield > 0 ? attackTarget.protectionEndTime : deleteField(),
                                     isDestroying: true,
+                                    destructionStartedAt: nowTs,
                                     destructionEndTime: nowTs + MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionExpiresAt: nowTs + MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionDurationMs: MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionMaxLifetimeMs: Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                                    destructionStatus: 'active',
                                     pendingDamage: targetBaseHp
                                 }
                                 : {
@@ -10934,16 +13203,27 @@ const App: React.FC = () => {
                             attackTarget.lastAttackTime = attackTarget.lastAttackTime;
                             if (isFatalHit) {
                                 attackTarget.isDestroying = true;
+                                attackTarget.destructionStartedAt = nowTs;
                                 attackTarget.destructionEndTime = nowTs + MONSTER_FATAL_HIT_DELAY_MS;
+                                attackTarget.destructionExpiresAt = nowTs + MONSTER_FATAL_HIT_DELAY_MS;
+                                attackTarget.destructionDurationMs = MONSTER_FATAL_HIT_DELAY_MS;
+                                attackTarget.destructionMaxLifetimeMs = Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS);
+                                attackTarget.destructionStatus = 'active';
                                 attackTarget.pendingDamage = targetBaseHp;
                             }
                             monster.lastAttackTime = nowTs;
+                            monsterAttackTimeRef.current.set(monsterId, nowTs);
+                            monsterLastActionRef.current.set(monsterId, nowTs);
 
                             await Promise.all([
                                 updateDoc(doc(db, 'buildings', String(attackTarget.id)), targetUpdate),
                                 updateWorldMonster(monsterId, { lastAttackTime: nowTs })
                             ]);
                             worldSweepActions++;
+                            continue;
+                        }
+
+                        if (holdTarget) {
                             continue;
                         }
 
@@ -10989,7 +13269,9 @@ const App: React.FC = () => {
                         }
 
                         if ((nowTs - lastMoveTime) >= (moveInterval * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER)) {
-                            const teleportSpot = findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions);
+                            const teleportSpot = Number(monster.buildingId) === BRONEKUR_ID
+                                ? null
+                                : findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions);
                             if (teleportSpot) {
                                 occupied.delete(`${monster.x},${monster.y}`);
                                 occupied.add(`${teleportSpot.x},${teleportSpot.y}`);
@@ -11018,8 +13300,35 @@ const App: React.FC = () => {
                     .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
                 for (const extraBoss of activeBronekurs.slice(1)) {
+                    const localId = String(extraBoss.id);
+                    const source = 'duplicate_bronekur';
                     try {
-                        await deleteDoc(doc(db, 'buildings', String(extraBoss.id)));
+                        if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
+                            console.log("[MONSTER DELETE SKIPPED]", {
+                                localId,
+                                source,
+                                reason: "already_deleting_or_tombstoned",
+                                timestamp: Date.now(),
+                            });
+                            continue;
+                        }
+                        console.log("[MONSTER DELETE REQUEST]", {
+                            localId,
+                            source,
+                            buildingId: extraBoss.buildingId,
+                            zoneId: extraBoss.zoneId,
+                            x: extraBoss.x,
+                            y: extraBoss.y,
+                            currentUserId: userRef.current?.uid,
+                            timestamp: Date.now(),
+                        });
+                        removeBuildingFromSnapshotCaches(localId);
+                        await deleteDoc(doc(db, 'buildings', localId));
+                        console.log("[MONSTER DELETE COMPLETED]", {
+                            localId,
+                            source,
+                            timestamp: Date.now(),
+                        });
                         occupied.delete(`${extraBoss.x},${extraBoss.y}`);
                         deletedDuplicates++;
                     } catch (err) {
@@ -11058,10 +13367,10 @@ const App: React.FC = () => {
                     bonusTypeByZone.set(zone.zoneId, bonusTypes[index % bonusTypes.length]);
                 });
 
-                for (let zX = 0; zX < ZONES_X; zX++) {
-                    for (let zY = 0; zY < ZONES_Y; zY++) {
-                        if (effectId !== monsterSpawnEffectIdRef.current) return;
-                        const zoneId = `${zX}_${zY}`;
+                for (const zoneId of managedZoneIds) {
+                    if (effectId !== monsterSpawnEffectIdRef.current) return;
+                    const [zX, zY] = zoneId.split('_').map(Number);
+                    if (!Number.isFinite(zX) || !Number.isFinite(zY)) continue;
                         const zoneTypeOrder = seededShuffle(REGULAR_MONSTER_SPAWN_CONFIG, `wild-types:${zoneId}`);
                         const duplicateTypeId = bonusZoneIds.has(zoneId) ? bonusTypeByZone.get(zoneId) || null : null;
                         const zoneTargetCount = BASE_WILD_MONSTERS_PER_ZONE + (bonusZoneIds.has(zoneId) ? 1 : 0);
@@ -11100,8 +13409,35 @@ const App: React.FC = () => {
                         const excessCount = Math.max(0, zoneRegularMonsters.length - zoneTargetCount);
                         const monstersMarkedForDeletion = monstersToDelete.slice(0, excessCount);
                         for (const monster of monstersMarkedForDeletion) {
+                            const localId = String(monster.id);
+                            const source = 'excess_trim';
                             try {
-                                await deleteDoc(doc(db, 'buildings', String(monster.id)));
+                                if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
+                                    console.log("[MONSTER DELETE SKIPPED]", {
+                                        localId,
+                                        source,
+                                        reason: "already_deleting_or_tombstoned",
+                                        timestamp: Date.now(),
+                                    });
+                                    continue;
+                                }
+                                console.log("[MONSTER DELETE REQUEST]", {
+                                    localId,
+                                    source,
+                                    buildingId: monster.buildingId,
+                                    zoneId,
+                                    x: monster.x,
+                                    y: monster.y,
+                                    currentUserId: userRef.current?.uid,
+                                    timestamp: Date.now(),
+                                });
+                                removeBuildingFromSnapshotCaches(localId);
+                                await deleteDoc(doc(db, 'buildings', localId));
+                                console.log("[MONSTER DELETE COMPLETED]", {
+                                    localId,
+                                    source,
+                                    timestamp: Date.now(),
+                                });
                                 occupied.delete(`${monster.x},${monster.y}`);
                                 trimmedExcess++;
                             } catch (err) {
@@ -11179,7 +13515,6 @@ const App: React.FC = () => {
                                 }
                             }
                         }
-                    }
                 }
 
                 if (activeBronekurs.length === 0) {
@@ -11384,7 +13719,10 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const energyTimer = setInterval(() => {
-            setPlayerEnergy(currentEnergy => Math.min(maxEnergy, currentEnergy + ENERGY_REGEN_PER_MINUTE));
+            setPlayerEnergy(currentEnergy => {
+                if (currentEnergy >= maxEnergy) return currentEnergy;
+                return Math.min(maxEnergy, currentEnergy + ENERGY_REGEN_PER_MINUTE);
+            });
         }, 60000);
         return () => clearInterval(energyTimer);
     }, [maxEnergy]);
@@ -11413,7 +13751,7 @@ const App: React.FC = () => {
             // peakLevelRef is also updated via the useEffect on playerLevel
             peakLevelRef.current = Math.max(peakLevelRef.current, currentLevel);
             setPlayerGlory(currentGlory);
-            setPlayerEnergy(newMaxEnergy);
+            setPlayerEnergy(prev => Math.max(prev, newMaxEnergy));
             console.log(`[LevelUp] ${playerLevel} > ${currentLevel}, peak=${peakLevelRef.current}, glory remaining=${currentGlory}`);
 
             // Also update allUsers immediately so map nameplate and other UI stay in sync
@@ -11429,18 +13767,11 @@ const App: React.FC = () => {
                 updateDoc(doc(db, 'users', user.uid), {
                     level: currentLevel,
                     glory: increment(-glorySubtracted),
-                    energy: newMaxEnergy
+                    energy: Math.max(playerEnergyRef.current, newMaxEnergy)
                 }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${user.uid}`));
             }
         }
     }, [playerGlory, playerLevel, getGloryForLevel, user]);
-
-    // Cap energy to maxEnergy
-    useEffect(() => {
-        if (playerEnergy > maxEnergy) {
-            setPlayerEnergy(maxEnergy);
-        }
-    }, [playerEnergy, maxEnergy]);
 
     // Market Handlers
     const handleBuyMarketItem = (listing: MarketListing) => {
@@ -11453,7 +13784,7 @@ const App: React.FC = () => {
             }
         } else {
             if (playerRubies < listing.price) {
-                alert("Недостаточно рубинов!");
+                openRubyWarningModal(listing.price);
                 return;
             }
         }
@@ -11521,7 +13852,8 @@ const App: React.FC = () => {
                 .then(() => {
                     const itemInfo = itemData.find(i => i.id === listing.resourceId);
                     addHistoryLog(`Куплено ${listing.amount} ${itemInfo?.name || 'предмет'} за ${listing.price} ${listing.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
-                    alert("Р СџР С•Р С”РЎС“Р С—Р С”Р В° РЎС“РЎРѓР С—Р ВµРЎв‚¬Р Р…Р В°!");
+                    setMarketListings(prev => prev.filter(l => l.id !== listing.id));
+                    alert("Покупка успешна!");
                 })
                 .catch(e => {
                     console.error("Transaction failed: ", e);
@@ -11553,17 +13885,17 @@ const App: React.FC = () => {
     const handleCreateMarketListing = () => {
         if (isMarketProcessing) return;
         if (!sellItemSelection.itemId) {
-            alert("ВыР В±Р ВµРЎР‚Р С‘РЎвЂљР Вµ Р С—РЎР‚Р ВµР Т‘Р СР ВµРЎвЂљ Р Т‘Р В»РЎРЏ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘!");
+            alert("Выберите предмет для продажи!");
             return;
         }
         if (sellItemSelection.amount <= 0 || sellItemSelection.price <= 0) {
-            alert("Р СњР ВµР С”Р С•РЎР‚РЎР‚Р ВµР С”РЎвЂљР Р…Р С•Р Вµ Р С”Р С•Р В»Р С‘РЎвЂЎР ВµРЎРѓРЎвЂљР Р†Р С• Р С‘Р В»Р С‘ РЎвЂ Р ВµР Р…Р В°.");
+            alert("Некорректное количество или цена.");
             return;
         }
 
         const currentAmount = sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId] || 0);
         if (currentAmount < sellItemSelection.amount) {
-            alert("Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• Р С—РЎР‚Р ВµР Т‘Р СР ВµРЎвЂљР С•Р Р† Р Т‘Р В»РЎРЏ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘.");
+            alert("Недостаточно предметов для продажи.");
             return;
         }
 
@@ -11576,6 +13908,7 @@ const App: React.FC = () => {
             price: sellItemSelection.price,
             currency: sellItemSelection.currency
         };
+        const marketPayload = buildMarketListingPayload(newListing);
 
         if (isAuthReady && user) {
             setIsMarketProcessing(true);
@@ -11601,12 +13934,13 @@ const App: React.FC = () => {
                 }
 
                 transaction.update(userRef, sellerUpdate);
-                transaction.set(listingRef, newListing);
+                transaction.set(listingRef, marketPayload);
             })
                 .then(() => {
                     const itemInfo = itemData.find(i => i.id === sellItemSelection.itemId);
                     addHistoryLog(`Выставлено на продажу: ${sellItemSelection.amount} ${itemInfo?.name} за ${sellItemSelection.price} ${sellItemSelection.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
-                    alert("Р СћР С•Р Р†Р В°РЎР‚ Р Р†РЎвЂ№РЎРѓРЎвЂљР В°Р Р†Р В»Р ВµР Р… Р Р…Р В° Р С—РЎР‚Р С•Р Т‘Р В°Р В¶РЎС“!");
+                    setMarketListings(prev => [newListing, ...prev.filter(l => l.id !== newListing.id)]);
+                    alert("Товар выставлен на продажу!");
                     setSellItemSelection(prev => ({ ...prev, itemId: null, amount: 1, price: 10 })); // Reset form
                 })
                 .catch(e => {
@@ -11627,7 +13961,7 @@ const App: React.FC = () => {
             const itemInfo = itemData.find(i => i.id === sellItemSelection.itemId);
             addHistoryLog(`Выставлено на продажу: ${sellItemSelection.amount} ${itemInfo?.name} за ${sellItemSelection.price} ${sellItemSelection.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
             setMarketListings(prev => [...prev, newListing]);
-            alert("Р СћР С•Р Р†Р В°РЎР‚ Р Р†РЎвЂ№РЎРѓРЎвЂљР В°Р Р†Р В»Р ВµР Р… Р Р…Р В° Р С—РЎР‚Р С•Р Т‘Р В°Р В¶РЎС“!");
+            alert("Товар выставлен на продажу!");
             setSellItemSelection(prev => ({ ...prev, itemId: null, amount: 1, price: 10 })); // Reset form
         }
     };
@@ -11662,7 +13996,8 @@ const App: React.FC = () => {
                 transaction.delete(listingRef);
             })
                 .then(() => {
-                    alert("Р СћР С•Р Р†Р В°РЎР‚ РЎРѓР Р…РЎРЏРЎвЂљ РЎРѓ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘.");
+                    setMarketListings(prev => prev.filter(l => l.id !== listing.id));
+                    alert("Товар снят с продажи.");
                 })
                 .catch(e => {
                     console.error("Cancel failed: ", e);
@@ -11699,7 +14034,8 @@ const App: React.FC = () => {
             type: 'normal',
             timestamp: Date.now(),
             tab: 'general',
-            teleportCoordinates: { x: selectedOilDeposit.x, y: selectedOilDeposit.y }
+            teleportCoordinates: { x: selectedOilDeposit.x, y: selectedOilDeposit.y },
+            localOnly: true
         };
 
         setChatHistory(prev => [...prev, newMessage]);
@@ -11721,7 +14057,8 @@ const App: React.FC = () => {
             type: 'normal',
             timestamp: Date.now(),
             tab: 'general',
-            teleportCoordinates: { x: selectedQuarry.x, y: selectedQuarry.y }
+            teleportCoordinates: { x: selectedQuarry.x, y: selectedQuarry.y },
+            localOnly: true
         };
 
         setChatHistory(prev => [...prev, newMessage]);
@@ -11950,7 +14287,7 @@ const App: React.FC = () => {
                 .catch(e => {
                     console.error("Buy shop item failed: ", e);
                     if (e.message === "Insufficient rubies") {
-                        alert("Недостаточно рубинов!");
+                        openRubyWarningModal(quantity);
                     } else {
                         handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
                     }
@@ -11961,9 +14298,20 @@ const App: React.FC = () => {
                 updatePlayerResources(0, -quantity, { [item.id]: item.rubyPackQuantity! * quantity });
                 addHistoryLog(`Куплено ${item.rubyPackQuantity! * quantity} ${item.name} за ${quantity} рубинов.`, 'economy');
             } else {
-                alert("Недостаточно рубинов!");
+                openRubyWarningModal(quantity);
             }
         }
+    };
+
+    const triggerResourceShopButtonPress = (buttonId: string) => {
+        setResourceShopPressedButtons(prev => ({ ...prev, [buttonId]: true }));
+        window.setTimeout(() => {
+            setResourceShopPressedButtons(prev => {
+                const next = { ...prev };
+                delete next[buttonId];
+                return next;
+            });
+        }, 1000);
     };
 
     const handleRubyExchange = () => {
@@ -11999,7 +14347,7 @@ const App: React.FC = () => {
                 .catch(e => {
                     console.error("Ruby exchange failed: ", e);
                     if (e.message === "Insufficient rubies") {
-                        alert("Недостаточно рубинов!");
+                        openRubyWarningModal(exchangeAmount);
                     } else {
                         handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
                     }
@@ -12013,7 +14361,7 @@ const App: React.FC = () => {
                 addHistoryLog(`Обменяно ${exchangeAmount} рубинов на ${coins} монет.`, 'economy');
                 alert(`Р С›Р В±Р СР ВµР Р… РЎС“РЎРѓР С—Р ВµРЎв‚¬Р ВµР Р…! Вы Р С—Р С•Р В»РЎС“РЎвЂЎР С‘Р В»Р С‘ ${coins.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ.`);
             } else {
-                alert("Недостаточно рубинов!");
+                openRubyWarningModal(exchangeAmount);
             }
         }
     };
@@ -12155,21 +14503,38 @@ const App: React.FC = () => {
                 inventoryDeltas[req.id] = -(req.amount || 0);
             });
         }
+        const upgradeStartedAt = Date.now();
+        const upgradeConstructionEndTime = upgradeStartedAt + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000;
         updatePlayerResources(-cost, 0, inventoryDeltas);
 
-        setVisualEffects(prev => [...prev, {
+        setVisualEffects(prev => [...prev, createVisualEffect({
             id: Date.now(),
             x: selectedBuilding.building.x,
             y: selectedBuilding.building.y,
             type: 'upgrade',
             startTime: Date.now(),
             duration: UPGRADE_EFFECT_DURATION
-        }]);
+        })]);
 
         addHistoryLog(`Улучшение здания "${selectedBuilding.info.name}" до "${newBuildingInfo.name}". Стоимость: ${cost} монет.`, 'build');
 
         // Optimistic update for all buildings (immediate UI feedback)
         lastInteractionRef.current.set(String(selectedBuilding.building.id), Date.now());
+        if (RUNTIME_AUDIT_ENABLED) {
+            recordBuildingTimerTrace('local-start', {
+                ...selectedBuilding.building,
+                buildingId: newBuildingInfo.id,
+                isConstructing: true,
+                constructionEndTime: upgradeConstructionEndTime,
+                workState: 'idle',
+                actionType: 'construction',
+            }, {
+                now: upgradeStartedAt,
+                constructionStartTime: upgradeStartedAt,
+                constructionEndTime: upgradeConstructionEndTime,
+                sourceCode: 'handleUpgrade',
+            });
+        }
         setPlacedBuildings(prev => {
             const index = prev.findIndex(b => b.id === selectedBuilding.building.id);
             if (index === -1) return prev;
@@ -12179,13 +14544,18 @@ const App: React.FC = () => {
                 ...newBuildings[index],
                 buildingId: newBuildingInfo.id,
                 isConstructing: true,
-                constructionEndTime: Date.now() + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000,
-                lastAttackTime: Date.now(),
+                constructionEndTime: upgradeConstructionEndTime,
+                lastAttackTime: upgradeStartedAt,
                 type: newBuildingInfo.type,
                 hp: newBuildingInfo.stats.durability,
                 maxHp: newBuildingInfo.stats.durability,
                 isDestroying: false,
+                destructionStartedAt: undefined,
                 destructionEndTime: undefined,
+                destructionExpiresAt: undefined,
+                destructionDurationMs: undefined,
+                destructionMaxLifetimeMs: undefined,
+                destructionStatus: 'finished',
                 pendingDamage: 0,
                 initiatorId: undefined,
                 isLocal: true // Mark as local optimistic update
@@ -12198,13 +14568,18 @@ const App: React.FC = () => {
             updateDoc(doc(db, 'buildings', buildingDocId), {
                 buildingId: newBuildingInfo.id,
                 isConstructing: true,
-                constructionEndTime: Date.now() + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000,
-                lastAttackTime: Date.now(),
+                constructionEndTime: upgradeConstructionEndTime,
+                lastAttackTime: upgradeStartedAt,
                 type: newBuildingInfo.type || deleteField(),
                 hp: newBuildingInfo.stats.durability,
                 maxHp: newBuildingInfo.stats.durability,
                 isDestroying: false,
+                destructionStartedAt: deleteField(),
                 destructionEndTime: deleteField(),
+                destructionExpiresAt: deleteField(),
+                destructionDurationMs: deleteField(),
+                destructionMaxLifetimeMs: deleteField(),
+                destructionStatus: 'finished',
                 pendingDamage: 0,
                 initiatorId: deleteField()
             }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
@@ -12218,13 +14593,18 @@ const App: React.FC = () => {
                     ...newBuildings[index],
                     buildingId: newBuildingInfo.id,
                     isConstructing: true,
-                    constructionEndTime: Date.now() + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000,
-                    lastAttackTime: Date.now(),
+                    constructionEndTime: upgradeConstructionEndTime,
+                    lastAttackTime: upgradeStartedAt,
                     type: newBuildingInfo.type,
                     hp: newBuildingInfo.stats.durability,
                     maxHp: newBuildingInfo.stats.durability,
                     isDestroying: false,
+                    destructionStartedAt: undefined,
                     destructionEndTime: undefined,
+                    destructionExpiresAt: undefined,
+                    destructionDurationMs: undefined,
+                    destructionMaxLifetimeMs: undefined,
+                    destructionStatus: 'finished',
                     pendingDamage: 0,
                     initiatorId: undefined
                 };
@@ -12238,6 +14618,7 @@ const App: React.FC = () => {
     const handleStartProductionFromWorld = (building: PlacedBuilding, info: Building) => {
         // Cannot start production while building is under construction or upgrading
         if (building.isConstructing) return;
+        if (isBanditCastleBuildingId(building.buildingId)) return;
 
         const popCost = info.stats.takesPopulation || 0;
         if (currentPopulation + popCost > maxPopulation) {
@@ -12248,7 +14629,7 @@ const App: React.FC = () => {
         if (info.stats.consumes) {
             for (const req of info.stats.consumes) {
                 if ((inventory[req.id] || 0) < (req.amount || 0)) {
-                    alert(`Недостаточно ресурса: ${req.name}`);
+                    alert(`Недостаточно ресурса: ${getCanonicalItemName(req.id, req.name, building.id)}`);
                     return;
                 }
             }
@@ -12263,9 +14644,24 @@ const App: React.FC = () => {
         updatePlayerResources(0, 0, inventoryDeltas);
 
         const buildingDocId = String(building.id);
-        const workEndTime = Date.now() + (info.stats.workTimeSeconds || 0) * 1000;
+        const workStartedAt = Date.now();
+        const workEndTime = workStartedAt + (info.stats.workTimeSeconds || 0) * 1000;
 
         // Always switch locally first so production starts instantly in UI.
+        if (RUNTIME_AUDIT_ENABLED) {
+            recordBuildingTimerTrace('local-start', {
+                ...building,
+                workState: 'working',
+                workStartTime: workStartedAt,
+                workEndTime,
+                actionType: 'working',
+            }, {
+                now: workStartedAt,
+                workStartTime: workStartedAt,
+                workEndTime,
+                sourceCode: 'handleStartProductionFromWorld',
+            });
+        }
         setPlacedBuildings(prev => prev.map(b =>
             b.id === building.id ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
         ));
@@ -12282,8 +14678,24 @@ const App: React.FC = () => {
     const handleCollectProductionFromWorld = (building: PlacedBuilding) => {
         const info = buildingData.find(bd => bd.id === building.buildingId);
         if (!info) return;
+        if (isBanditCastleBuildingId(building.buildingId)) return;
 
         const bid = Number(building.buildingId);
+        const collectedAt = Date.now();
+        if (RUNTIME_AUDIT_ENABLED) {
+            recordBuildingTimerTrace('local-tick', {
+                ...building,
+                workState: 'idle',
+                workEndTime: building.workEndTime,
+                actionType: 'idle',
+            }, {
+                now: collectedAt,
+                remainingMs: 0,
+                previousWorkEndTime: building.workEndTime,
+                transition: 'collect-production',
+                sourceCode: 'handleCollectProductionFromWorld',
+            });
+        }
 
         // Skip coin sound and gold for cannons
         const isCannon = CANNON_IDS.includes(bid);
@@ -12343,7 +14755,7 @@ const App: React.FC = () => {
             actualGold = 50000;
         }
         // Nuclear bomb garden beds gold rewards
-        else if ([600, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626].includes(bid)) {
+        else if ([600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626].includes(bid)) {
             actualGold = 50;
         } else if (bid === 627) {
             actualGold = 100;
@@ -12516,8 +14928,8 @@ const App: React.FC = () => {
             // Nuclear bomb garden beds upgrade chain
             else if (bid === 600) nextBid = 617;
             else if (bid === 617) nextBid = 618;
-            else if (bid === 618) nextBid = 619;
-            else if (bid === 619) nextBid = 620;
+            else if (bid === 618) nextBid = 636;
+            else if (bid === 636) nextBid = 620;
             else if (bid === 620) nextBid = 621;
             else if (bid === 621) nextBid = 622;
             else if (bid === 622) nextBid = 623;
@@ -12574,12 +14986,13 @@ const App: React.FC = () => {
     const handleStartProduction = () => {
         if (!selectedBuilding) return;
         const { building, info } = selectedBuilding;
+        if (isBanditCastleBuildingId(building.buildingId)) return;
 
         // Cannot start production while building is under construction or upgrading
         if (building.isConstructing) return;
 
         const bid = Number(building.buildingId);
-        const isLilyOrMushroom = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(bid);
+        const isLilyOrMushroom = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(bid);
         const isDirectFactory = DIRECT_INTERACTION_FACTORIES.includes(bid);
 
         if (isLilyOrMushroom || isDirectFactory) {
@@ -12597,7 +15010,7 @@ const App: React.FC = () => {
         if (info.stats.consumes) {
             for (const req of info.stats.consumes) {
                 if ((inventory[req.id] || 0) < (req.amount || 0)) {
-                    alert(`Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°: ${req.name}`);
+                    alert(`Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°: ${getCanonicalItemName(req.id, req.name, selectedBuilding?.building.id)}`);
                     return;
                 }
             }
@@ -12613,9 +15026,24 @@ const App: React.FC = () => {
         updatePlayerResources(0, 0, inventoryDeltas);
 
         const buildingDocId = String(building.id);
-        const workEndTime = Date.now() + (info.stats.workTimeSeconds || 0) * 1000;
+        const workStartedAt = Date.now();
+        const workEndTime = workStartedAt + (info.stats.workTimeSeconds || 0) * 1000;
 
         // Always switch locally first so production starts instantly in UI.
+        if (RUNTIME_AUDIT_ENABLED) {
+            recordBuildingTimerTrace('local-start', {
+                ...building,
+                workState: 'working',
+                workStartTime: workStartedAt,
+                workEndTime,
+                actionType: 'working',
+            }, {
+                now: workStartedAt,
+                workStartTime: workStartedAt,
+                workEndTime,
+                sourceCode: 'handleStartProduction',
+            });
+        }
         setPlacedBuildings(prev => prev.map(b =>
             b.id === building.id ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
         ));
@@ -12635,18 +15063,35 @@ const App: React.FC = () => {
     const handleCollectProduction = () => {
         if (!selectedBuilding) return;
         const { building, info } = selectedBuilding;
+        if (isBanditCastleBuildingId(building.buildingId)) return;
 
         // Play coin collection sound
         playCoinSound();
 
         const bid = Number(building.buildingId);
-        const isLilyOrMushroom = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(bid);
+        const isLilyOrMushroom = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(bid);
         const isDirectFactory = DIRECT_INTERACTION_FACTORIES.includes(bid);
 
         if (isLilyOrMushroom || isDirectFactory) {
             handleCollectProductionFromWorld(building);
             setSelectedBuilding(null);
             return;
+        }
+
+        const collectedAt = Date.now();
+        if (RUNTIME_AUDIT_ENABLED) {
+            recordBuildingTimerTrace('local-tick', {
+                ...building,
+                workState: 'idle',
+                workEndTime: building.workEndTime,
+                actionType: 'idle',
+            }, {
+                now: collectedAt,
+                remainingMs: 0,
+                previousWorkEndTime: building.workEndTime,
+                transition: 'collect-production',
+                sourceCode: 'handleCollectProduction',
+            });
         }
 
         let playerShareFinal = 0;
@@ -12669,7 +15114,7 @@ const App: React.FC = () => {
                 const taxShare = info.stats.workYieldGold - playerShare;
 
                 const banditCastle = placedBuildings.find(b =>
-                    b.buildingId === CLAN_CASTLE_ID &&
+                    BANDIT_CASTLE_IDS.has(Number(b.buildingId)) &&
                     !b.isConstructing &&
                     Math.floor(b.x / ZONE_SIZE) === zoneX &&
                     Math.floor(b.y / ZONE_SIZE) === zoneY
@@ -12751,8 +15196,8 @@ const App: React.FC = () => {
             // Nuclear bomb garden beds upgrade chain
             else if (bid === 600) nextBid = 617;
             else if (bid === 617) nextBid = 618;
-            else if (bid === 618) nextBid = 619;
-            else if (bid === 619) nextBid = 620;
+            else if (bid === 618) nextBid = 636;
+            else if (bid === 636) nextBid = 620;
             else if (bid === 620) nextBid = 621;
             else if (bid === 621) nextBid = 622;
             else if (bid === 622) nextBid = 623;
@@ -12813,6 +15258,15 @@ const App: React.FC = () => {
                 if (!isMyBuilding(b) || b.workState !== 'working' || !b.workEndTime || b.workEndTime > now) return;
 
                 // Mark as finished for collection
+                if (RUNTIME_AUDIT_ENABLED) {
+                    recordBuildingTimerTrace('local-tick', b, {
+                        now,
+                        actionType: 'finished',
+                        remainingMs: 0,
+                        transition: 'work-complete',
+                        sourceCode: 'manual-production-loop',
+                    });
+                }
                 updateDoc(doc(db, 'buildings', String(b.id)), {
                     workState: 'finished',
                     workEndTime: deleteField()
@@ -12901,7 +15355,7 @@ const App: React.FC = () => {
 
                 // Find the Bandit Castle in the same zone to add tax to its bank
                 const banditCastle = placedBuildings.find(b =>
-                    b.buildingId === CLAN_CASTLE_ID &&
+                    BANDIT_CASTLE_IDS.has(Number(b.buildingId)) &&
                     !b.isConstructing &&
                     Math.floor(b.x / ZONE_SIZE) === zoneX &&
                     Math.floor(b.y / ZONE_SIZE) === zoneY
@@ -12998,12 +15452,12 @@ const App: React.FC = () => {
             setDoc(doc(db, 'chat_messages', caughtMsgId), notification).catch((err) => console.warn('[Chat] Failed to send caught notification:', err));
 
             // Send personal message to the thief about being caught
-            let personalMsg = `Вы Р В±РЎвЂ№Р В»Р С‘ Р В·Р В°Р Т‘Р ВµРЎР‚Р В¶Р В°Р Р…РЎвЂ№ Р С—Р С•Р В»Р С‘РЎвЂ Р ВµР в„–РЎРѓР С”Р С‘Р С РЎС“РЎвЂЎР В°РЎРѓРЎвЂљР С”Р С•Р С Р С—РЎР‚Р С‘ Р С—Р С•Р С—РЎвЂ№РЎвЂљР С”Р Вµ Р Р†Р С•РЎР‚Р С•Р Р†РЎРѓРЎвЂљР Р†Р В°! 50% Р Р…Р В°Р С–РЎР‚Р В°Р В±Р В»Р ВµР Р…Р Р…Р С•Р С–Р С• Р Р†Р С•Р В·Р Р†РЎР‚Р В°РЎвЂ°Р ВµР Р…Р С• Р Р†Р В»Р В°Р Т‘Р ВµР В»РЎРЉРЎвЂ РЎС“.`;
+            let personalMsg = `Вы были задержаны полицейским участком при попытке воровства! 50% награбленного возвращено владельцу.`;
             if (superResourcesReturned.length > 0) {
-                personalMsg += ` Р РЋРЎС“Р С—Р ВµРЎР‚ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓРЎвЂ№ Р Р†Р С•Р В·Р Р†РЎР‚Р В°РЎвЂ°Р ВµР Р…РЎвЂ№: ${superResourcesReturned.join(', ')}.`;
+                personalMsg += ` Супер ресурсы возвращены: ${superResourcesReturned.join(', ')}.`;
             }
             if (superResourcesKept.length > 0) {
-                personalMsg += ` Р РЋРЎС“Р С—Р ВµРЎР‚ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓРЎвЂ№ Р С•РЎРѓРЎвЂљР В°Р Р†Р В»Р ВµР Р…РЎвЂ№ Р Р†Р В°Р С: ${superResourcesKept.join(', ')}.`;
+                personalMsg += ` Супер ресурсы остались у вас: ${superResourcesKept.join(', ')}.`;
             }
 
             const personalMsgId = `caught-personal-${Date.now()}-${user?.uid}`;
@@ -13144,19 +15598,19 @@ const App: React.FC = () => {
     const handleSetTax = (rate: number) => {
         if (!selectedBuilding || selectedBuilding.info.id !== WATCHTOWER_ID) return;
         const newRate = Math.min(50, Math.max(0, rate));
+        const buildingId = String(selectedBuilding.building.id);
 
-        if (isAuthReady && user) {
-            const buildingDocId = String(selectedBuilding.building.id);
-            updateDoc(doc(db, 'buildings', buildingDocId), { taxRate: newRate }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
-        } else {
-            setPlacedBuildings(prev => prev.map(b =>
-                b.x === selectedBuilding.building.x && b.y === selectedBuilding.building.y
-                    ? { ...b, taxRate: newRate }
-                    : b
-            ));
-        }
+        setPlacedBuildings(prev => prev.map(b =>
+            String(b.id) === buildingId
+                ? { ...b, taxRate: newRate }
+                : b
+        ));
 
         setSelectedBuilding(prev => prev ? { ...prev, building: { ...prev.building, taxRate: newRate } } : null);
+
+        if (isAuthReady && user) {
+            updateDoc(doc(db, 'buildings', buildingId), { taxRate: newRate }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingId}`));
+        }
     };
 
     const handleWithdrawBank = () => {
@@ -13209,6 +15663,10 @@ const App: React.FC = () => {
 
     const handleMoveClick = () => {
         if (!selectedBuilding) return;
+        if (!isMyBuilding(selectedBuilding.building)) {
+            alert("Перемещать можно только свои постройки.");
+            return;
+        }
 
         const moveCost = (Number(selectedBuilding.info.id) === MOUNTAIN_ID || Number(selectedBuilding.info.id) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST;
 
@@ -13256,6 +15714,10 @@ const App: React.FC = () => {
     const handleRepair = () => {
         if (!selectedBuilding) return;
         const { building, info } = selectedBuilding;
+        if (!canRepairBuilding(building)) {
+            alert("Вы можете чинить только свои постройки или постройки соклановцев.");
+            return;
+        }
         const cost = calculateRepairCost(building, info);
 
         if (cost <= 0) return;
@@ -13269,33 +15731,67 @@ const App: React.FC = () => {
         lastInteractionRef.current.set(String(building.id), Date.now());
 
         const maxHp = building.maxHp ?? info.stats.durability;
+        const buildingId = String(building.id);
 
-        if (isAuthReady && user) {
-            const buildingDocId = String(building.id);
-            updateDoc(doc(db, 'buildings', buildingDocId), {
-                hp: maxHp,
-                isDestroying: false,
-                destructionEndTime: deleteField(),
-                pendingDamage: 0
-            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
-        } else {
-            setPlacedBuildings(prev => prev.map(b =>
-                b.x === building.x && b.y === building.y
-                    ? { ...b, hp: maxHp, isDestroying: false, destructionEndTime: undefined, pendingDamage: 0 }
-                    : b
-            ));
-        }
+        setPlacedBuildings(prev => prev.map(b =>
+            String(b.id) === buildingId
+                ? {
+                    ...b,
+                    hp: maxHp,
+                    isDestroying: false,
+                    destructionStartedAt: undefined,
+                    destructionEndTime: undefined,
+                    destructionExpiresAt: undefined,
+                    destructionDurationMs: undefined,
+                    destructionMaxLifetimeMs: undefined,
+                    destructionStatus: 'finished',
+                    pendingDamage: 0
+                }
+                : b
+        ));
 
         setSelectedBuilding(prev => prev ? ({
             ...prev,
-            building: { ...prev.building, hp: maxHp, isDestroying: false }
+            building: {
+                ...prev.building,
+                hp: maxHp,
+                isDestroying: false,
+                destructionStartedAt: undefined,
+                destructionEndTime: undefined,
+                destructionExpiresAt: undefined,
+                destructionDurationMs: undefined,
+                destructionMaxLifetimeMs: undefined,
+                destructionStatus: 'finished',
+                pendingDamage: 0
+            }
         }) : null);
+
+        if (isAuthReady && user) {
+            updateDoc(doc(db, 'users', user.uid), {
+                gold: increment(-cost)
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+            updateDoc(doc(db, 'buildings', buildingId), {
+                hp: maxHp,
+                isDestroying: false,
+                destructionStartedAt: deleteField(),
+                destructionEndTime: deleteField(),
+                destructionExpiresAt: deleteField(),
+                destructionDurationMs: deleteField(),
+                destructionMaxLifetimeMs: deleteField(),
+                destructionStatus: 'finished',
+                pendingDamage: 0
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingId}`));
+        }
     };
 
     const handleSell = () => {
         if (!selectedBuilding) return;
 
         const { building, info } = selectedBuilding;
+        if (!isMyBuilding(building)) {
+            alert("Продавать можно только свои постройки.");
+            return;
+        }
         const buildingDocId = String(building.id);
         const duplicateSoldIds = new Set<string>([buildingDocId]);
         [serverMyBuildingsRef.current, serverZoneBuildingsRef.current].forEach((snapshotMap) => {
@@ -13360,7 +15856,7 @@ const App: React.FC = () => {
         }
 
         // If selling Clan Castle, disband the clan
-        if (info.id === CLAN_CASTLE_ID) {
+        if (BANDIT_CASTLE_IDS.has(Number(info.id))) {
             const soldClan = clans.find(c => c.leaderUid === building.ownerId);
             if (soldClan) {
                 // Delete clan from Firestore
@@ -13381,9 +15877,13 @@ const App: React.FC = () => {
 
     const handleApplyProtection = (cost: number, duration: number) => {
         if (!selectedBuilding) return;
+        if (!isMyBuilding(selectedBuilding.building)) {
+            alert("Защищать можно только свои постройки.");
+            return;
+        }
 
         if (playerRubies < cost) {
-            alert("Недостаточно рубинов!");
+            openRubyWarningModal(cost);
             return;
         }
 
@@ -13401,7 +15901,12 @@ const App: React.FC = () => {
                     shieldMaxHp: PROTECTION_SHIELD_HP,
                     protectionEndTime,
                     isDestroying: false,
+                    destructionStartedAt: undefined,
                     destructionEndTime: undefined,
+                    destructionExpiresAt: undefined,
+                    destructionDurationMs: undefined,
+                    destructionMaxLifetimeMs: undefined,
+                    destructionStatus: 'finished',
                     pendingDamage: 0
                 }
                 : b
@@ -13413,19 +15918,24 @@ const App: React.FC = () => {
                 shieldMaxHp: PROTECTION_SHIELD_HP,
                 protectionEndTime,
                 isDestroying: false,
+                destructionStartedAt: deleteField(),
                 destructionEndTime: deleteField(),
+                destructionExpiresAt: deleteField(),
+                destructionDurationMs: deleteField(),
+                destructionMaxLifetimeMs: deleteField(),
+                destructionStatus: 'finished',
                 pendingDamage: 0
             }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
         }
 
-        setVisualEffects(prev => [...prev, {
+        setVisualEffects(prev => [...prev, createVisualEffect({
             id: Date.now(),
             x: selectedBuilding.building.x,
             y: selectedBuilding.building.y,
             type: 'upgrade',
             startTime: Date.now(),
             duration: UPGRADE_EFFECT_DURATION
-        }]);
+        })]);
 
         setSelectedBuilding(null);
         setShowProtectionMenu(false);
@@ -13489,16 +15999,24 @@ const App: React.FC = () => {
         const currentShieldHp = Math.max(0, selectedBuilding.building.shieldHp || 0);
         const shieldDamage = Math.min(totalDamage, currentShieldHp);
         const damageToBuilding = totalDamage - shieldDamage;
+        const buildingDocId = String(selectedBuilding.building.id);
 
         if (isAuthReady && user) {
-            const buildingDocId = String(selectedBuilding.building.id);
             const now = Date.now();
             const currentHp = selectedBuilding.building.hp ?? selectedBuilding.info.stats.durability;
             const maxHp = selectedBuilding.building.maxHp ?? selectedBuilding.info.stats.durability;
-            const prevEnd = selectedBuilding.building.destructionEndTime && selectedBuilding.building.destructionEndTime > now
-                ? selectedBuilding.building.destructionEndTime
+            const activeDestructionExpiry = getEffectiveDestructionExpiresAt(selectedBuilding.building);
+            const prevEnd = activeDestructionExpiry && activeDestructionExpiry > now
+                ? activeDestructionExpiry
                 : now;
             const nextEnd = prevEnd + totalTime * 1000;
+            const nextStartedAt =
+                selectedBuilding.building.destructionStartedAt &&
+                activeDestructionExpiry &&
+                activeDestructionExpiry > now
+                    ? selectedBuilding.building.destructionStartedAt
+                    : now;
+            const nextDurationMs = Math.max(1000, nextEnd - nextStartedAt);
             const nextPendingDamage = (selectedBuilding.building.pendingDamage || 0) + damageToBuilding;
             const nextShieldHp = Math.max(0, currentShieldHp - shieldDamage);
 
@@ -13509,7 +16027,12 @@ const App: React.FC = () => {
                 hp: currentHp,
                 maxHp: maxHp,
                 isDestroying: damageToBuilding > 0,
+                destructionStartedAt: damageToBuilding > 0 ? nextStartedAt : deleteField(),
                 destructionEndTime: damageToBuilding > 0 ? nextEnd : deleteField(),
+                destructionExpiresAt: damageToBuilding > 0 ? nextEnd : deleteField(),
+                destructionDurationMs: damageToBuilding > 0 ? nextDurationMs : deleteField(),
+                destructionMaxLifetimeMs: damageToBuilding > 0 ? Math.max(nextDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS) : deleteField(),
+                destructionStatus: damageToBuilding > 0 ? 'active' : 'finished',
                 pendingDamage: nextPendingDamage,
                 initiatorId: user.uid
             };
@@ -13527,7 +16050,16 @@ const App: React.FC = () => {
             setPlacedBuildings(prev => prev.map(b => {
                 if (String(b.id) !== buildingDocId) return b;
                 const localNow = Date.now();
-                const localBaseEnd = b.destructionEndTime && b.destructionEndTime > localNow ? b.destructionEndTime : localNow;
+                const localDestructionExpiry = getEffectiveDestructionExpiresAt(b);
+                const localBaseEnd = localDestructionExpiry && localDestructionExpiry > localNow ? localDestructionExpiry : localNow;
+                const localStartedAt =
+                    b.destructionStartedAt &&
+                    localDestructionExpiry &&
+                    localDestructionExpiry > localNow
+                        ? b.destructionStartedAt
+                        : localNow;
+                const localExpiresAt = damageToBuilding > 0 ? (localBaseEnd + totalTime * 1000) : undefined;
+                const localDurationMs = localExpiresAt ? Math.max(1000, localExpiresAt - localStartedAt) : undefined;
                 return {
                     ...b,
                     hp: b.hp ?? currentHp,
@@ -13536,16 +16068,31 @@ const App: React.FC = () => {
                     shieldMaxHp: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.shieldMaxHp,
                     protectionEndTime: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.protectionEndTime,
                     isDestroying: damageToBuilding > 0,
-                    destructionEndTime: damageToBuilding > 0 ? (localBaseEnd + totalTime * 1000) : undefined,
+                    destructionStartedAt: damageToBuilding > 0 ? localStartedAt : undefined,
+                    destructionEndTime: localExpiresAt,
+                    destructionExpiresAt: localExpiresAt,
+                    destructionDurationMs: localDurationMs,
+                    destructionMaxLifetimeMs: localDurationMs ? Math.max(localDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS) : undefined,
+                    destructionStatus: damageToBuilding > 0 ? 'active' : 'finished',
                     pendingDamage: (b.pendingDamage || 0) + damageToBuilding
                 };
             }));
         } else {
             setPlacedBuildings(prev => {
                 return prev.map(b => {
-                    if (b.x === selectedBuilding.building.x && b.y === selectedBuilding.building.y) {
+                    if (String(b.id) === buildingDocId) {
                         const currentHp = b.hp ?? selectedBuilding.info.stats.durability;
                         const maxHp = b.maxHp ?? selectedBuilding.info.stats.durability;
+                        const localNow = Date.now();
+                        const localDestructionExpiry = getEffectiveDestructionExpiresAt(b);
+                        const localStartedAt =
+                            b.destructionStartedAt &&
+                            localDestructionExpiry &&
+                            localDestructionExpiry > localNow
+                                ? b.destructionStartedAt
+                                : localNow;
+                        const localExpiresAt = damageToBuilding > 0 ? (localNow + totalTime * 1000) : undefined;
+                        const localDurationMs = localExpiresAt ? Math.max(1000, localExpiresAt - localStartedAt) : undefined;
 
                         return {
                             ...b,
@@ -13555,7 +16102,12 @@ const App: React.FC = () => {
                             shieldMaxHp: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.shieldMaxHp,
                             protectionEndTime: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.protectionEndTime,
                             isDestroying: damageToBuilding > 0,
-                            destructionEndTime: damageToBuilding > 0 ? (Date.now() + totalTime * 1000) : undefined,
+                            destructionStartedAt: damageToBuilding > 0 ? localStartedAt : undefined,
+                            destructionEndTime: localExpiresAt,
+                            destructionExpiresAt: localExpiresAt,
+                            destructionDurationMs: localDurationMs,
+                            destructionMaxLifetimeMs: localDurationMs ? Math.max(localDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS) : undefined,
+                            destructionStatus: damageToBuilding > 0 ? 'active' : 'finished',
                             pendingDamage: damageToBuilding
                         };
                     }
@@ -13576,7 +16128,7 @@ const App: React.FC = () => {
         if (speedUpInFlightRef.current.has(buildingDocId)) return;
 
         if (playerRubies < cost) {
-            alert("Недостаточно рубинов!");
+            openRubyWarningModal(cost);
             return;
         }
 
@@ -13588,7 +16140,7 @@ const App: React.FC = () => {
 
         // Optimistic update - immediate UI feedback
         setPlacedBuildings(prev => prev.map(b => {
-            if (b.id === buildingDocId) {
+            if (String(b.id) === buildingDocId) {
                 return {
                     ...b,
                     isConstructing: false,
@@ -13638,7 +16190,7 @@ const App: React.FC = () => {
         } else {
             // For non-authenticated users, just update local state (already done above)
             setPlacedBuildings(prev => prev.map(b => {
-                if (b.id === buildingDocId) {
+                if (String(b.id) === buildingDocId) {
                     return {
                         ...b,
                         isConstructing: false,
@@ -13776,7 +16328,7 @@ const App: React.FC = () => {
                             uid: user.uid,
                             name: playerName,
                             activeTab: activeChatTab,
-                            clanId: playerClanId,
+                            clanId: normalizeClanIdValue(playerClanId),
                             lastSeen: Date.now(),
                             x: worldCenter.x,
                             y: worldCenter.y,
@@ -13800,7 +16352,7 @@ const App: React.FC = () => {
 
     const handleSelectBuildingFromMenu = (building: Building) => {
         if (building.id === 6000 && playerLevel < 2) {
-            alert("Р вЂќР В»РЎРЏ Р С—Р С•РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘ Р вЂ™Р С•РЎР‚Р С•Р Р†РЎРѓР С”Р С•Р С–Р С• Р В»Р С•Р С–Р С•Р Р†Р В° РЎвЂљРЎР‚Р ВµР В±РЎС“Р ВµРЎвЂљРЎРѓРЎРЏ 2 РЎС“РЎР‚Р С•Р Р†Р ВµР Р…РЎРЉ Р В°Р С”Р С”Р В°РЎС“Р Р…РЎвЂљР В°.");
+            alert('Для постройки «Воровского логова» требуется 2 уровень аккаунта.');
             return;
         }
         setBuildMenu({ visible: false, x: 0, y: 0 });
@@ -13962,11 +16514,17 @@ const App: React.FC = () => {
 
             await Promise.all(
                 Array.from(toDelete).map((docId) =>
-                    deleteDoc(doc(db, 'buildings', docId)).catch((e) => {
-                        handleFirestoreError(e, OperationType.DELETE, `buildings/${docId}`);
-                    })
+                    {
+                        removeBuildingFromSnapshotCaches(docId);
+                        return deleteDoc(doc(db, 'buildings', docId)).catch((e) => {
+                            handleFirestoreError(e, OperationType.DELETE, `buildings/${docId}`);
+                        });
+                    }
                 )
             );
+
+            setPlacedBuildings(prev => prev.filter(b => !toDelete.has(String(b.id))));
+            setSelectedBuilding(prev => prev && toDelete.has(String(prev.building.id)) ? null : prev);
 
             console.log(`[GhostCleanup] Removed ${toDelete.size} ghost building(s) for user ${currentUser.uid}`);
         } catch (e) {
@@ -14074,14 +16632,17 @@ const App: React.FC = () => {
         }
 
         let messageText = chatInput;
-        const myCurse = user ? allUsersRef.current[user.uid]?.activeCurse : null;
+        const myCurse = playerActiveCurse;
         if (myCurse && Date.now() < myCurse.endTime) {
             messageText = `${myCurse.prefix} ${messageText}`;
         }
+        const senderName = myCurse && Date.now() < myCurse.endTime
+            ? `${myCurse.prefix} ${playerName}`
+            : playerName;
 
         const newMessage: ChatMessage = {
             id: Date.now(),
-            sender: playerName,
+            sender: senderName,
             senderId: user?.uid,
             text: messageText,
             type: type,
@@ -14119,14 +16680,17 @@ const App: React.FC = () => {
         addHistoryLog(`Использован крик. Расход: ${SHOUT_COST_GOLD} монет, ${SHOUT_COST_ENERGY} энергии.`, 'social');
 
         let messageText = chatInput;
-        const myCurse = user ? allUsersRef.current[user.uid]?.activeCurse : null;
+        const myCurse = playerActiveCurse;
         if (myCurse && Date.now() < myCurse.endTime) {
             messageText = `${myCurse.prefix} ${messageText}`;
         }
+        const senderName = myCurse && Date.now() < myCurse.endTime
+            ? `${myCurse.prefix} ${playerName}`
+            : playerName;
 
         const newMessage: ChatMessage = {
             id: Date.now(),
-            sender: playerName,
+            sender: senderName,
             text: messageText,
             type: 'shout',
             timestamp: Date.now(),
@@ -14143,6 +16707,10 @@ const App: React.FC = () => {
     };
 
     const handleSwitchChatTab = (newTab: ChatTab) => {
+        if (isBanned() && newTab !== 'banya' && newTab !== 'clan') {
+            setActiveChatTab('banya');
+            return;
+        }
         if (newTab === activeChatTab) return;
         setActiveChatTab(newTab);
         
@@ -14156,7 +16724,30 @@ const App: React.FC = () => {
                 lastSeen: Date.now(),
                 x: worldCenter.x,
                 y: worldCenter.y
-            }).catch((err) => console.warn('[Presence] Failed to update:', err));
+            }).catch(async () => {
+                try {
+                    await setDoc(presenceDocRef, {
+                        uid: user.uid,
+                        name: playerName,
+                        activeTab: newTab,
+                        clanId: normalizeClanIdValue(playerClanId),
+                        lastSeen: Date.now(),
+                        x: worldCenter.x,
+                        y: worldCenter.y,
+                        level: playerLevel,
+                        glory: playerGlory,
+                        reputation: playerReputation,
+                        avatar: playerAvatar,
+                        activeCurse: playerActiveCurse || null,
+                        treesChopped: playerLeaderboardStatsRef.current.treesChopped || 0,
+                        monstersDestroyed: playerLeaderboardStatsRef.current.monstersDestroyed || 0,
+                        buildingsDestroyed: playerLeaderboardStatsRef.current.buildingsDestroyed || 0,
+                        theftsCommitted: playerLeaderboardStatsRef.current.theftsCommitted || 0,
+                    });
+                } catch (err) {
+                    console.warn('[Presence] Failed to update:', err);
+                }
+            });
         }
     };
 
@@ -14263,6 +16854,21 @@ const App: React.FC = () => {
 
     const closeEnergyModal = useCallback(() => {
         setEnergyModalState(null);
+        playCloseSound();
+    }, []);
+
+    const openRubyWarningModal = useCallback((requiredRubies?: number) => {
+        setRubyModalState({ mode: 'warning', requiredRubies });
+        playOpenSound();
+    }, []);
+
+    const openRubyShopModal = useCallback(() => {
+        setRubyModalState({ mode: 'shop' });
+        playOpenSound();
+    }, []);
+
+    const closeRubyModal = useCallback(() => {
+        setRubyModalState(null);
         playCloseSound();
     }, []);
 
@@ -14426,7 +17032,7 @@ const App: React.FC = () => {
             handleFirestoreError(e, OperationType.GET, 'clans_by_leader');
         }
 
-        const hasBanditCastle = placedBuildings.some(b => b.buildingId === CLAN_CASTLE_ID && isMyBuilding(b) && !b.isConstructing);
+        const hasBanditCastle = placedBuildings.some(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing);
         if (!hasBanditCastle) {
             alert('Невозможно создать клан, пока не построен «Бандитский замок».');
             return;
@@ -14660,7 +17266,7 @@ const App: React.FC = () => {
                                     glory: data.glory || 0,
                                     reputation: data.reputation || 0,
                                     avatar: resolveUserAvatar(data),
-                                    clanId: data.clanId || null,
+                                    clanId: normalizeClanIdValue(data.clanId),
                                     rank: data.rank ?? 0,
                                     clanPermissions: data.clanPermissions || { canInvite: false, canGrantStars: false }
                                 }
@@ -14680,7 +17286,8 @@ const App: React.FC = () => {
 
 
     const gloryToNextLevel = getGloryForLevel(playerLevel);
-    const xpPercentage = playerLevel >= MAX_LEVEL ? 100 : (playerGlory / gloryToNextLevel) * 100;
+    const safePlayerGlory = Math.max(0, playerGlory);
+    const xpPercentage = playerLevel >= MAX_LEVEL ? 100 : (safePlayerGlory / gloryToNextLevel) * 100;
 
     const playerBuildingsCount = placedBuildings
         .filter(b => isMyBuilding(b) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)))
@@ -14690,22 +17297,65 @@ const App: React.FC = () => {
     const clanMembers = useMemo(() => {
         const activeClanId = currentClan?.id ?? playerClanId;
         if (!activeClanId) return [];
-        const members = Object.values(allUsers)
-            .filter((u: any) => u.clanId === activeClanId)
-            .map((u: any) => ({
-                    uid: u.uid || u.id,
-                    name: u.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
-                    level: u.level || 1,
-                    coinsEarned: u.coinsEarned || 0,
-                    xpEarned: u.xpEarned || 0,
-                    rank: currentClan && u.uid === currentClan.leaderUid ? 5 : (u.rank ?? 0),
-                    avatar: u.avatar || null,
-                    clanPermissions: currentClan && u.uid === currentClan.leaderUid
-                        ? { canInvite: true, canGrantStars: true }
-                        : (u.clanPermissions || { canInvite: false, canGrantStars: false })
-            }));
-        return members;
-    }, [allUsers, currentClan, playerClanId]);
+        const membersByUid = new Map<string, any>();
+
+        Object.values(allUsers).forEach((u: any) => {
+            const memberUid = String(u.uid || u.id || '');
+            if (!memberUid) return;
+            if (normalizeClanIdValue(u.clanId) !== Number(activeClanId)) return;
+            membersByUid.set(memberUid, {
+                uid: memberUid,
+                name: u.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
+                level: u.level || 1,
+                coinsEarned: u.coinsEarned || 0,
+                xpEarned: u.xpEarned || 0,
+                rank: currentClan && memberUid === currentClan.leaderUid ? 5 : (u.rank ?? 0),
+                avatar: u.avatar || null,
+                clanPermissions: currentClan && memberUid === currentClan.leaderUid
+                    ? { canInvite: true, canGrantStars: true }
+                    : (u.clanPermissions || { canInvite: false, canGrantStars: false })
+            });
+        });
+
+        if (currentClan?.leaderUid && !membersByUid.has(currentClan.leaderUid)) {
+            const leaderData = allUsers[currentClan.leaderUid] || {};
+            membersByUid.set(currentClan.leaderUid, {
+                uid: currentClan.leaderUid,
+                name: leaderData.name || currentClan.leaderName || 'Неизвестный',
+                level: leaderData.level || 1,
+                coinsEarned: leaderData.coinsEarned || 0,
+                xpEarned: leaderData.xpEarned || 0,
+                rank: 5,
+                avatar: leaderData.avatar || null,
+                clanPermissions: { canInvite: true, canGrantStars: true }
+            });
+        }
+
+        if (
+            user &&
+            normalizeClanIdValue(playerClanId) === Number(activeClanId) &&
+            !membersByUid.has(user.uid)
+        ) {
+            const selfData = allUsers[user.uid] || {};
+            membersByUid.set(user.uid, {
+                uid: user.uid,
+                name: selfData.name || playerName || 'Неизвестный',
+                level: selfData.level || playerLevel || 1,
+                coinsEarned: selfData.coinsEarned || 0,
+                xpEarned: selfData.xpEarned || 0,
+                rank: currentClan?.leaderUid === user.uid ? 5 : (selfData.rank ?? 0),
+                avatar: selfData.avatar || playerAvatar || null,
+                clanPermissions: currentClan?.leaderUid === user.uid
+                    ? { canInvite: true, canGrantStars: true }
+                    : (selfData.clanPermissions || { canInvite: false, canGrantStars: false })
+            });
+        }
+
+        return Array.from(membersByUid.values()).sort((a, b) => {
+            if (b.rank !== a.rank) return b.rank - a.rank;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+        });
+    }, [allUsers, currentClan, playerAvatar, playerClanId, playerLevel, playerName, user]);
 
     const openClanCatalog = useMemo(() => {
         return clans
@@ -14740,7 +17390,7 @@ const App: React.FC = () => {
         } else {
             setTaxRateDraft(null);
         }
-    }, [selectedBuilding]);
+    }, [selectedBuilding?.info.id, selectedBuilding?.building.id]);
 
     useEffect(() => {
         if (currentClan && playerClanId !== currentClan.id) {
@@ -14842,15 +17492,20 @@ const App: React.FC = () => {
     const biznesSortOrder: number[] = [2, 27, 11, 6000, 31532, 66, 8, 4, 340, 31612, 3, 12, 36, 310, 60, 308, 57, 311, 328];
 
     const normalizedActiveBuildTab = repairMojibakeCp1251Utf8(activeBuildTab);
+    const normalizedBuildMenuSearch = repairMojibakeCp1251Utf8(buildMenuSearch).trim().toLowerCase();
     const buildTabCategoryAliases: Record<string, string[]> = {
         'Жилье': ['Жилые'],
     };
     const buildingsInCurrentTab = buildingData.filter(b => {
+            if (TOWN_HALL_IDS.includes(Number(b.id))) return false;
+            if (b.buildable === false) return false;
+            if (normalizedBuildMenuSearch) {
+                const normalizedBuildingName = repairMojibakeCp1251Utf8(String(b.name || '')).toLowerCase();
+                return normalizedBuildingName.includes(normalizedBuildMenuSearch);
+            }
             const normalizedCategory = repairMojibakeCp1251Utf8(String(b.category || ''));
             const allowedCategories = buildTabCategoryAliases[normalizedActiveBuildTab] || [normalizedActiveBuildTab];
             if (!allowedCategories.includes(normalizedCategory)) return false;
-            if (TOWN_HALL_IDS.includes(Number(b.id))) return false;
-            if (b.buildable === false) return false;
             // Filter by letter sub-tab if in Letters category
             if (normalizedActiveBuildTab === 'Буквы') {
                 const letterSubCategory = (b as any).letterSubCategory;
@@ -14901,7 +17556,36 @@ const App: React.FC = () => {
             return 0;
         });
 
+    // Lazy-preload only the building cards for the currently opened build tab.
+    useEffect(() => {
+        if (!buildMenu.visible) return;
+
+        const currentTabImageUrls = buildingsInCurrentTab
+            .map(building => building.imageUrl)
+            .filter(Boolean) as string[];
+
+        enqueueImagePreload(currentTabImageUrls, { batchSize: 12 });
+    }, [buildMenu.visible, buildingsInCurrentTab, enqueueImagePreload]);
+
     const repairCost = selectedBuilding ? calculateRepairCost(selectedBuilding.building, selectedBuilding.info) : 0;
+    const selectedBuildingDestructionInfo = selectedBuilding
+        ? generateDestructionInfo({
+            ...selectedBuilding.info,
+            ...selectedBuilding.building,
+            stats: { ...selectedBuilding.info.stats }
+        })
+        : [];
+    const filteredBuyMarketListings = marketListings.filter((listing) => {
+        if (!matchesMarketType(listing, marketType)) return false;
+        if (marketType !== 'general') return true;
+        return matchesGeneralMarketBuyFilters(
+            listing.resourceId,
+            activeMarketBuySection,
+            activeMarketResourceSection,
+            activeMarketBedSection,
+            activeMarketMonsterSection
+        );
+    });
 
     const filteredMessages = chatHistory.filter(msg => {
         if (msg.tab === 'all') return true;
@@ -14911,6 +17595,13 @@ const App: React.FC = () => {
         }
         return msgTab === activeChatTab;
     });
+    const orderedChatMessages = [...filteredMessages]
+        .filter(msg => msg.text && String(msg.text).trim())
+        .sort((a, b) => {
+            const timeDiff = (b.timestamp || 0) - (a.timestamp || 0);
+            if (timeDiff !== 0) return timeDiff;
+            return Number(b.id) - Number(a.id);
+        });
 
     const topPlayersTabs: Array<{ id: TopPlayersTab; label: string; icon: string }> = [
         { id: 'glory', label: 'Слава', icon: '🏆' },
@@ -14920,19 +17611,102 @@ const App: React.FC = () => {
         { id: 'theft', label: 'Воровство', icon: '🥷' },
     ];
 
-    const visibleTopPlayersData = mergeTopPlayersEntries(
-        topPlayersData,
-        Object.entries(allUsers).map(([uid, data]) => toTopPlayerEntry(uid, data)),
-        onlinePlayersData.map((player) => toTopPlayerEntry(player.uid, player)),
-        user ? [toTopPlayerEntry(user.uid, {
-            ...(allUsers[user.uid] || {}),
-            uid: user.uid,
-            name: playerName,
-            avatar: playerAvatar,
-            glory: playerGlory,
-            ...playerLeaderboardStats,
-        })] : [],
-    );
+    const resourceShopTabs: Array<{ id: ResourceShopCategory; label: string }> = [
+        { id: 'resources', label: 'Ресурсы' },
+        { id: 'gryadki', label: 'Грядки' },
+        { id: 'bombs', label: 'Бомбы' },
+        { id: 'monsters', label: 'Монстры' },
+    ];
+
+    const monsterShopItemIds = new Set<number>([10007, 10018]);
+    const bombShopItemIds = new Set<number>([10010, 10011, 10012, 10013, 10015, 10016, 10017, 10043, 10045]);
+    const gryadkiShopItemIds = new Set<number>([10003, 10004, 10021, 10024, 10027, 10030]);
+    const hiddenDuplicateResourceShopItemIds = new Set<number>([10042, 10044]);
+
+    const filteredResourceShopItems = itemData.filter((item) => {
+        if (!item.rubyPackQuantity) return false;
+
+        if (activeResourceShopCategory === 'monsters') {
+            return monsterShopItemIds.has(item.id);
+        }
+
+        if (activeResourceShopCategory === 'bombs') {
+            return bombShopItemIds.has(item.id);
+        }
+
+        if (activeResourceShopCategory === 'gryadki') {
+            return gryadkiShopItemIds.has(item.id);
+        }
+
+        return !monsterShopItemIds.has(item.id)
+            && !bombShopItemIds.has(item.id)
+            && !gryadkiShopItemIds.has(item.id)
+            && !hiddenDuplicateResourceShopItemIds.has(item.id);
+    });
+
+    const formatLastSeenDateTime = (timestamp: number) => {
+        const date = new Date(timestamp);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${day}.${month}.${year} ${hours}:${minutes}`;
+    };
+
+    const getPlayerStatusMeta = (targetUid: string | null) => {
+        if (!targetUid) {
+            return {
+                isOnline: false,
+                label: 'Статус неизвестен',
+                textClassName: 'text-gray-400',
+                dotClassName: 'bg-gray-500'
+            };
+        }
+
+        const profileData = allUsers[targetUid];
+        const onlinePresence = onlinePlayersData.find(player => player.uid === targetUid);
+        const lastSeen = Number(onlinePresence?.lastSeen || profileData?.lastSeen || 0) || 0;
+        const isCurrentPlayer = targetUid === user?.uid;
+        const isOnline = isCurrentPlayer || !!onlinePresence || (lastSeen > 0 && (currentTime - lastSeen) < 120000);
+
+        if (isOnline) {
+            return {
+                isOnline: true,
+                label: 'В сети',
+                textClassName: 'text-green-400',
+                dotClassName: 'bg-green-400'
+            };
+        }
+
+        if (lastSeen <= 0) {
+            return {
+                isOnline: false,
+                label: 'Не в сети',
+                textClassName: 'text-gray-400',
+                dotClassName: 'bg-gray-500'
+            };
+        }
+
+        const diffMs = Math.max(0, currentTime - lastSeen);
+        const diffMinutes = Math.max(1, Math.floor(diffMs / 60000));
+
+        if (diffMs < 24 * 60 * 60 * 1000) {
+            return {
+                isOnline: false,
+                label: `${diffMinutes} мин. назад`,
+                textClassName: 'text-amber-300',
+                dotClassName: 'bg-gray-500'
+            };
+        }
+
+        return {
+            isOnline: false,
+            label: formatLastSeenDateTime(lastSeen),
+            textClassName: 'text-gray-300',
+            dotClassName: 'bg-gray-500'
+        };
+    };
 
     const getTopPlayerValue = (playerData: any, tab: TopPlayersTab) => {
         const currentUserStats = user?.uid ? playerLeaderboardStats : getUserStatCounters(null);
@@ -14950,6 +17724,60 @@ const App: React.FC = () => {
         buildings: 'Топ по взрыву зданий',
         theft: 'Топ по воровству',
     };
+
+    const baseTopPlayersData = mergeTopPlayersEntries(
+        topPlayersData.map((entry) => {
+            const supplemental = allUsers[entry.uid] || {};
+            return toTopPlayerEntry(entry.uid, {
+                ...supplemental,
+                ...entry,
+                name: entry.name || supplemental.name || 'Неизвестный',
+                avatar: entry.avatar || supplemental.avatar || null,
+                glory: Math.max(Number(entry.glory || 0) || 0, Number(supplemental.glory || 0) || 0),
+                treesChopped: Math.max(Number(entry.treesChopped || 0) || 0, Number(supplemental.treesChopped || 0) || 0),
+                monstersDestroyed: Math.max(Number(entry.monstersDestroyed || 0) || 0, Number(supplemental.monstersDestroyed || 0) || 0),
+                buildingsDestroyed: Math.max(Number(entry.buildingsDestroyed || 0) || 0, Number(supplemental.buildingsDestroyed || 0) || 0),
+                theftsCommitted: Math.max(Number(entry.theftsCommitted || 0) || 0, Number(supplemental.theftsCommitted || 0) || 0),
+            });
+        }),
+    );
+    const hasLeaderboardResult = !leaderboardLoading && !leaderboardError;
+    const currentPlayerLeaderboardValue = !user
+        ? 0
+        : activeTopPlayersTab === 'glory'
+        ? (playerGlory || 0)
+        : activeTopPlayersTab === 'trees'
+        ? (playerLeaderboardStats.treesChopped || 0)
+        : activeTopPlayersTab === 'monsters'
+        ? (playerLeaderboardStats.monstersDestroyed || 0)
+        : activeTopPlayersTab === 'buildings'
+        ? (playerLeaderboardStats.buildingsDestroyed || 0)
+        : (playerLeaderboardStats.theftsCommitted || 0);
+    const shouldAppendCurrentPlayerToLeaderboard = Boolean(
+        user &&
+        hasLeaderboardResult &&
+        currentPlayerLeaderboardValue > 0 &&
+        !baseTopPlayersData.some((entry) => entry.uid === user.uid)
+    );
+    const visibleTopPlayersData = shouldAppendCurrentPlayerToLeaderboard && user
+        ? mergeTopPlayersEntries(
+            baseTopPlayersData,
+            [toTopPlayerEntry(user.uid, {
+                ...(allUsers[user.uid] || {}),
+                uid: user.uid,
+                name: playerName,
+                avatar: playerAvatar,
+                glory: playerGlory,
+                ...playerLeaderboardStats,
+            })],
+        )
+        : baseTopPlayersData;
+    const filteredTopPlayersData = visibleTopPlayersData
+        .filter((u: any) => u.name);
+    const displayedTopPlayersData = filteredTopPlayersData
+        .sort((a: any, b: any) => getTopPlayerValue(b, activeTopPlayersTab) - getTopPlayerValue(a, activeTopPlayersTab))
+        .slice(0, TOP_PLAYERS_QUERY_LIMIT);
+    const hasTopPlayersData = displayedTopPlayersData.length > 0;
 
     // Auto-scroll completely disabled per user request
     // Users scroll chat manually, no forced scrolling
@@ -14979,7 +17807,7 @@ const App: React.FC = () => {
 
             // Delete some resources (this is slow but helps)
             const resources = await getDocs(query(collection(db, 'map_resources'), limit(500)));
-            const deletePromises = resources.docs.map(d => deleteDoc(d.ref));
+            const deletePromises = resources.docs.map(d => deleteDoc(doc(db, 'map_resources', String(d.id))));
             await Promise.all(deletePromises);
 
             window.location.reload();
@@ -15014,10 +17842,33 @@ const App: React.FC = () => {
         return Object.values(chats).sort((a, b) => b.lastMessage.timestamp - a.lastMessage.timestamp);
     }, [privateMessages, user]);
 
+    const currentMusicSrc = !isLoadingScreen
+        ? MUSIC_TRACKS[Math.max(1, Math.min(currentTrackIndex || 1, MUSIC_TRACKS.length - 1))]
+        : undefined;
+
+    useEffect(() => {
+        if (loadingReady) {
+            logStartupStep('loading_ready');
+        }
+    }, [loadingReady, logStartupStep]);
+
+    useEffect(() => {
+        if (!isLoadingScreen) {
+            logStartupStep('loading_screen_dismissed');
+        }
+    }, [isLoadingScreen, logStartupStep]);
+
     useEffect(() => {
         if (!audioRef.current) return;
 
         audioRef.current.volume = musicVolume;
+
+        if (!currentMusicSrc) {
+            audioRef.current.pause();
+            audioRef.current.removeAttribute('src');
+            audioRef.current.load();
+            return;
+        }
 
         const tryPlay = () => {
             if (musicEnabled && audioRef.current && audioRef.current.paused) {
@@ -15043,7 +17894,7 @@ const App: React.FC = () => {
             window.removeEventListener('keydown', tryPlay);
             window.removeEventListener('touchstart', tryPlay);
         };
-    }, [musicEnabled, musicVolume, currentTrackIndex]);
+    }, [currentMusicSrc, musicEnabled, musicVolume, currentTrackIndex]);
 
     const handleTrackEnd = () => {
         setCurrentTrackIndex(prevIndex => {
@@ -15088,6 +17939,11 @@ const App: React.FC = () => {
                 // Only set ready if critical data has also loaded (loadPhase >= 1)
                 if (loadPhaseRef.current >= 1) {
                     setLoadingReady(true);
+                } else {
+                    logStartupStep('loading_waiting_for_critical_snapshot', {
+                        loadPhase: loadPhaseRef.current,
+                        elapsedMs: Date.now() - loadStartTime.current,
+                    });
                 }
             }, 15000); // 15 seconds maximum loading time
         }
@@ -15096,53 +17952,154 @@ const App: React.FC = () => {
             clearInterval(interval);
             if (timeout) clearTimeout(timeout);
         };
-    }, [user]);
+    }, [user, logStartupStep]);
 
-    const handleBuyBuildingPermit = async () => {
+    const handleBuyBuildingPermit = async (incomingTraceId?: string) => {
         const permitPriceRubies = 1;
+        const traceId = incomingTraceId || `permit-${Date.now()}`;
 
         if (isBuyingBuildingPermit) return;
 
         if (playerRubies < permitPriceRubies) {
-            alert('Недостаточно рубинов! Требуется: 1');
+            openRubyWarningModal(permitPriceRubies);
             return;
         }
 
+        if (RUNTIME_AUDIT_ENABLED) {
+            recordRuntimeTraceStage('permit', traceId, 'handleBuyBuildingPermit entered', {
+                rubies: playerRubies,
+                extraBuildingPermits,
+            });
+        }
         setIsBuyingBuildingPermit(true);
         try {
             if (user) {
                 const userRef = doc(db, 'users', user.uid);
+                const confirmedPermitsBeforePurchase = Math.max(
+                    0,
+                    Number(extraBuildingPermitsRef.current) || 0,
+                    Number(extraBuildingPermits) || 0
+                );
+                const confirmedRubiesBeforePurchase = Math.max(
+                    0,
+                    Number(playerRubiesRef.current) || 0,
+                    Number(playerRubies) || 0
+                );
+                if (startupDebugConsoleEnabled) {
+                    console.log('[BuildingPermit Purchase Start]', {
+                        rubiesBefore: confirmedRubiesBeforePurchase,
+                        confirmedPermitsBeforePurchase,
+                        serverPermits: Number(extraBuildingPermitsRef.current) || 0,
+                        cachedPermits: Math.max(0, Number(localStorage.getItem(getPermitCacheKey(user.uid))) || 0),
+                    });
+                }
+                setRuntimeAuditContext({ kind: 'permit', traceId });
+                if (RUNTIME_AUDIT_ENABLED) {
+                    recordRuntimeTraceStage('permit', traceId, 'runTransaction start', {
+                        confirmedRubiesBeforePurchase,
+                        confirmedPermitsBeforePurchase,
+                    });
+                }
                 const purchaseResult = await runTransaction(db, async (transaction) => {
+                    if (RUNTIME_AUDIT_ENABLED) {
+                        recordRuntimeTraceStage('permit', traceId, 'getDoc start', {
+                            collection: 'users',
+                            id: user.uid,
+                        });
+                    }
                     const userSnap = await transaction.get(userRef);
+                    if (RUNTIME_AUDIT_ENABLED) {
+                        recordRuntimeTraceStage('permit', traceId, 'getDoc end', {
+                            collection: 'users',
+                            id: user.uid,
+                            exists: userSnap.exists(),
+                        });
+                    }
                     if (!userSnap.exists()) throw new Error('User not found');
                     const data = userSnap.data();
-                    const currentRubies = Number(data.rubies) || 0;
-                    const currentExtraPermits = Math.max(0, Number(data.extraBuildingPermits ?? data.data?.extraBuildingPermits) || 0);
+                    const currentRubies = Math.min(
+                        Number(data.rubies) || 0,
+                        confirmedRubiesBeforePurchase
+                    );
+                    const currentExtraPermits = Math.max(
+                        0,
+                        Number(data.extraBuildingPermits ?? data.data?.extraBuildingPermits) || 0,
+                        confirmedPermitsBeforePurchase
+                    );
                     if (currentRubies < permitPriceRubies) throw new Error('Insufficient rubies');
 
                     const nextRubies = currentRubies - permitPriceRubies;
                     const nextExtraPermits = currentExtraPermits + 1;
+                    if (RUNTIME_AUDIT_ENABLED) {
+                        recordRuntimeTraceStage('permit', traceId, 'updateDoc start', {
+                            collection: 'users',
+                            id: user.uid,
+                            nextRubies,
+                            nextExtraPermits,
+                        });
+                    }
                     transaction.update(userRef, {
                         rubies: nextRubies,
                         extraBuildingPermits: nextExtraPermits
                     });
+                    if (RUNTIME_AUDIT_ENABLED) {
+                        recordRuntimeTraceStage('permit', traceId, 'updateDoc queued', {
+                            collection: 'users',
+                            id: user.uid,
+                        });
+                    }
                     return {
                         rubies: nextRubies,
                         extraBuildingPermits: nextExtraPermits
                     };
                 });
+                setRuntimeAuditContext(null);
+                if (RUNTIME_AUDIT_ENABLED) {
+                    recordRuntimeTraceStage('permit', traceId, 'runTransaction end', {
+                        rubiesAfter: purchaseResult.rubies,
+                        extraBuildingPermits: purchaseResult.extraBuildingPermits,
+                    });
+                }
                 playerRubiesRef.current = Math.max(0, purchaseResult.rubies);
-                extraBuildingPermitsRef.current = Math.max(0, purchaseResult.extraBuildingPermits);
+                extraBuildingPermitsRef.current = Math.max(
+                    confirmedPermitsBeforePurchase + 1,
+                    Math.max(0, purchaseResult.extraBuildingPermits)
+                );
+                if (RUNTIME_AUDIT_ENABLED) {
+                    recordRuntimeTraceStage('permit', traceId, 'local state update', {
+                        rubiesAfter: Math.max(0, purchaseResult.rubies),
+                        extraBuildingPermits: extraBuildingPermitsRef.current,
+                    });
+                }
                 setPlayerRubies(Math.max(0, purchaseResult.rubies));
-                setExtraBuildingPermits(Math.max(0, purchaseResult.extraBuildingPermits));
-                writeCachedExtraBuildingPermits(user.uid, purchaseResult.extraBuildingPermits);
+                setExtraBuildingPermits(extraBuildingPermitsRef.current);
+                writeCachedExtraBuildingPermits(user.uid, extraBuildingPermitsRef.current);
+                if (startupDebugConsoleEnabled) {
+                    console.log('[BuildingPermit Purchase Saved]', {
+                        rubiesAfter: Math.max(0, purchaseResult.rubies),
+                        permitsBefore: confirmedPermitsBeforePurchase,
+                        permitsAfter: extraBuildingPermitsRef.current,
+                    });
+                }
             } else {
                 playerRubiesRef.current = Math.max(0, playerRubiesRef.current - permitPriceRubies);
                 extraBuildingPermitsRef.current = Math.max(0, extraBuildingPermitsRef.current + 1);
+                if (RUNTIME_AUDIT_ENABLED) {
+                    recordRuntimeTraceStage('permit', traceId, 'local state update', {
+                        rubiesAfter: playerRubiesRef.current,
+                        extraBuildingPermits: extraBuildingPermitsRef.current,
+                        guestMode: true,
+                    });
+                }
                 setPlayerRubies(prev => Math.max(0, prev - permitPriceRubies));
                 setExtraBuildingPermits(prev => prev + 1);
             }
 
+            if (RUNTIME_AUDIT_ENABLED) {
+                recordRuntimeTraceStage('permit', traceId, 'modal close', {
+                    extraBuildingPermits: extraBuildingPermitsRef.current,
+                });
+            }
             setBuildingLimitModalData(null);
             setPermitPurchaseToast('-1 рубин, +1 место для строительства');
             if (permitPurchaseToastTimerRef.current !== null) {
@@ -15155,18 +18112,22 @@ const App: React.FC = () => {
             addHistoryLog('Куплено дополнительное разрешение на строительство за 1 рубин.', 'economy');
         } catch (e: any) {
             if (e?.message === 'Insufficient rubies') {
-                alert('Недостаточно рубинов! Требуется: 1');
+                openRubyWarningModal(permitPriceRubies);
             } else {
+                if (startupDebugConsoleEnabled) {
+                    console.warn('[BuildingPermit Purchase Failed]', { error: String(e?.message || e) });
+                }
                 handleFirestoreError(e, OperationType.UPDATE, user ? `users/${user.uid}` : null);
             }
         } finally {
+            setRuntimeAuditContext(null);
             setIsBuyingBuildingPermit(false);
         }
     };
 
     const handleBuyEnergyPack = async (amount: number, rubiesCost: number) => {
         if (playerRubies < rubiesCost) {
-            alert(`Недостаточно рубинов! Требуется: ${rubiesCost}`);
+            openRubyWarningModal(rubiesCost);
             return;
         }
 
@@ -15202,7 +18163,7 @@ const App: React.FC = () => {
             setEnergyModalState(null);
         } catch (e: any) {
             if (e?.message === 'Insufficient rubies') {
-                alert(`Недостаточно рубинов! Требуется: ${rubiesCost}`);
+                openRubyWarningModal(rubiesCost);
             } else {
                 handleFirestoreError(e, OperationType.UPDATE, user ? `users/${user.uid}` : null);
             }
@@ -15233,10 +18194,57 @@ const App: React.FC = () => {
             )}
             <audio
                 ref={audioRef}
-                src={isLoadingScreen ? MUSIC_TRACKS[0] : MUSIC_TRACKS[currentTrackIndex]}
+                src={currentMusicSrc}
                 onEnded={handleTrackEnd}
                 autoPlay={musicEnabled}
             />
+
+            <div className="fixed top-2 right-2 z-[9999]">
+                <button
+                    type="button"
+                    onClick={() => setZoneGateDebugOpen(prev => !prev)}
+                    className="pointer-events-auto rounded-md border border-sky-400/40 bg-slate-950/85 px-3 py-1 text-[11px] font-semibold text-sky-100 shadow-lg"
+                    title="ZoneGateDebug (Shift+G)"
+                >
+                    {zoneGateDebugOpen ? 'Hide Zone Debug' : 'Show Zone Debug'}
+                </button>
+                {zoneGateDebugOpen && zoneGateDebug && (
+                    <div
+                        className="pointer-events-none mt-2"
+                        style={{
+                            width: '340px',
+                            background: 'rgba(5, 10, 18, 0.9)',
+                            color: '#dbeafe',
+                            border: '1px solid rgba(96,165,250,0.35)',
+                            borderRadius: '10px',
+                            padding: '10px 12px',
+                            fontFamily: 'Consolas, monospace',
+                            fontSize: '11px',
+                            lineHeight: 1.45,
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
+                            whiteSpace: 'pre-wrap'
+                        }}
+                    >
+                        {[
+                            `zone.center=${zoneGateDebug.centerZoneId}`,
+                            `zone.ring=${zoneGateDebug.zoneLoadRing}`,
+                            `zone.hovered=${zoneGateDebug.hoveredZoneId} tile=${zoneGateDebug.hoveredTile}`,
+                            `zone.inCurrent=${zoneGateDebug.hoveredZoneInCurrentZones}`,
+                            `placement=${zoneGateDebug.placementStatus}`,
+                            `buildings=${zoneGateDebug.buildingsStatus}`,
+                            `resources=${zoneGateDebug.resourcesStatus}`,
+                            `flags=${zoneGateDebug.hoveredZoneStatusFlags}`,
+                            `timing=${zoneGateDebug.hoveredZoneTiming}`,
+                            `requests=${zoneGateDebug.activeRequests}`,
+                            `droppedItems=${zoneGateDebug.droppedItemsStatus}`,
+                            `collision=${zoneGateDebug.collisionStatus}`,
+                            `blocker=${zoneGateDebug.blocker}`,
+                            `currentZones=${zoneGateDebug.currentZones.join(' | ') || 'none'}`,
+                            `buildingZones=${zoneGateDebug.currentBuildingZones.join(' | ') || 'none'}`,
+                        ].join('\n')}
+                    </div>
+                )}
+            </div>
 
             {/* ... (MoveMode, OilModal, QuarryModal, UserContextModal, BuildingContextModal, MarketModal, BuildMenu, BuildConfirmation, InventoryModal, ShopModal, ExchangeModal, MapModal, ShoutModal unchanged) ... */}
 
@@ -15253,7 +18261,7 @@ const App: React.FC = () => {
             {selectedOilDeposit && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setSelectedOilDeposit(null)}>
                     <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="text-2xl font-bold text-white mb-4">Р СљР ВµРЎРѓРЎвЂљР С•РЎР‚Р С•Р В¶Р Т‘Р ВµР Р…Р С‘Р Вµ Р Р…Р ВµРЎвЂћРЎвЂљР С‘</h2>
+                        <h2 className="text-2xl font-bold text-white mb-4">Месторождение нефти</h2>
                         <button onClick={() => setSelectedOilDeposit(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
                             <CloseIcon className="w-7 h-7" />
                         </button>
@@ -15358,7 +18366,7 @@ const App: React.FC = () => {
                                     </div>
                                 )}
 
-                                {selectedBuilding.info.stats.workTimeSeconds && selectedBuilding.info.category !== 'Защита' && isMyBuilding(selectedBuilding.building) && !selectedBuilding.building.isConstructing && (
+                                {selectedBuilding.info.stats.workTimeSeconds && selectedBuilding.info.category !== 'Защита' && !isBanditCastleBuildingId(selectedBuilding.info.id) && isMyBuilding(selectedBuilding.building) && !selectedBuilding.building.isConstructing && (
                                     <div className="bg-gray-900/50 p-4 rounded-lg border border-blue-500/30 mb-4">
                                         <h3 className="text-lg font-bold text-blue-300 mb-2">Производство</h3>
 
@@ -15385,7 +18393,7 @@ const App: React.FC = () => {
                                                                 const has = (inventory[req.id] || 0) >= (req.amount || 0);
                                                                 return (
                                                                     <div key={req.id} className={`px-2 py-1 rounded text-sm flex items-center ${has ? 'text-green-400 bg-green-900/30' : 'text-red-400 bg-red-900/30'}`}>
-                                                                        <span>{req.name}: {req.amount}</span>
+                                                                        <span>{getCanonicalItemName(req.id, req.name, selectedBuilding.building.id)}: {req.amount}</span>
                                                                     </div>
                                                                 );
                                                             })}
@@ -15433,12 +18441,18 @@ const App: React.FC = () => {
                                                 min="0"
                                                 max="50"
                                                 value={taxRateDraft ?? (selectedBuilding.building.taxRate || 0)}
-                                                onChange={(e) => setTaxRateDraft(parseInt(e.target.value))}
-                                                onMouseUp={() => {
-                                                    if (taxRateDraft !== null) handleSetTax(taxRateDraft);
+                                                onChange={(e) => setTaxRateDraft(parseInt(e.target.value, 10))}
+                                                onMouseUp={(e) => {
+                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
+                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
                                                 }}
-                                                onTouchEnd={() => {
-                                                    if (taxRateDraft !== null) handleSetTax(taxRateDraft);
+                                                onTouchEnd={(e) => {
+                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
+                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
+                                                }}
+                                                onKeyUp={(e) => {
+                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
+                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
                                                 }}
                                                 className="w-full"
                                             />
@@ -15448,7 +18462,7 @@ const App: React.FC = () => {
                                 )}
 
                                 {/* Clan Castle Bank */}
-                                {selectedBuilding.info.id === CLAN_CASTLE_ID && isMyBuilding(selectedBuilding.building) && (
+                                {BANDIT_CASTLE_IDS.has(Number(selectedBuilding.info.id)) && isMyBuilding(selectedBuilding.building) && (
                                     <div className="bg-gray-900/50 p-4 rounded-lg border border-yellow-500/30 mb-4 text-center">
                                         <h3 className="text-lg font-bold text-yellow-400 mb-2">Банк клана</h3>
                                         <p className="text-sm text-gray-400 mb-3">Накопленная прибыль с налога.</p>
@@ -15493,7 +18507,7 @@ const App: React.FC = () => {
                                         })()
                                     )}
                                     {selectedBuilding.info.stats.populationBonus && <p>Дает населения: <span className="font-bold text-white">{selectedBuilding.info.stats.populationBonus}</span></p>}
-                                    {selectedBuilding.info.stats.givesCoins && <p>Дает монет: <span className="font-bold text-white">{selectedBuilding.info.stats.givesCoins}</span></p>}
+                                    {selectedBuilding.info.stats.givesCoins && !isBanditCastleBuildingId(selectedBuilding.info.id) && <p>Дает монет: <span className="font-bold text-white">{selectedBuilding.info.stats.givesCoins}</span></p>}
                                     {selectedBuilding.info.stats.increasesGoldCapacity && (
                                         <p className="flex items-center">
                                             Хранит:
@@ -15617,7 +18631,7 @@ const App: React.FC = () => {
                                             <span>{selectedBuilding.building.isActive ? 'Активировано' : 'Активировать'}</span>
                                         </button>
                                     )}
-                                    {selectedBuilding.info.id === MARKET_ID && isMyBuilding(selectedBuilding.building) && (
+                                    {isGeneralMarketBuilding(selectedBuilding.info) && isMyBuilding(selectedBuilding.building) && (
                                         <button
                                             onClick={() => { setMarketType('general'); setShowMarketModal(true); }}
                                             className="col-span-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2"
@@ -15627,7 +18641,7 @@ const App: React.FC = () => {
                                         </button>
                                     )}
 
-                                    {selectedBuilding.info.id === MILITARY_MARKET_ID && isMyBuilding(selectedBuilding.building) && (
+                                    {isMilitaryMarketBuilding(selectedBuilding.info) && isMyBuilding(selectedBuilding.building) && (
                                         <button
                                             onClick={() => { setMarketType('military'); setShowMarketModal(true); }}
                                             className="col-span-3 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 border border-red-500"
@@ -15637,9 +18651,9 @@ const App: React.FC = () => {
                                         </button>
                                     )}
 
-                                    {(isMyBuilding(selectedBuilding.building) || Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) && (
+                                    {(canRepairBuilding(selectedBuilding.building) || isMyBuilding(selectedBuilding.building) || Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) && (
                                         <>
-                                            {repairCost > 0 && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID ? (
+                                            {canRepairBuilding(selectedBuilding.building) && repairCost > 0 && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID ? (
                                                 <button
                                                     onClick={handleRepair}
                                                     disabled={playerGold < repairCost}
@@ -15649,14 +18663,14 @@ const App: React.FC = () => {
                                                     <RepairIcon className="w-4 h-4 mb-1" />
                                                     <span>{repairCost}</span>
                                                 </button>
-                                            ) : Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
+                                            ) : canRepairBuilding(selectedBuilding.building) && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
                                                 <button disabled className="bg-gray-700 text-gray-500 font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 cursor-not-allowed">
                                                     <RepairIcon className="w-4 h-4 mb-1" />
                                                     <span>Починить</span>
                                                 </button>
                                             )}
 
-                                            {Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
+                                            {isMyBuilding(selectedBuilding.building) && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
                                                 <button
                                                     onClick={() => setShowProtectionMenu(true)}
                                                     className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
@@ -15666,16 +18680,18 @@ const App: React.FC = () => {
                                                 </button>
                                             )}
 
-                                            <button
-                                                onClick={handleMoveClick}
-                                                className={`${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:grayscale disabled:cursor-not-allowed`}
-                                                title={`Переместить за ${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии`}
-                                            >
-                                                <MoveIcon className="w-4 h-4 mb-1" />
-                                                <span>Переместить</span>
-                                            </button>
+                                            {isMyBuilding(selectedBuilding.building) && (
+                                                <button
+                                                    onClick={handleMoveClick}
+                                                    className={`${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:grayscale disabled:cursor-not-allowed`}
+                                                    title={`Переместить за ${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии`}
+                                                >
+                                                    <MoveIcon className="w-4 h-4 mb-1" />
+                                                    <span>Переместить</span>
+                                                </button>
+                                            )}
 
-                                            {Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
+                                            {isMyBuilding(selectedBuilding.building) && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
                                                 <button
                                                     onClick={handleSell}
                                                     className="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
@@ -15736,8 +18752,8 @@ const App: React.FC = () => {
                                 </button>
                                 <h3 className="text-lg font-bold text-white mb-3">Чем взрываем?</h3>
                                 <div className="space-y-3 max-h-60 overflow-y-auto">
-                                    {selectedBuilding.info.destructionInfo && selectedBuilding.info.destructionInfo.length > 0 ? (
-                                        selectedBuilding.info.destructionInfo.map((option, idx) => {
+                                    {selectedBuildingDestructionInfo.length > 0 ? (
+                                        selectedBuildingDestructionInfo.map((option, idx) => {
                                             const item = itemData.find(i => i.id === option.resourceId);
                                             const invCount = inventory[option.resourceId] || 0;
                                             const isSelected = selectedExplosionOption === idx;
@@ -15797,8 +18813,8 @@ const App: React.FC = () => {
                                     )}
                                 </div>
                                 {/* Detonator checkboxes + Explode button */}
-                                {selectedBuilding.info.destructionInfo && selectedBuilding.info.destructionInfo.length > 0 && (() => {
-                                    const selOption = selectedExplosionOption !== null ? selectedBuilding.info.destructionInfo[selectedExplosionOption] : null;
+                                {selectedBuildingDestructionInfo.length > 0 && (() => {
+                                    const selOption = selectedExplosionOption !== null ? selectedBuildingDestructionInfo[selectedExplosionOption] : null;
                                     const hasItems = selOption !== null && (inventory[selOption.resourceId] || 0) >= explosionQuantity;
                                     const hasGold = selOption !== null && playerGold >= selOption.goldCost * explosionQuantity;
                                     const hasEnergy = selOption !== null && playerEnergy >= selOption.energyCost * explosionQuantity;
@@ -15905,7 +18921,7 @@ const App: React.FC = () => {
                         <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700">
                             <h2 className="text-2xl font-bold text-white flex items-center">
                                 <TradeIcon className={`w-8 h-8 mr-3 ${marketType === 'military' ? 'text-red-500' : 'text-green-400'}`} />
-                                {marketType === 'military' ? 'Р вЂ™Р С•Р ВµР Р…Р Р…РЎвЂ№Р в„– РЎР‚РЎвЂ№Р Р…Р С•Р С”' : 'Р В РЎвЂ№Р Р…Р С•Р С”'}
+                                {marketType === 'military' ? 'Военный рынок' : 'Рынок'}
                             </h2>
                             <button onClick={() => setShowMarketModal(false)} className="text-gray-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-8 h-8" />
@@ -15917,25 +18933,96 @@ const App: React.FC = () => {
                                 onClick={() => setActiveMarketTab('buy')}
                                 className={`px-4 py-2 font-bold rounded-t-lg transition-colors ${activeMarketTab === 'buy' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
                             >
-                                Р СџР С•Р С”РЎС“Р С—Р С”Р В°
+                                Покупка
                             </button>
                             <button
                                 onClick={() => setActiveMarketTab('sell')}
                                 className={`px-4 py-2 font-bold rounded-t-lg transition-colors ${activeMarketTab === 'sell' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
                             >
-                                Р СџРЎР‚Р С•Р Т‘Р В°Р В¶Р В°
+                                Продажа
                             </button>
                         </div>
 
                         <div className="flex-grow overflow-hidden flex flex-col">
                             {activeMarketTab === 'buy' ? (
                                 <div className="overflow-y-auto h-full p-2">
+                                    {marketType === 'general' && (
+                                        <div className="mb-4 space-y-3">
+                                            <div className="flex flex-wrap gap-2">
+                                                {(Object.entries(MARKET_BUY_SECTION_LABELS) as [MarketBuySection, string][]).map(([section, label]) => (
+                                                    <button
+                                                        key={section}
+                                                        onClick={() => {
+                                                            setActiveMarketBuySection(section);
+                                                            if (section === 'resources') setActiveMarketResourceSection('wood');
+                                                            if (section === 'beds') setActiveMarketBedSection('mushroom');
+                                                            if (section === 'monsters') setActiveMarketMonsterSection('hut');
+                                                        }}
+                                                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                                            activeMarketBuySection === section
+                                                                ? 'bg-blue-600 text-white'
+                                                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                        }`}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-2">
+                                                {activeMarketBuySection === 'resources' &&
+                                                    (Object.entries(MARKET_RESOURCE_SECTION_LABELS) as [MarketResourceSection, string][]).map(([section, label]) => (
+                                                        <button
+                                                            key={section}
+                                                            onClick={() => setActiveMarketResourceSection(section)}
+                                                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                                activeMarketResourceSection === section
+                                                                    ? 'bg-green-600 text-white'
+                                                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                            }`}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    ))}
+
+                                                {activeMarketBuySection === 'beds' &&
+                                                    (Object.entries(MARKET_BED_SECTION_LABELS) as [MarketBedSection, string][]).map(([section, label]) => (
+                                                        <button
+                                                            key={section}
+                                                            onClick={() => setActiveMarketBedSection(section)}
+                                                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                                activeMarketBedSection === section
+                                                                    ? 'bg-green-600 text-white'
+                                                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                            }`}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    ))}
+
+                                                {activeMarketBuySection === 'monsters' &&
+                                                    (Object.entries(MARKET_MONSTER_SECTION_LABELS) as [MarketMonsterSection, string][]).map(([section, label]) => (
+                                                        <button
+                                                            key={section}
+                                                            onClick={() => setActiveMarketMonsterSection(section)}
+                                                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                                                activeMarketMonsterSection === section
+                                                                    ? 'bg-green-600 text-white'
+                                                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                                            }`}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {marketListings.filter(l => marketType === 'military' ? MILITARY_ITEM_IDS.includes(l.resourceId) : true).length === 0 ? (
-                                            <p className="col-span-3 text-center text-gray-500 mt-10">Р СџРЎР‚Р ВµР Т‘Р В»Р С•Р В¶Р ВµР Р…Р С‘Р в„– Р Р…Р В° РЎР‚РЎвЂ№Р Р…Р С”Р Вµ Р С—Р С•Р С”Р В° Р Р…Р ВµРЎвЂљ.</p>
+                                        {(marketType === 'general' ? filteredBuyMarketListings : marketListings.filter(l => matchesMarketType(l, marketType))).length === 0 ? (
+                                            <p className="col-span-3 text-center text-gray-500 mt-10">На этом рынке пока нет предложений.</p>
                                         ) : (
-                                            marketListings
-                                                .filter(l => marketType === 'military' ? MILITARY_ITEM_IDS.includes(l.resourceId) : true)
+                                            (marketType === 'general' ? filteredBuyMarketListings : marketListings.filter(l => matchesMarketType(l, marketType)))
                                                 .map(listing => {
                                                     const item = itemData.find(i => i.id === listing.resourceId);
                                                     if (!item) return null;
@@ -15949,11 +19036,11 @@ const App: React.FC = () => {
                                                                 </div>
                                                                 <div className="overflow-hidden">
                                                                     <p className="font-bold text-white truncate">{item.name}</p>
-                                                                    <p className="text-sm text-gray-400">Р СџРЎР‚Р С•Р Т‘Р В°Р Р†Р ВµРЎвЂ : <span className="text-blue-300">{listing.sellerName}</span></p>
+                                                                    <p className="text-sm text-gray-400">Продавец: <span className="text-blue-300">{listing.sellerName}</span></p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex justify-between items-center bg-gray-800/50 p-2 rounded mb-3">
-                                                                <span className="text-sm text-gray-300">Р С™Р С•Р В»-Р Р†Р С•: <span className="text-white font-bold">{listing.amount}</span></span>
+                                                                <span className="text-sm text-gray-300">Кол-во: <span className="text-white font-bold">{listing.amount}</span></span>
                                                                 <div className="flex items-center font-bold">
                                                                     <span className={listing.currency === 'coins' ? 'text-yellow-400' : 'text-pink-400'}>{listing.price.toLocaleString()}</span>
                                                                     {listing.currency === 'coins' ? (
@@ -15969,7 +19056,7 @@ const App: React.FC = () => {
                                                                     className={`w-full font-bold py-2 rounded text-sm ${isMarketProcessing ? 'bg-gray-600 cursor-not-allowed text-gray-400' : 'bg-red-600 hover:bg-red-700 text-white'}`}
                                                                     disabled={isMarketProcessing}
                                                                 >
-                                                                    Р РЋР Р…РЎРЏРЎвЂљРЎРЉ РЎРѓ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘
+                                                                    Снять с продажи
                                                                 </button>
                                                             ) : (
                                                                 <button
@@ -15980,7 +19067,7 @@ const App: React.FC = () => {
                                                                         }`}
                                                                     disabled={isMarketProcessing || (listing.currency === 'coins' && playerGold < listing.price) || (listing.currency === 'rubies' && playerRubies < listing.price)}
                                                                 >
-                                                                    Р С™РЎС“Р С—Р С‘РЎвЂљРЎРЉ
+                                                                    Купить
                                                                 </button>
                                                             )}
                                                         </div>
@@ -15993,7 +19080,7 @@ const App: React.FC = () => {
                             <>
                                 <div className="h-full flex flex-col md:flex-row gap-4 overflow-hidden">
                                     <div className="w-full md:w-1/2 overflow-y-auto bg-gray-900/30 p-2 rounded border border-gray-700">
-                                        <h3 className="text-sm text-gray-400 mb-2 uppercase font-bold">Р вЂ™Р В°РЎв‚¬ Р С‘Р Р…Р Р†Р ВµР Р…РЎвЂљР В°РЎР‚РЎРЉ</h3>
+                                        <h3 className="text-sm text-gray-400 mb-2 uppercase font-bold">Ваш инвентарь</h3>
                                         <div className="grid grid-cols-4 gap-2">
                                             {/* Ruby from balance */}
                                             {playerRubies > 0 && (marketType !== 'military') && (
@@ -16013,7 +19100,7 @@ const App: React.FC = () => {
                                                 const id = parseInt(idStr);
                                                 if (amount <= 0) return null;
 
-                                                if (marketType === 'military' && !MILITARY_ITEM_IDS.includes(id)) return null;
+                                                if (!matchesMarketType({ id, sellerName: '', sellerId: '', resourceId: id, amount, price: 0, currency: 'coins' }, marketType)) return null;
 
                                                 const item = itemData.find(i => i.id === id);
                                                 const isSelected = sellItemSelection.itemId === id;
@@ -16032,12 +19119,17 @@ const App: React.FC = () => {
                                                 );
                                             })}
                                         </div>
-                                        {marketType === 'military' && Object.keys(inventory).filter(id => MILITARY_ITEM_IDS.includes(parseInt(id)) && (inventory[parseInt(id)] || 0) > 0).length === 0 && (
-                                            <p className="text-center text-gray-500 mt-10 text-sm">Р СњР ВµРЎвЂљ Р Р†Р С•Р ВµР Р…Р Р…РЎвЂ№РЎвЂ¦ РЎвЂљР С•Р Р†Р В°РЎР‚Р С•Р Р† Р Т‘Р В»РЎРЏ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘.</p>
+                                        {Object.keys(inventory).filter(id => {
+                                            const numericId = parseInt(id);
+                                            return matchesMarketType({ id: numericId, sellerName: '', sellerId: '', resourceId: numericId, amount: inventory[numericId] || 0, price: 0, currency: 'coins' }, marketType) && (inventory[numericId] || 0) > 0;
+                                        }).length === 0 && (
+                                            <p className="text-center text-gray-500 mt-10 text-sm">
+                                                {marketType === 'military' ? 'Нет военных товаров для продажи.' : 'Нет товаров для обычного рынка.'}
+                                            </p>
                                         )}
                                     </div>
                                     <div className="w-full md:w-1/2 bg-gray-700/30 p-4 rounded border border-gray-600 flex flex-col">
-                                        <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-600 pb-2">Р СџР В°РЎР‚Р В°Р СР ВµРЎвЂљРЎР‚РЎвЂ№ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘</h3>
+                                        <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-600 pb-2">Параметры продажи</h3>
 
                                         {sellItemSelection.itemId ? (
                                             <div className="space-y-4">
@@ -16047,12 +19139,12 @@ const App: React.FC = () => {
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-white text-lg">{itemData.find(i => i.id === sellItemSelection.itemId)?.name}</p>
-                                                        <p className="text-sm text-gray-400">Р вЂ™ Р Р…Р В°Р В»Р С‘РЎвЂЎР С‘Р С‘: <span className="text-white">{sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId!] || 0)}</span></p>
+                                                        <p className="text-sm text-gray-400">В наличии: <span className="text-white">{sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId!] || 0)}</span></p>
                                                     </div>
                                                 </div>
 
                                                 <div>
-                                                    <label className="block text-sm text-gray-300 mb-1">Р С™Р С•Р В»Р С‘РЎвЂЎР ВµРЎРѓРЎвЂљР Р†Р С•</label>
+                                                    <label className="block text-sm text-gray-300 mb-1">Количество</label>
                                                     <input
                                                         type="number"
                                                         min="1"
@@ -16068,7 +19160,7 @@ const App: React.FC = () => {
 
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div>
-                                                        <label className="block text-sm text-gray-300 mb-1">Р В¦Р ВµР Р…Р В°</label>
+                                                        <label className="block text-sm text-gray-300 mb-1">Цена</label>
                                                         <input
                                                             type="number"
                                                             min="1"
@@ -16078,7 +19170,7 @@ const App: React.FC = () => {
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm text-gray-300 mb-1">Р вЂ™Р В°Р В»РЎР‹РЎвЂљР В°</label>
+                                                        <label className="block text-sm text-gray-300 mb-1">Валюта</label>
                                                         <div className="flex space-x-2">
                                                             <button
                                                                 onClick={() => setSellItemSelection(prev => ({ ...prev, currency: 'coins' }))}
@@ -16102,14 +19194,14 @@ const App: React.FC = () => {
                                                         className={`w-full font-bold py-3 rounded text-lg shadow-lg ${isMarketProcessing ? 'bg-gray-600 cursor-not-allowed text-gray-400' : 'bg-green-600 hover:bg-green-700 text-white'}`}
                                                         disabled={isMarketProcessing}
                                                     >
-                                                        ВыРЎРѓРЎвЂљР В°Р Р†Р С‘РЎвЂљРЎРЉ Р В·Р В° {sellItemSelection.price} {sellItemSelection.currency === 'coins' ? 'Р СР С•Р Р…Р ВµРЎвЂљ' : 'рубинР С•Р Р†'}
+                                                        Выставить за {sellItemSelection.price} {sellItemSelection.currency === 'coins' ? 'монет' : 'рубинов'}
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col items-center justify-center h-full text-gray-500">
                                                 <InventoryIcon className="w-16 h-16 mb-4 opacity-30" />
-                                                <p className="text-center">ВыР В±Р ВµРЎР‚Р С‘РЎвЂљР Вµ Р С—РЎР‚Р ВµР Т‘Р СР ВµРЎвЂљ Р С‘Р В· Р С‘Р Р…Р Р†Р ВµР Р…РЎвЂљР В°РЎР‚РЎРЏ РЎРѓР В»Р ВµР Р†Р В°, РЎвЂЎРЎвЂљР С•Р В±РЎвЂ№ Р С—РЎР‚Р С•Р Т‘Р В°РЎвЂљРЎРЉ Р ВµР С–Р С•.</p>
+                                                <p className="text-center">Выберите предмет из инвентаря, чтобы выставить его на рынок.</p>
                                             </div>
                                         )}
                                     </div>
@@ -16124,14 +19216,36 @@ const App: React.FC = () => {
             {/* Build Menu */}
             {buildMenu.visible && (
                 // ... (Build Menu content) ...
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px' }}>
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); setBuildMenuSearch(''); playCloseSound(); }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
                                 <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '17px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню строительства</h2>
                             </div>
-                            <button onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); playCloseSound(); }} className="absolute" style={{ right: '-21px', top: '2px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            <div className="absolute" style={{ right: '42px', top: '1px', width: '220px' }}>
+                                <input
+                                    type="text"
+                                    value={buildMenuSearch}
+                                    onChange={(e) => setBuildMenuSearch(e.target.value)}
+                                    placeholder="Поиск..."
+                                    style={{
+                                        width: '100%',
+                                        height: '34px',
+                                        borderRadius: '8px',
+                                        border: '1px solid rgba(96,165,250,0.35)',
+                                        background: 'rgba(8,18,32,0.78)',
+                                        color: '#e5eef8',
+                                        padding: '0 12px',
+                                        fontFamily: 'Nunito, sans-serif',
+                                        fontSize: '13px',
+                                        fontWeight: 700,
+                                        outline: 'none',
+                                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 0 12px rgba(0,0,0,0.18)'
+                                    }}
+                                />
+                            </div>
+                            <button onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); setBuildMenuSearch(''); playCloseSound(); }} className="absolute" style={{ right: '-21px', top: '2px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
                               onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                             >
@@ -16143,7 +19257,7 @@ const App: React.FC = () => {
                                 {buildTabs.map(tab => (
                                     <button
                                         key={tab.name}
-                                        onClick={() => setActiveBuildTab(tab.name)}
+                                        onClick={() => { setActiveBuildTab(tab.name); setBuildMenuSearch(''); }}
                                         className="w-full flex items-center space-x-2 transition-colors"
                                         style={{
                                             padding: '7px 10px',
@@ -16276,7 +19390,7 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
                                     ))}
-                                    {buildingsInCurrentTab.length === 0 && <p style={{ fontFamily: 'Nunito, sans-serif', color: 'rgba(200,210,220,0.5)', gridColumn: 'span 3', textAlign: 'center', marginTop: '32px', fontSize: '14px' }}>Здания для этой категории еще не добавлены.</p>}
+                                    {buildingsInCurrentTab.length === 0 && <p style={{ fontFamily: 'Nunito, sans-serif', color: 'rgba(200,210,220,0.5)', gridColumn: 'span 3', textAlign: 'center', marginTop: '32px', fontSize: '14px' }}>{normalizedBuildMenuSearch ? 'Ничего не найдено по этому названию.' : 'Здания для этой категории еще не добавлены.'}</p>}
                                 </div>
                             </div>
                         </div>
@@ -16336,7 +19450,7 @@ const App: React.FC = () => {
                                         <div className="flex flex-wrap gap-2">
                                             {buildConfirmation.building.constructionRequirements.resources.map(req => (
                                                 <span key={req.id} className={`px-2 py-1 rounded text-xs ${(inventory[req.id] || 0) >= (req.amount || 0) ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-                                                    {req.name}: {req.amount}
+                                                    {getCanonicalItemName(req.id, req.name, buildConfirmation.building.id)}: {req.amount}
                                                 </span>
                                             ))}
                                         </div>
@@ -16344,7 +19458,16 @@ const App: React.FC = () => {
                                 )}
                             </div>
                             <button
-                                onClick={handleConfirmBuild}
+                                onClick={() => {
+                                    if (!buildConfirmation.building) return;
+                                    const traceId = `build-${Date.now()}-${buildConfirmation.building.id}-${buildConfirmation.x}-${buildConfirmation.y}`;
+                                    recordRuntimeTraceStage('build', traceId, 'click', {
+                                        buildingId: buildConfirmation.building.id,
+                                        x: buildConfirmation.x,
+                                        y: buildConfirmation.y,
+                                    });
+                                    void handleConfirmBuild(traceId);
+                                }}
                                 disabled={isBuildingActionProcessing}
                                 className={`mt-6 w-full text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-all ${isBuildingActionProcessing ? 'bg-green-800/70 cursor-not-allowed opacity-70' : 'bg-green-600 hover:bg-green-700'}`}
                             >
@@ -16397,7 +19520,7 @@ const App: React.FC = () => {
             {showInventory && (
                 // ... (Inventory Modal content) ...
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowInventory(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -16448,7 +19571,7 @@ const App: React.FC = () => {
 
             {showShop && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowShop(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -16463,10 +19586,10 @@ const App: React.FC = () => {
                         {/* Ruby balance + Exchange button bar */}
                         <div className="flex items-center justify-between" style={{ padding: '0 8px', marginBottom: '8px' }}>
                             <button
-                                onClick={() => { setExchangeAmount(1); setShowExchangeModal(true); }}
-                                style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '6px 16px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+                                onClick={() => { triggerResourceShopButtonPress('shop-exchange-open'); setExchangeAmount(1); setShowExchangeModal(true); }}
+                                style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.88) 0%, rgba(22,163,74,0.82) 100%)', borderRadius: '10px', border: '1px solid rgba(134,239,172,0.45)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '6px 16px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#f0fdf4', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.25s ease', opacity: resourceShopPressedButtons['shop-exchange-open'] ? 0.4 : 1, boxShadow: '0 6px 18px rgba(22,163,74,0.22), inset 0 1px 0 rgba(255,255,255,0.18)' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(180deg, rgba(74,222,128,0.95) 0%, rgba(34,197,94,0.88) 100%)'; e.currentTarget.style.borderColor = 'rgba(187,247,208,0.75)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(180deg, rgba(34,197,94,0.88) 0%, rgba(22,163,74,0.82) 100%)'; e.currentTarget.style.borderColor = 'rgba(134,239,172,0.45)'; }}
                             >
                                 <span>↔</span> Обменять
                             </button>
@@ -16476,9 +19599,40 @@ const App: React.FC = () => {
                                 <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '13px', fontWeight: 800, color: '#e0e8f0' }}>{playerRubies}</span>
                             </div>
                         </div>
+                        <div className="flex gap-2" style={{ padding: '0 8px', marginBottom: '10px' }}>
+                            {resourceShopTabs.map((tab) => {
+                                const isActive = activeResourceShopCategory === tab.id;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveResourceShopCategory(tab.id)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 10px',
+                                            borderRadius: '10px',
+                                            border: isActive ? '1px solid rgba(147,197,253,0.8)' : '1px solid rgba(255,255,255,0.1)',
+                                            background: isActive
+                                                ? 'linear-gradient(180deg, rgba(59,130,246,0.95) 0%, rgba(37,99,235,0.88) 100%)'
+                                                : 'rgba(15,23,42,0.45)',
+                                            color: isActive ? '#ffffff' : '#d1d5db',
+                                            fontFamily: 'Nunito, sans-serif',
+                                            fontWeight: 800,
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isActive
+                                                ? '0 8px 18px rgba(37,99,235,0.26), inset 0 1px 0 rgba(255,255,255,0.18)'
+                                                : 'none'
+                                        }}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
                         <div className="build-menu-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                                {itemData.filter(item => item.rubyPackQuantity).map(item => {
+                                {filteredResourceShopItems.map(item => {
                                     const qty = shopQuantities[item.id] || 1;
                                     const totalItems = item.rubyPackQuantity! * qty;
                                     return (
@@ -16501,9 +19655,9 @@ const App: React.FC = () => {
                                                     />
                                                 </div>
                                                 <button
-                                                    onClick={() => handleBuyShopItem(item, qty)}
+                                                    onClick={() => { triggerResourceShopButtonPress(`shop-buy-${item.id}`); handleBuyShopItem(item, qty); }}
                                                     disabled={playerRubies < qty}
-                                                    style={{ width: '100%', background: playerRubies < qty ? 'rgba(100,100,100,0.3)' : 'rgba(255,255,255,0.06)', borderRadius: '8px', border: `1px solid ${playerRubies < qty ? 'rgba(100,100,100,0.2)' : 'rgba(255,255,255,0.12)'}`, backdropFilter: 'blur(10px)', padding: '5px 4px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '11px', color: playerRubies < qty ? '#666' : '#d0d8e0', cursor: playerRubies < qty ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'all 0.2s ease' }}
+                                                    style={{ width: '100%', background: playerRubies < qty ? 'rgba(100,100,100,0.3)' : 'linear-gradient(180deg, rgba(34,197,94,0.9) 0%, rgba(21,128,61,0.85) 100%)', borderRadius: '8px', border: `1px solid ${playerRubies < qty ? 'rgba(100,100,100,0.2)' : 'rgba(134,239,172,0.45)'}`, backdropFilter: 'blur(10px)', padding: '5px 4px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '11px', color: playerRubies < qty ? '#666' : '#f0fdf4', cursor: playerRubies < qty ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'all 0.25s ease', opacity: resourceShopPressedButtons[`shop-buy-${item.id}`] ? 0.4 : 1, boxShadow: playerRubies < qty ? 'none' : '0 6px 18px rgba(22,163,74,0.18), inset 0 1px 0 rgba(255,255,255,0.18)' }}
                                                 >
                                                     <span>Купить {totalItems} шт.</span>
                                                     <span style={{ fontSize: '9px', opacity: 0.7 }}>Цена: {qty} ₽</span>
@@ -16544,7 +19698,7 @@ const App: React.FC = () => {
                         <p className="text-gray-400 text-sm text-center mb-6">Курс: 1 рубин = 7 777 монет</p>
                         <div className="flex space-x-2">
                             <button onClick={() => setShowExchangeModal(false)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded">Отмена</button>
-                            <button onClick={handleRubyExchange} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold">Обменять</button>
+                            <button onClick={() => { triggerResourceShopButtonPress('shop-exchange-confirm'); handleRubyExchange(); }} className="flex-1 text-white py-2 rounded font-bold transition-all duration-300" style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.95) 0%, rgba(21,128,61,0.9) 100%)', opacity: resourceShopPressedButtons['shop-exchange-confirm'] ? 0.4 : 1, boxShadow: '0 8px 18px rgba(22,163,74,0.22), inset 0 1px 0 rgba(255,255,255,0.18)' }}>Обменять</button>
                         </div>
                     </div>
                 </div>
@@ -16684,7 +19838,7 @@ const App: React.FC = () => {
                         <div className="relative">
                             {/* Academy Menu Image - Full screen on desktop, responsive on mobile */}
                                 <img 
-                                    src="/academymonsters/seEsr.png" 
+                                    src="/academymonsters/seEsr.webp" 
                                     alt="Академия монстров" 
                                     className="w-full h-auto md:max-h-[85vh] md:w-auto object-contain rounded-lg"
                                 />
@@ -16735,7 +19889,7 @@ const App: React.FC = () => {
 
             {showMap && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowMap(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -16800,7 +19954,7 @@ const App: React.FC = () => {
                     <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
                             <h2 className="text-2xl font-bold text-white flex items-center">
-                                <img src="https://i.ibb.co/nsb3Sn3L/topbottom1.png" alt="Top" className="w-8 h-8 mr-3" />
+                                <img src={guiMenuTopImageUrl} alt="Top" className="w-8 h-8 mr-3" />
                                 Топ игроков
                             </h2>
                             <button onClick={() => setShowTopPlayers(false)} className="text-gray-400 hover:text-white transition-colors">
@@ -16819,11 +19973,24 @@ const App: React.FC = () => {
                                     </button>
                                 ))}
                             </div>
-                            {visibleTopPlayersData
-                                .filter((u: any) => u.name)
-                                .sort((a: any, b: any) => getTopPlayerValue(b, activeTopPlayersTab) - getTopPlayerValue(a, activeTopPlayersTab))
-                                .slice(0, 20)
-                                .map((u: any, index: number) => (
+                            {leaderboardLoading && hasTopPlayersData ? (
+                                <div className="py-2 text-center text-gray-400 font-medium">
+                                    Повторная загрузка...
+                                </div>
+                            ) : leaderboardLoading ? (
+                                <div className="py-8 text-center text-gray-300 font-medium">
+                                    Загрузка топа...
+                                </div>
+                            ) : leaderboardError && !hasTopPlayersData ? (
+                                <div className="py-8 text-center text-red-300 font-medium">
+                                    Не удалось загрузить топ игроков
+                                </div>
+                            ) : !hasTopPlayersData ? (
+                                <div className="py-8 text-center text-gray-400 font-medium">
+                                    Пока нет игроков в рейтинге
+                                </div>
+                            ) : (
+                                displayedTopPlayersData.map((u: any, index: number) => (
                                     <div
                                         key={u.uid}
                                         className={`flex items-center justify-between p-3 rounded-lg ${u.uid === user?.uid ? 'bg-blue-900/50 border border-blue-500' : 'bg-gray-700/50'}`}
@@ -16846,7 +20013,8 @@ const App: React.FC = () => {
                                             <span className="text-yellow-300 font-bold">{getTopPlayerValue(u, activeTopPlayersTab)}</span>
                                         </div>
                                     </div>
-                                ))}
+                                ))
+                            )}
                         </div>
                         <div className="mt-4 text-center text-sm text-gray-400">
                             {topPlayersLabelByTab[activeTopPlayersTab]}
@@ -16909,7 +20077,7 @@ const App: React.FC = () => {
                         {/* Crown and Title */}
                         <div className="flex items-center gap-4 mb-4 bg-black/30 p-3 rounded-lg">
                             <img
-                                src={royalElectionsTab === 'queen' ? 'https://i.ibb.co/FqHmFKSF/qwincrown.png' : 'https://i.ibb.co/YFW1pKc4/kingcrown.png'}
+                                src={royalElectionsTab === 'queen' ? royalQueenCrownImageUrl : royalKingCrownImageUrl}
                                 alt="Crown"
                                 className="w-16 h-16 object-contain"
                             />
@@ -16957,15 +20125,11 @@ const App: React.FC = () => {
                             <h3 className="text-yellow-200 font-bold mb-2 font-serif">Список претендентов на трон</h3>
                             <div className="space-y-2 max-h-40 overflow-y-auto">
                                 {(() => {
-                                    // Debug logging
-                                    console.log('[RoyalElections] Tab:', royalElectionsTab, 'Candidates:', Object.keys(royalCandidates), 'allUsers:', Object.keys(allUsers).length);
-                                    
                                     // Filter candidates by gender based on selected tab
                                     const filteredCandidates = Object.entries(royalCandidates)
                                         .filter(([uid]) => {
                                             const playerInfo = allUsers[uid];
                                             const playerGender = playerInfo?.gender;
-                                            console.log('[RoyalElections] Checking candidate:', uid, 'name:', playerInfo?.name, 'gender:', playerGender);
                                             // For 'queen' tab, show only female candidates
                                             // For 'king' tab, show only male candidates
                                             // If gender is not set, show in both tabs for now
@@ -16977,9 +20141,7 @@ const App: React.FC = () => {
                                         })
                                         .sort(([, a], [, b]) => b - a)
                                         .slice(0, 10);
-                                    
-                                    console.log('[RoyalElections] Filtered candidates:', filteredCandidates.length);
-                                    
+
                                     if (filteredCandidates.length === 0) {
                                         return <p className="text-gray-400 text-sm text-center py-4">Пока никто не голосовал</p>;
                                     }
@@ -17036,7 +20198,7 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[60] backdrop-blur-sm" onClick={() => setShowRoyalVotingModal(false)}>
                     <div className="bg-gradient-to-b from-amber-900 to-amber-950 p-4 rounded-lg shadow-2xl w-full max-w-sm border-2 border-yellow-600 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-3 pb-2 border-b border-yellow-700">
-                            <h2 className="text-lg font-bold text-yellow-200 font-serif">?? Р вЂњР С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р Р…Р С‘Р Вµ Р В·Р В° Р С”Р С•РЎР‚Р С•Р В»РЎРЏ</h2>
+                            <h2 className="text-lg font-bold text-yellow-200 font-serif">Голосование за короля</h2>
                             <button onClick={() => setShowRoyalVotingModal(false)} className="text-yellow-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-7 h-7" />
                             </button>
@@ -17044,14 +20206,12 @@ const App: React.FC = () => {
 
                         {/* Crown */}
                         <div className="flex justify-center mb-4">
-                            <img src="https://i.ibb.co/YFW1pKc4/kingcrown.png" alt="Crown" className="w-20 h-20 object-contain" />
+                            <img src={royalKingCrownImageUrl} alt="Crown" className="w-20 h-20 object-contain" />
                         </div>
 
                         {/* Player Info */}
                         <div className="bg-black/30 p-3 rounded-lg mb-4 text-center">
-                            <p className="text-gray-300 text-sm mb-2">
-                                Вы Р С–Р С•Р В»Р С•РЎРѓРЎС“Р ВµРЎвЂљР Вµ Р В·Р В°
-                            </p>
+                            <p className="text-gray-300 text-sm mb-2">Вы голосуете за</p>
                             <div className="flex items-center justify-center gap-2">
                                 <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden border-2 border-blue-400">
                                     {allUsers[votingForPlayer]?.avatar ? (
@@ -17060,15 +20220,15 @@ const App: React.FC = () => {
                                         <span className="text-lg font-bold text-white">{allUsers[votingForPlayer]?.name?.charAt(0) || '?'}</span>
                                     )}
                                 </div>
-                                <span className="text-white font-bold text-lg">{allUsers[votingForPlayer]?.name || "Р ВР С–РЎР‚Р С•Р С”"}</span>
+                                <span className="text-white font-bold text-lg">{allUsers[votingForPlayer]?.name || "Игрок"}</span>
                             </div>
                         </div>
 
                         {/* Vote Count */}
                         <div className="bg-black/30 p-3 rounded-lg mb-4">
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-gray-300">Р С™Р С•Р В»Р С‘РЎвЂЎР ВµРЎРѓРЎвЂљР Р†Р С• Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†:</span>
-                                <span className="text-yellow-400 font-bold">{voteCount} <span className="text-gray-400 text-sm">(Р СР В°Р С”РЎРѓ 1255)</span></span>
+                                <span className="text-gray-300">Количество голосов:</span>
+                                <span className="text-yellow-400 font-bold">{voteCount} <span className="text-gray-400 text-sm">(макс 1255)</span></span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
@@ -17090,7 +20250,7 @@ const App: React.FC = () => {
                             </div>
                             <div className="flex justify-between text-xs text-gray-500 mt-2">
                                 <span>1</span>
-                                <span className="text-yellow-400">{voteCount} ? 800 = {(voteCount * 800).toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ</span>
+                                <span className="text-yellow-400">{voteCount} ? 800 = {(voteCount * 800).toLocaleString()} монет</span>
                                 <span>1255</span>
                             </div>
                         </div>
@@ -17098,7 +20258,7 @@ const App: React.FC = () => {
                         {/* Info */}
                         <div className="bg-black/30 p-3 rounded-lg mb-4">
                             <p className="text-sm text-gray-300">
-                                ?? Р вЂўРЎРѓР В»Р С‘ Р С•Р Р… Р С—Р С•Р В±Р ВµР Т‘Р С‘РЎвЂљ, Р Р†РЎвЂ№ Р С—Р С•Р В»РЎС“РЎвЂЎР С‘РЎвЂљР Вµ Р СР С•Р Р…Р ВµРЎвЂљРЎвЂ№ Р Р…Р В°Р В·Р В°Р Т‘ (80%) Р С‘ Р В±Р С•Р Р…РЎС“РЎРѓ Р Р† Р В·Р В°Р Р†Р С‘РЎРѓР С‘Р СР С•РЎРѓРЎвЂљР С‘ Р С•РЎвЂљ Р Р†Р В°РЎв‚¬Р ВµР С–Р С• Р Р†Р С”Р В»Р В°Р Т‘Р В° Р Р† Р С—Р С•Р В±Р ВµР Т‘РЎС“!
+                                Если он победит, вы получите монеты назад (80%) и бонус в зависимости от вашего вклада в победу!
                             </p>
                         </div>
 
@@ -17110,7 +20270,7 @@ const App: React.FC = () => {
                                 if (playerGold >= totalCost && playerEnergy >= energyCost) {
                                     // Check if voting for police member
                                     if (sheriffId === votingForPlayer || deputies.includes(votingForPlayer || '')) {
-                                        alert('Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°РЎвЂљРЎРЉ Р В·Р В° РЎРЊРЎвЂљР С•Р С–Р С• Р С‘Р С–РЎР‚Р С•Р С”Р В°, РЎвЂљР В°Р С” Р С”Р В°Р С” Р С•Р Р… РЎРѓР С•РЎРѓРЎвЂљР С•Р С‘РЎвЂљ Р Р† Р С—Р С•Р В»Р С‘РЎвЂ Р С‘Р С‘!');
+                                        alert('Вы не можете голосовать за этого игрока, так как он состоит в полиции!');
                                         return;
                                     }
                                     // Deduct resources
@@ -17140,7 +20300,7 @@ const App: React.FC = () => {
                                     }).catch((err) => {
                                         console.error('[RoyalVote] Failed to save election data:', err);
                                     });
-                                    alert(`Вы Р С—РЎР‚Р С•Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р В»Р С‘ Р В·Р В° ${allUsers[votingForPlayer]?.name} ${voteCount} РЎР‚Р В°Р В·(Р В°) Р Р…Р В° РЎРѓРЎС“Р СР СРЎС“ ${totalCost.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ!`);
+                                    alert(`Вы проголосовали за ${allUsers[votingForPlayer]?.name} ${voteCount} раз(а) на сумму ${totalCost.toLocaleString()} монет!`);
                                     setShowRoyalVotingModal(false);
                                     setVoteCount(1);
                                 }
@@ -17148,9 +20308,9 @@ const App: React.FC = () => {
                             disabled={playerGold < voteCount * 800 || playerEnergy < voteCount * 2}
                             className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                         >
-                            <span className="flex items-center gap-1"><span className="text-yellow-400">?</span> {voteCount * 2}</span>
+                            <span className="flex items-center gap-1"><span className="text-yellow-400">⚡</span> {voteCount * 2}</span>
                             <span className="flex items-center gap-1"><img src={coinImageUrl} alt="coin" className="w-5 h-5" /> {(voteCount * 800).toLocaleString()}</span>
-                            <span>Р РЋР Т‘Р ВµР В»Р В°РЎвЂљРЎРЉ РЎРѓРЎвЂљР В°Р Р†Р С”РЎС“</span>
+                            <span>Сделать ставку</span>
                         </button>
                     </div>
                 </div>
@@ -17162,7 +20322,7 @@ const App: React.FC = () => {
                     <div className="bg-gradient-to-b from-blue-900 to-blue-950 p-4 rounded-lg shadow-2xl w-full max-w-md border-2 border-blue-500 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-2 pb-2 border-b border-blue-700">
                             <h2 className="text-xl font-bold text-blue-200 flex items-center gap-2">
-                                <img src="https://i.ibb.co/8LTkxpPn/325999-2.png" alt="Badge" className="w-6 h-6" />
+                                <img src={policeBadgeImageUrl} alt="Badge" className="w-6 h-6" />
                                 Полиция нравов
                             </h2>
                             <button onClick={() => setShowPoliceMorals(false)} className="text-blue-400 hover:text-white transition-colors">
@@ -17178,7 +20338,7 @@ const App: React.FC = () => {
                                     <div className="bg-black/30 p-4 rounded-lg">
                                         <div className="text-center">
                                             <img 
-                                                src="https://i.ibb.co/8LTkxpPn/325999-2.png" 
+                                                src={policeBadgeImageUrl} 
                                                 alt="Police Badge" 
                                                 className="w-20 h-20 mx-auto mb-4 opacity-50"
                                             />
@@ -17195,7 +20355,7 @@ const App: React.FC = () => {
                                         <h3 className="text-blue-300 font-bold mb-2">Текущий шериф</h3>
                                         {sheriffId ? (
                                             <div className="flex items-center gap-3">
-                                                <img src="https://i.ibb.co/SX7RYTJc/16.png" alt="Sheriff" className="w-12 h-12 rounded border-2 border-blue-500" />
+                                                <img src="/last_appx/polise/16.webp" alt="Sheriff" className="w-12 h-12 rounded border-2 border-blue-500" />
                                                 <div>
                                                     <p className="text-white font-bold">{sheriffName || "Шериф"}</p>
                                                     <p className="text-xs text-gray-400">Защитник города</p>
@@ -17262,7 +20422,7 @@ const App: React.FC = () => {
                                                     const depInfo = allUsers[depUid];
                                                     return (
                                                         <div key={depUid} className="bg-blue-800/50 px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-                                                            <img src="https://i.ibb.co/SX7RYTJc/16.png" alt="Deputy" className="w-4 h-4" />
+                                                            <img src="/last_appx/polise/16.webp" alt="Deputy" className="w-4 h-4" />
                                                             {depInfo?.name || "Р ВР С–РЎР‚Р С•Р С”"}
                                                         </div>
                                                     );
@@ -17301,7 +20461,7 @@ const App: React.FC = () => {
                         </div>
             
                         <div className="flex justify-center mb-4">
-                            <img src="https://i.ibb.co/8LTkxpPn/325999-2.png" alt="Badge" className="w-16 h-16 object-contain" />
+                            <img src={policeBadgeImageUrl} alt="Badge" className="w-16 h-16 object-contain" />
                         </div>
             
                         <div className="text-center mb-4">
@@ -17568,6 +20728,15 @@ const App: React.FC = () => {
                                         <span className="mr-1">🛡️</span>
                                         Репутация: {selectedPlayerId === user?.uid ? playerReputation : (allUsers[selectedPlayerId]?.reputation || 0)}
                                     </div>
+                                    {(() => {
+                                        const playerStatusMeta = getPlayerStatusMeta(selectedPlayerId);
+                                        return (
+                                            <div className={`text-sm flex items-center gap-2 mt-1 ${playerStatusMeta.textClassName}`}>
+                                                <span className={`w-2.5 h-2.5 rounded-full ${playerStatusMeta.dotClassName}`}></span>
+                                                {playerStatusMeta.isOnline ? 'Онлайн' : `Был в сети: ${playerStatusMeta.label}`}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -17754,7 +20923,7 @@ const App: React.FC = () => {
 
             {showProfileModal && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowProfileModal(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/build_menu_bg.png)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
@@ -17843,13 +21012,13 @@ const App: React.FC = () => {
                                         ) : (
                                             <div className="flex space-x-4">
                                                 <button
-                                                    onClick={() => setPlayerGender('male')}
+                                                    onClick={() => handleGenderSelect('male')}
                                                     className={`flex-1 py-2 px-4 rounded-md font-semibold transition-all flex items-center justify-center space-x-2 ${playerGender === 'male' ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                                                 >
                                                     <span>Парень</span>
                                                 </button>
                                                 <button
-                                                    onClick={() => setPlayerGender('female')}
+                                                    onClick={() => handleGenderSelect('female')}
                                                     className={`flex-1 py-2 px-4 rounded-md font-semibold transition-all flex items-center justify-center space-x-2 ${playerGender === 'female' ? 'bg-pink-600 text-white ring-2 ring-pink-300' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                                                 >
                                                     <span>Девушка</span>
@@ -17903,7 +21072,7 @@ const App: React.FC = () => {
                                                         {(() => {
                                                             const clan = currentClan;
                                                             const clanCastle = placedBuildings.find(b => 
-                                                                b.buildingId === CLAN_CASTLE_ID && 
+                                                                BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && 
                                                                 b.ownerId === clan?.leaderUid
                                                             );
                                                             const clanBank = clanCastle?.bank || 0;
@@ -17966,7 +21135,7 @@ const App: React.FC = () => {
 
                                             {/* Members list */}
                                             <div className="space-y-1">
-                                                {clanMembers?.map((member: any) => (
+                                                {clanMembers.length > 0 ? clanMembers.map((member: any) => (
                                                     <div key={member.uid} className="grid grid-cols-4 gap-4 px-4 py-2 bg-gray-900/50 hover:bg-gray-800/50 items-center">
                                                         {/* Player name */}
                                                         <div className="flex items-center gap-2">
@@ -18031,7 +21200,7 @@ const App: React.FC = () => {
                                                             })}
                                                         </div>
                                                     </div>
-                                                )) || (
+                                                )) : (
                                                     // Show leader as fallback
                                                     <div className="grid grid-cols-4 gap-4 px-4 py-2 bg-gray-900/50 hover:bg-gray-800/50 items-center">
                                                         <div className="flex items-center gap-2">
@@ -18695,7 +21864,7 @@ const App: React.FC = () => {
                             {activeProfileTab === 'police_elections' && (
                                 <div className="flex flex-col h-full space-y-4 overflow-y-auto">
                                     <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2 flex items-center gap-2">
-                                        <img src="https://i.ibb.co/8LTkxpPn/325999-2.png" alt="Badge" className="w-6 h-6" />
+                                        <img src={policeBadgeImageUrl} alt="Badge" className="w-6 h-6" />
                                         Выборы в полиции
                                     </h3>
 
@@ -18704,7 +21873,7 @@ const App: React.FC = () => {
                                         <h4 className="text-blue-300 font-medium mb-2">Текущий шериф</h4>
                                         {sheriffId ? (
                                             <div className="flex items-center gap-2">
-                                                <img src="https://i.ibb.co/SX7RYTJc/16.png" alt="Sheriff" className="w-10 h-10 rounded" />
+                                                <img src="/last_appx/polise/16.webp" alt="Sheriff" className="w-10 h-10 rounded" />
                                                 <div>
                                                     <p className="text-white font-bold">{sheriffName || "Шериф"}</p>
                                                     <p className="text-xs text-gray-400">Помощники: {deputies.length}/6</p>
@@ -19037,9 +22206,52 @@ const App: React.FC = () => {
                 </div>
                 
                 {/* Rubies */}
-                <div className="flex items-center space-x-1">
-                    <img src={rubyImageUrl} alt="Ruby" className="w-12 h-12 object-contain md:w-10 md:h-10 resource-icon" />
-                    <span className="text-pink-400 font-bold text-lg resource-text" style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{playerRubies}</span>
+                <div className="relative group/rubies">
+                    <button
+                        type="button"
+                        onClick={openRubyShopModal}
+                        className="flex items-center space-x-1 cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300/80"
+                        title="Купить рубины"
+                        aria-label="Купить рубины"
+                    >
+                        <img src={rubyImageUrl} alt="Ruby" className="w-12 h-12 object-contain md:w-10 md:h-10 resource-icon" />
+                        <span className="text-pink-400 font-bold text-lg resource-text" style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{playerRubies}</span>
+                    </button>
+                    <div
+                        className="absolute hidden group-hover/rubies:block z-50"
+                        style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', paddingTop: '10px' }}
+                    >
+                        <div
+                            style={{
+                                minWidth: '320px',
+                                borderRadius: '16px',
+                                padding: '16px 18px',
+                                background: 'linear-gradient(180deg, rgba(14,22,40,0.96) 0%, rgba(8,12,24,0.96) 100%)',
+                                border: '1px solid rgba(96,165,250,0.35)',
+                                boxShadow: '0 14px 30px rgba(0,0,0,0.38)'
+                            }}
+                        >
+                            <p style={{ margin: 0, color: '#60a5fa', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '16px', lineHeight: 1.45, whiteSpace: 'pre-line' }}>
+                                {'Покачто рубины можно купить через личку в телеграмме вот мой линк\n@BTCtokenbanker напиши мне по поводу покупки рубинов'}
+                            </p>
+                            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <button
+                                    type="button"
+                                    onClick={openRubyShopModal}
+                                    style={{ borderRadius: '14px', border: '1px solid #2d6811', background: 'linear-gradient(180deg, #92cd58 0%, #4f9d27 46%, #387e16 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '18px', lineHeight: 1, padding: '12px 18px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.62), inset 0 -2px 0 rgba(28,73,8,0.38), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.30)' }}
+                                >
+                                    Купить Рубины!
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled
+                                    style={{ borderRadius: '14px', border: '1px solid #5a5a5a', background: 'linear-gradient(180deg, #7f7f7f 0%, #5b5b5b 100%)', color: 'rgba(255,255,255,0.75)', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '18px', lineHeight: 1, padding: '12px 18px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.18)', cursor: 'not-allowed' }}
+                                >
+                                    Посмотри рекламу и получи рубин
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -19051,7 +22263,7 @@ const App: React.FC = () => {
                     className="relative group"
                 >
                     <div className="w-[150px] h-[150px] rounded-full overflow-hidden shadow-lg cursor-pointer hover:scale-105 transition-all relative">
-                        <img src="https://i.ibb.co/vCbw6cpj/Image-3.png" alt="Profile Menu" className="w-full h-full object-cover" style={{ transform: 'scale(0.88)' }} />
+                        <img src="/Gui/Front/значек личного кабинета вход в личный кабинет/Image-3.webp" alt="Profile Menu" className="w-full h-full object-cover" style={{ transform: 'scale(0.88)' }} />
                         {/* Level Icon Badge */}
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center shadow-md" style={{ marginLeft: '1px', transform: 'translateX(-50%) translateY(-4px)' }}>
                             <img src={getLevelIcon(playerLevel)} alt="Level" className="w-6 h-6 object-contain" />
@@ -19092,9 +22304,22 @@ const App: React.FC = () => {
                                 <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent h-1/2"></div>
                                 <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-green-700/60 to-transparent"></div>
                             </div>
+                            <div
+                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                style={{
+                                    color: '#223106',
+                                    fontFamily: 'Nunito, sans-serif',
+                                    fontWeight: 800,
+                                    fontSize: '13px',
+                                    lineHeight: 1,
+                                    textShadow: '0 1px 0 rgba(255,255,255,0.35)'
+                                }}
+                            >
+                                {`опыт: ${safePlayerGlory}/${gloryToNextLevel}`}
+                            </div>
                         </div>
                         <div className="absolute hidden group-hover/bar:block bg-gray-900 text-white text-sm px-3 py-2 rounded shadow-lg -top-10 left-0 whitespace-nowrap z-50">
-                            Опыт: {playerGlory} / {gloryToNextLevel}
+                            Опыт: {safePlayerGlory} / {gloryToNextLevel}
                         </div>
                     </div>
 
@@ -19119,6 +22344,19 @@ const App: React.FC = () => {
                             >
                                 <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent h-1/2"></div>
                                 <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-red-800/60 to-transparent"></div>
+                            </div>
+                            <div
+                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                style={{
+                                    color: '#223106',
+                                    fontFamily: 'Nunito, sans-serif',
+                                    fontWeight: 800,
+                                    fontSize: '13px',
+                                    lineHeight: 1,
+                                    textShadow: '0 1px 0 rgba(255,255,255,0.35)'
+                                }}
+                            >
+                                {`Репутация ${playerReputation}/${MAX_REPUTATION}`}
                             </div>
                         </div>
                         <div className="absolute hidden group-hover/bar:block bg-gray-900 text-white text-sm px-3 py-2 rounded shadow-lg -top-10 left-0 whitespace-nowrap z-50">
@@ -19147,7 +22385,7 @@ const App: React.FC = () => {
                             <div 
                                 className="h-full rounded-full transition-all duration-300 relative overflow-hidden"
                                 style={{ 
-                                    width: `${(playerEnergy / maxEnergy) * 100}%`,
+                                    width: `${Math.min(100, (playerEnergy / displayedEnergyCapacity) * 100)}%`,
                                     background: 'linear-gradient(to right, #ca8a04 0%, #eab308 30%, #eab308 70%, #a16207 100%)',
                                     boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.2), 0 0 10px rgba(234, 179, 8, 0.5)'
                                 }}
@@ -19155,10 +22393,23 @@ const App: React.FC = () => {
                                 <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent h-1/2"></div>
                                 <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-yellow-700/60 to-transparent"></div>
                             </div>
+                            <div
+                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                style={{
+                                    color: '#5a3900',
+                                    fontFamily: 'Nunito, sans-serif',
+                                    fontWeight: 900,
+                                    fontSize: '13px',
+                                    lineHeight: 1,
+                                    textShadow: '0 1px 0 rgba(255,255,255,0.4)'
+                                }}
+                            >
+                                {`Энергия ${playerEnergy}/${displayedEnergyCapacity}`}
+                            </div>
                         </div>
                         </button>
                         <div className="absolute hidden group-hover/bar:block bg-gray-900 text-white text-sm px-3 py-2 rounded shadow-lg -top-10 left-0 whitespace-nowrap z-50">
-                            Энергия: {playerEnergy} / {maxEnergy}
+                            Энергия: {playerEnergy} / {displayedEnergyCapacity}
                         </div>
                     </div>
                 </div>
@@ -19203,7 +22454,7 @@ const App: React.FC = () => {
                         className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button"
                         title="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘"
                     >
-                        <img src="https://i.ibb.co/Lz7mLTNV/Qw5jz.png" alt="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘" className="w-[42px] h-[42px] object-contain" />
+                        <img src="/Gui/Front/значек настроек/Qw5jz.webp" alt="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘" className="w-[42px] h-[42px] object-contain" />
                     </button>
                 </div>
             </div>
@@ -19216,9 +22467,9 @@ const App: React.FC = () => {
                         playOpenSound();
                     }}
                     className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button"
-                    title="Р СљР ВµР Р…РЎР‹ (Р С›РЎРѓР Р…Р С•Р Р†Р Р…Р С•Р Вµ)"
+                        title="Планшет (основное меню)"
                 >
-                    <img src="/tablet_button.png" alt="Tablet Menu" className="w-[140px] h-[140px] object-contain" />
+                    <img src="/Gui/Front/планшет (основное меню)/tablet_button.webp" alt="Tablet Menu" className="w-[140px] h-[140px] object-contain" />
                 </button>
             </div>
 
@@ -19227,7 +22478,7 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={handleDismissTabletModal}>
                     <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
                         {/* Tablet background image */}
-                        <img src="/tablet_menu_bg.png" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         
                         {/* Close button */}
                         <button 
@@ -19257,7 +22508,7 @@ const App: React.FC = () => {
                                             <img
                                                 src={
                                                     activeTabletTutorial === 'intro'
-                                                        ? '/tutorial_guide.jpg'
+                                                        ? introTutorialImageUrl
                                                         : activeTabletTutorial === 'townHallBuilt'
                                                             ? townHallTutorialImageUrl
                                                             : activeTabletTutorial === 'housePrompt'
@@ -19417,7 +22668,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/4Q6y8J4/6Rw-Ov.png" alt="Police Morals" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src={guiMenuPoliceMoralsImageUrl} alt="Police Morals" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Полиция нравов</span>
                                 </button>
@@ -19429,7 +22680,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/nsb3Sn3L/topbottom1.png" alt="Top Players" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src={guiMenuTopImageUrl} alt="Top Players" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Топ</span>
                                 </button>
@@ -19441,7 +22692,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/TDrJzFg5/vibori1.png" alt="Royal Elections" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src={guiMenuRoyalElectionsImageUrl} alt="Royal Elections" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Королевские выборы</span>
                                 </button>
@@ -19456,7 +22707,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/jP8vDvTg/Image-4.png" alt="Shop" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src={guiMenuShopImageUrl} alt="Shop" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Магазин</span>
                                 </button>
@@ -19468,7 +22719,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/qMdSDJSm/mapbottom1.png" alt="Map" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src={guiMenuMapImageUrl} alt="Map" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Карта</span>
                                 </button>
@@ -19480,7 +22731,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/1tMZTJxS/town-Bottom1.png" alt="My City" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src={guiMenuTownImageUrl} alt="My City" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Город</span>
                                 </button>
@@ -19494,7 +22745,7 @@ const App: React.FC = () => {
                                     style={{ width: '130px' }}
                                 >
                                     <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src="https://i.ibb.co/XRR6Zcf/Uerc-WWWW.png" alt="Inventory" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                        <img src={guiMenuInventoryImageUrl} alt="Inventory" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Инвентарь</span>
                                 </button>
@@ -19586,8 +22837,8 @@ const App: React.FC = () => {
                                 <div className="flex-grow flex overflow-hidden">
                                     <div className="w-3/4 flex flex-col chat-messages-container">
                                         <div ref={chatMessagesRef} className="flex-grow overflow-y-auto p-2 space-y-1.5 bg-transparent chat-messages" onScroll={handleChatScroll}>
-                                            {filteredMessages.filter(msg => msg.text && String(msg.text).trim()).map((msg) => {
-                                                const senderText = uiText(msg.sender);
+                                            {orderedChatMessages.map((msg) => {
+                                                const senderText = msg.type === 'system' ? 'Система' : uiText(msg.sender);
                                                 const senderLower = senderText.toLowerCase();
                                                 const isSystemMessage = msg.type === 'system' || senderLower.includes('система');
                                                 return (
@@ -19617,8 +22868,8 @@ const App: React.FC = () => {
                                                     )}
                                                 </div>
                                             )})}
-                                            {filteredMessages.length === 0 && (
-                                                <div className="text-gray-500 text-center italic mt-4 text-sm">{uiText('Сообщений пока нет...')}</div>
+                                            {orderedChatMessages.length === 0 && (
+                                                <div className="text-gray-500 text-center italic pt-4 text-sm">{uiText('Сообщений пока нет...')}</div>
                                             )}
                                         </div>
                                     </div>
@@ -19714,7 +22965,7 @@ const App: React.FC = () => {
             {energyModalState && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeEnergyModal}>
                     <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
-                        <img src="/tablet_menu_bg.png" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         <button
                             onClick={closeEnergyModal}
                             className="absolute z-10"
@@ -19772,10 +23023,66 @@ const App: React.FC = () => {
                 </div>
             )}
 
+            {rubyModalState && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeRubyModal}>
+                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
+                        <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <button
+                            onClick={closeRubyModal}
+                            className="absolute z-10"
+                            aria-label="Закрыть окно рубинов"
+                            style={{ right: '35px', top: '42px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
+                        />
+                        <div className="relative z-[1] flex flex-col items-center text-center" style={{ width: '620px', padding: '46px 52px 36px' }}>
+                            <div style={{ border: '3px solid #d2b168', borderRadius: '12px', boxShadow: '0 0 0 2px rgba(255,105,180,0.16), 0 8px 22px rgba(0,0,0,0.30)', overflow: 'hidden', width: '138px', minWidth: '138px', height: '138px', background: 'linear-gradient(180deg, #f8f1df 0%, #eadbbd 100%)', padding: '10px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <img src={rubyImageUrl} alt="Рубины" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                            </div>
+
+                            {rubyModalState.mode === 'warning' ? (
+                                <>
+                                    <h3 style={{ margin: 0, color: '#c95d2d', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.08 }}>
+                                        Мэр у вас недостаточно рубинов!
+                                    </h3>
+                                    <p style={{ margin: '16px 0 24px', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '19px', lineHeight: 1.45, whiteSpace: 'pre-line' }}>
+                                        {`Вы можете купить рубины тут.${rubyModalState.requiredRubies ? `\n\nТребуется: ${rubyModalState.requiredRubies} рубинов` : ''}`}
+                                    </p>
+                                    <button
+                                        onClick={() => setRubyModalState({ mode: 'shop' })}
+                                        style={{ minWidth: '270px', borderRadius: '18px', border: '1px solid #2d6811', background: 'linear-gradient(180deg, #92cd58 0%, #4f9d27 46%, #387e16 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, padding: '14px 26px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.62), inset 0 -2px 0 rgba(28,73,8,0.38), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.30)' }}
+                                    >
+                                        Купить Рубины!
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <h3 style={{ margin: 0, color: '#4f87b4', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.08 }}>
+                                        Купить рубины!
+                                    </h3>
+                                    <p style={{ margin: '20px 0 24px', color: '#60a5fa', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '20px', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                                        {'Покачто рубины можно купить через личку в телеграмме вот мой линк\n@BTCtokenbanker напиши мне по поводу покупки рубинов'}
+                                    </p>
+                                    <div style={{ width: '100%', maxWidth: '390px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        <button
+                                            type="button"
+                                            disabled
+                                            style={{ width: '100%', borderRadius: '16px', border: '1px solid #5a5a5a', background: 'linear-gradient(180deg, #7f7f7f 0%, #5b5b5b 100%)', color: 'rgba(255,255,255,0.75)', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '20px', lineHeight: 1.2, padding: '14px 18px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.18)', cursor: 'not-allowed' }}
+                                        >
+                                            Посмотри рекламу и получи рубин
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {buildingLimitModalData && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeBuildingLimitModal}>
                     <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
-                        <img src="/tablet_menu_bg.png" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         <button
                             onClick={closeBuildingLimitModal}
                             className="absolute z-10"
@@ -19797,7 +23104,13 @@ const App: React.FC = () => {
                                 {`Наш город не резиновый и мэр вынужден ограничить\nстроительство У вас сейчас есть разрешение на постройку только ${buildingLimitModalData.currentLimit} здания`}
                             </p>
                             <button
-                                onClick={handleBuyBuildingPermit}
+                                onClick={() => {
+                                    const traceId = `permit-${Date.now()}-${user?.uid || 'guest'}`;
+                                    recordRuntimeTraceStage('permit', traceId, 'click', {
+                                        userId: user?.uid || null,
+                                    });
+                                    void handleBuyBuildingPermit(traceId);
+                                }}
                                 disabled={isBuyingBuildingPermit || playerRubies < 1}
                                 style={{ minWidth: '360px', borderRadius: '18px', border: '1px solid #2f6b12', background: 'linear-gradient(180deg, #8fd94e 0%, #4ea91d 45%, #2f7a10 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, padding: '14px 26px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.7), inset 0 -2px 0 rgba(28,73,8,0.45), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.34)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                             >
