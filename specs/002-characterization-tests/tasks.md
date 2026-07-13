@@ -63,11 +63,11 @@ Every task must follow this checklist shape:
 
 **Independent Test**: The runner contract, output shape, fail-closed behavior, and repeatability policy are defined without hidden network access, live PocketBase writes, or framework lock-in.
 
-- [ ] T013 Record the final repository-local characterization runner invocation command and package-integration decision in `tests/characterization/runner-toolchain-decision.md`; use the existing Node `.mjs` helper format, permit a direct `node ...` invocation, and keep any `package.json` integration deferred unless separately approved. (FR-006, SC-009)
-- [ ] T014 Define the repository-local characterization runner contract and terminology boundary in `tests/characterization/runner-contract.md`; the contract must stay compatible with the decision recorded in `tests/characterization/runner-toolchain-decision.md`. (FR-006, FR-010, FR-011, SC-007, SC-009)
-- [ ] T015 Define the per-scenario result schema in `tests/characterization/results-format.md`; each run must emit classification plus evidence references for every atomic scenario and keep scenario / test / fixture / harness terminology distinct. (FR-008, FR-010, FR-011, SC-006, SC-009)
-- [ ] T016 Define fail-closed behavior in `tests/characterization/runner-contract.md`; the runner must stop when a fixture, evidence anchor, or approved seam is missing. (FR-009, FR-010, SC-007, SC-008)
-- [ ] T017 Define stable two-run comparison behavior in `tests/characterization/repeatability-policy.md` so the suite can prove unchanged runs produce the same outcome. (SC-007, SC-009)
+- [X] T013 Record the final repository-local characterization runner invocation command and package-integration decision in `tests/characterization/runner-toolchain-decision.md`; use the existing Node `.mjs` helper format, permit a direct `node ...` invocation, and keep any `package.json` integration deferred unless separately approved. (FR-006, SC-009)
+- [X] T014 Define the repository-local characterization runner contract and terminology boundary in `tests/characterization/runner-contract.md`; the contract must stay compatible with the decision recorded in `tests/characterization/runner-toolchain-decision.md`. (FR-006, FR-010, FR-011, SC-007, SC-009)
+- [X] T015 Define the per-scenario result schema in `tests/characterization/results-format.md`; each run must emit classification plus evidence references for every atomic scenario and keep scenario / test / fixture / harness terminology distinct. (FR-008, FR-010, FR-011, SC-006, SC-009)
+- [X] T016 Define fail-closed behavior in `tests/characterization/runner-contract.md`; the runner must stop when a fixture, evidence anchor, or approved seam is missing. (FR-009, FR-010, SC-007, SC-008)
+- [X] T017 Define stable two-run comparison behavior in `tests/characterization/repeatability-policy.md` so the suite can prove unchanged runs produce the same outcome. (SC-007, SC-009)
 
 ---
 
