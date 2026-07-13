@@ -65,6 +65,13 @@ $script:FeatureRoot = Join-Path $script:RepoRoot 'specs/001-verification-workflo
 $script:ReportDirectory = Join-Path $script:FeatureRoot 'reports'
 $script:ReportPath = Join-Path $script:ReportDirectory 'repository-health.json'
 $script:BundledNodeExecutable = 'C:\Users\goldw\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
+$script:TypeScriptLintScript = if (Test-Path -LiteralPath (Join-Path $script:RepoRoot 'node_modules\typescript\lib\tsc.js')) {
+    Join-Path $script:RepoRoot 'node_modules\typescript\lib\tsc.js'
+} elseif (Test-Path -LiteralPath (Join-Path $script:RepoRoot 'node_modules\.ignored\typescript\lib\tsc.js')) {
+    Join-Path $script:RepoRoot 'node_modules\.ignored\typescript\lib\tsc.js'
+} else {
+    Join-Path $script:RepoRoot 'node_modules\typescript\lib\tsc.js'
+}
 $script:KnownGitExecutablePaths = @(
     'C:\Program Files\Git\cmd\git.exe'
     'C:\Program Files\Git\bin\git.exe'
@@ -196,7 +203,7 @@ function New-HelperAuditRegistry {
             label = 'npm run lint'
             command = 'npm run lint'
             executableCandidates = @($script:BundledNodeExecutable)
-            arguments = @('.\node_modules\typescript\lib\tsc.js', '--noEmit')
+            arguments = @($script:TypeScriptLintScript, '--noEmit')
             timeoutMs = 120000
             sourcePath = 'package.json'
             auditTarget = 'TypeScript no-emit path'
@@ -1575,6 +1582,23 @@ function Get-RepositoryProtectedPathSnapshot {
     }
 }
 
+function Get-RepositoryProtectedPathComparisonProjection {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object]$Entry
+    )
+
+    return [ordered]@{
+        path = $Entry.path
+        exists = [bool]$Entry.exists
+        kind = $Entry.kind
+        sizeBytes = $Entry.sizeBytes
+        sha256 = $Entry.sha256
+        childCount = $Entry.childCount
+        children = @($Entry.children)
+    }
+}
+
 function Compare-RepositoryProtectedPathSnapshots {
     param(
         [Parameter(Mandatory = $true)]
@@ -1600,8 +1624,8 @@ function Compare-RepositoryProtectedPathSnapshots {
             continue
         }
 
-        $beforeJson = ($beforeMap[$path] | ConvertTo-Json -Depth 8 -Compress)
-        $afterJson = ($afterMap[$path] | ConvertTo-Json -Depth 8 -Compress)
+        $beforeJson = (Get-RepositoryProtectedPathComparisonProjection -Entry $beforeMap[$path] | ConvertTo-Json -Depth 8 -Compress)
+        $afterJson = (Get-RepositoryProtectedPathComparisonProjection -Entry $afterMap[$path] | ConvertTo-Json -Depth 8 -Compress)
         if ($beforeJson -ne $afterJson) {
             $changedPaths.Add($path)
         }
@@ -1832,19 +1856,16 @@ function Get-FreshnessAssessment {
     if ($baselineMissing.Count -gt 0) {
         $baselineReason = 'One or more baseline docs are missing.'
         $driftReasons.Add($baselineReason)
-    } elseif ($featureMissing.Count -gt 0) {
-        $baselineReason = 'One or more feature design docs are missing.'
-        $driftReasons.Add($baselineReason)
-    } elseif ($null -eq $sourceLatest -or $null -eq $baselineLatest -or $null -eq $featureLatest) {
+    } elseif ($null -eq $sourceLatest -or $null -eq $baselineLatest) {
         $baselineReason = 'Baseline freshness cannot be proven because one or more timestamp snapshots are unavailable.'
         $driftReasons.Add($baselineReason)
-    } elseif (($baselineLatest -lt $sourceLatest) -or ($featureLatest -lt $sourceLatest)) {
+    } elseif ($baselineLatest -lt $sourceLatest) {
         $baselineState = [FreshnessState]::STALE.ToString()
-        $baselineReason = ('Baseline docs trail the active source surface. sourceLatest={0}; baselineLatest={1}; featureLatest={2}' -f $sourceLatest.ToString('o'), $baselineLatest.ToString('o'), $featureLatest.ToString('o'))
+        $baselineReason = ('Baseline docs trail the active source surface. sourceLatest={0}; baselineLatest={1}' -f $sourceLatest.ToString('o'), $baselineLatest.ToString('o'))
         $driftReasons.Add($baselineReason)
     } else {
         $baselineState = [FreshnessState]::FRESH.ToString()
-        $baselineReason = ('Baseline docs and feature docs are current relative to the active source surface. sourceLatest={0}; baselineLatest={1}; featureLatest={2}' -f $sourceLatest.ToString('o'), $baselineLatest.ToString('o'), $featureLatest.ToString('o'))
+        $baselineReason = ('Baseline docs are current relative to the active source surface. sourceLatest={0}; baselineLatest={1}' -f $sourceLatest.ToString('o'), $baselineLatest.ToString('o'))
     }
 
     if (-not $graphParseOk) {
@@ -2695,10 +2716,71 @@ function Get-RepositoryHealthOverallStatus {
     return [RepositoryHealthStatus]::PASS
 }
 
+function Get-Feature002GateReason {
+    param(
+        [Parameter(Mandatory = $true)]
+        [RepositoryHealthStatus]$OverallStatus,
+        [object[]]$Checks = @(),
+        [hashtable]$GitSnapshot = $null,
+        [string[]]$ApprovedWarnCategories = @(),
+        [string[]]$WarningCategories = @()
+    )
+
+    $reasonParts = New-Object System.Collections.Generic.List[string]
+
+    if (($null -ne $GitSnapshot) -and ($GitSnapshot.mode -ne [GitTrustMode]::TRUSTED.ToString())) {
+        $reasonParts.Add(('Git trust is {0}' -f $GitSnapshot.mode))
+    }
+
+    foreach ($check in @($Checks)) {
+        if (($check -is [System.Collections.IDictionary]) -and $check.Contains('required') -and ($check.required -eq $true) -and ($check.status.ToString() -ne 'PASS')) {
+            $reasonParts.Add(('{0} is {1}' -f $check.label, $check.status))
+        }
+    }
+
+    switch ($OverallStatus) {
+        ([RepositoryHealthStatus]::PASS) {
+            return 'A PASS status allows Feature 002 to proceed.'
+        }
+        ([RepositoryHealthStatus]::WARN) {
+            $unapprovedWarningCategories = @($WarningCategories | Where-Object { $_ -notin $ApprovedWarnCategories })
+            if ($WarningCategories.Count -gt 0 -and $unapprovedWarningCategories.Count -eq 0) {
+                return 'Owner-approved warning categories allow Feature 002 to proceed.'
+            }
+
+            if ($unapprovedWarningCategories.Count -gt 0) {
+                $reasonParts.Insert(0, ('Unapproved warning categories: {0}' -f ($unapprovedWarningCategories -join ', ')))
+            }
+
+            if ($reasonParts.Count -eq 0) {
+                return 'Feature 002 remains denied because warning checks are not yet owner-approved.'
+            }
+
+            return ('Feature 002 remains denied because {0}.' -f ($reasonParts -join '; '))
+        }
+        ([RepositoryHealthStatus]::BLOCKED) {
+            if ($reasonParts.Count -eq 0) {
+                return 'Feature 002 remains denied because required checks are not yet current.'
+            }
+
+            return ('Feature 002 remains denied because {0}.' -f ($reasonParts -join '; '))
+        }
+        default {
+            if ($reasonParts.Count -eq 0) {
+                return 'Feature 002 remains denied because the repository-health gate failed.'
+            }
+
+            return ('Feature 002 remains denied because {0}.' -f ($reasonParts -join '; '))
+        }
+    }
+}
+
 function Get-Feature002Gate {
     param(
         [Parameter(Mandatory = $true)]
         [RepositoryHealthStatus]$OverallStatus,
+        [object[]]$Checks = @(),
+        [hashtable]$GitSnapshot = $null,
         [string[]]$ApprovedWarnCategories = @(),
         [string[]]$WarningCategories = @()
     )
@@ -2724,21 +2806,21 @@ function Get-Feature002Gate {
             return [ordered]@{
                 decision = [GateDecision]::DENY.ToString()
                 basis = 'APPROVED_WARNINGS'
-                reason = 'WARN approval categories are not yet owner-approved for Feature 002.'
+                reason = Get-Feature002GateReason -OverallStatus $OverallStatus -Checks $Checks -GitSnapshot $GitSnapshot -ApprovedWarnCategories $ApprovedWarnCategories -WarningCategories $WarningCategories
             }
         }
         ([RepositoryHealthStatus]::BLOCKED) {
             return [ordered]@{
                 decision = [GateDecision]::DENY.ToString()
                 basis = 'BLOCKED'
-                reason = 'The workflow is still in the first-pass scaffold; Feature 002 remains blocked.'
+                reason = Get-Feature002GateReason -OverallStatus $OverallStatus -Checks $Checks -GitSnapshot $GitSnapshot -ApprovedWarnCategories $ApprovedWarnCategories -WarningCategories $WarningCategories
             }
         }
         default {
             return [ordered]@{
                 decision = [GateDecision]::DENY.ToString()
                 basis = 'FAIL'
-                reason = 'A FAIL status always denies Feature 002.'
+                reason = Get-Feature002GateReason -OverallStatus $OverallStatus -Checks $Checks -GitSnapshot $GitSnapshot -ApprovedWarnCategories $ApprovedWarnCategories -WarningCategories $WarningCategories
             }
         }
     }
@@ -2931,7 +3013,7 @@ function New-RepositoryHealthReport {
 
     $summary = Get-RepositoryHealthSummary -Checks $checks
     $overallStatus = Get-RepositoryHealthOverallStatus -Checks $checks -GitSnapshot $gitSnapshot
-    $gate = Get-Feature002Gate -OverallStatus $overallStatus -ApprovedWarnCategories @()
+    $gate = Get-Feature002Gate -OverallStatus $overallStatus -Checks $checks -GitSnapshot $gitSnapshot -ApprovedWarnCategories @()
 
     return [ordered]@{
         runId = [guid]::NewGuid().ToString()

@@ -416,7 +416,7 @@ export const items: Item[] = [
     id: 10045,
     name: 'РЎСѓРїРµСЂ РґРµС‚РѕРЅР°С‚РѕСЂ',
     englishName: 'Super Detonator',
-    category: 'Р РµСЃСѓСЂСЃС‹',
+    category: 'Ресурсы',
     description: 'РЈСЃРєРѕСЂСЏРµС‚ РІР·СЂС‹РІ Р±РѕРјР± РЅР° 70%. РњРѕР¶РЅРѕ РёР·РіРѕС‚РѕРІРёС‚СЊ РЅР° РґСЊСЏРІРѕР»СЊСЃРєРѕР№ РјР°С€РёРЅРµ.',
     imageUrl: '/buildings/ресурсы/Бомбы/Супер детонатор/10020.webp',
     rubyPackQuantity: 1

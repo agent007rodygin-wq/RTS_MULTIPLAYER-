@@ -1374,9 +1374,10 @@ export async function updateDoc(
     }
   }
 
+  let payload: AnyRecord = {};
   try {
     // Build the payload from only the fields we're updating (+ gameId for lookup)
-    const payload = wrapData(ref.collectionName, { ...resolved, gameId: ref.id });
+    payload = wrapData(ref.collectionName, { ...resolved, gameId: ref.id });
 
     // CRITICAL FIX: Preserve existing `data` JSON fields during partial updates.
     // PocketBase PATCH replaces the entire JSON field, so if we only send { data: { lastMoveTime: now } },

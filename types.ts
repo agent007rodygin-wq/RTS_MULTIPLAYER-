@@ -194,6 +194,10 @@ export interface Clan {
   leaderName: string;
   leaderUid: string;
   membersCount: number;
+  isPublic: boolean;
+  allowInvites: boolean;
+  invitePermissionLevel: number;
+  starGrantPermissionLevel: number;
 }
 
 export interface HistoryEntry {

@@ -6349,7 +6349,7 @@ const App: React.FC = () => {
                 }));
                 const isSameSessionUser = lastInitializedAuthUidRef.current === currentUser.uid;
                 if (isSameSessionUser) {
-                    const displayName = currentUser.displayName || playerNameRef.current || ('Гость ' + GUEST_ID.slice(-4).toUpperCase());
+                    const displayName = currentUser.displayName || playerName || ('Гость ' + GUEST_ID.slice(-4).toUpperCase());
                     setPlayerName(repairMojibakeCp1251Utf8(displayName));
                     console.log('[App] Auth refresh detected for same user, skipping one-time init:', currentUser.uid);
                     return;
@@ -11827,7 +11827,7 @@ const App: React.FC = () => {
 
                 monstersReadyToAttack.forEach(monster => {
                     const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
-                    const monsterId = monster.id || '';
+                    const monsterId = String(monster.id || '');
                     const attackId = `${monsterId}:${now}:${Math.random().toString(36).slice(2, 8)}`;
                     const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
                     const target = getMonsterAdjacentAttackTarget(monster, currentBuildings, buildingData, {
@@ -16975,7 +16975,7 @@ const App: React.FC = () => {
                     canInvite: true,
                     canGrantStars: true
                 }
-            }, { merge: true });
+            });
             const persistedUserSnapshot = await getDoc(userDocRef);
             const persistedUserData = persistedUserSnapshot.exists() ? persistedUserSnapshot.data() as any : null;
             if (!persistedUserData || Number(persistedUserData.clanId || 0) !== Number(normalizedClan.id)) {

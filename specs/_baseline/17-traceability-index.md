@@ -148,7 +148,7 @@ The rows below stay within the current source audit boundary. Rows marked `PARTI
 | Move, repair, bank withdrawal, active toggle | `App.tsx:5246-5285, 15603-16456` | `10`, `11` | `CONFIRMED_BY_SOURCE` | Local-first state changes with mixed rollback completeness. |
 | Map resources, dropped items, tree-hit boundary | `App.tsx:4794-5592, 12822-14186`; `src/pocketbase.ts:2392-2418` | `03`, `04`, `09`, `10`, `11` | `CONFIRMED_BY_SOURCE` | World-state ownership plus the server-side tree-hit endpoint. |
 | Chat, private messages, presence, leaderboard mirrors | `App.tsx:6848-7840, 7340-16783` | `03`, `04`, `09`, `11` | `CONFIRMED_BY_SOURCE` | Mixed realtime and best-effort sync; not all of it is classic optimistic UI. |
-| Clans and social state | `App.tsx:17111-17252` | `03`, `10`, `11` | `PARTIALLY_CONFIRMED` | Some membership changes are local-first, while settings/member-permission writes are server-first or transactional. |
+| Clans and social state | `App.tsx:7350-7353, 17111-17252`; `types.ts:189-200` | `03`, `10`, `11` | `PARTIALLY_CONFIRMED` | Some membership changes are local-first, while settings/member-permission writes are server-first or transactional; the clan settings shape is now explicit in `types.ts`. |
 | Realtime retry / fail-open / cleanup | `src/pocketbase.ts:80-99, 1863-1928, 2325-2354`; `App.tsx:7318-7564, 8526-8560, 8637` | `04`, `09`, `11` | `CONFIRMED_BY_SOURCE` | Retry backoff, fail-open zone sync, and silent cleanup paths are all active. |
 | Error and recovery gaps | `App.tsx:2976-2991, 1012-1070, 6949-7051` | `11` | `UNCONFIRMED` | Window error hooks only log, and JSON parse / invalid timestamp / raw 409 behavior is still not fully proven. |
 
@@ -198,3 +198,4 @@ This addendum maps the migration roadmap and test strategy to the current baseli
 - `forceReloadAt` is a reload gate only and not proof of persistence;
 - exact-once reward stays `PARTIALLY_CONFIRMED`;
 - the weapon-upgrade runtime path stays `UNCONFIRMED`.
+- `verify_repository_health.ps1` now resolves the TypeScript lint entrypoint from either `node_modules/typescript/lib/tsc.js` or `node_modules/.ignored/typescript/lib/tsc.js`, so the offline lint check matches the actual workspace layout.
