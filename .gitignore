@@ -39,5 +39,21 @@ ai-studio-applet-webapp-*.json
 idp.json
 firebase_dump.json
 
+# Cleanup / repository hygiene
+build/
+pb_data/
+databases/
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+desktop.ini
+.VSCodeCounter/
+graphify-out/cache/
+*.backup.*
+*.bak.*
+*.bak_*
+backup_before_*/
 
 
