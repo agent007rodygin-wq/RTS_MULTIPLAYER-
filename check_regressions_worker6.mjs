@@ -11,7 +11,7 @@ const has = (name, pattern) => {
 };
 
 // 1) Building/monster respawn after destruction:
-// Ensure deterministic monster IDs are rebuilt when missing and returned to home sector when displaced.
+// Ensure deterministic monster IDs are rebuilt when missing and zone metadata is healed to the actual sector when displaced.
 has(
   'Respawn: deterministic regular monster IDs are generated per zone',
   /const monsterId = getRegularMonsterId\(cfg\.typeId, slot, zoneId\);/
@@ -21,34 +21,34 @@ has(
   /if \(!pos\) break;[\s\S]*?await setDoc\(doc\(db, 'buildings', monsterId\),/
 );
 has(
-  'Respawn: displaced monster is returned to its home sector',
-  /if \(actualZoneId !== zoneId\) \{[\s\S]*?await updateDoc\(doc\(db, 'buildings', monsterId\), \{[\s\S]*?zoneId,/
+  'Respawn: displaced monster zoneId is healed to its actual sector',
+  /const actualZoneId = existingById\.zoneId \|\| getZoneId\(existingById\.x, existingById\.y\);[\s\S]*?await updateDoc\(doc\(db, 'buildings', monsterId\), \{[\s\S]*?zoneId: actualZoneId[\s\S]*?\}\);/
 );
 
 // 2) Baba Yaga target handling (shared monster chase/attack logic):
-// Ensure stale targets are dropped, sticky valid targets are kept, and attacks only hold when target is valid.
+// Ensure chase selection only uses live targets, adjacent locks are retained while valid, and cooldown gates attacks only.
 has(
-  'AI target: stale chase target is cleared when invalid',
-  /if \(staleTargetId && \(!staleTarget \|\| !isValidMonsterChaseTarget\(monster, staleTarget, pendingDestroyedIds\)\)\) \{[\s\S]*?monsterChaseTargetRef\.current\.delete\(monsterId\);/
+  'AI target: chase target is recomputed from live buildings only',
+  /function getMonsterChaseTarget\([\s\S]*?if \(!isMonsterAttackTargetCandidate\(monster, target, buildingData, options\)\) return;[\s\S]*?return target && isBuildingAlive\(target\) \? target : null;/
 );
 has(
-  'AI target: sticky target is retained when still valid and in radius',
-  /if \(stickyTargetId\) \{[\s\S]*?if \(stickyTarget && isValidMonsterChaseTarget\(monster, stickyTarget, pendingDestroyedIds\)\) \{[\s\S]*?if \(dist <= SEARCH_RADIUS\) \{[\s\S]*?nearestTarget = \{ id: stickyTargetId,/
+  'AI target: adjacent target lock is retained while still valid',
+  /const preferredTargetId = monsterTargetLockRef\.current\.get\(monsterId\) \|\| null;[\s\S]*?const target = getMonsterAdjacentAttackTarget\(monster, currentBuildings, buildingData, \{[\s\S]*?preferredTargetId,[\s\S]*?\}\);[\s\S]*?monsterTargetLockRef\.current\.set\(monsterId, targetId\);/
 );
 has(
-  'AI target: hold-for-attack requires a real target and cooldown ready',
-  /const shouldHoldPositionForAttack = Boolean\(target\) && canAttackNow;/
+  'AI target: cooldown gates damage, not movement hold',
+  /const canAttackNow = lastAttackTime <= now && \(now - lastAttackTime\) >= MONSTER_ATTACK_INTERVAL_MS;[\s\S]*?const shouldHoldPositionForAttack = Boolean\(target\);/
 );
 
 // 3) Empty monster sectors:
-// Ensure each zone gets a non-empty regular monster plan and spawn loop handles no free tile safely.
+// Ensure the world spawn sweep still iterates all sectors and handles no free tile safely.
 has(
-  'Empty sector: per-zone regular plan excludes only one type (4 of 5 remain)',
-  /const getRegularMonsterPlanForZone = \(zoneX: number, zoneY: number\) => \{[\s\S]*?return REGULAR_MONSTER_SPAWN_CONFIG\.filter\(\(_, index\) => index !== excludedIndex\);/
+  'Empty sector: initial monster spawn iterates all sectors safely',
+  /for \(let zX = 0; zX < ZONES_X; zX\+\+\) \{[\s\S]*?for \(let zY = 0; zY < ZONES_Y; zY\+\+\) \{[\s\S]*?const pos = findFreeSpot\(zX, zY\);[\s\S]*?if \(!pos\) break;/
 );
 has(
-  'Empty sector: spawn loop iterates all sectors and uses per-zone plan',
-  /for \(let zX = 0; zX < ZONES_X; zX\+\+\) \{[\s\S]*?for \(let zY = 0; zY < ZONES_Y; zY\+\+\) \{[\s\S]*?const zoneMonsters = getRegularMonsterPlanForZone\(zX, zY\)\.slice\(0, MAX_WILD_MONSTERS_PER_ZONE\);/
+  'Empty sector: background sweep walks managed zones incrementally',
+  /const sweepZoneIds: string\[\] = \[\];[\s\S]*?for \(let i = 0; i < WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE; i\+\+\) \{[\s\S]*?sweepZoneIds\.push\(/
 );
 has(
   'Empty sector: full sector is handled gracefully without crash',

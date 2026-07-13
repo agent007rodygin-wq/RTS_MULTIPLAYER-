@@ -1,0 +1,32 @@
+{
+  "name": "666-good-open-map-rts-game1130",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "diag:regressions": "node check_regressions_worker6.mjs",
+    "cleanup:overlaps": "node cleanup_building_resource_overlaps.mjs"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.1",
+    "dotenv": "^17.4.0",
+    "google-auth-library": "^10.6.2",
+    "lucide-react": "^1.0.1",
+    "motion": "^12.38.0",
+    "pocketbase": "^0.21.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

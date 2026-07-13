@@ -16,7 +16,7 @@ export const items: Item[] = [
     englishName: 'Tree',
     category: 'Ресурсы',
     description: 'Дерево можно добыть, вырубая лес.',
-    imageUrl: 'https://i.ibb.co/ZR5vnNqR/10001.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Дерево/10001.webp',
     requiredFor: [
       { id: 5, name: 'Деревянный дом 1', amount: 5 },
       { id: 6, name: 'Деревянный дом 2', amount: 11 },
@@ -40,7 +40,7 @@ export const items: Item[] = [
     englishName: 'Boards',
     category: 'Ресурсы',
     description: 'Доски можно добыть на лесопилке.',
-    imageUrl: 'https://i.ibb.co/7JLgmTd7/10002.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Доски/10002.webp',
     producedBy: [
         { id: 55, name: 'Лесопилка 1', amount: 4},
         { id: 56, name: 'Лесопилка 2', amount: 5},
@@ -57,7 +57,7 @@ export const items: Item[] = [
     englishName: 'Super mushroom pieces',
     category: 'Ресурсы',
     description: 'Можно добыть, если вам повезет, и на вашей грядке с грибами вырастет супер гриб.',
-    imageUrl: 'https://i.ibb.co/wrF63S8P/10003.png',
+    imageUrl: '/buildings/ресурсы/Грядки/Куски супер гриба/10003.webp',
     rubyPackQuantity: 1
   },
   {
@@ -66,7 +66,7 @@ export const items: Item[] = [
     englishName: 'Super pumpkin pieces',
     category: 'Ресурсы',
     description: 'Можно добыть, если вам повезет, и на вашей грядке с тыквами вырастет супер тыква.',
-    imageUrl: 'https://i.ibb.co/3yQZJSPD/10004.png',
+    imageUrl: '/buildings/ресурсы/Грядки/Куски супер тыквы/10004.webp',
     rubyPackQuantity: 1
   },
   {
@@ -75,7 +75,7 @@ export const items: Item[] = [
     englishName: 'Stones',
     category: 'Ресурсы',
     description: 'Можно найти на карте.',
-    imageUrl: 'https://i.ibb.co/YTF53bws/10005.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Камни/10005.webp',
     rubyPackQuantity: 50
   },
   {
@@ -84,7 +84,7 @@ export const items: Item[] = [
     englishName: 'Stone blocks',
     category: 'Ресурсы',
     description: 'Можно сделать из камней в камнедробилке.',
-    imageUrl: 'https://i.ibb.co/TjQVM42/10006.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Каменные блоки/10006.webp',
     rubyPackQuantity: 10
   },
   {
@@ -93,7 +93,7 @@ export const items: Item[] = [
     englishName: 'Egg of the killing hut on the chicken legs',
     category: 'Ресурсы',
     description: 'Можно получить из Академии монстров.',
-    imageUrl: 'https://i.ibb.co/7J4Cd03L/10007.png',
+    imageUrl: '/buildings/ресурсы/Монстры/Яйцо Избушки-убийцы/10007.webp',
     rubyPackQuantity: 1
   },
   {
@@ -102,7 +102,7 @@ export const items: Item[] = [
     englishName: 'Oil barrel',
     category: 'Ресурсы',
     description: 'Можно добыть из месторождения нефти, используя нефтяную вышку.',
-    imageUrl: 'https://i.ibb.co/2Y3mYHGX/10008.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Бочка с нефтью/10008.webp',
     rubyPackQuantity: 10
   },
   {
@@ -111,7 +111,7 @@ export const items: Item[] = [
     englishName: 'Canister with gasoline',
     category: 'Ресурсы',
     description: 'Можно добыть из нефти на алхимическом заводе.',
-    imageUrl: 'https://i.ibb.co/gZL5q1r7/10009-2.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Канистра с бензином/10009.webp',
     rubyPackQuantity: 5
   },
   {
@@ -120,7 +120,7 @@ export const items: Item[] = [
     englishName: 'Garden bomb',
     category: 'Ресурсы',
     description: 'Можно вырастить на грядке с бомбами.',
-    imageUrl: 'https://i.ibb.co/rKqsX4Hj/10010.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/Садовая бомба/10010.webp',
     rubyPackQuantity: 5
   },
   {
@@ -129,7 +129,7 @@ export const items: Item[] = [
     englishName: 'Super Garden Bomb',
     category: 'Ресурсы',
     description: 'Усиленная версия садовой бомбы. Можно вырастить на грядке с бомбами при большой удаче.',
-    imageUrl: 'https://i.ibb.co/jkqQy3L8/10011.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/Садовая супер бомба/10011.webp',
     rubyPackQuantity: 1
   },
   {
@@ -138,7 +138,7 @@ export const items: Item[] = [
     englishName: 'MGM-52 Lance',
     category: 'Ресурсы',
     description: 'Производится на военном заводе.',
-    imageUrl: 'https://i.ibb.co/7Jts8WJv/10012.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/MGM-52 «Ланс»/10012.webp',
     rubyPackQuantity: 1
   },
   {
@@ -147,7 +147,7 @@ export const items: Item[] = [
     englishName: 'Firecracker',
     category: 'Ресурсы',
     description: 'Используется для подрыва зданий.',
-    imageUrl: 'https://i.ibb.co/j997mCCj/10013.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/Петарда/10013.webp',
     rubyPackQuantity: 10
   },
   {
@@ -165,7 +165,7 @@ export const items: Item[] = [
     englishName: 'Box of Firecrackers',
     category: 'Ресурсы',
     description: 'Ящик с петардами.',
-    imageUrl: 'https://i.ibb.co/TDTkWmfx/10014.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/Ящик петард/10014.webp',
     rubyPackQuantity: 1
   },
   {
@@ -174,7 +174,7 @@ export const items: Item[] = [
     englishName: 'Atomic bomb Snowflake',
     category: 'Ресурсы',
     description: 'Производится на военном заводе.',
-    imageUrl: 'https://i.ibb.co/yc3qhmJn/10015.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/Атомная бомба «Снежин/10015.webp',
     rubyPackQuantity: 1
   },
   {
@@ -183,7 +183,7 @@ export const items: Item[] = [
     englishName: 'Detonator',
     category: 'Ресурсы',
     description: 'Необходим для создания мощной взрывчатки.',
-    imageUrl: 'https://i.ibb.co/nNG6dYJ0/10017.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/Детонатор/10017.webp',
     rubyPackQuantity: 5
   },
   {
@@ -192,7 +192,7 @@ export const items: Item[] = [
     englishName: 'Egg of Gorynych',
     category: 'Ресурсы',
     description: 'Редкое яйцо легендарного Змея Горыныча.',
-    imageUrl: 'https://i.ibb.co/JR9MnWfX/10018.png',
+    imageUrl: '/buildings/ресурсы/Монстры/Яйцо Горыныча/10018.webp',
     rubyPackQuantity: 1
   },
   {
@@ -201,7 +201,7 @@ export const items: Item[] = [
     englishName: 'Bag of flour',
     category: 'Ресурсы',
     description: 'Можно получить на мельнице.',
-    imageUrl: 'https://i.ibb.co/zT3fjp7v/10019.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Мешок муки/10019.webp',
     rubyPackQuantity: 10
   },
   {
@@ -210,7 +210,7 @@ export const items: Item[] = [
     englishName: 'Super turnip pieces',
     category: 'Ресурсы',
     description: 'Можно добыть, если вам повезет, и на вашей грядке с репками вырастет супер репка.',
-    imageUrl: 'https://i.ibb.co/bMpYKVC2/10021.png',
+    imageUrl: '/buildings/ресурсы/Грядки/Куски супер репки/10021.webp',
     rubyPackQuantity: 1
   },
   {
@@ -219,7 +219,7 @@ export const items: Item[] = [
     englishName: 'Ore',
     category: 'Ресурсы',
     description: 'Можно добыть в шахте.',
-    imageUrl: 'https://i.ibb.co/PZb6Mwt3/10022.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Руда/10022.webp',
     rubyPackQuantity: 20
   },
   {
@@ -228,7 +228,7 @@ export const items: Item[] = [
     englishName: 'Steel',
     category: 'Ресурсы',
     description: 'Прочный металл. Производится из руды.',
-    imageUrl: 'https://i.ibb.co/mry2BYzb/10023.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Сталь/10023.webp',
     rubyPackQuantity: 5
   },
   {
@@ -237,7 +237,7 @@ export const items: Item[] = [
     englishName: 'Super Lily',
     category: 'Ресурсы',
     description: 'Можно добыть, если вам повезет, и в вашем пруду с лилиями вырастет супер лилия.',
-    imageUrl: 'https://i.ibb.co/ynvVTTY1/10024.png',
+    imageUrl: '/buildings/ресурсы/Грядки/Супер лилия/10024.webp',
     rubyPackQuantity: 1
   },
   {
@@ -246,7 +246,7 @@ export const items: Item[] = [
     englishName: 'Gold ore',
     category: 'Ресурсы',
     description: 'Можно добыть в золотой шахте.',
-    imageUrl: 'https://i.ibb.co/WptMKP84/10025.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Золотая руда или Самородок/10025.webp',
     rubyPackQuantity: 5
   },
   {
@@ -255,7 +255,7 @@ export const items: Item[] = [
     englishName: 'Gold',
     category: 'Ресурсы',
     description: 'Слиток золота. Очень ценный ресурс.',
-    imageUrl: 'https://i.ibb.co/DPLxWcdf/10026.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Золото/10026.webp',
     rubyPackQuantity: 1
   },
   {
@@ -264,7 +264,7 @@ export const items: Item[] = [
     englishName: 'Giant wheat grains',
     category: 'Ресурсы',
     description: 'Семена необычайно большой пшеницы.',
-    imageUrl: 'https://i.ibb.co/KTzDmD3/10027.png',
+    imageUrl: '/buildings/ресурсы/Грядки/Зёрна гигантской пше/10027.webp',
     rubyPackQuantity: 10
   },
   {
@@ -273,7 +273,7 @@ export const items: Item[] = [
     englishName: 'Blueprint for a sign',
     category: 'Ресурсы',
     description: 'Необходим для строительства табличек.',
-    imageUrl: 'https://i.ibb.co/p67prqNc/10028.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Чертёж таблички/10028.webp',
     rubyPackQuantity: 1
   },
   {
@@ -282,7 +282,7 @@ export const items: Item[] = [
     englishName: 'Prison Castle',
     category: 'Ресурсы',
     description: 'Нужен для строительства тюрьмы.',
-    imageUrl: 'https://i.ibb.co/gb1yRXbZ/10029.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Тюремный замок/10029.webp',
     rubyPackQuantity: 1
   },
   {
@@ -291,7 +291,7 @@ export const items: Item[] = [
     englishName: 'Sunflower Flower',
     category: 'Ресурсы',
     description: 'Нужен для изготовления рекомендаций.',
-    imageUrl: 'https://i.ibb.co/mVnsX1XL/10030.png',
+    imageUrl: '/buildings/ресурсы/Грядки/Цветок подсолнуха/10030.webp',
     rubyPackQuantity: 10
   },
   {
@@ -300,7 +300,7 @@ export const items: Item[] = [
     englishName: 'Recommendation',
     category: 'Ресурсы',
     description: 'Даёт возможность хвалить или жаловаться на других игроков. Влияет на репутацию: чем выше репутация, тем дороже стоит ваш бан.',
-    imageUrl: 'https://i.ibb.co/F4gtL2xX/10032.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Рекомендация/10032.webp',
     rubyPackQuantity: 1
   },
   {
@@ -309,7 +309,7 @@ export const items: Item[] = [
     englishName: 'Skull',
     category: 'Ресурсы',
     description: 'Остатки древних скелетов.',
-    imageUrl: 'https://i.ibb.co/HDPWbb5t/10033.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Черепок/10033.webp',
     rubyPackQuantity: 5
   },
   {
@@ -318,7 +318,7 @@ export const items: Item[] = [
     englishName: 'Emerald',
     category: 'Ресурсы',
     description: 'Редкий драгоценный камень.',
-    imageUrl: 'https://i.ibb.co/JFz3f7Bj/10034.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Изумруд/10034.webp',
     rubyPackQuantity: 1
   },
   {
@@ -327,7 +327,7 @@ export const items: Item[] = [
     englishName: 'Elite Wood',
     category: 'Ресурсы',
     description: 'Редкая и прочная древесина высокого качества.',
-    imageUrl: 'https://i.ibb.co/tMbCCDdb/10035.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Элитная древесина/10035.webp',
     rubyPackQuantity: 5
   },
   {
@@ -336,7 +336,7 @@ export const items: Item[] = [
     englishName: 'Emerald Ore',
     category: 'Ресурсы',
     description: 'Редкая руда, содержащая драгоценные изумруды.',
-    imageUrl: 'https://i.ibb.co/ycMWhH9g/10036.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Изумрудная руда/10036.webp',
     rubyPackQuantity: 5
   },
   {
@@ -345,7 +345,7 @@ export const items: Item[] = [
     englishName: 'Troll Stone',
     category: 'Ресурсы',
     description: 'Древний камень, пропитанный силой горных троллей.',
-    imageUrl: 'https://i.ibb.co/YTX8gNXG/10037.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Камень Тролля/10037.webp',
     rubyPackQuantity: 2
   },
   {
@@ -354,7 +354,7 @@ export const items: Item[] = [
     englishName: 'Ice',
     category: 'Ресурсы',
     description: 'Холодный кусок льда.',
-    imageUrl: 'https://i.ibb.co/p6rSGdd7/10038.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Лёд/10038.webp',
     rubyPackQuantity: 20
   },
   {
@@ -363,7 +363,7 @@ export const items: Item[] = [
     englishName: 'Symbol of Love',
     category: 'Ресурсы',
     description: 'Редкий символ, олицетворяющий искренние чувства.',
-    imageUrl: 'https://i.ibb.co/xRQ0M6m/10039.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Символ любви или Сердце/10039.webp',
     rubyPackQuantity: 1
   },
   {
@@ -372,7 +372,7 @@ export const items: Item[] = [
     englishName: 'Steel Sheet',
     category: 'Ресурсы',
     description: 'Он нужен для строительства и производится на фабрике из стальных слитков.',
-    imageUrl: 'https://i.ibb.co/nqNhTnY8/10040.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Стальной лист/10040.webp',
     rubyPackQuantity: 5
   },
   {
@@ -381,7 +381,7 @@ export const items: Item[] = [
     englishName: 'Sand',
     category: 'Ресурсы',
     description: 'Обычный песок, который можно найти в карьере.',
-    imageUrl: 'https://i.ibb.co/JwXtHKZ3/10041.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Песок/10041.webp',
     rubyPackQuantity: 20
   },
   {
@@ -390,7 +390,7 @@ export const items: Item[] = [
     englishName: 'Heart',
     category: 'Ресурсы',
     description: 'Редкий символ, олицетворяющий искренние чувства.',
-    imageUrl: 'https://i.ibb.co/xRQ0M6m/10039.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Символ любви или Сердце/10039.webp',
     rubyPackQuantity: 1
   },
   {
@@ -399,7 +399,7 @@ export const items: Item[] = [
     englishName: 'Super Atomic Bomb',
     category: 'Ресурсы',
     description: 'Оружие массового поражения невероятной силы.',
-    imageUrl: 'https://i.ibb.co/sxkpcGF/10016.png',
+    imageUrl: '/buildings/ресурсы/Бомбы/Суператомная бомба/10016.webp',
     rubyPackQuantity: 2
   },
   {
@@ -408,7 +408,17 @@ export const items: Item[] = [
     englishName: 'Gold Nugget',
     category: 'Ресурсы',
     description: 'Крупный кусок самородного золота.',
-    imageUrl: 'https://i.ibb.co/WptMKP84/10025.png',
+    imageUrl: '/buildings/ресурсы/Ресурсы/Золотая руда или Самородок/10025.webp',
     rubyPackQuantity: 2
+  }
+  ,
+  {
+    id: 10045,
+    name: 'РЎСѓРїРµСЂ РґРµС‚РѕРЅР°С‚РѕСЂ',
+    englishName: 'Super Detonator',
+    category: 'Ресурсы',
+    description: 'РЈСЃРєРѕСЂСЏРµС‚ РІР·СЂС‹РІ Р±РѕРјР± РЅР° 70%. РњРѕР¶РЅРѕ РёР·РіРѕС‚РѕРІРёС‚СЊ РЅР° РґСЊСЏРІРѕР»СЊСЃРєРѕР№ РјР°С€РёРЅРµ.',
+    imageUrl: '/buildings/ресурсы/Бомбы/Супер детонатор/10020.webp',
+    rubyPackQuantity: 1
   }
 ];

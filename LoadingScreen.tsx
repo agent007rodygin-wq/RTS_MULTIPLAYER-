@@ -73,6 +73,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                 {!user ? (
                     <form 
                         onSubmit={handleAuth}
+                        translate="no"
                         className="flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-700"
                     >
                         <div className="flex flex-col gap-3 mb-2">
@@ -81,6 +82,12 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                                 placeholder="Email"
                                 className="px-5 py-3 bg-gray-900/80 border border-gray-600/50 rounded-xl text-white text-base outline-none focus:border-blue-500/50 focus:bg-gray-900 transition-all placeholder:text-gray-500 shadow-inner"
                                 value={authEmail}
+                                autoComplete="username"
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                spellCheck={false}
+                                inputMode="email"
+                                translate="no"
                                 onChange={(e) => setAuthEmail(e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
                             />
@@ -91,6 +98,10 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                                     placeholder="Логин (Никнейм)"
                                     className="px-5 py-3 bg-gray-900/80 border border-gray-600/50 rounded-xl text-white text-base outline-none focus:border-blue-500/50 focus:bg-gray-900 transition-all placeholder:text-gray-500 shadow-inner animate-in slide-in-from-top-2 duration-300"
                                     value={regPlayerName}
+                                    autoCapitalize="none"
+                                    autoCorrect="off"
+                                    spellCheck={false}
+                                    translate="no"
                                     onChange={(e) => setRegPlayerName(e.target.value)}
                                     onClick={(e) => e.stopPropagation()}
                                 />
@@ -101,6 +112,11 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                                 placeholder="Пароль"
                                 className="px-5 py-3 bg-gray-900/80 border border-gray-600/50 rounded-xl text-white text-base outline-none focus:border-blue-500/50 focus:bg-gray-900 transition-all placeholder:text-gray-500 shadow-inner"
                                 value={authPassword}
+                                autoComplete={isRegisterMode ? "new-password" : "current-password"}
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                spellCheck={false}
+                                translate="no"
                                 onChange={(e) => setAuthPassword(e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
                             />

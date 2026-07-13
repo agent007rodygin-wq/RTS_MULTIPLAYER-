@@ -4,7 +4,8 @@ import PocketBase, { RecordModel } from 'pocketbase';
 type AnyRecord = Record<string, any>;
 
 // ─── PocketBase Client ──────────────────────────────────────────────────────
-// Google OAuth requires a real domain, so we use nip.io to map the IP to a domain name
+// Google OAuth requires a real domain, so we use the explicitly provided
+// PocketBase host. Do not swap this to localhost/127 in production.
 export const pb = new PocketBase('http://89.127.214.182:8090');
 // Keep auth token alive automatically
 pb.autoCancellation(false);
@@ -13,25 +14,137 @@ const PB_BUILD_MODE = (import.meta as ImportMeta & { env?: Record<string, string
 console.log(`[POCKETBASE STARTUP] buildMarker=${PB_BUILD_MARKER} mode=${PB_BUILD_MODE} baseUrl=${pb.baseUrl}`);
 
 // ─── Global Request Queue to prevent ERR_INSUFFICIENT_RESOURCES ─────────────
+const PB_DEBUG_ENABLED = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_DEBUG === '1'
+  || (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_VERBOSE_DEBUG === '1';
+const PB_RUNTIME_AUDIT_ENABLED = PB_DEBUG_ENABLED;
+
+type RuntimeAuditKind = 'build' | 'permit' | 'timer';
+interface RuntimeAuditContext {
+  kind: RuntimeAuditKind;
+  traceId: string;
+}
+
+let currentRuntimeAuditContext: RuntimeAuditContext | null = null;
+
+export function setRuntimeAuditContext(context: RuntimeAuditContext | null): void {
+  currentRuntimeAuditContext = context;
+}
+
+const getRuntimeTraceLabel = (): string | null =>
+  currentRuntimeAuditContext ? `${currentRuntimeAuditContext.kind}:${currentRuntimeAuditContext.traceId}` : null;
+
+const logPbAudit = (stage: string, payload: Record<string, unknown>) => {
+  if (!PB_RUNTIME_AUDIT_ENABLED) return;
+  console.info(`[PB ${stage}]`, {
+    ...payload,
+    traceLabel: getRuntimeTraceLabel(),
+  });
+};
+
 const MAX_CONCURRENT_REQUESTS = 5; // Increased from 3 for faster loading on slow connections
 let activeRequests = 0;
 const requestQueue: Array<() => Promise<void>> = [];
+let requestSeq = 0;
+const QUERY_REQUEST_TIMEOUT_MS = 15000;
+const ZONE_QUERY_PAGE_SIZE: Record<string, number> = {
+  map_resources: 300,
+  buildings: 200,
+  dropped_items: 100,
+};
+const FILTERED_QUERY_PAGE_SIZE: Record<string, number> = {
+  map_resources: 300,
+  buildings: 200,
+  dropped_items: 100,
+  presence: 200,
+  users: 100,
+  chat_messages: 200,
+  private_messages: 200,
+  market: 100,
+  clans: 100,
+  elections: 50,
+};
 
-async function enqueueRequest<T>(fn: () => Promise<T>): Promise<T> {
+function summarizeQueryOptions(options?: Record<string, unknown>): Record<string, unknown> {
+  if (!options) return {};
+  return {
+    filter: options.filter ?? undefined,
+    sort: options.sort ?? undefined,
+    fields: options.fields ?? undefined,
+    expand: options.expand ?? undefined,
+    page: options.page ?? undefined,
+    perPage: options.perPage ?? undefined,
+    max: options.max ?? undefined,
+  };
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[PB Timeout] ${label} exceeded ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+async function enqueueRequest<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const requestId = ++requestSeq;
+  const queuedAt = Date.now();
+  logPbAudit('queue-enqueue', {
+    requestId,
+    label,
+    queueDepth: requestQueue.length,
+    activeRequests,
+    queryContext: getRuntimeTraceLabel(),
+  });
+
   return new Promise((resolve, reject) => {
     const execute = async () => {
+      const startedAt = Date.now();
       activeRequests++;
+      logPbAudit('queue-start', {
+        requestId,
+        label,
+        queueWaitMs: startedAt - queuedAt,
+        activeRequests,
+        queueDepth: requestQueue.length,
+        queryContext: getRuntimeTraceLabel(),
+      });
       try {
         const result = await fn();
+        logPbAudit('queue-end', {
+          requestId,
+          label,
+          durationMs: Date.now() - startedAt,
+          totalMs: Date.now() - queuedAt,
+          activeRequests,
+        });
         resolve(result);
       } catch (err) {
+        logPbAudit('queue-error', {
+          requestId,
+          label,
+          durationMs: Date.now() - startedAt,
+          totalMs: Date.now() - queuedAt,
+          error: String(err),
+          activeRequests,
+        });
         reject(err);
       } finally {
         activeRequests--;
         processQueue();
       }
     };
-    
+
     requestQueue.push(execute);
     processQueue();
   });
@@ -55,11 +168,11 @@ const queuedGetFullList = async <T>(collection: string, options?: any): Promise<
       }
     }
   }
-  return enqueueRequest(() => pb.collection(collection).getFullList(cleanOptions));
+  return enqueueRequest(`getFullList:${collection}`, () => pb.collection(collection).getFullList(cleanOptions));
 };
 
 const queuedGetOne = async <T>(collection: string, id: string, options?: any): Promise<T> => {
-  return enqueueRequest(() => pb.collection(collection).getOne(id, options));
+  return enqueueRequest(`getOne:${collection}/${id}`, () => pb.collection(collection).getOne(id, options));
 };
 
 const queuedGetList = async <T>(collection: string, page: number, perPage: number, options?: any): Promise<any> => {
@@ -77,7 +190,7 @@ const queuedGetList = async <T>(collection: string, page: number, perPage: numbe
   if (collection === 'users' && typeof cleanOptions.filter === 'string') {
     cleanOptions.filter = sanitizeUsersFilter(cleanOptions.filter);
   }
-  return enqueueRequest(() => pb.collection(collection).getList(page, perPage, cleanOptions));
+  return enqueueRequest(`getList:${collection}[${page}/${perPage}]`, () => pb.collection(collection).getList(page, perPage, cleanOptions));
 };
 
 // ─── Auth helpers (mirrors Firebase auth exports) ───────────────────────────
@@ -284,7 +397,7 @@ const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
   dropped_items: ['itemId', 'zoneId', 'data', 'gameId'],
   map_state: ['data', 'gameId'],
   private_messages: ['senderId', 'receiverId', 'participants', 'text', 'timestamp', 'senderName', 'gameId', 'data'],
-  chat_messages: ['senderId', 'channel', 'gameId', 'data'],
+  chat_messages: ['sender', 'text', 'type', 'timestamp', 'tab', 'senderId', 'channel', 'gameId', 'data'],
   presence: ['uid', 'lastSeen', 'isOnline', 'gameId', 'data'],
   clans: ['name', 'leaderId', 'members', 'description', 'gameId', 'data'],
   market: ['sellerId', 'sellerName', 'itemId', 'itemName', 'quantity', 'price', 'timestamp', 'gameId', 'data'],
@@ -298,6 +411,22 @@ const DATA_FIELDS_BY_COLLECTION: Record<string, string[]> = {
 
 const SYSTEM_FIELDS = ['id', 'collectionId', 'collectionName', 'created', 'updated', 'expand', 'isLocal'];
 const AUTH_FIELDS = ['email', 'emailVisibility', 'verified', 'tokenKey', 'password'];
+const MAX_SAFE_NUMERIC_COUNTER = Number.MAX_SAFE_INTEGER - 1;
+
+function normalizeFiniteCounter(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(MAX_SAFE_NUMERIC_COUNTER, Math.floor(numeric)));
+}
+
+function sanitizeNumericObjectMap(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object') return {};
+  const sanitized: Record<string, number> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    sanitized[key] = normalizeFiniteCounter(entry);
+  }
+  return sanitized;
+}
 
 function wrapData(collectionName: string, docData: any): any {
   const knownFields = KNOWN_FIELDS_BY_COLLECTION[collectionName] || [];
@@ -376,20 +505,28 @@ function unwrapData(record: RecordModel): AnyRecord {
       Object.assign(data, extra);
       // Restore authoritative top-level values — they must not be overwritten by stale data.json
       Object.assign(data, topLevelSnapshot);
-      // FIX: PocketBase schema migration sets hp/maxHp default=0 for existing records.
-      // If top-level hp=0 but data.json has a positive value, the 0 is a migration artifact — restore it.
+      // Legacy repair: PocketBase schema migration set hp/maxHp default=0 for existing records.
+      // Only restore from data.json when the record is clearly not in a live death/destruction flow.
       const extraTyped = extra as AnyRecord;
-      if (data.hp === 0 && typeof extraTyped.hp === 'number' && extraTyped.hp > 0) {
+      const looksLikeLegacyZeroHealth =
+        data.hp === 0 &&
+        data.maxHp === 0 &&
+        !data.isDestroying &&
+        !data.destructionEndTime &&
+        !(Number(data.pendingDamage) > 0);
+      if (looksLikeLegacyZeroHealth && typeof extraTyped.hp === 'number' && extraTyped.hp > 0) {
         data.hp = extraTyped.hp;
       }
-      if (data.maxHp === 0 && typeof extraTyped.maxHp === 'number' && extraTyped.maxHp > 0) {
+      if (looksLikeLegacyZeroHealth && typeof extraTyped.maxHp === 'number' && extraTyped.maxHp > 0) {
         data.maxHp = extraTyped.maxHp;
       }
-      // FIX CASE 3: maxHp was restored from data.json (positive), but data.json.hp is MISSING.
-      // This means the building existed pre-migration and was never damaged after migration,
-      // so data.json.hp was never written. Since killed buildings are deleted from DB,
-      // hp=0 with maxHp>0 and no data.json.hp entry = migration artifact. Restore to maxHp.
-      if (data.hp === 0 && typeof data.maxHp === 'number' && data.maxHp > 0 && typeof extraTyped.hp !== 'number') {
+      if (
+        looksLikeLegacyZeroHealth &&
+        data.hp === 0 &&
+        typeof data.maxHp === 'number' &&
+        data.maxHp > 0 &&
+        typeof extraTyped.hp !== 'number'
+      ) {
         data.hp = data.maxHp;
       }
     } else {
@@ -436,6 +573,7 @@ function toDocSnapshot(record: RecordModel): DocSnapshot {
   
   return {
     id: finalId,
+    ref: { collectionName: record.collectionName, id: finalId },
     exists: () => true,
     data: () => ({ ...data, id: finalId }),
   };
@@ -448,6 +586,62 @@ function emptySnapshot(): QuerySnapshot {
     docChanges: () => [],
     size: 0,
     empty: true,
+  };
+}
+
+function summarizeBuildingTimerFields(record: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  if (!record || typeof record !== 'object') return {};
+  return {
+    id: record.id,
+    buildingId: record.buildingId,
+    isConstructing: record.isConstructing,
+    constructionEndTime: record.constructionEndTime,
+    workState: record.workState,
+    workEndTime: record.workEndTime,
+    hasWorkEndTime: Object.prototype.hasOwnProperty.call(record, 'workEndTime'),
+    source: record.source,
+  };
+}
+
+function summarizeDocSnapshotForAudit(snapshot: DocSnapshot): Record<string, unknown> {
+  if (!snapshot?.exists?.()) {
+    return { exists: false, id: snapshot?.id };
+  }
+  const data = snapshot.data?.() as Record<string, unknown> | undefined;
+  return {
+    exists: true,
+    id: snapshot.id,
+    ...summarizeBuildingTimerFields(data),
+  };
+}
+
+function summarizeQuerySnapshotForAudit(snapshot: QuerySnapshot): Record<string, unknown> {
+  const docs = snapshot?.docs || [];
+  const timerDocs = docs.map((docSnap) => summarizeDocSnapshotForAudit(docSnap));
+  return {
+    size: snapshot?.size ?? docs.length,
+    empty: snapshot?.empty ?? docs.length === 0,
+    timerDocs,
+    timerDocCount: timerDocs.length,
+    hasFinishedCount: timerDocs.filter((doc) => doc.workState === 'finished').length,
+    hasWorkingCount: timerDocs.filter((doc) => doc.workState === 'working').length,
+    hasConstructingCount: timerDocs.filter((doc) => doc.isConstructing).length,
+    workEndTimeCount: timerDocs.filter((doc) => doc.hasWorkEndTime).length,
+  };
+}
+
+function summarizeWritePayloadForAudit(collectionName: string, payload: AnyRecord): Record<string, unknown> {
+  const data = payload?.data && typeof payload.data === 'object' ? payload.data as Record<string, unknown> : {};
+  return {
+    collectionName,
+    keys: Object.keys(payload || {}),
+    hasWorkEndTime: Object.prototype.hasOwnProperty.call(payload || {}, 'workEndTime') || Object.prototype.hasOwnProperty.call(data, 'workEndTime'),
+    workEndTime: (payload?.workEndTime as unknown) ?? data.workEndTime,
+    hasConstructionEndTime: Object.prototype.hasOwnProperty.call(payload || {}, 'constructionEndTime') || Object.prototype.hasOwnProperty.call(data, 'constructionEndTime'),
+    constructionEndTime: (payload?.constructionEndTime as unknown) ?? data.constructionEndTime,
+    workState: (payload?.workState as unknown) ?? data.workState,
+    isConstructing: (payload?.isConstructing as unknown) ?? data.isConstructing,
+    buildingId: (payload?.buildingId as unknown) ?? data.buildingId,
   };
 }
 
@@ -486,6 +680,20 @@ function markDeletedRecord(collectionName: string, ...ids: string[]): void {
   for (const id of ids) {
     if (!id) continue;
     deletedRecordKeys.add(makeRecordKey(collectionName, id));
+  }
+}
+
+function clearDeletedRecord(collectionName: string, ...ids: string[]): void {
+  for (const id of ids) {
+    if (!id) continue;
+    deletedRecordKeys.delete(makeRecordKey(collectionName, id));
+    if (collectionName === 'buildings') {
+      deadBuildingIds.delete(id);
+    } else if (collectionName === 'map_resources') {
+      deadResourceIds.delete(id);
+    } else if (collectionName === 'dropped_items') {
+      deadDroppedItemIds.delete(id);
+    }
   }
 }
 
@@ -623,31 +831,90 @@ export function collection(_db: unknown, collectionName: string): string {
 /** getDoc — fetch a single document */
 export async function getDoc(ref: DocRef): Promise<DocSnapshot> {
   const pbId = sanitizePbId(ref.id);
+  const startedAt = Date.now();
+  logPbAudit('getDoc-start', {
+    collectionName: ref.collectionName,
+    id: ref.id,
+    pbId,
+  });
   if (ref.collectionName === 'users') {
     if (missingUserIds.has(pbId)) {
-      return { id: ref.id, exists: () => false, data: () => ({}) };
+      const snapshot = { id: ref.id, exists: () => false, data: () => ({}) };
+      logPbAudit('getDoc-end', {
+        collectionName: ref.collectionName,
+        id: ref.id,
+        pbId,
+        durationMs: Date.now() - startedAt,
+        status: 'missing-cache',
+        ...summarizeDocSnapshotForAudit(snapshot),
+      });
+      return snapshot;
     }
     try {
       const record = await findUserRecord(ref.id);
       if (!record) {
         missingUserIds.add(pbId);
-        return { id: ref.id, exists: () => false, data: () => ({}) };
+        const snapshot = { id: ref.id, exists: () => false, data: () => ({}) };
+        logPbAudit('getDoc-end', {
+          collectionName: ref.collectionName,
+          id: ref.id,
+          pbId,
+          durationMs: Date.now() - startedAt,
+          status: 'not-found',
+          ...summarizeDocSnapshotForAudit(snapshot),
+        });
+        return snapshot;
       }
       missingUserIds.delete(pbId);
-      return toDocSnapshot(record);
+      const snapshot = toDocSnapshot(record);
+      logPbAudit('getDoc-end', {
+        collectionName: ref.collectionName,
+        id: ref.id,
+        pbId,
+        durationMs: Date.now() - startedAt,
+        status: 'hit',
+        ...summarizeDocSnapshotForAudit(snapshot),
+      });
+      return snapshot;
     } catch (e: any) {
       if (e?.status === 404 || e?.originalError?.status === 404) {
         missingUserIds.add(pbId);
-        return { id: ref.id, exists: () => false, data: () => ({}) };
+        const snapshot = { id: ref.id, exists: () => false, data: () => ({}) };
+        logPbAudit('getDoc-end', {
+          collectionName: ref.collectionName,
+          id: ref.id,
+          pbId,
+          durationMs: Date.now() - startedAt,
+          status: '404',
+          ...summarizeDocSnapshotForAudit(snapshot),
+        });
+        return snapshot;
       }
       console.error(`[PB] getDoc: users lookup failed for ${ref.id}, re-throwing:`, e?.status || e);
+      logPbAudit('getDoc-error', {
+        collectionName: ref.collectionName,
+        id: ref.id,
+        pbId,
+        durationMs: Date.now() - startedAt,
+        error: String(e),
+      });
       throw e;
     }
   }
 
   try {
     const record = await queuedGetOne(ref.collectionName, pbId);
-    return toDocSnapshot(record as RecordModel);
+    const snapshot = toDocSnapshot(record as RecordModel);
+    logPbAudit('getDoc-end', {
+      collectionName: ref.collectionName,
+      id: ref.id,
+      pbId,
+      durationMs: Date.now() - startedAt,
+      status: 'hit',
+      path: 'getOne',
+      ...summarizeDocSnapshotForAudit(snapshot),
+    });
+    return snapshot;
   } catch (e: any) {
     if (e?.status === 404 || e?.originalError?.status === 404) {
       try {
@@ -655,12 +922,30 @@ export async function getDoc(ref: DocRef): Promise<DocSnapshot> {
           filter: buildIdLookupFilter(ref.collectionName, pbId, String(ref.id)),
         });
         if (Array.isArray(list?.items) && list.items.length > 0) {
-          return toDocSnapshot(list.items[0] as RecordModel);
+          const snapshot = toDocSnapshot(list.items[0] as RecordModel);
+          logPbAudit('getDoc-end', {
+            collectionName: ref.collectionName,
+            id: ref.id,
+            pbId,
+            durationMs: Date.now() - startedAt,
+            status: 'fallback-hit',
+            path: 'getList',
+            ...summarizeDocSnapshotForAudit(snapshot),
+          });
+          return snapshot;
         }
       } catch (fallbackErr: any) {
         const fallbackLooksLikeNotFound = fallbackErr?.status === 404 || fallbackErr?.originalError?.status === 404;
         if (!fallbackLooksLikeNotFound) {
           console.error(`[PB] getDoc fallback lookup failed for ${ref.collectionName}/${ref.id}:`, fallbackErr?.status || fallbackErr);
+          logPbAudit('getDoc-error', {
+            collectionName: ref.collectionName,
+            id: ref.id,
+            pbId,
+            durationMs: Date.now() - startedAt,
+            error: String(fallbackErr),
+            path: 'fallback-getList',
+          });
         }
       }
     }
@@ -669,9 +954,25 @@ export async function getDoc(ref: DocRef): Promise<DocSnapshot> {
     // propagate so callers don't mistakenly think the record doesn't exist and
     // overwrite it with defaults (e.g. level=1).
     if (e?.status === 404 || e?.originalError?.status === 404) {
-      return { id: ref.id, exists: () => false, data: () => ({}) };
+      const snapshot = { id: ref.id, exists: () => false, data: () => ({}) };
+      logPbAudit('getDoc-end', {
+        collectionName: ref.collectionName,
+        id: ref.id,
+        pbId,
+        durationMs: Date.now() - startedAt,
+        status: '404',
+        ...summarizeDocSnapshotForAudit(snapshot),
+      });
+      return snapshot;
     }
     console.error(`[PB] getDoc: non-404 error for ${ref.collectionName}/${ref.id}, re-throwing to prevent data loss:`, e?.status || e);
+    logPbAudit('getDoc-error', {
+      collectionName: ref.collectionName,
+      id: ref.id,
+      pbId,
+      durationMs: Date.now() - startedAt,
+      error: String(e),
+    });
     throw e;
   }
 }
@@ -680,24 +981,28 @@ export async function getDoc(ref: DocRef): Promise<DocSnapshot> {
 export async function getDocs(
   colOrQuery: string | QueryDescriptor
 ): Promise<QuerySnapshot> {
+  const startedAt = Date.now();
   try {
-    const { col, filter, sort, maxItems } =
+    const desc =
       typeof colOrQuery === 'string'
-        ? { col: colOrQuery, filter: '', sort: '', maxItems: 500 }
+        ? { col: colOrQuery, filter: '', sort: '' }
         : colOrQuery;
 
-    const options: any = {
-      filter: filter || undefined,
-      sort: sort || undefined,
-    };
-    if (maxItems) options.perPage = maxItems;
-
-    const records = await queuedGetFullList(col, options);
+    logPbAudit('getDocs-start', {
+      collectionName: desc.col,
+      query: {
+        filter: desc.filter || '',
+        sort: desc.sort || '',
+        maxItems: desc.maxItems ?? null,
+        whereField: desc.whereField ?? null,
+        whereOp: desc.whereOp ?? null,
+      },
+    });
+    const records = await fetchQueryRecords(desc);
 
     const docs = records.map(toDocSnapshot);
     const prevDocs: DocSnapshot[] = [];
-
-    return {
+    const snapshot = {
       docs,
       size: docs.length,
       empty: docs.length === 0,
@@ -711,8 +1016,19 @@ export async function getDocs(
           };
         }),
     };
+    logPbAudit('getDocs-end', {
+      collectionName: desc.col,
+      durationMs: Date.now() - startedAt,
+      resultCount: docs.length,
+      ...summarizeQuerySnapshotForAudit(snapshot),
+    });
+    return snapshot;
   } catch (error) {
     console.error('[PB getDocs] Error:', error);
+    logPbAudit('getDocs-error', {
+      durationMs: Date.now() - startedAt,
+      error: String(error),
+    });
     return emptySnapshot();
   }
 }
@@ -721,6 +1037,13 @@ export async function getDocs(
 export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
   const pbId = sanitizePbId(ref.id);
   let payload = wrapData(ref.collectionName, { ...data, gameId: ref.id });
+  const startedAt = Date.now();
+  logPbAudit('setDoc-start', {
+    collectionName: ref.collectionName,
+    id: ref.id,
+    pbId,
+    payload: summarizeWritePayloadForAudit(ref.collectionName, payload),
+  });
   
   try {
     // For users collection (auth collection), the auth record already exists from login/registration.
@@ -780,6 +1103,7 @@ export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
       try {
         await pb.collection(ref.collectionName).update(pbId, payload);
         missingUserIds.delete(pbId);
+        clearDeletedRecord(ref.collectionName, String(ref.id), pbId);
       } catch (updateErr: any) {
         if (updateErr.status === 404) {
           missingUserIds.add(pbId);
@@ -821,6 +1145,7 @@ export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
         }
         const targetId = rawRecord.id;
         await pb.collection(ref.collectionName).update(targetId, payload);
+        clearDeletedRecord(ref.collectionName, String(ref.id), pbId, String(targetId));
       } else {
         try {
           // IMPORTANT: For new records, also sync known fields (like hp, maxHp) into data.json.
@@ -836,19 +1161,36 @@ export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
           }
           if (Object.keys(payload.data).length === 0) delete payload.data;
           await pb.collection(ref.collectionName).create({ ...payload, id: pbId });
+          clearDeletedRecord(ref.collectionName, String(ref.id), pbId);
         } catch (createErr: any) {
           // If another client created the same sanitized ID between lookup/create,
           // fall back to update to avoid duplicate-id spam.
           if (createErr?.status === 400 && createErr?.data?.data?.id?.code === 'validation_not_unique') {
             await pb.collection(ref.collectionName).update(pbId, payload);
+            clearDeletedRecord(ref.collectionName, String(ref.id), pbId);
           } else {
             throw createErr;
           }
         }
       }
     }
+    logPbAudit('setDoc-end', {
+      collectionName: ref.collectionName,
+      id: ref.id,
+      pbId,
+      durationMs: Date.now() - startedAt,
+      payload: summarizeWritePayloadForAudit(ref.collectionName, payload),
+    });
   } catch (e: any) {
     console.error('[PB setDoc] Error:', e);
+    logPbAudit('setDoc-error', {
+      collectionName: ref.collectionName,
+      id: ref.id,
+      pbId,
+      durationMs: Date.now() - startedAt,
+      error: String(e),
+      payload: summarizeWritePayloadForAudit(ref.collectionName, payload),
+    });
     if (e.status === 404) {
       // should not happen with getList
     } else {
@@ -890,6 +1232,14 @@ export async function updateDoc(
   let current: AnyRecord = {};
   let currentRawDataJson: Record<string, any> | null = null;
   let targetId = pbId;
+  const startedAt = Date.now();
+  logPbAudit('updateDoc-start', {
+    collectionName: ref.collectionName,
+    id: ref.id,
+    pbId,
+    targetId,
+    payload: summarizeWritePayloadForAudit(ref.collectionName, data),
+  });
   try {
     if (ref.collectionName === 'users') {
       try {
@@ -983,15 +1333,24 @@ export async function updateDoc(
         const rootKey = parts[0];
         const nestedKey = parts.slice(1).join('.');
         // For dot-notation increments, we need the current root object to merge into
-        const currentRoot = current[rootKey] ?? {};
+        const currentRoot =
+          ref.collectionName === 'users' && rootKey === 'inventory'
+            ? sanitizeNumericObjectMap(current[rootKey])
+            : (current[rootKey] ?? {});
         const currentVal = typeof currentRoot === 'object' ? (currentRoot[nestedKey] ?? 0) : 0;
         
         // Merge with existing current root so we don't lose sibling keys
-        resolved[rootKey] = { ...(typeof current[rootKey] === 'object' ? current[rootKey] : {}), ...(typeof resolved[rootKey] === 'object' ? resolved[rootKey] : {}) };
-        resolved[rootKey][nestedKey] = (typeof currentVal === 'number' ? currentVal : 0) + amount;
+        resolved[rootKey] = {
+          ...(typeof currentRoot === 'object' ? currentRoot : {}),
+          ...(typeof resolved[rootKey] === 'object' ? resolved[rootKey] : {})
+        };
+        resolved[rootKey][nestedKey] = normalizeFiniteCounter(currentVal) + amount;
+        if (ref.collectionName === 'users' && rootKey === 'inventory') {
+          resolved[rootKey][nestedKey] = normalizeFiniteCounter(resolved[rootKey][nestedKey]);
+        }
       } else {
         const currentVal = current[safeKey] ?? 0;
-        resolved[safeKey] = (typeof currentVal === 'number' ? currentVal : 0) + amount;
+        resolved[safeKey] = normalizeFiniteCounter(currentVal) + amount;
       }
     } else if (safeKey.includes('.')) {
       const parts = safeKey.split('.');
@@ -1015,9 +1374,10 @@ export async function updateDoc(
     }
   }
 
+  let payload: AnyRecord = {};
   try {
     // Build the payload from only the fields we're updating (+ gameId for lookup)
-    const payload = wrapData(ref.collectionName, { ...resolved, gameId: ref.id });
+    payload = wrapData(ref.collectionName, { ...resolved, gameId: ref.id });
 
     // CRITICAL FIX: Preserve existing `data` JSON fields during partial updates.
     // PocketBase PATCH replaces the entire JSON field, so if we only send { data: { lastMoveTime: now } },
@@ -1052,13 +1412,22 @@ export async function updateDoc(
     }
 
     await pb.collection(ref.collectionName).update(targetId, payload);
+    clearDeletedRecord(ref.collectionName, logicalId, pbId, String(targetId));
+    logPbAudit('updateDoc-end', {
+      collectionName: ref.collectionName,
+      id: ref.id,
+      pbId,
+      targetId,
+      durationMs: Date.now() - startedAt,
+      payload: summarizeWritePayloadForAudit(ref.collectionName, payload),
+    });
   } catch (e: any) {
     const isNotFoundError =
       e?.status === 404 ||
       e?.response?.status === 404 ||
       /404|not found/i.test(String(e?.message || e?.response?.data?.message || ''));
     // Silently ignore 404 for buildings (record was deleted, e.g. monster sold)
-    if (isNotFoundError && ref.collectionName === 'buildings') {
+    if (isNotFoundError && ref.collectionName === 'buildings' && lookupSucceeded) {
       console.warn(`[PB] updateDoc: Record ${ref.id} not found (404), likely already deleted. Skipping.`);
       deadBuildingIds.add(logicalId);
       deadBuildingIds.add(pbId);
@@ -1066,20 +1435,29 @@ export async function updateDoc(
       return;
     }
     // Silently ignore 404 for map_resources (tree was already removed/respawned)
-    if (isNotFoundError && ref.collectionName === 'map_resources') {
+    if (isNotFoundError && ref.collectionName === 'map_resources' && lookupSucceeded) {
       console.warn(`[PB] updateDoc: map_resources/${ref.id} not found (404), likely already removed. Skipping.`);
       deadResourceIds.add(logicalId);
       deadResourceIds.add(pbId);
       markDeletedRecord(ref.collectionName, logicalId, pbId, targetId);
       return;
     }
-    if (isNotFoundError && ref.collectionName === 'dropped_items') {
+    if (isNotFoundError && ref.collectionName === 'dropped_items' && lookupSucceeded) {
       deadDroppedItemIds.add(logicalId);
       deadDroppedItemIds.add(pbId);
       markDeletedRecord(ref.collectionName, logicalId, pbId, targetId);
       return;
     }
     console.error('[PB] updateDoc API call FAILED:', e);
+    logPbAudit('updateDoc-error', {
+      collectionName: ref.collectionName,
+      id: ref.id,
+      pbId,
+      targetId,
+      durationMs: Date.now() - startedAt,
+      error: String(e),
+      payload: summarizeWritePayloadForAudit(ref.collectionName, payload),
+    });
     handleFirestoreError(e, OperationType.UPDATE, `${ref.collectionName}/${ref.id}`);
     throw e;
   }
@@ -1087,6 +1465,10 @@ export async function updateDoc(
 
 /** deleteDoc — remove a document */
 export async function deleteDoc(ref: DocRef): Promise<void> {
+  if (!ref || typeof ref !== 'object' || !('collectionName' in ref) || !('id' in ref)) {
+    console.error('[PB] deleteDoc called with invalid ref:', ref);
+    return;
+  }
   const logicalId = String(ref.id);
   const pbId = sanitizePbId(ref.id);
   if (ref.collectionName === 'buildings' && (deadBuildingIds.has(logicalId) || deadBuildingIds.has(pbId))) return;
@@ -1215,9 +1597,17 @@ export function query(
   let filter = '';
   let sort = '';
   let maxItems: number | undefined;
+  let whereField: string | undefined;
+  let whereOp: string | undefined;
+  let whereValue: unknown;
+  let whereCount = 0;
 
   for (const c of constraints) {
     if (c.type === 'where') {
+      whereCount++;
+      whereField = c.field;
+      whereOp = c.op;
+      whereValue = c.value;
       if (c.op === 'in') {
         // PocketBase filter: field = val1 || field = val2 ...
         if (Array.isArray(c.value)) {
@@ -1266,7 +1656,157 @@ export function query(
     }
   }
 
-  return { col, filter, sort, maxItems };
+  return {
+    col,
+    filter,
+    sort,
+    maxItems,
+    whereField: whereCount === 1 ? whereField : undefined,
+    whereOp: whereCount === 1 ? whereOp : undefined,
+    whereValue: whereCount === 1 ? whereValue : undefined,
+  };
+}
+
+async function fetchQueryRecords(desc: QueryDescriptor): Promise<RecordModel[]> {
+  const queryStartedAt = Date.now();
+  logPbAudit('query-start', {
+    collectionName: desc.col,
+    filter: desc.filter || '',
+    sort: desc.sort || '',
+    maxItems: desc.maxItems ?? null,
+    whereField: desc.whereField ?? null,
+    whereOp: desc.whereOp ?? null,
+    whereValue: Array.isArray(desc.whereValue) ? desc.whereValue.length : desc.whereValue ?? null,
+  });
+  const fetchOptions: any = {
+    filter: desc.filter || undefined,
+    sort: desc.sort || undefined,
+  };
+
+  const fetchPagedRecords = async (
+    collection: string,
+    pageSize: number,
+    options: any,
+    label: string,
+    maxItems?: number
+  ): Promise<RecordModel[]> => {
+    const records: RecordModel[] = [];
+    let page = 1;
+
+    while (true) {
+      const pageStartedAt = Date.now();
+      let list;
+      try {
+        list = await withTimeout(
+          queuedGetList<RecordModel>(collection, page, pageSize, options),
+          QUERY_REQUEST_TIMEOUT_MS,
+          `${label} page=${page}`
+        );
+      } catch (error) {
+        logPbAudit('query-page-error', {
+          collectionName: collection,
+          label,
+          page,
+          pageSize,
+          durationMs: Date.now() - pageStartedAt,
+          error: String(error),
+          options: summarizeQueryOptions(options),
+        });
+        throw error;
+      }
+
+      const pageItems = (list.items || []) as RecordModel[];
+      records.push(...pageItems);
+      logPbAudit('query-page-end', {
+        collectionName: collection,
+        label,
+        page,
+        pageSize,
+        durationMs: Date.now() - pageStartedAt,
+        itemCount: pageItems.length,
+        totalPages: list.totalPages ?? null,
+        options: summarizeQueryOptions(options),
+      });
+
+      if (typeof maxItems === 'number' && maxItems > 0 && records.length >= maxItems) {
+        return records.slice(0, maxItems);
+      }
+
+      const totalPages = Number(list.totalPages || 0);
+      if (pageItems.length === 0 || (totalPages > 0 && page >= totalPages) || pageItems.length < pageSize) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return records;
+  };
+
+  const isZoneInQuery =
+    (desc.col === 'map_resources' || desc.col === 'buildings' || desc.col === 'dropped_items') &&
+    desc.whereField === 'zoneId' &&
+    desc.whereOp === 'in' &&
+    Array.isArray(desc.whereValue);
+
+  if (isZoneInQuery) {
+    const zoneIds = (desc.whereValue as unknown[])
+      .map((value) => String(value || '').trim())
+      .filter(Boolean);
+
+    const perZonePageSize = ZONE_QUERY_PAGE_SIZE[desc.col] || 200;
+    const zoneResults = await Promise.all(zoneIds.map(async (zoneId) => {
+      return fetchPagedRecords(
+        desc.col,
+        perZonePageSize,
+        {
+          filter: `zoneId = ${JSON.stringify(zoneId)}`,
+          sort: desc.sort || undefined,
+        },
+        `${desc.col} zoneId=${zoneId}`
+      );
+    }));
+
+    const merged = zoneResults.flat();
+    const result = typeof desc.maxItems === 'number' ? merged.slice(0, desc.maxItems) : merged;
+    logPbAudit('query-end', {
+      collectionName: desc.col,
+      durationMs: Date.now() - queryStartedAt,
+      path: 'zone-split',
+      resultCount: result.length,
+      zoneCount: zoneIds.length,
+    });
+    return result;
+  }
+
+  if (desc.filter || (typeof desc.maxItems === 'number' && desc.maxItems > 0)) {
+    const defaultPageSize = FILTERED_QUERY_PAGE_SIZE[desc.col] || 200;
+    const pageSize = typeof desc.maxItems === 'number' && desc.maxItems > 0
+      ? Math.min(Math.max(desc.maxItems, 1), 500)
+      : defaultPageSize;
+    const result = await fetchPagedRecords(desc.col, pageSize, fetchOptions, `${desc.col} filtered query`, desc.maxItems);
+    logPbAudit('query-end', {
+      collectionName: desc.col,
+      durationMs: Date.now() - queryStartedAt,
+      path: 'paged',
+      resultCount: result.length,
+      pageSize,
+    });
+    return result;
+  }
+
+  const result = await withTimeout(
+    queuedGetFullList<RecordModel>(desc.col, fetchOptions),
+    QUERY_REQUEST_TIMEOUT_MS,
+    `${desc.col} full query`
+  );
+  logPbAudit('query-end', {
+    collectionName: desc.col,
+    durationMs: Date.now() - queryStartedAt,
+    path: 'full',
+    resultCount: result.length,
+  });
+  return result;
 }
 
 export interface QueryConstraint {
@@ -1398,7 +1938,23 @@ export function onSnapshot(
 
     // Initial fetch
     getDoc(ref).then((snap) => {
-      if (!destroyed) callback(snap);
+      if (!destroyed) {
+        const audited = Object.assign(snap as any, {
+          __auditSource: 'refresh-load',
+          __auditIncrementalMerge: false,
+          __auditFullRefetch: false,
+          __auditEventAction: 'initial-fetch',
+          __auditEventRecordId: ref.id,
+        }) as DocSnapshot;
+        logPbAudit('onSnapshot-doc', {
+          collectionName: ref.collectionName,
+          id: ref.id,
+          pbId,
+          source: 'refresh-load',
+          ...summarizeDocSnapshotForAudit(audited),
+        });
+        callback(audited);
+      }
     }).catch(err => {
       // Silently handle 404 for single doc subscriptions - doc may not exist yet
       if (err?.status !== 404) {
@@ -1408,11 +1964,32 @@ export function onSnapshot(
 
     safeSubscribe(ref.collectionName, pbId, (e) => {
       if (destroyed) return;
+      logPbAudit('onSnapshot-event', {
+        collectionName: ref.collectionName,
+        id: ref.id,
+        action: e?.action ?? null,
+        eventRecordId: e?.record?.id ?? null,
+        source: 'realtime-event',
+      });
       if (e.action === 'delete') {
-        callback({ id: ref.id, exists: () => false, data: () => ({}) });
+        const snapshot = Object.assign({ id: ref.id, exists: () => false, data: () => ({}) } as any, {
+          __auditSource: 'realtime-event',
+          __auditIncrementalMerge: false,
+          __auditFullRefetch: false,
+          __auditEventAction: 'delete',
+          __auditEventRecordId: ref.id,
+        }) as DocSnapshot;
+        callback(snapshot);
       } else {
         const snap = toDocSnapshot(e.record);
-        callback(snap);
+        const audited = Object.assign(snap as any, {
+          __auditSource: 'realtime-event',
+          __auditIncrementalMerge: false,
+          __auditFullRefetch: false,
+          __auditEventAction: e?.action ?? 'update',
+          __auditEventRecordId: e?.record?.id ?? ref.id,
+        }) as DocSnapshot;
+        callback(audited);
       }
     });
 
@@ -1425,9 +2002,41 @@ export function onSnapshot(
   // Collection / query subscription
   const desc = refOrQuery as QueryDescriptor;
   let prevDocs: DocSnapshot[] = [];
+  let initialSnapshotReady = false;
+  const isZoneScopedRealtimeQuery =
+    (desc.col === 'map_resources' || desc.col === 'buildings' || desc.col === 'dropped_items') &&
+    desc.whereField === 'zoneId' &&
+    desc.whereOp === 'in' &&
+    Array.isArray(desc.whereValue);
+  const queriedZoneIds = isZoneScopedRealtimeQuery
+    ? new Set(
+        (desc.whereValue as unknown[])
+          .map((value) => String(value || '').trim())
+          .filter(Boolean)
+      )
+    : null;
+  const querySummary = {
+    collectionName: desc.col,
+    filter: desc.filter || '',
+    sort: desc.sort || '',
+    maxItems: desc.maxItems ?? null,
+    whereField: desc.whereField ?? null,
+    whereOp: desc.whereOp ?? null,
+    whereValue: Array.isArray(desc.whereValue) ? desc.whereValue.length : desc.whereValue ?? null,
+  };
+  const attachAuditMeta = (snapshot: any, meta: Record<string, unknown>) => {
+    try {
+      Object.assign(snapshot as Record<string, unknown>, {
+        __auditQuery: querySummary,
+        ...meta,
+      });
+    } catch {
+      // Ignore audit annotation failures.
+    }
+    return snapshot;
+  };
 
-  const buildSnapshot = (records: RecordModel[]): QuerySnapshot => {
-    const docs = records.map(toDocSnapshot);
+  const buildSnapshotFromDocs = (docs: DocSnapshot[]): QuerySnapshot => {
     const changes: { type: 'added' | 'modified' | 'removed'; doc: DocSnapshot }[] = [];
 
     const prevMap = new Map(prevDocs.map((d) => [d.id, d]));
@@ -1441,68 +2050,175 @@ export function onSnapshot(
     });
 
     prevDocs = docs;
-    return { docs, size: docs.length, forEach: (cb) => docs.forEach(cb), docChanges: () => changes };
+    return { docs, size: docs.length, empty: docs.length === 0, forEach: (cb) => docs.forEach(cb), docChanges: () => changes };
+  };
+
+  const buildSnapshot = (records: RecordModel[]): QuerySnapshot => buildSnapshotFromDocs(records.map(toDocSnapshot));
+
+  const buildIncrementalZoneSnapshot = (event: any): QuerySnapshot | null => {
+    if (!initialSnapshotReady || !queriedZoneIds) return null;
+
+    const record = event?.record as RecordModel | undefined;
+    const recordId = String(record?.id || '').trim();
+    if (!recordId) return null;
+
+    const nextDocs = [...prevDocs];
+    const existingIndex = nextDocs.findIndex((doc) => doc.id === recordId);
+    const zoneId = String((record as any)?.zoneId || '').trim();
+    const matchesZone = queriedZoneIds.has(zoneId);
+    const action = String(event?.action || '').toLowerCase();
+
+    if (action === 'delete' || !matchesZone) {
+      if (existingIndex === -1) return null;
+      nextDocs.splice(existingIndex, 1);
+      return buildSnapshotFromDocs(nextDocs);
+    }
+
+    const nextDoc = toDocSnapshot(record);
+    if (existingIndex >= 0) {
+      nextDocs[existingIndex] = nextDoc;
+    } else {
+      nextDocs.push(nextDoc);
+    }
+
+    return buildSnapshotFromDocs(nextDocs);
   };
 
   // Initial fetch (using queue)
-  const fetchOptions: any = { 
-    filter: desc.filter || undefined, 
-    sort: desc.sort || undefined
-  };
-  
-  queuedGetFullList(desc.col, fetchOptions)
+  const initialFetchStartedAt = Date.now();
+  fetchQueryRecords(desc)
     .then((records) => {
-      if (!destroyed) callback(buildSnapshot(records as RecordModel[]));
+      if (!destroyed) {
+        initialSnapshotReady = true;
+        const snapshot = attachAuditMeta(buildSnapshot(records as RecordModel[]), {
+          __auditSource: 'refresh-load',
+          __auditIncrementalMerge: false,
+          __auditFullRefetch: true,
+          __auditRefetchMs: Date.now() - initialFetchStartedAt,
+          __auditEventAction: 'initial-fetch',
+          __auditEventRecordId: null,
+        });
+        logPbAudit('onSnapshot-refresh-load', {
+          ...querySummary,
+          durationMs: Date.now() - initialFetchStartedAt,
+          ...summarizeQuerySnapshotForAudit(snapshot),
+        });
+        callback(snapshot);
+      }
     })
     .catch((err) => {
       console.error(`[PB onSnapshot] Collection fetch error for ${desc.col}:`, err);
       _errCallback?.(err);
     });
 
-  // Real-time Update Handler with improved throttling
+  // Real-time Update Handler with light throttling.
+  // We refetch immediately on the first event, then coalesce bursts into a short cooldown.
   let throttleTimeout: NodeJS.Timeout | null = null;
-  const THROTTLE_MS = 2000; // Increased from 800ms to reduce request frequency
+  const THROTTLE_MS = 250;
   let pendingUpdate = false;
 
-  const handleUpdate = async () => {
-    if (destroyed) return;
-    
-    // Mark that we have a pending update
-    if (throttleTimeout) {
-      pendingUpdate = true;
-      return;
+  const fetchLatestSnapshot = async (meta: Record<string, unknown> = {}) => {
+    const refetchStartedAt = Date.now();
+    try {
+      const records = await fetchQueryRecords(desc);
+      if (!destroyed) {
+        const snapshot = attachAuditMeta(buildSnapshot(records as RecordModel[]), {
+          __auditSource: 'realtime-event',
+          __auditIncrementalMerge: false,
+          __auditFullRefetch: true,
+          __auditRefetchMs: Date.now() - refetchStartedAt,
+          ...meta,
+        });
+        logPbAudit('onSnapshot-refetch', {
+          ...querySummary,
+          refetchMs: Date.now() - refetchStartedAt,
+          ...meta,
+          ...summarizeQuerySnapshotForAudit(snapshot),
+        });
+        callback(snapshot);
+      }
+    } catch (e) {
+      console.error(`[PB onSnapshot] Update fetch error for ${desc.col}:`, e);
+      _errCallback?.(e);
     }
-    
+  };
+
+  const armCooldown = () => {
     throttleTimeout = setTimeout(async () => {
       throttleTimeout = null;
       if (destroyed) return;
-      
-      if (pendingUpdate) {
-        pendingUpdate = false;
-        // Process the pending update after a short delay
-        throttleTimeout = setTimeout(() => {
-          throttleTimeout = null;
-          handleUpdate();
-        }, THROTTLE_MS / 2);
-        return;
-      }
-      
-      try {
-        const fetchOpts: any = { 
-          filter: desc.filter || undefined, 
-          sort: desc.sort || undefined 
-        };
-        const records = await queuedGetFullList(desc.col, fetchOpts);
-        if (!destroyed) callback(buildSnapshot(records as RecordModel[]));
-      } catch (e) {
-        console.error(`[PB onSnapshot] Update fetch error for ${desc.col}:`, e);
-        _errCallback?.(e);
+
+      if (!pendingUpdate) return;
+
+      pendingUpdate = false;
+      await fetchLatestSnapshot({ __auditRefetchMode: 'cooldown' });
+      if (!destroyed) {
+        armCooldown();
       }
     }, THROTTLE_MS);
   };
 
-  safeSubscribe(desc.col, '*', async () => {
-    handleUpdate();
+  const handleUpdate = async (meta: Record<string, unknown> = {}) => {
+    if (destroyed) return;
+
+    if (throttleTimeout) {
+      pendingUpdate = true;
+      logPbAudit('onSnapshot-queued', {
+        ...querySummary,
+        ...meta,
+        refetchMode: 'pending-cooldown',
+      });
+      return;
+    }
+
+    await fetchLatestSnapshot({ __auditRefetchMode: 'immediate', ...meta });
+    if (!destroyed) {
+      armCooldown();
+    }
+  };
+
+  safeSubscribe(desc.col, '*', async (event) => {
+    const eventAction = String(event?.action || '').toLowerCase();
+    const eventRecordId = String(event?.record?.id || '').trim() || null;
+    logPbAudit('onSnapshot-event', {
+      ...querySummary,
+      action: eventAction || null,
+      eventRecordId,
+      source: 'realtime-event',
+    });
+    if (queriedZoneIds) {
+      const nextSnapshot = buildIncrementalZoneSnapshot(event);
+      if (nextSnapshot) {
+        const auditedSnapshot = attachAuditMeta(nextSnapshot, {
+          __auditSource: 'realtime-event',
+          __auditIncrementalMerge: true,
+          __auditFullRefetch: false,
+          __auditRefetchMs: 0,
+          __auditEventAction: eventAction || null,
+          __auditEventRecordId: eventRecordId,
+        });
+        logPbAudit('onSnapshot-incremental', {
+          ...querySummary,
+          action: eventAction || null,
+          eventRecordId,
+          refetchMode: 'incremental-merge',
+          ...summarizeQuerySnapshotForAudit(auditedSnapshot),
+        });
+        callback(auditedSnapshot);
+        return;
+      }
+
+      const eventZoneId = String(event?.record?.zoneId || '').trim();
+      const wasTracked = eventRecordId ? prevDocs.some((doc) => doc.id === eventRecordId) : false;
+      if (eventZoneId && !queriedZoneIds.has(eventZoneId) && !wasTracked) {
+        return;
+      }
+    }
+
+    handleUpdate({
+      __auditEventAction: eventAction || null,
+      __auditEventRecordId: eventRecordId,
+    });
   });
 
   return () => {
@@ -1531,7 +2247,11 @@ export async function runTransaction<T>(
   _db: unknown,
   fn: (t: PBTransaction) => Promise<T>
 ): Promise<T> {
+  const startedAt = Date.now();
   const pendingOps: (() => Promise<void>)[] = [];
+  logPbAudit('runTransaction-start', {
+    pendingOpsCount: pendingOps.length,
+  });
 
   const transaction: PBTransaction = {
     get: (ref: DocRef) => getDoc(ref),
@@ -1546,9 +2266,22 @@ export async function runTransaction<T>(
     },
   };
 
-  const result = await fn(transaction);
-  await Promise.all(pendingOps.map((op) => op()));
-  return result;
+  try {
+    const result = await fn(transaction);
+    await Promise.all(pendingOps.map((op) => op()));
+    logPbAudit('runTransaction-end', {
+      durationMs: Date.now() - startedAt,
+      pendingOpsCount: pendingOps.length,
+    });
+    return result;
+  } catch (error) {
+    logPbAudit('runTransaction-error', {
+      durationMs: Date.now() - startedAt,
+      pendingOpsCount: pendingOps.length,
+      error: String(error),
+    });
+    throw error;
+  }
 }
 
 // ─── writeBatch stub ─────────────────────────────────────────────────────────
@@ -1621,12 +2354,69 @@ export function handleFirestoreError(
   // but explicitly rethrow it in critical functions like `updateDoc` transactions.
 }
 
-export async function testConnection(): Promise<void> {
+export async function testConnection(): Promise<boolean> {
   try {
     await pb.health.check();
+    return true;
   } catch (error) {
     console.error('PocketBase connection failed:', error);
+    return false;
   }
+}
+
+export const TREE_HIT_API_PATH = '/api/basingse/tree-hit';
+
+export type TreeHitResponse = {
+  success: boolean;
+  applied?: boolean;
+  resourceId?: string;
+  depleted?: boolean;
+  currentHp?: number;
+  rewardGold?: number;
+  rewardWood?: number;
+  rewardGlory?: number;
+  energyCost?: number;
+  treesChoppedIncrement?: number;
+  code?: string;
+  error?: string;
+  requiredEnergy?: number;
+  currentEnergy?: number;
+  message?: string;
+  reason?: string;
+  playerGold?: number;
+  playerEnergy?: number;
+  playerGlory?: number;
+  playerTreesChopped?: number;
+  inventory?: Record<string, number>;
+};
+
+export async function requestTreeHit(resourceId: string): Promise<TreeHitResponse> {
+  const token = pb.authStore.token;
+  if (!token) {
+    const error = new Error('Authentication required') as Error & { status?: number };
+    error.status = 401;
+    throw error;
+  }
+
+  const response = await fetch(`${pb.baseUrl}${TREE_HIT_API_PATH}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: token,
+    },
+    body: JSON.stringify({ resourceId }),
+  });
+
+  const payload = await response.json().catch(() => ({})) as TreeHitResponse;
+  if (!response.ok) {
+    const message = payload?.message || payload?.error || payload?.code || `Tree hit failed (${response.status})`;
+    const error = new Error(message) as Error & { status?: number; details?: TreeHitResponse };
+    error.status = response.status;
+    error.details = payload;
+    throw error;
+  }
+
+  return payload;
 }
 
 

@@ -55,7 +55,17 @@ const desiredFields = {
   buildings: [textField('zoneId'), jsonField('data'), textField('gameId')],
   map_resources: [textField('zoneId'), jsonField('data'), textField('gameId')],
   dropped_items: [textField('zoneId'), jsonField('data'), textField('gameId')],
-  chat_messages: [textField('senderId'), textField('channel'), textField('gameId'), jsonField('data')],
+  chat_messages: [
+    textField('sender'),
+    textField('text'),
+    textField('type'),
+    numberField('timestamp', true),
+    textField('tab'),
+    textField('senderId'),
+    textField('channel'),
+    textField('gameId'),
+    jsonField('data'),
+  ],
   presence: [boolField('isOnline'), textField('gameId'), jsonField('data')],
   elections: [
     jsonField('candidates'),
