@@ -1,0 +1,448 @@
+---
+description: "Task list for Feature 002 characterization foundation"
+---
+
+# Tasks: Characterization Tests
+
+**Input**: Design documents from `/specs/002-characterization-tests/`
+
+**Prerequisites**: `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/`
+
+**Slice labels in this file**: `[US1]` = Slice A (scenarios 1, 2, 10), `[US2]` = Slice B (scenarios 3, 4, 5, 6, 7), `[US3]` = Slice C (scenarios 8, 9)
+
+**Rules**: Every scenario starts as `UNCONFIRMED_RUNTIME_BEHAVIOR`; investigation must precede classification promotion; promotion must precede permanent test creation.
+
+**Owner promotion rule**: A promotion task cannot be completed by inference or by the agent writing an approval record alone. Before any promotion task can be completed, the executor must present direct source evidence, controlled observation or fixture evidence, known-bug analysis, a proposed final classification, and explicit owner acceptance in the conversation; only then may the decision be recorded.
+
+## Format
+
+Every task must follow this checklist shape:
+
+`- [ ] T### [P?] [US?] Description with exact file path`
+
+- **[P]**: safe to execute in parallel with other incomplete tasks
+- **[US]**: required only for the first-wave slice phases in this file
+- If exact implementation paths cannot be finalized yet, the task description must
+  say so explicitly and mark the blocker as `OWNER_DECISION`.
+
+---
+
+## Phase 1: Setup and Safety Foundation
+
+**Goal**: Make the characterization effort fail closed before any scenario work starts.
+
+**Independent Test**: A clean `main`, a correct Feature 002 pointer, protected paths, no-live-mutation rules, and stop conditions are all enforced before scenario decomposition begins.
+
+- [ ] T001 [P] Encode the clean-`main` and active Feature 002 pointer gate in `tests/characterization/preflight.md` using `main`, `origin/main`, and `.specify/feature.json`; stop on branch mismatch or dirty status. (FR-007, SC-005)
+- [ ] T002 [P] Encode the allowed/protected path policy in `tests/characterization/path-policy.md` for `App.tsx`, `src/pocketbase.ts`, `types.ts`, `data/**`, `components/**`, `pb_hooks/**`, `public/**`, `package.json`, `package-lock.json`, `tsconfig.json`, and `vite.config.ts`; stop on any unexpected file. (FR-007, SC-005)
+- [ ] T003 [P] Encode the no-live-PocketBase-mutation rule in `tests/characterization/fixture-boundary.md` and `tests/characterization/preflight.md`; stop if any future step would write live records or player data. (FR-010, SC-007)
+- [ ] T004 [P] Encode test-artifact output boundaries in `tests/characterization/output-policy.md` so future reports stay feature-local and do not spill into runtime or data paths. (SC-007, SC-009)
+- [ ] T005 [P] Encode the owner-approval workflow in `tests/characterization/approval-policy.md` so seams, classification promotion, and known-bug exclusions all require explicit owner confirmation. (FR-008, FR-009, SC-008)
+- [ ] T006 [P] Encode the stop-condition matrix in `tests/characterization/stop-policy.md` for known bugs, schema/config/balance/save changes, broad refactors, hidden network access, and future-wave creep. (FR-007, FR-009, FR-012, SC-005, SC-006, SC-009)
+
+---
+
+## Phase 2: Foundational Prerequisites
+
+**Goal**: Build the shared evidence and policy scaffolding that every scenario will depend on.
+
+**Independent Test**: The feature has a traceable source inventory, a scenario inventory, ownership mapping, a path matrix, a promotion policy, and a seam-decision workflow before any slice implementation starts.
+
+- [ ] T007 [P] Build the current-source and baseline anchor inventory plus the confirmed domain group index in `tests/characterization/evidence-index.md`; source anchors must come from `App.tsx`, `src/pocketbase.ts`, `pb_hooks/**`, `types.ts`, `data/**`, and `specs/_baseline/*`. (FR-001, FR-002, FR-003, SC-001, SC-002)
+- [ ] T008 [P] Build the 10-scenario inventory and freeze-priority order in `tests/characterization/scenario-index.md` with every proposed scenario starting as `UNCONFIRMED_RUNTIME_BEHAVIOR`; stop if any scenario is treated as accepted behavior before investigation or if the order ignores runtime risk. (FR-004, FR-005, FR-006, FR-008, FR-009, SC-004, SC-006)
+- [ ] T009 [P] Record the current ownership model per scenario in `tests/characterization/ownership-matrix.md` using `specs/_baseline/03-state-ownership.md`, `specs/_baseline/04-pocketbase-contracts.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, and `specs/_baseline/15-invariants.md`. (FR-003, SC-002)
+- [ ] T010 [P] Record the current persistence/realtime/timer/optimistic path per scenario in `tests/characterization/path-matrix.md`; stop if any scenario would need a broad production refactor to observe it. (FR-003, FR-005, SC-003)
+- [ ] T011 [P] Record the known-bug check and owner-acceptance gate in `tests/characterization/promotion-policy.md`; do not let `KNOWN_BUG_DO_NOT_FREEZE` become a permanent test. (FR-008, FR-009, SC-008)
+- [ ] T012 [P] Record the seam-decision workflow in `tests/characterization/seam-boundary.md` and flag only potential owner-approved seams; stop if the seam would change gameplay behavior or become a production refactor. (FR-007, FR-011, SC-005, SC-006)
+
+---
+
+## Phase 3: Minimal Runner Foundation
+
+**Goal**: Define a repository-local runner boundary on the existing Node `.mjs` helper format and finalize the command/package integration without adding dependencies.
+
+**Independent Test**: The runner contract, output shape, fail-closed behavior, and repeatability policy are defined without hidden network access, live PocketBase writes, or framework lock-in.
+
+- [ ] T013 Record the final repository-local characterization runner invocation command and package-integration decision in `tests/characterization/runner-toolchain-decision.md`; use the existing Node `.mjs` helper format, permit a direct `node ...` invocation, and keep any `package.json` integration deferred unless separately approved. (FR-006, SC-009)
+- [ ] T014 Define the repository-local characterization runner contract and terminology boundary in `tests/characterization/runner-contract.md`; the contract must stay compatible with the decision recorded in `tests/characterization/runner-toolchain-decision.md`. (FR-006, FR-010, FR-011, SC-007, SC-009)
+- [ ] T015 Define the per-scenario result schema in `tests/characterization/results-format.md`; each run must emit classification plus evidence references for every atomic scenario and keep scenario / test / fixture / harness terminology distinct. (FR-008, FR-010, FR-011, SC-006, SC-009)
+- [ ] T016 Define fail-closed behavior in `tests/characterization/runner-contract.md`; the runner must stop when a fixture, evidence anchor, or approved seam is missing. (FR-009, FR-010, SC-007, SC-008)
+- [ ] T017 Define stable two-run comparison behavior in `tests/characterization/repeatability-policy.md` so the suite can prove unchanged runs produce the same outcome. (SC-007, SC-009)
+
+---
+
+## Phase 4: Deterministic Fixture Foundation
+
+**Goal**: Define local, reproducible fixture shapes before any scenario implementation starts.
+
+**Independent Test**: The suite has a fixture manifest, clock inputs, reset policy, and provenance rules that avoid credentials, hidden network state, and mutable production player data.
+
+- [ ] T018 [P] Define the feature-local fixture manifest in `tests/characterization/fixtures/manifest.json` with frozen record snapshots, ordered event traces, and expected outcomes. (FR-010, SC-007)
+- [ ] T019 [P] Define deterministic clock inputs and timestamp fixtures in `tests/characterization/fixtures/clock.json` for the timer/completion slice; stop if any fixture requires live time or hidden network access. (FR-010, SC-007)
+- [ ] T020 [P] Define fixture reset and cleanup policy in `tests/characterization/fixtures/reset.md` so every run starts from the same state and no live player data is touched. (FR-010, SC-007)
+- [ ] T021 [P] Define fixture provenance and no-credential policy in `tests/characterization/fixtures/provenance.md` so fixtures remain local and reproducible. (FR-010, SC-007, SC-008)
+
+---
+
+## Phase 5: Slice A - Realtime Merge
+
+**Goal**: Protect stale-snapshot and resurrection behavior first.
+
+**Independent Test**: Scenarios 1, 2, and 10 are each investigated, classified, owner-approved, seam-decided, fixture-designed, and only then promoted into permanent characterization checks if the current source and owner accept the behavior.
+
+### Scenario 1 - Initial fetch cannot be overwritten by an older late snapshot
+
+- [ ] T022 [P] [US1] Investigate scenario 1 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/09-realtime-sync.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, current ownership model, and observed behavior in `tests/characterization/slice-a/scenario-01-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T023 [US1] Record the final classification and known-bug decision for scenario 1 in `tests/characterization/slice-a/scenario-01-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T024 [US1] Record the explicit owner acceptance and promotion for scenario 1 in `tests/characterization/slice-a/scenario-01-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T025 [US1] Decide whether scenario 1 needs a seam in `tests/characterization/slice-a/scenario-01-seam.md`; request a minimal seam only if the stale-snapshot guard cannot be expressed purely. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T026 [US1] Design the deterministic merge fixture in `tests/characterization/slice-a/scenario-01-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T027 [US1] Implement the permanent atomic characterization test for scenario 1 in `tests/characterization/slice-a/scenario-01.mjs` only after T024 exists; stop if the test would become a production refactor or would write live PocketBase data. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T028 [US1] Run the scenario-1 check twice from `tests/characterization/slice-a/scenario-01.mjs` and confirm stable output, no hidden network access, and no live mutation; record the result in `tests/characterization/slice-a/scenario-01-repeatability.md`. (SC-007, SC-009)
+
+### Scenario 2 - Deleted building cannot be resurrected by a reconnect snapshot
+
+- [ ] T029 [P] [US1] Investigate scenario 2 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-a/scenario-02-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T030 [US1] Record the final classification and known-bug decision for scenario 2 in `tests/characterization/slice-a/scenario-02-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T031 [US1] Record the explicit owner acceptance and promotion for scenario 2 in `tests/characterization/slice-a/scenario-02-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T032 [US1] Decide whether scenario 2 needs a seam in `tests/characterization/slice-a/scenario-02-seam.md`; request a minimal seam only if the existing merge path cannot represent the terminal state. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T033 [US1] Design the tombstone/reconnect fixture in `tests/characterization/slice-a/scenario-02-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T034 [US1] Implement the permanent atomic characterization test for scenario 2 in `tests/characterization/slice-a/scenario-02.mjs` only after T031 exists; stop if a seam would alter gameplay behavior or if live data would be required. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T035 [US1] Run the scenario-2 check twice from `tests/characterization/slice-a/scenario-02.mjs` and confirm the deleted building stays deleted across unchanged runs; record the result in `tests/characterization/slice-a/scenario-02-repeatability.md`. (SC-007, SC-009)
+
+### Scenario 10 - Destroyed building terminal state survives a later stale snapshot
+
+- [ ] T036 [P] [US1] Investigate scenario 10 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-a/scenario-10-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T037 [US1] Record the final classification and known-bug decision for scenario 10 in `tests/characterization/slice-a/scenario-10-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T038 [US1] Record the explicit owner acceptance and promotion for scenario 10 in `tests/characterization/slice-a/scenario-10-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T039 [US1] Decide whether scenario 10 needs a seam in `tests/characterization/slice-a/scenario-10-seam.md`; request a minimal seam only if the current merge path cannot suppress resurrection. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T040 [US1] Design the destroyed-terminal-state fixture in `tests/characterization/slice-a/scenario-10-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T041 [US1] Implement the permanent atomic characterization test for scenario 10 in `tests/characterization/slice-a/scenario-10.mjs` only after T038 exists; stop if the test would reintroduce ghost-building behavior or require live PocketBase writes. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T042 [US1] Run the scenario-10 check twice from `tests/characterization/slice-a/scenario-10.mjs` and confirm the terminal state does not regress under a stale snapshot; record the result in `tests/characterization/slice-a/scenario-10-repeatability.md`. (SC-007, SC-009)
+
+---
+
+## Phase 6: Slice B - Timers and Completion
+
+**Goal**: Protect the timer, completion, reward, and reload/reconnect contract before any lower-risk surface enters the MVP.
+
+**Independent Test**: Scenarios 3, 4, 5, 6, and 7 are each investigated, classified, owner-approved, seam-decided, fixture-designed with deterministic clock inputs, and only then promoted into permanent characterization checks if the current source and owner accept the observed contract.
+
+### Scenario 3 - Persisted process whose end time passed completes exactly once
+
+- [ ] T043 [P] [US2] Investigate scenario 3 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/08-upgrade-system.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-03-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T044 [US2] Record the final classification and known-bug decision for scenario 3 in `tests/characterization/slice-b/scenario-03-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T045 [US2] Record the explicit owner acceptance and promotion for scenario 3 in `tests/characterization/slice-b/scenario-03-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T046 [US2] Decide whether scenario 3 needs a seam in `tests/characterization/slice-b/scenario-03-seam.md`; request a minimal seam only if the current completion boundary cannot be observed without a minimal helper. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T047 [US2] Design the frozen timestamp fixture in `tests/characterization/slice-b/scenario-03-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T048 [US2] Implement the permanent atomic characterization test for scenario 3 in `tests/characterization/slice-b/scenario-03.mjs` only after T045 exists; stop if the test would alter completion semantics, reward timing, or live data. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T049 [US2] Run the scenario-3 check twice from `tests/characterization/slice-b/scenario-03.mjs` and confirm the process completes exactly once on unchanged runs; record the result in `tests/characterization/slice-b/scenario-03-repeatability.md`. (SC-007, SC-009)
+
+### Scenario 4 - Offline catch-up cannot duplicate completion or reward
+
+- [ ] T050 [P] [US2] Investigate scenario 4 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-04-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T051 [US2] Record the final classification and known-bug decision for scenario 4 in `tests/characterization/slice-b/scenario-04-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T052 [US2] Record the explicit owner acceptance and promotion for scenario 4 in `tests/characterization/slice-b/scenario-04-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T053 [US2] Decide whether scenario 4 needs a seam in `tests/characterization/slice-b/scenario-04-seam.md`; request a minimal seam only if the current catch-up path cannot show the reward fence. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T054 [US2] Design the offline catch-up fixture in `tests/characterization/slice-b/scenario-04-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T055 [US2] Implement the permanent atomic characterization test for scenario 4 in `tests/characterization/slice-b/scenario-04.mjs` only after T052 exists; stop if the test would introduce duplicate reward logic or live writes. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T056 [US2] Run the scenario-4 check twice from `tests/characterization/slice-b/scenario-04.mjs` and confirm completion and reward are both single-shot; record the result in `tests/characterization/slice-b/scenario-04-repeatability.md`. (SC-007, SC-009)
+
+### Scenario 5 - Construction state survives reload and converges from persisted end time
+
+- [ ] T057 [P] [US2] Investigate scenario 5 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/08-upgrade-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-05-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T058 [US2] Record the final classification and known-bug decision for scenario 5 in `tests/characterization/slice-b/scenario-05-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T059 [US2] Record the explicit owner acceptance and promotion for scenario 5 in `tests/characterization/slice-b/scenario-05-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T060 [US2] Decide whether scenario 5 needs a seam in `tests/characterization/slice-b/scenario-05-seam.md`; request a minimal seam only if construction convergence cannot be observed through the existing boundary. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T061 [US2] Design the reload fixture in `tests/characterization/slice-b/scenario-05-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T062 [US2] Implement the permanent atomic characterization test for scenario 5 in `tests/characterization/slice-b/scenario-05.mjs` only after T059 exists; stop if the timer would reset, complete early, or require live PocketBase mutation. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T063 [US2] Run the scenario-5 check twice from `tests/characterization/slice-b/scenario-05.mjs` and confirm the construction timer remains stable across reloads; record the result in `tests/characterization/slice-b/scenario-05-repeatability.md`. (SC-007, SC-009)
+
+### Scenario 6 - Production completion survives reconnect and rewards once
+
+- [ ] T064 [P] [US2] Investigate scenario 6 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-06-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T065 [US2] Record the final classification and known-bug decision for scenario 6 in `tests/characterization/slice-b/scenario-06-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T066 [US2] Record the explicit owner acceptance and promotion for scenario 6 in `tests/characterization/slice-b/scenario-06-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T067 [US2] Decide whether scenario 6 needs a seam in `tests/characterization/slice-b/scenario-06-seam.md`; request a minimal seam only if the current production boundary cannot show the one-time reward fence. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T068 [US2] Design the reconnect fixture in `tests/characterization/slice-b/scenario-06-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T069 [US2] Implement the permanent atomic characterization test for scenario 6 in `tests/characterization/slice-b/scenario-06.mjs` only after T066 exists; stop if reward delivery could duplicate or if the fixture would need live writes. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T070 [US2] Run the scenario-6 check twice from `tests/characterization/slice-b/scenario-06.mjs` and confirm finished state and reward stay single-shot; record the result in `tests/characterization/slice-b/scenario-06-repeatability.md`. (SC-007, SC-009)
+
+### Scenario 7 - Upgrade completion survives reconnect without duplicate transformation
+
+- [ ] T071 [P] [US2] Investigate scenario 7 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/08-upgrade-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-07-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T072 [US2] Record the final classification and known-bug decision for scenario 7 in `tests/characterization/slice-b/scenario-07-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T073 [US2] Record the explicit owner acceptance and promotion for scenario 7 in `tests/characterization/slice-b/scenario-07-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T074 [US2] Decide whether scenario 7 needs a seam in `tests/characterization/slice-b/scenario-07-seam.md`; request a minimal seam only if the current upgrade boundary cannot show the one-time transformation. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T075 [US2] Design the reconnect fixture in `tests/characterization/slice-b/scenario-07-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T076 [US2] Implement the permanent atomic characterization test for scenario 7 in `tests/characterization/slice-b/scenario-07.mjs` only after T073 exists; stop if the upgrade would transform twice, re-spend resources, or require live data. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T077 [US2] Run the scenario-7 check twice from `tests/characterization/slice-b/scenario-07.mjs` and confirm the building transform occurs once; record the result in `tests/characterization/slice-b/scenario-07-repeatability.md`. (SC-007, SC-009)
+
+---
+
+## Phase 7: Slice C - Optimistic Commands
+
+**Goal**: Protect rollback completeness and late-ack ordering for local-first commands.
+
+**Independent Test**: Scenarios 8 and 9 are each investigated, classified, owner-approved, seam-decided, fixture-designed, and only then promoted into permanent characterization checks if the current source and owner accept the observed contract.
+
+### Scenario 8 - Rejected optimistic building placement restores the pre-command state
+
+- [ ] T078 [P] [US3] Investigate scenario 8 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/04-pocketbase-contracts.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-c/scenario-08-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T079 [US3] Record the final classification and known-bug decision for scenario 8 in `tests/characterization/slice-c/scenario-08-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T080 [US3] Record the explicit owner acceptance and promotion for scenario 8 in `tests/characterization/slice-c/scenario-08-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T081 [US3] Decide whether scenario 8 needs a seam in `tests/characterization/slice-c/scenario-08-seam.md`; request a minimal seam only if the current optimistic boundary cannot show the full rollback. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T082 [US3] Design the pre-state, reject, and rollback-completeness fixture in `tests/characterization/slice-c/scenario-08-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T083 [US3] Implement the permanent atomic characterization test for scenario 8 in `tests/characterization/slice-c/scenario-08.mjs` only after T080 exists; stop if the rollback is partial, if occupancy/resources are not restored, or if live mutation would be required. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T084 [US3] Run the scenario-8 check twice from `tests/characterization/slice-c/scenario-08.mjs` and confirm the rejected placement restores the full pre-command state; record the result in `tests/characterization/slice-c/scenario-08-repeatability.md`. (SC-007, SC-009)
+
+### Scenario 9 - Late command acknowledgement cannot overwrite a newer local intent
+
+- [ ] T085 [P] [US3] Investigate scenario 9 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-c/scenario-09-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [ ] T086 [US3] Record the final classification and known-bug decision for scenario 9 in `tests/characterization/slice-c/scenario-09-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [ ] T087 [US3] Record the explicit owner acceptance and promotion for scenario 9 in `tests/characterization/slice-c/scenario-09-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [ ] T088 [US3] Decide whether scenario 9 needs a seam in `tests/characterization/slice-c/scenario-09-seam.md`; request a minimal seam only if the current reconciliation boundary cannot express the late-response fence. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T089 [US3] Design the pre-state, delayed-ack, and newer-intent fixture in `tests/characterization/slice-c/scenario-09-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T090 [US3] Implement the permanent atomic characterization test for scenario 9 in `tests/characterization/slice-c/scenario-09.mjs` only after T087 exists; stop if a late ack can roll back newer state, if duplicate-submit protection is absent, or if live writes are required. (FR-008, FR-009, SC-005, SC-008)
+- [ ] T091 [US3] Run the scenario-9 check twice from `tests/characterization/slice-c/scenario-09.mjs` and confirm the old ack never wins over newer intent; record the result in `tests/characterization/slice-c/scenario-09-repeatability.md`. (SC-007, SC-009)
+
+---
+
+## Phase 8: Determinism and Suite Verification
+
+**Goal**: Prove the whole first-wave suite is stable, closed, and free of hidden mutation.
+
+**Independent Test**: The complete suite runs twice with identical fixtures and produces identical scenario-by-scenario results, while rejecting hidden network access, live PocketBase writes, and unpromoted or known-bug scenarios.
+
+- [ ] T092 Run the entire first-wave suite twice from `tests/characterization/runner.mjs` with the same deterministic fixtures and compare scenario-by-scenario results. (SC-007, SC-009)
+- [ ] T093 Verify the suite fails closed in `tests/characterization/runner.mjs` and `tests/characterization/fixtures/manifest.json` when evidence, fixture, or seam data is missing; confirm no live PocketBase or player-data mutation occurs. (FR-010, SC-007, SC-008)
+- [ ] T094 Verify every permanent test in `tests/characterization/promotion-policy.md` was promoted from investigation and that no known bug was silently frozen. (FR-008, FR-009, SC-008)
+- [ ] T095 Verify the MVP boundary in `tests/characterization/scenario-index.md` and `tests/characterization/results-format.md` so P2/P3 surfaces never enter the first wave. (FR-012, SC-004, SC-005)
+
+---
+
+## Phase 9: Documentation and Final MVP Gate
+
+**Goal**: Lock the final contract only after the actual runner behavior is known.
+
+**Independent Test**: Quickstart, contracts, traceability, and final evidence match the implemented runner and fixture boundaries without widening scope or introducing future-wave surfaces.
+
+- [ ] T096 Update `specs/002-characterization-tests/quickstart.md` only after the real repository-defined characterization command is known; keep the runner/toolchain implementation-neutral until then. (SC-009)
+- [ ] T097 Sync `specs/002-characterization-tests/contracts/runner-contract.md`, `specs/002-characterization-tests/contracts/fixture-boundary.md`, `specs/002-characterization-tests/contracts/promotion-policy.md`, and `specs/002-characterization-tests/contracts/seam-boundary.md` with the implemented boundaries only if implementation differs from planning. (FR-006, FR-010, SC-002, SC-007)
+- [ ] T098 Produce final traceability from scenario to source, fixture, seam, classification, and test in `tests/characterization/traceability.md`; keep any future Feature 003 or runtime refactor blocked until Feature 002 passes. (SC-001, SC-002, SC-006)
+- [ ] T099 Finalize risk-appropriate verification notes and completion evidence in `tests/characterization/reports/final.md`; keep the MVP boundary and explicit future-wave exclusions intact. (SC-004, SC-005, SC-009)
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Phase 1**: can start immediately after the clean-main and feature-pointer verification passes.
+- **Phase 2**: depends on Phase 1 and blocks all later phases.
+- **Phase 3**: depends on Phase 2 and blocks runner implementation until T013 records the final invocation command and integration policy.
+- **Phase 4**: depends on Phase 2 and blocks scenario implementation until fixtures are defined.
+- **Phase 5**: depends on Phases 2, 3, and 4 and must finish before Phase 6 begins.
+- **Phase 6**: depends on Phase 5 and must finish before Phase 7 begins.
+- **Phase 7**: depends on Phase 6 and must finish before Phase 8 begins.
+- **Phase 8**: depends on all first-wave scenario tasks and the runner-contract boundary.
+- **Phase 9**: depends on the runner contract, fixture policy, and the final verification pass.
+
+### Slice Order
+
+- **Slice A**: scenarios 1, 2, 10
+- **Slice B**: scenarios 3, 4, 5, 6, 7
+- **Slice C**: scenarios 8, 9
+
+### Within Each Scenario
+
+- Investigation precedes classification decision.
+- Classification decision precedes owner promotion.
+- Owner promotion precedes seam decision.
+- Seam decision precedes fixture design.
+- Fixture design precedes permanent test creation.
+- Permanent test creation precedes repeatability verification.
+- Owner approval is required before any minimal runtime seam.
+
+---
+
+## Parallel Opportunities
+
+- Phase 1 policy tasks can run in parallel because they touch separate policy docs/artifacts.
+- Phase 2 evidence and inventory tasks can run in parallel because they map different matrices.
+- Phase 4 fixture-policy tasks can run in parallel because they define separate fixture concerns.
+- Within each slice, the scenario investigation tasks can run in parallel once the foundational phases are complete.
+- Within each slice, the classification tasks can run in parallel only after their own investigations are complete.
+- Within each slice, the fixture-design tasks can run in parallel once the seam decisions and promotions for those scenarios are complete.
+
+---
+
+## Implementation Strategy
+
+### MVP First
+
+1. Complete Phases 1-4.
+2. Complete Slice A first.
+3. Stop and validate Slice A before touching timers or optimistic commands.
+4. Complete Slice B next.
+5. Stop and validate Slice B before touching Slice C.
+6. Complete Slice C last.
+7. Run suite-level determinism checks.
+8. Finish only after traceability and documentation are aligned with the implemented runner.
+
+### Incremental Delivery
+
+1. Safety foundation
+2. Shared evidence and promotion policy
+3. Runner boundary
+4. Fixture boundary
+5. Slice A
+6. Slice B
+7. Slice C
+8. Suite determinism
+9. Documentation and MVP gate
+
+---
+
+## Traceability Matrices
+
+### 1. Requirement Coverage Matrix
+
+| Requirement | Covered by tasks |
+| --- | --- |
+| FR-001 | T007, T022, T029, T036, T043, T050, T057, T064, T071, T078, T085, T098 |
+| FR-002 | T007, T009 |
+| FR-003 | T009, T010, T022, T029, T036, T043, T050, T057, T064, T071, T078, T085 |
+| FR-004 | T008, T095 |
+| FR-005 | T008, T010, T095 |
+| FR-006 | T008, T013, T014, T015, T017 |
+| FR-007 | T001, T002, T003, T004, T005, T006 |
+| FR-008 | T008, T011, T023, T024, T030, T031, T037, T038, T044, T045, T051, T052, T058, T059, T065, T066, T072, T073, T079, T080, T086, T087 |
+| FR-009 | T005, T011, T023, T024, T030, T031, T037, T038, T044, T045, T051, T052, T058, T059, T065, T066, T072, T073, T079, T080, T086, T087 |
+| FR-010 | T003, T004, T014, T015, T016, T018, T019, T020, T021, T026, T033, T040, T047, T054, T061, T068, T075, T082, T089, T093, T097 |
+| FR-011 | T012, T014, T015, T025, T032, T039, T046, T053, T060, T067, T074, T081, T088 |
+| FR-012 | T006, T008, T095 |
+
+### 2. Success-Criteria Coverage Matrix
+
+| Success criterion | Covered by tasks |
+| --- | --- |
+| SC-001 | T007, T022, T029, T036, T043, T050, T057, T064, T071, T078, T085 |
+| SC-002 | T009, T014, T098 |
+| SC-003 | T010, T016, T027, T034, T041, T048, T055, T062, T069, T076, T083, T090 |
+| SC-004 | T008, T095 |
+| SC-005 | T006, T025, T026, T027, T032, T033, T034, T039, T040, T041, T046, T047, T048, T053, T054, T055, T060, T061, T062, T067, T068, T069, T074, T075, T076, T081, T082, T083, T088, T089, T090, T092, T094, T099 |
+| SC-006 | T007, T008, T009, T022, T023, T029, T030, T036, T037, T043, T044, T050, T051, T057, T058, T064, T065, T071, T072, T078, T079, T085, T086, T093 |
+| SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T026, T028, T033, T035, T040, T042, T047, T049, T054, T056, T061, T063, T068, T070, T075, T077, T082, T084, T089, T091, T092, T093 |
+| SC-008 | T005, T011, T023, T024, T030, T031, T037, T038, T044, T045, T051, T052, T058, T059, T065, T066, T072, T073, T079, T080, T086, T087, T094 |
+| SC-009 | T004, T013, T014, T017, T028, T035, T042, T049, T056, T063, T070, T077, T084, T091, T092, T095, T096, T099 |
+
+### 3. Scenario-to-Evidence Matrix
+
+| Scenario | Evidence anchors expected in investigation tasks |
+| --- | --- |
+| 1 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/15-invariants.md` |
+| 2 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+| 3 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/08-upgrade-system.md`, `specs/_baseline/15-invariants.md` |
+| 4 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+| 5 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/08-upgrade-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+| 6 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+| 7 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/08-upgrade-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+| 8 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/04-pocketbase-contracts.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+| 9 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+| 10 | `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, `specs/_baseline/15-invariants.md` |
+
+### 4. Scenario-to-Fixture Matrix
+
+| Scenario | Planned fixture path |
+| --- | --- |
+| 1 | `tests/characterization/slice-a/scenario-01-fixture.json` |
+| 2 | `tests/characterization/slice-a/scenario-02-fixture.json` |
+| 3 | `tests/characterization/slice-b/scenario-03-fixture.json` |
+| 4 | `tests/characterization/slice-b/scenario-04-fixture.json` |
+| 5 | `tests/characterization/slice-b/scenario-05-fixture.json` |
+| 6 | `tests/characterization/slice-b/scenario-06-fixture.json` |
+| 7 | `tests/characterization/slice-b/scenario-07-fixture.json` |
+| 8 | `tests/characterization/slice-c/scenario-08-fixture.json` |
+| 9 | `tests/characterization/slice-c/scenario-09-fixture.json` |
+| 10 | `tests/characterization/slice-a/scenario-10-fixture.json` |
+
+### 5. Scenario-to-Seam-Decision Matrix
+
+| Scenario | Initial seam decision |
+| --- | --- |
+| 1 | `tests/characterization/slice-a/scenario-01-seam.md` - pure seam candidate; owner-approved seam only if the merge boundary cannot express the stale-snapshot guard |
+| 2 | `tests/characterization/slice-a/scenario-02-seam.md` - pure seam candidate; owner-approved seam only if the merge boundary cannot express the terminal state |
+| 3 | `tests/characterization/slice-b/scenario-03-seam.md` - potential owner-approved seam candidate if the completion boundary cannot be observed purely |
+| 4 | `tests/characterization/slice-b/scenario-04-seam.md` - potential owner-approved seam candidate if the reward fence cannot be observed purely |
+| 5 | `tests/characterization/slice-b/scenario-05-seam.md` - potential owner-approved seam candidate if construction convergence cannot be observed purely |
+| 6 | `tests/characterization/slice-b/scenario-06-seam.md` - potential owner-approved seam candidate if the production reward fence cannot be observed purely |
+| 7 | `tests/characterization/slice-b/scenario-07-seam.md` - potential owner-approved seam candidate if the upgrade fence cannot be observed purely |
+| 8 | `tests/characterization/slice-c/scenario-08-seam.md` - pure seam candidate; owner-approved seam only if rollback completeness cannot be observed purely |
+| 9 | `tests/characterization/slice-c/scenario-09-seam.md` - pure seam candidate; owner-approved seam only if the reconciliation boundary cannot express late-ack ordering |
+| 10 | `tests/characterization/slice-a/scenario-10-seam.md` - pure seam candidate; owner-approved seam only if stale-snapshot suppression cannot be observed purely |
+
+### 6. Owner-Approval Matrix
+
+| Scenario | Approval required when |
+| --- | --- |
+| 1 | when `tests/characterization/slice-a/scenario-01-promotion.md` is written or a seam must be extracted |
+| 2 | when `tests/characterization/slice-a/scenario-02-promotion.md` is written or a seam must be extracted |
+| 3 | when `tests/characterization/slice-b/scenario-03-promotion.md` is written or a minimal completion seam is required |
+| 4 | when `tests/characterization/slice-b/scenario-04-promotion.md` is written or a minimal reward-fence seam is required |
+| 5 | when `tests/characterization/slice-b/scenario-05-promotion.md` is written or a minimal construction seam is required |
+| 6 | when `tests/characterization/slice-b/scenario-06-promotion.md` is written or a minimal production seam is required |
+| 7 | when `tests/characterization/slice-b/scenario-07-promotion.md` is written or a minimal upgrade seam is required |
+| 8 | when `tests/characterization/slice-c/scenario-08-promotion.md` is written or rollback cannot be observed purely |
+| 9 | when `tests/characterization/slice-c/scenario-09-promotion.md` is written or reconciliation cannot be observed purely |
+| 10 | when `tests/characterization/slice-a/scenario-10-promotion.md` is written or tombstone suppression cannot be observed purely |
+
+### 7. Stop-Condition Matrix
+
+| Condition | Task groups that must stop |
+| --- | --- |
+| Source evidence does not confirm behavior | T022-T091 |
+| Current behavior is a known bug | T022-T091 |
+| Owner acceptance is missing | T024, T031, T038, T045, T052, T059, T066, T073, T080, T087 |
+| Live PocketBase mutation would be required | T003, T016, T018-T021, T027, T034, T041, T048, T055, T062, T069, T076, T083, T090, T092-T099 |
+| Production player data would be used | T003, T016, T018-T021, T027, T034, T041, T048, T055, T062, T069, T076, T083, T090, T092-T099 |
+| Broad runtime refactor would be needed | T012, T025, T032, T039, T046, T053, T060, T067, T074, T081, T088 |
+| Schema/config/balance/save-format change required | T006, T012, T015, T027, T034, T041, T048, T055, T062, T069, T076, T083, T090 |
+| Seam changes gameplay behavior | T012, T025, T032, T039, T046, T053, T060, T067, T074, T081, T088 |
+| Unexpected file changes occur | T001, T002, T004, T006, T092-T099 |
+| P2/P3 surface enters MVP | T006, T008, T095 |
+| Toolchain cannot be selected without production dependency changes | T013 |
+| Deterministic reset cannot be guaranteed | T018-T021, T028, T035, T042, T049, T056, T063, T070, T077, T084, T091, T092 |
+
+### 8. Parallel Execution Opportunities
+
+| Opportunity | Notes |
+| --- | --- |
+| Phase 1 policy tasks | `T001-T006` can proceed in parallel because they touch separate safety artifacts. |
+| Phase 2 inventory tasks | `T007-T012` can proceed in parallel once the baseline docs are loaded. |
+| Phase 4 fixture tasks | `T018-T021` can proceed in parallel because they define separate fixture concerns. |
+| Slice A investigations | `T022`, `T029`, and `T036` can proceed in parallel after the foundational phases are complete. |
+| Slice B investigations | `T043`, `T050`, `T057`, `T064`, and `T071` can proceed in parallel after the foundational phases are complete. |
+| Slice C investigations | `T078` and `T085` can proceed in parallel after the foundational phases are complete. |
+
+### 9. MVP Boundary
+
+- Realtime merge: scenarios 1, 2, 10
+- Timers and completion: scenarios 3, 4, 5, 6, 7
+- Optimistic commands: scenarios 8, 9
+- All scenarios remain `UNCONFIRMED_RUNTIME_BEHAVIOR` until source, evidence, known-bug status, and owner acceptance are confirmed
+- No combat, economy, social/meta, chat, clans, leaderboards, elections, market, assets, FPS, or performance work enters the MVP
+
+### 10. Explicit Future-Wave Exclusions
+
+- combat and monster AI
+- economy and harvesting
+- social and meta systems
+- chat
+- clans
+- leaderboards
+- elections
+- market
+- assets
+- FPS or performance
+- any broader runtime refactor not needed for the first-wave slices
