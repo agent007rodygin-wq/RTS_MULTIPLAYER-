@@ -92,7 +92,7 @@ Every task must follow this checklist shape:
 
 ### Scenario 1 - Initial fetch cannot be overwritten by an older late snapshot
 
-- [ ] T022 [P] [US1] Investigate scenario 1 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/09-realtime-sync.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, current ownership model, and observed behavior in `tests/characterization/slice-a/scenario-01-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [X] T022 [P] [US1] Investigate scenario 1 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/09-realtime-sync.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, current ownership model, and observed behavior in `tests/characterization/scenario-001-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
 - [ ] T023 [US1] Record the final classification and known-bug decision for scenario 1 in `tests/characterization/slice-a/scenario-01-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
 - [ ] T024 [US1] Record the explicit owner acceptance and promotion for scenario 1 in `tests/characterization/slice-a/scenario-01-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T025 [US1] Decide whether scenario 1 needs a seam in `tests/characterization/slice-a/scenario-01-seam.md`; request a minimal seam only if the stale-snapshot guard cannot be expressed purely. (FR-007, FR-011, SC-005, SC-006)
