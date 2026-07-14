@@ -97,7 +97,7 @@ Every task must follow this checklist shape:
 - [X] T024 [US1] Decide whether scenario 1 needs a seam in `tests/characterization/scenario-001-seam-decision.md`; request a minimal seam only if the stale-snapshot guard cannot be expressed purely. (FR-007, FR-011, SC-005, SC-006)
 - [X] T025 [US1] Design the deterministic merge fixture in `tests/characterization/scenario-001-fixture-design.md` after the seam decision is recorded. (FR-010, SC-007)
 - [X] T026 [US1] Record the controlled observation or deterministic replay evidence for scenario 1 in `tests/characterization/scenario-001-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. The broad Scenario 1 contract remains open until the actual production boundary is executed through an existing importable pure seam, or a minimal owner-approved test seam is proposed and used, or the contract is formally narrowed by a separate owner decision. (FR-008, FR-009, SC-006, SC-007)
-- [ ] T027 [US1] Record the explicit owner acceptance and final promotion decision for scenario 1 in `tests/characterization/slice-a/scenario-01-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [X] T027 [US1] Record the explicit owner acceptance for the narrow proven contract in `tests/characterization/scenario-001-owner-acceptance.md`; accept only the active sticky-interaction-window behavior as `CURRENT_ACCEPTED_BEHAVIOR` and keep the broader initial-fetch-versus-late-snapshot contract `UNCONFIRMED_RUNTIME_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T028 [US1] Implement the permanent atomic characterization test for scenario 1 in `tests/characterization/slice-a/scenario-01.mjs` only after T027 exists; stop if the test would become a production refactor or would write live PocketBase data. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T029 [US1] Run the scenario-1 check twice from `tests/characterization/slice-a/scenario-01.mjs` and confirm stable output, no hidden network access, and no live mutation; record the result in `tests/characterization/slice-a/scenario-01-repeatability.md`. (SC-007, SC-009)
 
@@ -411,8 +411,8 @@ Every task must follow this checklist shape:
 | --- | --- |
 | Source evidence does not confirm behavior | T022-T101 |
 | Current behavior is a known bug | T022-T101 |
-| Controlled observation or deterministic replay evidence is missing | T027, T035, T043, T051, T059, T067, T075, T083, T091, T099 |
-| Owner acceptance is missing | T027, T035, T043, T051, T059, T067, T075, T083, T091, T099 |
+| Controlled observation or deterministic replay evidence is missing | T035, T043, T051, T059, T067, T075, T083, T091, T099 |
+| Owner acceptance is missing | T035, T043, T051, T059, T067, T075, T083, T091, T099 |
 | Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Broad runtime refactor would be needed | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
