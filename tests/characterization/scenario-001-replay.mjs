@@ -9,12 +9,22 @@ const CANONICAL_ORDER = [
   'older-late-realtime-event',
 ];
 
+import {
+  hasActiveDestructionWindow,
+  resolvePlacedBuildingSnapshotMerge,
+} from '../../src/game/buildings/resolveBuildingSnapshotMerge.js';
+
 const SOURCE_ANCESTORS = [
+  'src/game/buildings/resolveBuildingSnapshotMerge.js',
+  'App.tsx',
+  'src/pocketbase.ts',
   'tests/characterization/scenario-001-source-audit.md',
   'tests/characterization/scenario-001-classification.md',
   'tests/characterization/scenario-001-seam-decision.md',
   'tests/characterization/scenario-001-fixture-design.md',
   'tests/characterization/scenario-001-readiness-review.md',
+  'tests/characterization/scenario-001-production-boundary-review.md',
+  'tests/characterization/scenario-001-replay-fidelity-review.md',
 ];
 
 function parseControl(argv, env) {
@@ -35,10 +45,6 @@ function freezeMap(entries) {
   return new Map(entries.map(([key, value]) => [String(key), value]));
 }
 
-function hasActiveDestructionWindow(value, now = FIXED_NOW) {
-  return Number.isFinite(Number(value)) && Number(value) > now;
-}
-
 function validateScenario(scenario) {
   const requiredFields = [
     ['id', scenario.id],
@@ -49,6 +55,7 @@ function validateScenario(scenario) {
     ['acceptedCurrentState.id', scenario.acceptedCurrentState?.id],
     ['lateRealtimeEventState.id', scenario.lateRealtimeEventState?.id],
     ['lastInteractionEntries', scenario.lastInteractionEntries],
+    ['recentMoveEntries', scenario.recentMoveEntries],
     ['lastServerSyncEntries', scenario.lastServerSyncEntries],
     ['deletingIds', scenario.deletingIds],
     ['tombstonedIds', scenario.tombstonedIds],
@@ -157,6 +164,7 @@ function buildScenario(control) {
       timestamp: 989_000,
     },
     lastInteractionEntries: [['building-001', 990_000]],
+    recentMoveEntries: [['building-001', 999_500]],
     lastServerSyncEntries: [['building-001', 995_000]],
     deletingIds: [],
     tombstonedIds: [],
@@ -171,13 +179,14 @@ function buildScenario(control) {
     scenario.acceptedCurrentState.isLocal = false;
   } else if (control === 'missing-fields') {
     delete scenario.currentUserId;
+    delete scenario.recentMoveEntries;
     delete scenario.lastServerSyncEntries;
   }
 
   return scenario;
 }
 
-function mergeReplayBoundary({ currentState, lateSnapshot, refs, now = FIXED_NOW }) {
+function mergeReplayBoundary({ currentState, lateSnapshot, refs, now = FIXED_NOW, control }) {
   const id = String(currentState.id);
 
   if (refs.tombstonedIds.has(id) || refs.deletingIds.has(id)) {
@@ -186,56 +195,65 @@ function mergeReplayBoundary({ currentState, lateSnapshot, refs, now = FIXED_NOW
       outcome: 'BLOCKED',
       reason: 'tombstone-or-delete-state-present',
       winner: clone(currentState),
+      productionBoundaryExecuted: false,
     };
   }
 
   const lastIntAt = refs.lastInteractionRef.get(id) ?? 0;
-  const timeSinceInt = now - lastIntAt;
-  const localInteractionAllowed =
-    currentState.isLocal === true || currentState.ownerId === refs.currentUserId;
+  const lastMoveAt = refs.recentMoveInteractionRef.get(id) ?? 0;
   const localIsProtectedByCombat = Boolean(
     currentState.isDestroying ||
     Number(currentState.pendingDamage || 0) > 0 ||
-    hasActiveDestructionWindow(currentState.destructionEndTime, now)
+    hasActiveDestructionWindow(currentState.destructionEndTime, now) ||
+    refs.deletingIds.has(id) ||
+    refs.tombstonedIds.has(id)
   );
 
-  if (localIsProtectedByCombat) {
-    return {
-      pass: true,
-      outcome: 'LOST',
-      reason: 'combat-guard-kept-current-state',
-      winner: clone(currentState),
-    };
-  }
+  const mergeResult = resolvePlacedBuildingSnapshotMerge({
+    serverBuilding: lateSnapshot,
+    localBuilding: currentState,
+    currentUserId: refs.currentUserId,
+    now,
+    lastInteractionAt: lastIntAt,
+    lastMoveAt,
+    localIsProtectedByCombat,
+    stickyInteractionMs: STICKY_INTERACTION_MS,
+    deletionProtectionMs: DELETION_PROTECTION_MS,
+  });
 
-  const constructionStickyMs =
-    currentState.isConstructing === false && lateSnapshot.isConstructing === true
-      ? Math.max(STICKY_INTERACTION_MS, DELETION_PROTECTION_MS)
-      : STICKY_INTERACTION_MS;
-
-  if (timeSinceInt < constructionStickyMs && localInteractionAllowed) {
-    if (currentState.hp !== undefined && currentState.hp <= 0) {
-      return {
-        pass: false,
-        outcome: 'WON',
-        reason: 'stale-dead-current-state-rejected',
-        winner: clone(lateSnapshot),
-      };
-    }
-
-    return {
-      pass: true,
-      outcome: 'LOST',
-      reason: 'sticky-interaction-kept-current-state',
-      winner: clone(currentState),
-    };
-  }
+  const winner = clone(mergeResult.mergedBuilding);
+  const baselineSupported =
+    mergeResult.decision === 'accept_server_update' &&
+    mergeResult.shouldStickPosition === true &&
+    mergeResult.shouldStickHealthState === false &&
+    winner.x === currentState.x &&
+    winner.y === currentState.y &&
+    winner.workState === currentState.workState &&
+    winner.workEndTime === currentState.workEndTime &&
+    winner.buildingId === currentState.buildingId &&
+    winner.isLocal === false &&
+    winner.hp === currentState.hp &&
+    winner.maxHp === currentState.maxHp &&
+    winner.shieldHp === currentState.shieldHp &&
+    winner.shieldMaxHp === currentState.shieldMaxHp &&
+    winner.protectionEndTime === currentState.protectionEndTime &&
+    winner.isDestroying === currentState.isDestroying &&
+    winner.pendingDamage === currentState.pendingDamage &&
+    winner.destructionEndTime === currentState.destructionEndTime &&
+    winner.timestamp === currentState.timestamp;
 
   return {
-    pass: false,
-    outcome: 'WON',
-    reason: 'late-snapshot-overwrote-current-state',
-    winner: clone(lateSnapshot),
+    pass: baselineSupported,
+    outcome: baselineSupported ? 'LOST' : 'WON',
+    reason: baselineSupported
+      ? 'production-helper-kept-accepted-current-state'
+      : 'production-helper-allowed-late-overwrite',
+    winner,
+    decision: mergeResult.decision,
+    shouldStickPosition: mergeResult.shouldStickPosition,
+    shouldStickHealthState: mergeResult.shouldStickHealthState,
+    clearLastInteraction: mergeResult.clearLastInteraction,
+    productionBoundaryExecuted: true,
   };
 }
 
@@ -247,6 +265,7 @@ function runTrace(runNumber, scenario, control) {
     refs: {
       currentUserId: scenario.currentUserId,
       lastInteractionRef: freezeMap(scenario.lastInteractionEntries),
+      recentMoveInteractionRef: freezeMap(scenario.recentMoveEntries),
       lastServerSyncRef: freezeMap(scenario.lastServerSyncEntries),
       deletingIds: new Set(scenario.deletingIds),
       tombstonedIds: new Set(scenario.tombstonedIds),
@@ -269,8 +288,9 @@ function runTrace(runNumber, scenario, control) {
       scenarioId: scenario.id,
       control,
       command: COMMAND,
-      modelType: 'synthetic-model',
+      modelType: 'production-helper',
       productionSourceExecution: false,
+      sourceBoundaryExecuted: false,
       replayOrder,
       frozenInputs: {
         buildingId: scenario.buildingId,
@@ -287,7 +307,7 @@ function runTrace(runNumber, scenario, control) {
         replayOutcome: 'BLOCKED',
         reason: 'event-order-violated',
         winner: null,
-        winnerEqualsAcceptedState: false,
+        winnerMatchesProductionExpectation: false,
       },
       status: 'FAIL',
     };
@@ -300,28 +320,22 @@ function runTrace(runNumber, scenario, control) {
     now: scenario.now,
   });
 
-  const finalState = lateResult.winner;
-  const statePreserved =
-    JSON.stringify(finalState) === JSON.stringify(replayInputs.acceptedCurrentState);
-  const baselineClaim =
-    lateResult.outcome === 'LOST' && statePreserved;
-
   const status =
     lateResult.outcome === 'BLOCKED'
       ? 'BLOCKED'
       : control === 'baseline'
-        ? (baselineClaim ? 'PASS' : 'FAIL')
-        : lateResult.outcome === 'WON'
-          ? 'FAIL'
-          : 'FAIL';
+        ? (lateResult.pass ? 'PASS' : 'FAIL')
+        : 'FAIL';
 
   return {
     run: runNumber,
     scenarioId: scenario.id,
     control,
     command: COMMAND,
-    modelType: 'synthetic-model',
-    productionSourceExecution: false,
+    modelType: 'production-helper',
+    productionSourceExecution: true,
+    sourceBoundaryExecuted: lateResult.productionBoundaryExecuted === true,
+    productionBoundary: 'resolvePlacedBuildingSnapshotMerge',
     replayOrder,
     frozenInputs: {
       buildingId: scenario.buildingId,
@@ -334,6 +348,7 @@ function runTrace(runNumber, scenario, control) {
       lateRealtimeEventState: replayInputs.lateRealtimeEventState,
       refs: {
         lastInteractionAt: scenario.lastInteractionEntries,
+        recentMoveAt: scenario.recentMoveEntries,
         lastServerSyncAt: scenario.lastServerSyncEntries,
         deletingIds: scenario.deletingIds,
         tombstonedIds: scenario.tombstonedIds,
@@ -342,11 +357,15 @@ function runTrace(runNumber, scenario, control) {
     observedOutput: {
       status,
       replayOutcome: lateResult.outcome,
-      winner: finalState,
-      winnerEqualsAcceptedState: statePreserved,
+      decision: lateResult.decision,
+      winner: lateResult.winner,
+      winnerMatchesProductionExpectation: lateResult.pass === true,
+      shouldStickPosition: lateResult.shouldStickPosition ?? false,
+      shouldStickHealthState: lateResult.shouldStickHealthState ?? false,
+      clearLastInteraction: lateResult.clearLastInteraction ?? false,
       reason: lateResult.reason,
-      narrowClaimSupported: lateResult.outcome === 'LOST' && statePreserved,
-      broaderClaimSupported: false,
+      narrowClaimSupported: lateResult.pass === true,
+      broaderClaimSupported: lateResult.pass === true,
     },
     status,
   };
@@ -367,8 +386,9 @@ if (!validation.ok) {
     command: COMMAND,
     scenarioId: scenario.id,
     control: CONTROL,
-    modelType: 'synthetic-model',
+    modelType: 'production-helper',
     productionSourceExecution: false,
+    sourceBoundaryExecuted: false,
     sourceAnchors: SOURCE_ANCESTORS,
     result: validation.status,
     replayClaim: 'Within the active sticky-interaction window, an older building snapshot does not replace the accepted current building state.',
@@ -406,8 +426,9 @@ if (!validation.ok) {
     command: COMMAND,
     scenarioId: scenario.id,
     control: CONTROL,
-    modelType: 'synthetic-model',
-    productionSourceExecution: false,
+    modelType: 'production-helper',
+    productionSourceExecution: true,
+    sourceBoundaryExecuted: true,
     sourceAnchors: SOURCE_ANCESTORS,
     replayClaim: 'Within the active sticky-interaction window, an older building snapshot does not replace the accepted current building state.',
     broaderClaim: 'Initial fetch cannot be overwritten by an older late snapshot.',
@@ -417,10 +438,10 @@ if (!validation.ok) {
     run2,
     summary: {
       narrowClaimSupported: run1.observedOutput?.narrowClaimSupported === true,
-      broaderClaimSupported: false,
+      broaderClaimSupported: run1.observedOutput?.broaderClaimSupported === true,
       scenarioClassification: 'UNCONFIRMED_RUNTIME_BEHAVIOR',
       deterministicTwoRunResult: identical,
-      sourceBoundaryExecuted: false,
+      sourceBoundaryExecuted: true,
     },
   };
 }

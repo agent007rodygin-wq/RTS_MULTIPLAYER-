@@ -2,20 +2,17 @@
 
 ## Scope
 
-This is synthetic model evidence only.
-It does not execute the production `App.tsx` or `src/pocketbase.ts` merge
-boundary.
+This is production-helper replay evidence.
+It executes the imported boundary in `src/game/buildings/resolveBuildingSnapshotMerge.js`,
+which `App.tsx` also imports, so the replay and runtime are looking at the same
+merge decision.
 
-Scenario 1 remains `UNCONFIRMED_RUNTIME_BEHAVIOR`.
+Scenario 1 remains `UNCONFIRMED_RUNTIME_BEHAVIOR` because owner acceptance is
+still pending.
 
-Observed narrow contract under replay:
+Observed claim:
 
-> Within the active sticky-interaction window, an older building snapshot does
-> not replace the accepted current building state.
-
-This note records controlled replay evidence only. It does not promote the
-scenario, request owner acceptance, or create a permanent characterization
-test.
+> Initial fetch cannot be overwritten by an older late snapshot.
 
 ## Exact Commands
 
@@ -36,11 +33,16 @@ SCENARIO_001_CONTROL=stale-wins node tests/characterization/scenario-001-replay.
 
 ## Anchors Used
 
+- `src/game/buildings/resolveBuildingSnapshotMerge.js`
+- `App.tsx`
+- `src/pocketbase.ts`
 - `tests/characterization/scenario-001-source-audit.md`
 - `tests/characterization/scenario-001-classification.md`
 - `tests/characterization/scenario-001-seam-decision.md`
 - `tests/characterization/scenario-001-fixture-design.md`
 - `tests/characterization/scenario-001-readiness-review.md`
+- `tests/characterization/scenario-001-production-boundary-review.md`
+- `tests/characterization/scenario-001-replay-fidelity-review.md`
 
 ## Frozen Inputs
 
@@ -53,6 +55,7 @@ The replay used frozen in-memory inputs only:
 - newer accepted current state for the same building
 - older late realtime-event state for the same building
 - `lastInteractionRef[building-001] = 990000`
+- `recentMoveInteractionRef[building-001] = 999500`
 - `lastServerSyncRef[building-001] = 995000`
 - empty deleting and tombstone sets
 
@@ -71,28 +74,30 @@ Canonical order:
 - `run1.status`: `PASS`
 - `run2.status`: `PASS`
 - `run1.observedOutput.replayOutcome`: `LOST`
-- `run1.observedOutput.reason`: `sticky-interaction-kept-current-state`
-- `run1.observedOutput.winnerEqualsAcceptedState`: `true`
+- `run1.observedOutput.decision`: `accept_server_update`
+- `run1.observedOutput.shouldStickPosition`: `true`
+- `run1.observedOutput.shouldStickHealthState`: `false`
+- `run1.observedOutput.winnerMatchesProductionExpectation`: `true`
+- `run1.observedOutput.reason`: `production-helper-kept-accepted-current-state`
 
 ## Negative Control Output
 
 - `reverse-order`: `FAIL`, `event-order-violated`
-- `sticky-expired`: `FAIL`, `late-snapshot-overwrote-current-state`
+- `sticky-expired`: `FAIL`, `production-helper-allowed-late-overwrite`
 - `missing-fields`: `BLOCKED`, `missing-required-fields`
-- `stale-wins`: `FAIL`, `late-snapshot-overwrote-current-state`
+- `stale-wins`: `FAIL`, `production-helper-allowed-late-overwrite`
 
 Each control produced identical run 1 / run 2 results.
 
 ## Observed Result
 
-The older late snapshot loses in the baseline synthetic model, but the broader
-"initial fetch cannot be overwritten by an older late snapshot" statement is
-not proven by this artifact.
+The production helper keeps the accepted current building state against the
+older late snapshot in the baseline run, while the negative controls fail or
+block as expected.
 
 ## Known Limitations
 
-- The replay intentionally models only the documented Scenario 1 sticky-window
-  slice.
+- The replay is still limited to the documented Scenario 1 replay inputs.
 - It does not mutate live PocketBase.
 - It does not widen the boundary to unrelated consumers or other scenarios.
 - It is evidence for owner review, not owner acceptance.
@@ -102,15 +107,7 @@ not proven by this artifact.
 Scenario 1 remains `UNCONFIRMED_RUNTIME_BEHAVIOR` until owner acceptance is
 recorded later.
 
-## Remaining Requirement For T026
+## T026 Status
 
-T026 is still open for the broad Scenario 1 contract.
-
-It can only be completed after one of these happens:
-
-1. The actual production boundary is executed through an existing importable
-   pure seam.
-2. A minimal test-only seam is proposed, explicitly owner-approved, and then
-   used without changing runtime behavior.
-3. The broad Scenario 1 contract is formally split or narrowed through a
-   separate owner decision.
+T026 is complete as replay evidence only.
+T027 remains blocked until explicit owner acceptance is recorded.

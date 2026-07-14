@@ -119,6 +119,11 @@ import {
     GENERAL_MARKET_MONSTER_SECTION_IDS
 } from './src/game/market/marketStaticData';
 import { Building, MapResource, BuildingType, PlacedBuilding, VisualEffect, DestructionInfo, Item, MarketListing, Clan, HistoryEntry, DroppedItem, PrivateMessage } from './types';
+import {
+    hasActiveDestructionWindow,
+    resolvePlacedBuildingSnapshotMerge,
+    shouldPreferServerRevivedBuildingState
+} from './src/game/buildings/resolveBuildingSnapshotMerge.js';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
 
 const getCanonicalItemName = (itemId: string | number, fallbackName?: string, buildingId?: string | number) => {
@@ -1652,9 +1657,6 @@ function chooseMonsterBackgroundMove(
     };
 }
 
-const hasActiveDestructionWindow = (value: unknown, now = Date.now()) =>
-    Number.isFinite(Number(value)) && Number(value) > now;
-
 const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding => {
     if (building.hp === undefined && building.maxHp === undefined) return building;
 
@@ -1731,37 +1733,6 @@ const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding
 
 const isBuildingAlive = (building: Pick<PlacedBuilding, 'hp'>): boolean =>
     building.hp === undefined || building.hp > 0;
-
-const shouldPreferServerRevivedBuildingState = (localBuilding: PlacedBuilding, serverBuilding: PlacedBuilding): boolean => {
-    const now = Date.now();
-    const localHasTerminalState = Boolean(
-        localBuilding.isDestroying ||
-        ((localBuilding.pendingDamage || 0) > 0) ||
-        hasActiveDestructionWindow(localBuilding.destructionEndTime, now)
-    );
-    if (!localHasTerminalState) return false;
-
-    const serverIsAlive = serverBuilding.hp === undefined || serverBuilding.hp > 0;
-    const serverClearedTerminalState =
-        !serverBuilding.isDestroying &&
-        (Number(serverBuilding.pendingDamage || 0) <= 0) &&
-        !hasActiveDestructionWindow(serverBuilding.destructionEndTime, now);
-
-    if (!serverIsAlive || !serverClearedTerminalState) return false;
-
-    const serverHp = Number(serverBuilding.hp ?? -1);
-    const localHp = Number(localBuilding.hp ?? -1);
-    const serverShield = Number(serverBuilding.shieldHp || 0);
-    const localShield = Number(localBuilding.shieldHp || 0);
-    const serverProtection = Number(serverBuilding.protectionEndTime || 0);
-    const localProtection = Number(localBuilding.protectionEndTime || 0);
-
-    return (
-        serverHp > localHp ||
-        serverShield > localShield ||
-        serverProtection > localProtection
-    );
-};
 
 const REGULAR_MONSTER_SPAWN_CONFIG = [
     { typeId: GORYNYCH_ID, count: 1, name: 'Р С–Р С•РЎР‚РЎвЂ№Р Р…РЎвЂ№РЎвЂЎ' },
@@ -8096,12 +8067,7 @@ const App: React.FC = () => {
                 const lastIntAt =
                     lastInteractionRef.current.get(strId) ||
                     (linkedTempId ? lastInteractionRef.current.get(linkedTempId) || 0 : 0);
-                const timeSinceInt = Date.now() - lastIntAt;
                 const localB = findLocalMatchForServerBuilding(serverB);
-                const localInteractionAllowed = !!localB && (
-                    !!localB.isLocal ||
-                    (!!currentUserId && localB.ownerId === currentUserId)
-                );
                 const hasActiveLocalDestructionWindow = !!localB &&
                     hasActiveDestructionWindow(localB.destructionEndTime, nowMs);
                 const localIsProtectedByCombat = !!localB && (
@@ -8120,11 +8086,25 @@ const App: React.FC = () => {
                         localIsProtectedByCombat,
                     });
                 }
+                const mergeResult = resolvePlacedBuildingSnapshotMerge({
+                    serverBuilding: serverB,
+                    localBuilding: localB,
+                    currentUserId,
+                    now: nowMs,
+                    lastInteractionAt: lastIntAt,
+                    lastMoveAt: recentMoveInteractionRef.current.get(strId) || 0,
+                    localIsProtectedByCombat,
+                    stickyInteractionMs: STICKY_INTERACTION_MS,
+                    deletionProtectionMs: DELETION_PROTECTION_MS,
+                });
                 if (localIsProtectedByCombat) {
                     logSnapshotMergeDecision(strId, {
                         source: "snapshot_merge",
                         buildingId: strId,
-                        decision: "keep_local_protected",
+                        decision:
+                            mergeResult.decision === 'keep_local_sticky'
+                                ? (mergeResult.shouldStickHealthState ? "keep_local_sticky" : "accept_server_update")
+                                : mergeResult.decision,
                         localIsProtectedByCombat,
                         localIsDestroying: localB?.isDestroying,
                         localDestructionEndTime: localB?.destructionEndTime,
@@ -8132,125 +8112,11 @@ const App: React.FC = () => {
                         tombstoned: isBuildingTombstoned(strId),
                         timestamp: Date.now(),
                     });
-                    return normalizePlacedBuildingHealth({
-                        ...localB,
-                        isLocal: false
-                    });
                 }
-
-                // If we interacted locally < 15000ms ago, the server version might be "stale"
-                const constructionStickyMs =
-                    localB && localB.isConstructing === false && serverB.isConstructing === true
-                        ? Math.max(STICKY_INTERACTION_MS, DELETION_PROTECTION_MS)
-                        : STICKY_INTERACTION_MS;
-                if (timeSinceInt < constructionStickyMs && localInteractionAllowed) {
-                    if (localB) {
-                        // Never override an already-dead server entity with stale optimistic local state.
-                        if (serverB.hp !== undefined && serverB.hp <= 0) {
-                            if (localIsProtectedByCombat) {
-                                logSnapshotMergeDecision(strId, {
-                                    source: "snapshot_merge",
-                                    buildingId: strId,
-                                    decision: "skip_server_dead",
-                                    timestamp: Date.now(),
-                                });
-                            }
-                            return normalizePlacedBuildingHealth(serverB);
-                        }
-                        if (shouldPreferServerRevivedBuildingState(localB, serverB)) {
-                            lastInteractionRef.current.delete(strId);
-                            if (localIsProtectedByCombat) {
-                                logSnapshotMergeDecision(strId, {
-                                    source: "snapshot_merge",
-                                    buildingId: strId,
-                                    decision: "replace_local_with_server",
-                                    timestamp: Date.now(),
-                                });
-                            }
-                            return normalizePlacedBuildingHealth({
-                                ...serverB,
-                                isLocal: false
-                            });
-                        }
-                        // SMART SYNC: If the server caught up (states match), we can stop being "sticky" early
-                        const serverMatchesLocal = serverB.workState === localB.workState && 
-                                                 serverB.workEndTime === localB.workEndTime &&
-                                                 serverB.buildingId === localB.buildingId &&
-                                                 serverB.x === localB.x && serverB.y === localB.y &&
-                                                 serverB.zoneId === localB.zoneId &&
-                                                 serverB.hp === localB.hp &&
-                                                 serverB.lastAttackTime === localB.lastAttackTime &&
-                                                 serverB.lastMoveTime === localB.lastMoveTime &&
-                                                 serverB.shieldHp === localB.shieldHp &&
-                                                 serverB.shieldMaxHp === localB.shieldMaxHp &&
-                                                 serverB.protectionEndTime === localB.protectionEndTime &&
-                                                 serverB.isConstructing === localB.isConstructing &&
-                                                 serverB.constructionEndTime === localB.constructionEndTime &&
-                                                 serverB.isDestroying === localB.isDestroying &&
-                                                 serverB.pendingDamage === localB.pendingDamage &&
-                                                 serverB.destructionEndTime === localB.destructionEndTime;
-                        
-                        if (!serverMatchesLocal) {
-                            const lastMoveAt = recentMoveInteractionRef.current.get(strId) || 0;
-                            const shouldStickPosition = (Date.now() - lastMoveAt) < STICKY_INTERACTION_MS;
-                            const shouldStickHealthState =
-                                localB.hp !== serverB.hp ||
-                                localB.shieldHp !== serverB.shieldHp ||
-                                localB.shieldMaxHp !== serverB.shieldMaxHp ||
-                                localB.protectionEndTime !== serverB.protectionEndTime ||
-                                localB.isDestroying !== serverB.isDestroying ||
-                                localB.pendingDamage !== serverB.pendingDamage ||
-                                localB.destructionEndTime !== serverB.destructionEndTime;
-                            if (localIsProtectedByCombat) {
-                                logSnapshotMergeDecision(strId, {
-                                    source: "snapshot_merge",
-                                    buildingId: strId,
-                                    decision: shouldStickHealthState ? "keep_local_sticky" : "accept_server_update",
-                                    timestamp: Date.now(),
-                                });
-                            }
-                            // Still waiting for server to catch up; persist local optimistic state
-                            return normalizePlacedBuildingHealth({
-                                ...serverB, 
-                                x: shouldStickPosition ? localB.x : serverB.x,
-                                y: shouldStickPosition ? localB.y : serverB.y,
-                                zoneId: shouldStickPosition ? localB.zoneId : serverB.zoneId,
-                                workState: localB.workState, 
-                                workEndTime: localB.workEndTime, 
-                                buildingId: localB.buildingId,
-                                isConstructing: localB.isConstructing,
-                                constructionEndTime: localB.constructionEndTime,
-                                lastAttackTime: Math.max(serverB.lastAttackTime || 0, localB.lastAttackTime || 0),
-                                lastMoveTime: Math.max(serverB.lastMoveTime || 0, localB.lastMoveTime || 0),
-                                hp: shouldStickHealthState ? localB.hp : serverB.hp,
-                                maxHp: shouldStickHealthState ? (localB.maxHp ?? serverB.maxHp) : serverB.maxHp,
-                                shieldHp: shouldStickHealthState ? localB.shieldHp : serverB.shieldHp,
-                                shieldMaxHp: shouldStickHealthState ? localB.shieldMaxHp : serverB.shieldMaxHp,
-                                protectionEndTime: shouldStickHealthState ? localB.protectionEndTime : serverB.protectionEndTime,
-                                isDestroying: shouldStickHealthState ? localB.isDestroying : serverB.isDestroying,
-                                pendingDamage: shouldStickHealthState ? localB.pendingDamage : serverB.pendingDamage,
-                                destructionEndTime: shouldStickHealthState ? localB.destructionEndTime : serverB.destructionEndTime,
-                                initiatorId: shouldStickHealthState ? localB.initiatorId : serverB.initiatorId,
-                                timestamp: localB.timestamp ?? serverB.timestamp,
-                                // The entity already exists in a live server snapshot, so it should no
-                                // longer be treated as a local-only optimistic building.
-                                isLocal: false
-                            });
-                        } else {
-                            // Server confirmed our change! Clear the interaction ref to resume normal sync
-                            lastInteractionRef.current.delete(strId);
-                            if (localIsProtectedByCombat) {
-                                logSnapshotMergeDecision(strId, {
-                                    source: "snapshot_merge",
-                                    buildingId: strId,
-                                    decision: "accepted_server_matches_local",
-                                    timestamp: Date.now(),
-                                });
-                            }
-                        }
-                    }
+                if (mergeResult.clearLastInteraction) {
+                    lastInteractionRef.current.delete(strId);
                 }
-                return normalizePlacedBuildingHealth(serverB);
+                return normalizePlacedBuildingHealth(mergeResult.mergedBuilding);
             });
 
             // Track server sync time for all buildings in this snapshot (for freshness guard)
@@ -12259,7 +12125,7 @@ const App: React.FC = () => {
                         const rawServerBuilding =
                             serverMyBuildingsRef.current.get(entityId) ||
                             serverZoneBuildingsRef.current.get(entityId);
-                        if (rawServerBuilding && shouldPreferServerRevivedBuildingState(updatedB, rawServerBuilding)) {
+                        if (rawServerBuilding && shouldPreferServerRevivedBuildingState(updatedB, rawServerBuilding, now)) {
                             lastInteractionRef.current.delete(entityId);
                             nextBuildings.push(normalizePlacedBuildingHealth({
                                 ...rawServerBuilding,
@@ -12796,7 +12662,8 @@ const App: React.FC = () => {
                     b,
                     serverMyBuildingsRef.current.get(String(b.id)) ||
                     serverZoneBuildingsRef.current.get(String(b.id)) ||
-                    b
+                    b,
+                    Date.now()
                 )
         );
         if (deadBuildings.length > 0) {

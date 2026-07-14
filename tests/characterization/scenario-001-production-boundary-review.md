@@ -4,6 +4,9 @@
 
 `MINIMAL_OWNER_APPROVED_SEAM_REQUIRED`
 
+Status: superseded by the implemented production helper
+`src/game/buildings/resolveBuildingSnapshotMerge.js`.
+
 I did **not** find an already exported, importable pure decision boundary that
 executes the actual Scenario 1 building merge decision.
 
