@@ -108,7 +108,7 @@ Every task must follow this checklist shape:
 - [X] T032 [US1] Decide whether scenario 2 needs a seam in `tests/characterization/scenario-002-seam-decision.md`; request a minimal seam only if the existing merge path cannot represent the terminal state. (FR-007, FR-011, SC-005, SC-006)
 - [X] T033 [US1] Design the tombstone/reconnect fixture boundary in `tests/characterization/scenario-002-fixture-design.md` after the seam decision is recorded. (FR-010, SC-007)
 - [X] T034 [US1] Record the controlled observation or deterministic replay evidence for scenario 2 in `tests/characterization/scenario-002-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
-- [ ] T035 [US1] Record the explicit owner acceptance and final promotion decision for scenario 2 in `tests/characterization/slice-a/scenario-02-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [X] T035 [US1] Record the explicit owner acceptance for the narrow proven contract in `tests/characterization/scenario-002-owner-acceptance.md`; accept only the local tombstone/reconnect behavior as `CURRENT_ACCEPTED_BEHAVIOR` and keep the broader deletion resurrection contract `UNCONFIRMED_RUNTIME_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T036 [US1] Implement the permanent atomic characterization test for scenario 2 in `tests/characterization/slice-a/scenario-02.mjs` only after T035 exists; stop if a seam would alter gameplay behavior or if live data would be required. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T037 [US1] Run the scenario-2 check twice from `tests/characterization/slice-a/scenario-02.mjs` and confirm the deleted building stays deleted across unchanged runs; record the result in `tests/characterization/slice-a/scenario-02-repeatability.md`. (SC-007, SC-009)
 
@@ -395,7 +395,7 @@ Every task must follow this checklist shape:
 | Scenario | Approval required when |
 | --- | --- |
 | 1 | when `tests/characterization/slice-a/scenario-01-promotion.md` is written or a seam must be extracted |
-| 2 | when `tests/characterization/slice-a/scenario-02-promotion.md` is written or a seam must be extracted |
+| 2 | when `tests/characterization/scenario-002-owner-acceptance.md` is written or a seam must be extracted |
 | 3 | when `tests/characterization/slice-b/scenario-03-promotion.md` is written or a minimal completion seam is required |
 | 4 | when `tests/characterization/slice-b/scenario-04-promotion.md` is written or a minimal reward-fence seam is required |
 | 5 | when `tests/characterization/slice-b/scenario-05-promotion.md` is written or a minimal construction seam is required |
@@ -411,8 +411,8 @@ Every task must follow this checklist shape:
 | --- | --- |
 | Source evidence does not confirm behavior | T022-T101 |
 | Current behavior is a known bug | T022-T101 |
-| Controlled observation or deterministic replay evidence is missing | T035, T043, T051, T059, T067, T075, T083, T091, T099 |
-| Owner acceptance is missing | T035, T043, T051, T059, T067, T075, T083, T091, T099 |
+| Controlled observation or deterministic replay evidence is missing | T043, T051, T059, T067, T075, T083, T091, T099 |
+| Owner acceptance is missing | T043, T051, T059, T067, T075, T083, T091, T099 |
 | Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Broad runtime refactor would be needed | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
