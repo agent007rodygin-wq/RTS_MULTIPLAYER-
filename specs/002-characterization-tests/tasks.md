@@ -110,7 +110,7 @@ Every task must follow this checklist shape:
 - [X] T034 [US1] Record the controlled observation or deterministic replay evidence for scenario 2 in `tests/characterization/scenario-002-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [X] T035 [US1] Record the explicit owner acceptance for the narrow proven contract in `tests/characterization/scenario-002-owner-acceptance.md`; accept only the local tombstone/reconnect behavior as `CURRENT_ACCEPTED_BEHAVIOR` and keep the broader deletion resurrection contract `UNCONFIRMED_RUNTIME_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [X] T036 [US1] Implement the permanent atomic characterization test for scenario 2 in `tests/characterization/scenario-002-characterization.mjs`; stop if the test would broaden beyond the accepted tombstone/reconnect contract or require live PocketBase data. (FR-008, FR-009, SC-005, SC-008)
-- [ ] T037 [US1] Run the scenario-2 check twice from `tests/characterization/scenario-002-characterization.mjs` and confirm the tombstone/reconnect result stays unchanged across repeated runs; record the result in `tests/characterization/scenario-002-repeatability.md`. (SC-007, SC-009)
+- [X] T037 [US1] Run the scenario-2 check twice from `tests/characterization/scenario-002-characterization.mjs` and confirm the tombstone/reconnect result stays unchanged across repeated runs; record the result in `tests/characterization/scenario-002-repeatability.md`. (SC-007, SC-009)
 
 ### Scenario 10 - Destroyed building terminal state survives a later stale snapshot
 
