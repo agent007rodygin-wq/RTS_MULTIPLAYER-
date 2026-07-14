@@ -124,6 +124,7 @@ import {
     resolvePlacedBuildingSnapshotMerge,
     shouldPreferServerRevivedBuildingState
 } from './src/game/buildings/resolveBuildingSnapshotMerge.js';
+import { filterReconnectSnapshotBuildingsByTombstones } from './src/game/buildings/filterReconnectSnapshotBuildingsByTombstones.js';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
 
 const getCanonicalItemName = (itemId: string | number, fallbackName?: string, buildingId?: string | number) => {
@@ -7936,25 +7937,35 @@ const App: React.FC = () => {
                     return String(localBuilding.id) === traceId || String(localBuilding.tempId || '') === traceId;
                 });
             };
+            const activeDeletingBuildingIds = new Set<string>();
+            deletingBuildingsRef.current.forEach((_, deletedId) => {
+                if (isBuildingDeleting(deletedId)) {
+                    activeDeletingBuildingIds.add(deletedId);
+                }
+            });
+            const activeConfirmedDeletedBuildingIds = new Set<string>();
+            confirmedDeletedRef.current.forEach((deletedId) => {
+                if (isBuildingTombstoned(deletedId)) {
+                    activeConfirmedDeletedBuildingIds.add(deletedId);
+                }
+            });
+            const appendReconnectSnapshotBuildings = (reconnectBuildings: Iterable<PlacedBuilding>) => {
+                const { visibleBuildings } = filterReconnectSnapshotBuildingsByTombstones({
+                    reconnectBuildings,
+                    activeDeletingBuildingIds,
+                    activeConfirmedDeletedBuildingIds,
+                });
+                visibleBuildings.forEach((b) => {
+                    const strId = String(b.id);
+                    const normalized = normalizePlacedBuildingHealth({ ...b, id: strId });
+                    if ((normalized.hp ?? 1) > 0) {
+                        merged.set(strId, normalized);
+                    }
+                });
+            };
 
-            serverZoneBuildingsRef.current.forEach((b, id) => {
-                const strId = String(id);
-                if (!isBuildingTombstoned(strId)) {
-                    const normalized = normalizePlacedBuildingHealth({ ...b, id: strId });
-                    if ((normalized.hp ?? 1) > 0) {
-                        merged.set(strId, normalized);
-                    }
-                }
-            });
-            serverMyBuildingsRef.current.forEach((b, id) => {
-                const strId = String(id);
-                if (!isBuildingTombstoned(strId)) {
-                    const normalized = normalizePlacedBuildingHealth({ ...b, id: strId });
-                    if ((normalized.hp ?? 1) > 0) {
-                        merged.set(strId, normalized);
-                    }
-                }
-            });
+            appendReconnectSnapshotBuildings(serverZoneBuildingsRef.current.values());
+            appendReconnectSnapshotBuildings(serverMyBuildingsRef.current.values());
 
             // OFFLINE TIMER PROCESSING: Process overdue timers for all buildings
             // This ensures timers progress even when no players are online
