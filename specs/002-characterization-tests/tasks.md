@@ -160,7 +160,7 @@ Every task must follow this checklist shape:
 - [x] T066 [US2] Record the controlled observation or deterministic replay evidence for scenario 5 in `tests/characterization/slice-b/scenario-05-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [x] T067 [US2] Record the explicit owner acceptance and final promotion decision for scenario 5 in `tests/characterization/slice-b/scenario-05-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [x] T068 [US2] Implement the permanent atomic characterization test for scenario 5 in `tests/characterization/slice-b/scenario-05.mjs` only after T067 exists; stop if the timer would reset, complete early, or require live PocketBase mutation. (FR-008, FR-009, SC-005, SC-008)
-- [ ] T069 [US2] Run the scenario-5 check twice from `tests/characterization/slice-b/scenario-05.mjs` and confirm the construction timer remains stable across reloads; record the result in `tests/characterization/slice-b/scenario-05-repeatability.md`. (SC-007, SC-009)
+- [x] T069 [US2] Run the scenario-5 check twice from `tests/characterization/slice-b/scenario-05.mjs` and confirm the construction timer remains stable across reloads; record the result in `tests/characterization/slice-b/scenario-05-repeatability.md`. (SC-007, SC-009)
 
 ### Scenario 6 - Production completion survives reconnect and rewards once
 
