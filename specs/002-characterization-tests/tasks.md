@@ -131,7 +131,7 @@ Every task must follow this checklist shape:
 
 ### Scenario 3 - Persisted process whose end time passed completes exactly once
 
-- [ ] T046 [P] [US2] Investigate scenario 3 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/08-upgrade-system.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-03-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [x] T046 [P] [US2] Investigate scenario 3 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/06-building-system.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/08-upgrade-system.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-03-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
 - [ ] T047 [US2] Record the preliminary classification and known-bug review for scenario 3 in `tests/characterization/slice-b/scenario-03-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
 - [ ] T048 [US2] Decide whether scenario 3 needs a seam in `tests/characterization/slice-b/scenario-03-seam.md`; request a minimal seam only if the current completion boundary cannot be observed without a minimal helper. (FR-007, FR-011, SC-005, SC-006)
 - [ ] T049 [US2] Design the frozen timestamp fixture in `tests/characterization/slice-b/scenario-03-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
