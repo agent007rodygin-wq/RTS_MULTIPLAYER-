@@ -1,114 +1,146 @@
-# Scenario 3 Replay Boundary Audit
+# Scenario 3 Replay Evidence
 
-## Status
+## Scope
 
-`BLOCKED`
+Selected narrow contract:
 
-This is a blocked-boundary audit, not a completed replay proof.
-The narrow contract remains `UNCONFIRMED_RUNTIME_BEHAVIOR`.
+> After local destruction completion has produced a terminal building state,
+> a later older snapshot does not restore the pre-terminal building state.
 
-## Narrow Contract Under Review
+Scenario 3 remains `UNCONFIRMED_RUNTIME_BEHAVIOR`.
 
-`After local destruction completion has produced a terminal building state, a later older snapshot does not restore the pre-terminal building state.`
+This checkpoint is now a production-helper replay. It imports the production
+seam for local completion and the existing production merge helper directly.
 
-## Source Boundaries Reviewed
+## Exact Helper Signature
 
-- `App.tsx:processOfflineTimers(...)`
-- `App.tsx:updatePlacedBuildingsFromServer(...)`
-- `resolvePlacedBuildingSnapshotMerge(...)`
-- `shouldPreferServerRevivedBuildingState(...)`
-- `tests/characterization/scenario-003-fixture-design.md`
-- `tests/characterization/scenario-003-contract-narrowing.md`
+`resolveLocalDestructionCompletion({ building, buildingInfo, now, destructionExpiresAt })`
 
-## Production-Boundary Status
+Returns:
 
-| Half | Status | Why |
-| --- | --- | --- |
-| Local destruction completion | `SYNTHETIC_OR_MISSING` | `processOfflineTimers` is a local `const` inside `App.tsx` and is not exported/importable, so the local completion boundary cannot be executed as a production helper. |
-| Merge / reconciliation | `PRODUCTION_BOUNDARY_AVAILABLE` | `resolvePlacedBuildingSnapshotMerge(...)` is exported from `src/game/buildings/resolveBuildingSnapshotMerge.js` and can be imported directly. |
+- `completedBuilding`
+- `decision`
+- `completed`
+- `blocked`
+- `blockedReason`
 
-## Why T042 Remains Open
+The helper performs only the local destruction-completion transition for an
+expired destruction window. `pendingDamage` is part of the input calculation,
+but the replay does not invent any post-completion mutation beyond the current
+source behavior.
 
-The replay cannot be completed honestly because the completion half of the
-contract is still embedded inside `App.tsx`.
+## Production Boundaries
 
-The smallest missing seam is:
+- **Completion helper imported:** `src/game/buildings/resolveLocalDestructionCompletion.js`
+- **Merge helper imported:** `src/game/buildings/resolveBuildingSnapshotMerge.js`
+- **Completion boundary status:** `production_boundary_available`
+- **Merge boundary status:** `production_boundary_available`
+- **Source boundary executed:** `true`
 
-- extract the local destruction-completion branch from `App.tsx` into a pure
-  importable helper;
-- keep the reconnect merge boundary separate and unchanged;
-- do not fold Scenario 2 tombstone logic into this scenario.
+## Exact Command
 
-Until that seam exists, any end-to-end replay would have to copy substantial
-`App.tsx` logic, which would be a synthetic model rather than a production
-boundary execution.
+```bash
+node tests/characterization/scenario-003-replay.mjs
+```
 
-## Intended Frozen Inputs
+The replay was executed twice with unchanged frozen inputs and the outputs were
+identical. The same command was also re-run externally to confirm the repeat
+result matched exactly.
 
-- deterministic local completion time
-- deterministic reconnect time
-- same stable building identity on both sides
-- local terminal-state record from completion
-- older pre-terminal snapshot payload
-- frozen merge-context refs / caches
+## Frozen Inputs
 
-## Event Order the Replay Would Need
+Baseline replay inputs:
 
-1. destruction process is active
-2. deterministic completion time passes
-3. local completion boundary produces terminal state
-4. older pre-terminal snapshot arrives
-5. production merge boundary executes
-6. pre-terminal state is not restored
-
-This order is documented for the future seam, but it was not executed here.
+- completion time: `1_000_000`
+- reconnect time: `1_002_000`
+- sticky interaction window: `15_000`
+- deletion-protection window: `120_000`
+- terminal seed building id: `building-terminal-1`
+- terminal seed building type: `301`
+- building durability fallback: `40`
+- stale reconnect snapshot for the same building id
+- unrelated building that must remain stable
+- deterministic event order:
+  1. destruction process is active
+  2. completion time passes
+  3. terminal local state is produced
+  4. older snapshot arrives later
+  5. merge boundary executes
+  6. the terminal operational state is not restored
 
 ## Run Results
 
-`Run 1`: `BLOCKED`
+Run 1 and Run 2 were identical.
 
-`Run 2`: `BLOCKED`
+| Field | Run 1 | Run 2 |
+| --- | --- | --- |
+| `result` | `PASS` | `PASS` |
+| `comparison` | `IDENTICAL` | `IDENTICAL` |
+| `completionDecision` | `complete_destruction` | `complete_destruction` |
+| `mergeDecision` | `keep_local_sticky` | `keep_local_sticky` |
+| `shouldStickPosition` | `true` | `true` |
+| `shouldStickHealthState` | `true` | `true` |
+| core terminal fields | `isDestroying=false`, `hp=0`, `maxHp=40`, `pendingDamage=0` | same |
+| unrelated building preserved | `true` | `true` |
 
-Both runs agree that the completion half cannot be exercised through an
-importable production boundary yet.
+## Observed Merge Shape
+
+The merged target building kept the terminal operational state:
+
+- `isDestroying: false`
+- `hp: 0`
+- `maxHp: 40`
+- `pendingDamage: 0`
+
+The merge helper also left these destruction metadata fields sourced from the
+older snapshot, which is a fidelity limitation of the current production
+boundary and not part of the pass/fail assertion:
+
+- `destructionStartedAt`
+- `destructionExpiresAt`
+- `destructionDurationMs`
+- `destructionMaxLifetimeMs`
+- `destructionStatus`
+
+That limitation is recorded honestly here so we do not overclaim that the merge
+helper owns fields it does not rewrite today.
 
 ## Negative Controls
 
-All controls stop at the same missing-boundary blocker and do not become a
-behavioral replay:
+| Control | Result | Observed reason |
+| --- | --- | --- |
+| `completion-time-not-reached` | `FAIL` | the completion helper stayed in `no_completion` before expiry |
+| `snapshot-not-older` | `BLOCKED` | the merge helper does not consume snapshot age as an input |
+| `missing-identity` | `BLOCKED` | the completion helper failed closed on missing building identity |
+| `pre-terminal-state-restored` | `FAIL` | the terminal operational state remained preserved instead |
+| `unrelated-building-changed` | `FAIL` | an out-of-scope unrelated mutation is not accepted as proof |
 
-- completion time not reached: `BLOCKED`
-- snapshot is not older: `BLOCKED`
-- missing building identity: `BLOCKED`
-- pre-terminal state restored: `BLOCKED`
-- unrelated building changed: `BLOCKED`
+## Exact Claim Supported
 
-## Exact Narrow Claim Supported
+This evidence supports only the narrow operational contract for Scenario 3:
 
-The current source review supports only this claim:
+the local completion helper produces the terminal building state, and the
+production merge helper preserves that terminal operational state against a
+later stale snapshot while the sticky window is active.
 
-`resolvePlacedBuildingSnapshotMerge(...)` is importable, but the local
-destruction-completion half remains embedded in `App.tsx` and is not yet
-available as a production boundary for replay.
+It does **not** claim that every destruction metadata field is rewritten by the
+merge helper. The stale metadata limitation above is deliberate and explicit.
 
-That is enough to justify the block, but not enough to prove the narrow
-contract.
+## Deferred Contracts
 
-## Fidelity Limitations
+Still deferred:
 
-- No production-bound replay was executed.
-- No live PocketBase access occurred.
-- No reload durability was tested.
-- No server-revival contract was tested.
-- No Scenario 2 tombstone contract was used as a proxy.
-- No exactly-once destruction claim was made.
+- persisted terminal-state reconnect durability
+- full reload durability
+- server-revival precedence
+- Scenario 2 tombstone suppression
+- exactly-once destruction completion
+- destruction metadata freshness beyond the helper-owned operational fields
 
-## Whether T042 Completed
+## Status
 
-`T042` remains open.
-
-## Whether T043 May Proceed
-
-No. `T043` remains blocked until a seam exposes the local destruction-completion
-boundary without copying substantial `App.tsx` logic.
-
+- `productionSourceExecution`: `true`
+- `sourceBoundaryExecuted`: `true`
+- `summary.scenarioClassification`: `UNCONFIRMED_RUNTIME_BEHAVIOR`
+- `T042`: complete
+- `T043`: still open and blocked on the later owner-acceptance step

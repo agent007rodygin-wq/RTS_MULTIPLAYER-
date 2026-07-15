@@ -124,6 +124,7 @@ import {
     resolvePlacedBuildingSnapshotMerge,
     shouldPreferServerRevivedBuildingState
 } from './src/game/buildings/resolveBuildingSnapshotMerge.js';
+import { resolveLocalDestructionCompletion } from './src/game/buildings/resolveLocalDestructionCompletion.js';
 import { filterReconnectSnapshotBuildingsByTombstones } from './src/game/buildings/filterReconnectSnapshotBuildingsByTombstones.js';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
 
@@ -680,32 +681,17 @@ const processOfflineTimers = (
             now >= destructionExpiresAt &&
             (options?.canApplyDestructionTimer?.(building) ?? true)
         ) {
-            const damage = building.pendingDamage || 0;
-            // Use maxHp as fallback if hp is undefined Р Р†Р вЂљРІР‚Сњ never default to 0 which would
-            // cause any pending damage to instantly kill a building with unknown HP.
             const info = buildingData.find(i => i.id === building.buildingId);
-            const fullHp = building.maxHp ?? info?.stats.durability ?? 100;
-            const currentHp = building.hp ?? fullHp;
-            const remainingHp = currentHp - damage;
-            
-            updatedBuilding.hp = remainingHp;
-            // Persist maxHp during destruction finalization so hp=0 cannot be
-            // misread as a migration artifact and restored on next sync.
-            updatedBuilding.maxHp = fullHp;
-            updatedBuilding.isDestroying = false;
-            updatedBuilding.destructionStartedAt = undefined;
-            updatedBuilding.destructionEndTime = undefined;
-            updatedBuilding.destructionExpiresAt = undefined;
-            updatedBuilding.destructionDurationMs = undefined;
-            updatedBuilding.destructionMaxLifetimeMs = undefined;
-            updatedBuilding.destructionStatus = 'finished';
-            updatedBuilding.pendingDamage = 0;
-            
-            // If HP <= 0, mark for deletion (don't delete here, let the game loop handle it)
-            if (remainingHp <= 0) {
-                updatedBuilding.hp = 0;
+            const completionResult = resolveLocalDestructionCompletion({
+                building,
+                buildingInfo: info,
+                now,
+                destructionExpiresAt,
+            });
+            if (completionResult.completed) {
+                Object.assign(updatedBuilding, completionResult.completedBuilding);
+                needsUpdate = true;
             }
-            needsUpdate = true;
         }
 
         if (needsUpdate) {
@@ -23014,5 +23000,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-
