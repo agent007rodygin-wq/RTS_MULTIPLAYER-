@@ -124,6 +124,7 @@ import {
     resolvePlacedBuildingSnapshotMerge,
     shouldPreferServerRevivedBuildingState
 } from './src/game/buildings/resolveBuildingSnapshotMerge.js';
+import { resolveLocalConstructionCompletion } from './src/game/buildings/resolveLocalConstructionCompletion.js';
 import { resolveLocalDestructionCompletion } from './src/game/buildings/resolveLocalDestructionCompletion.js';
 import { filterReconnectSnapshotBuildingsByTombstones } from './src/game/buildings/filterReconnectSnapshotBuildingsByTombstones.js';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
@@ -649,9 +650,12 @@ const processOfflineTimers = (
         const bId = String(building.id);
 
         // Check construction timer
-        if (building.isConstructing && building.constructionEndTime && now >= building.constructionEndTime) {
-            updatedBuilding.isConstructing = false;
-            updatedBuilding.workState = 'idle';
+        const constructionCompletionResult = resolveLocalConstructionCompletion({
+            building,
+            now,
+        });
+        if (constructionCompletionResult.completed) {
+            Object.assign(updatedBuilding, constructionCompletionResult.completedBuilding);
             recordBuildingTimerTrace('processOfflineTimers', updatedBuilding, {
                 now,
                 actionType: 'idle',
@@ -12182,41 +12186,46 @@ const App: React.FC = () => {
                             }
                         }
                         stateChanged = true;
-                    } else if (updatedB.isConstructing && now >= updatedB.constructionEndTime) {
-                        updatedB.isConstructing = false;
-                        updatedB.workState = 'idle';
-                        
-                        // Fix: Allow anyone to finalize construction if the timer is up.
-                        // This prevents the "0s stuck" bug for observers if the owner is offline.
-                        if (RUNTIME_AUDIT_ENABLED) {
-                            recordBuildingTimerTrace('local-tick', updatedB, {
-                                now,
-                                actionType: 'idle',
-                                remainingMs: 0,
-                                transition: 'construction-complete',
-                                sourceCode: 'building-state-loop',
-                            });
-                        }
-                        const docId = String(updatedB.id);
-                        updateBuildingDocSafe(docId, { isConstructing: false, workState: 'idle' });
-                        
-                        stateChanged = true;
-                    } else if (updatedB.workState === 'working' && updatedB.workEndTime && now >= updatedB.workEndTime) {
-                        updatedB.workState = 'finished';
-                        if (RUNTIME_AUDIT_ENABLED) {
-                            recordBuildingTimerTrace('local-tick', updatedB, {
-                                now,
-                                actionType: 'finished',
-                                remainingMs: 0,
-                                transition: 'work-complete',
-                                sourceCode: 'building-state-loop',
-                            });
-                        }
-                        if (updatedB.ownerId === "0" || updatedB.ownerId === "monster" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid)) {
+                    } else {
+                        const constructionCompletionResult = resolveLocalConstructionCompletion({
+                            building: updatedB,
+                            now,
+                        });
+                        if (constructionCompletionResult.completed) {
+                            Object.assign(updatedB, constructionCompletionResult.completedBuilding);
+
+                            // Fix: Allow anyone to finalize construction if the timer is up.
+                            // This prevents the "0s stuck" bug for observers if the owner is offline.
+                            if (RUNTIME_AUDIT_ENABLED) {
+                                recordBuildingTimerTrace('local-tick', updatedB, {
+                                    now,
+                                    actionType: 'idle',
+                                    remainingMs: 0,
+                                    transition: 'construction-complete',
+                                    sourceCode: 'building-state-loop',
+                                });
+                            }
                             const docId = String(updatedB.id);
-                            updateBuildingDocSafe(docId, { workState: 'finished' });
+                            updateBuildingDocSafe(docId, { isConstructing: false, workState: 'idle' });
+
+                            stateChanged = true;
+                        } else if (updatedB.workState === 'working' && updatedB.workEndTime && now >= updatedB.workEndTime) {
+                            updatedB.workState = 'finished';
+                            if (RUNTIME_AUDIT_ENABLED) {
+                                recordBuildingTimerTrace('local-tick', updatedB, {
+                                    now,
+                                    actionType: 'finished',
+                                    remainingMs: 0,
+                                    transition: 'work-complete',
+                                    sourceCode: 'building-state-loop',
+                                });
+                            }
+                            if (updatedB.ownerId === "0" || updatedB.ownerId === "monster" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid)) {
+                                const docId = String(updatedB.id);
+                                updateBuildingDocSafe(docId, { workState: 'finished' });
+                            }
+                            stateChanged = true;
                         }
-                        stateChanged = true;
                     }
 
                     // Apply cannon/monster damage (including buildings under construction).

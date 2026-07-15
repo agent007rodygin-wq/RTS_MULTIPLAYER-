@@ -1,104 +1,252 @@
-# Scenario 3 Replay Boundary Audit
+# Scenario 3 Replay Evidence
 
 Task authority: `T050` in `specs/002-characterization-tests/tasks.md`
 
 Audit target: `After an expired persisted construction process is completed locally, processing the same unchanged expired construction state again does not perform the construction completion transition a second time.`
 
-This artifact is a **blocked-boundary audit**, not production-bound replay
-evidence. The current construction-completion behavior is still inline in
-`App.tsx`, and there is no importable production construction-completion helper
-to execute directly.
+This note records the corrected nested repeatability model:
+
+- one full scenario execution contains `firstPass` and `secondPass`;
+- repeatability compares `scenarioRun1` and `scenarioRun2`;
+- `firstPass` and `secondPass` are intentionally different stages and must not be compared to each other as repeatability runs.
+
+## Why the previous repeatability shape was incorrect
+
+The earlier harness conflated:
+
+- `firstPass` / `secondPass` inside one scenario execution;
+
+with:
+
+- `scenarioRun1` / `scenarioRun2` repeatability executions.
+
+That was logically wrong because the two inner passes are supposed to have
+different decisions:
+
+- `firstPass -> complete_construction`
+- `secondPass -> no_completion`
+
+The corrected model compares two complete scenario executions instead.
 
 ## Production-Boundary Status
 
-- completion boundary status: `synthetic_or_missing`
-- merge boundary status: `production_boundary_available`
-- source-boundary executed for the complete replay chain: `false`
-- replay result: `BLOCKED`
+- completion boundary status: `production_boundary_available`
+- sourceBoundaryExecuted for the replay chain: `true`
+- replay result: `PASS`
+- replay kind: production-bound replay evidence
+
+## Production Helper Used
+
+- `src/game/buildings/resolveLocalConstructionCompletion.js`
 
 ## Source Branch Reviewed
 
-- `App.tsx:634-715` `processOfflineTimers`
-- `App.tsx:12185-12203` foreground construction-completion loop
-- `src/game/buildings/resolveBuildingSnapshotMerge.js`
-- `src/game/buildings/resolveLocalDestructionCompletion.js`
+- `App.tsx:634-671` `processOfflineTimers`
+- `App.tsx:12189-12229` foreground construction-completion loop
+- `src/game/buildings/resolveLocalConstructionCompletion.js`
 - `tests/characterization/slice-b/scenario-03-fixture-design.md`
 - `tests/characterization/slice-b/scenario-03-seam.md`
 
-The live source shows the construction completion guard inline in both the
-offline timer path and the foreground loop:
+The live source shows the construction-completion guard inline in `App.tsx`,
+but the completion decision itself is now factored into the production helper
+above. The helper stays construction-specific; upgrade completion remains a
+separate path.
 
-- `isConstructing && constructionEndTime && now >= constructionEndTime`
-- local transition to `isConstructing = false`
-- local transition to `workState = 'idle'`
-- caller-owned `recordBuildingTimerTrace(...)`
-- caller-owned `updateBuildingDocSafe(...)`
+## Exact Commands
 
-## Why The Replay Is Blocked
+1. `node tests/characterization/slice-b/scenario-03-replay.mjs`
+2. `node tests/characterization/slice-b/scenario-03-replay.mjs --control=completion-time-not-reached`
+3. `node tests/characterization/slice-b/scenario-03-replay.mjs --control=missing-identity`
+4. `node tests/characterization/slice-b/scenario-03-replay.mjs --control=second-pass-completes-again`
+5. `node tests/characterization/slice-b/scenario-03-replay.mjs --control=completed-fields-regress`
+6. `node tests/characterization/slice-b/scenario-03-replay.mjs --control=unrelated-building-changed`
+7. `node tests/characterization/slice-b/scenario-03-replay.mjs --control=production-helper-not-executed`
 
-The replay cannot honestly execute the production completion boundary yet
-because no importable construction-completion helper exists.
+## Scenario Run 1 Output
 
-What exists today:
+```json
+{
+  "scenarioId": "T050",
+  "acceptedContract": "After an expired persisted construction process is completed locally, processing the same unchanged expired construction state again does not perform the construction completion transition a second time.",
+  "command": "node tests/characterization/slice-b/scenario-03-replay.mjs",
+  "status": "PASS",
+  "productionSourceExecution": true,
+  "sourceBoundaryExecuted": true,
+  "scenarioRun1": {
+    "scenarioId": "T050",
+    "acceptedContract": "After an expired persisted construction process is completed locally, processing the same unchanged expired construction state again does not perform the construction completion transition a second time.",
+    "productionSourceExecution": true,
+    "sourceBoundaryExecuted": true,
+    "firstPass": {
+      "status": "PASS",
+      "decision": "complete_construction",
+      "completed": true,
+      "completedFields": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": 1704067140000,
+        "hp": 120,
+        "maxHp": 120,
+        "pendingDamage": 0
+      }
+    },
+    "secondPass": {
+      "status": "PASS",
+      "decision": "no_completion",
+      "completed": false,
+      "outputFields": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": 1704067140000,
+        "hp": 120,
+        "maxHp": 120,
+        "pendingDamage": 0
+      }
+    },
+    "unrelatedFieldPreservation": {
+      "preserved": true,
+      "before": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": null,
+        "hp": 95,
+        "maxHp": 95,
+        "pendingDamage": 0
+      },
+      "after": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": null,
+        "hp": 95,
+        "maxHp": 95,
+        "pendingDamage": 0
+      }
+    }
+  },
+  "scenarioRun2": {
+    "scenarioId": "T050",
+    "acceptedContract": "After an expired persisted construction process is completed locally, processing the same unchanged expired construction state again does not perform the construction completion transition a second time.",
+    "productionSourceExecution": true,
+    "sourceBoundaryExecuted": true,
+    "firstPass": {
+      "status": "PASS",
+      "decision": "complete_construction",
+      "completed": true,
+      "completedFields": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": 1704067140000,
+        "hp": 120,
+        "maxHp": 120,
+        "pendingDamage": 0
+      }
+    },
+    "secondPass": {
+      "status": "PASS",
+      "decision": "no_completion",
+      "completed": false,
+      "outputFields": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": 1704067140000,
+        "hp": 120,
+        "maxHp": 120,
+        "pendingDamage": 0
+      }
+    },
+    "unrelatedFieldPreservation": {
+      "preserved": true,
+      "before": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": null,
+        "hp": 95,
+        "maxHp": 95,
+        "pendingDamage": 0
+      },
+      "after": {
+        "isConstructing": false,
+        "workState": "idle",
+        "constructionEndTime": null,
+        "hp": 95,
+        "maxHp": 95,
+        "pendingDamage": 0
+      }
+    }
+  },
+  "semanticComparison": {
+    "identical": true,
+    "sameScenarioId": true,
+    "sameAcceptedContract": true,
+    "sameFirstPassDecision": true,
+    "sameFirstPassCompleted": true,
+    "sameFirstPassCompletedFields": true,
+    "sameSecondPassDecision": true,
+    "sameSecondPassCompleted": true,
+    "sameSecondPassOutputFields": true,
+    "sameUnrelatedFieldPreservation": true,
+    "sameProductionSourceExecution": true,
+    "sameSourceBoundaryExecuted": true
+  },
+  "controls": {
+    "completionTimeNotReached": "FAIL",
+    "missingIdentity": "BLOCKED",
+    "secondPassCompletesAgain": "FAIL",
+    "completedFieldsRegress": "FAIL",
+    "unrelatedBuildingChanged": "FAIL",
+    "productionHelperNotExecuted": "BLOCKED"
+  },
+  "limitations": [
+    "Construction completion is still caller-owned for traces and PocketBase writes in App.tsx.",
+    "This replay covers the local construction-completion transition only.",
+    "Upgrade, production, destruction, and reconnect persistence remain separate contracts."
+  ]
+}
+```
 
-- a live inline construction-completion branch in `App.tsx`
-- a merge helper for snapshot reconciliation
-- a destruction helper for a different process family
+## Control Command Outputs
 
-What is missing:
+| Command | Exit code | Semantic result | Boundary state | Reason |
+| --- | ---: | --- | --- | --- |
+| `node tests/characterization/slice-b/scenario-03-replay.mjs --control=completion-time-not-reached` | `0` | `FAIL` | `productionSourceExecution: true`, `sourceBoundaryExecuted: true` | completion time was still in the future, so the construction transition correctly did not fire |
+| `node tests/characterization/slice-b/scenario-03-replay.mjs --control=missing-identity` | `0` | `BLOCKED` | `productionSourceExecution: false`, `sourceBoundaryExecuted: false` | missing building identity prevented the replay from reaching the production helper |
+| `node tests/characterization/slice-b/scenario-03-replay.mjs --control=second-pass-completes-again` | `0` | `FAIL` | `productionSourceExecution: true`, `sourceBoundaryExecuted: true` | the already-completed state stayed idempotent on the second pass |
+| `node tests/characterization/slice-b/scenario-03-replay.mjs --control=completed-fields-regress` | `0` | `FAIL` | `productionSourceExecution: true`, `sourceBoundaryExecuted: true` | the protected completed fields remained stable and did not regress |
+| `node tests/characterization/slice-b/scenario-03-replay.mjs --control=unrelated-building-changed` | `0` | `FAIL` | `productionSourceExecution: true`, `sourceBoundaryExecuted: true` | the unrelated building stayed unchanged and did not interfere with the replay |
+| `node tests/characterization/slice-b/scenario-03-replay.mjs --control=production-helper-not-executed` | `0` | `BLOCKED` | `productionSourceExecution: false`, `sourceBoundaryExecuted: false` | production-helper-not-executed |
 
-- a narrow pure construction-completion helper that can be imported by both
-  `App.tsx` and the characterization replay without copying the inline branch
+## Exit-Code Behavior
 
-## Run 1 / Run 2
+- Baseline run: exit code `0`
+- Expected negative controls: exit code `0`
+- Unexpected command names: exit nonzero
+- Uncontrolled exceptions: exit nonzero
+- `FAIL` and `BLOCKED` remain semantically distinct in the report
 
-- Run 1: `BLOCKED`
-- Run 2: `BLOCKED`
+## Semantic Comparison
 
-No production source execution occurred for the construction-completion
-transition, so there is no behavioral output to compare.
+- `scenarioRun1` and `scenarioRun2` are identical.
+- Each scenario run contains:
+  - `firstPass -> complete_construction`
+  - `secondPass -> no_completion`
+- The repeatability comparison is between the two complete scenario runs.
+- `firstPass` and `secondPass` are not compared to each other for equality.
+- `sameProductionSourceExecution` and `sameSourceBoundaryExecuted` are both `true`.
+- The PASS gate still depends on the actual helper output, not a weakened status field.
 
-## Controls
+## Supported Claim
 
-All controls were blocked at the same missing-boundary gate:
+`After an expired persisted construction process is completed locally, processing the same unchanged expired construction state again does not perform the construction completion transition a second time.`
 
-- completion time not reached -> `BLOCKED`
-- missing building identity -> `BLOCKED`
-- second pass completes again -> `BLOCKED`
-- completed fields regress -> `BLOCKED`
-- unrelated building changes -> `BLOCKED`
+## Limitations
 
-The controls were not behaviorally executed because doing so would require
-copying or reimplementing the construction-completion branch instead of running
-the real production boundary.
-
-## Exact Narrow Claim Supported
-
-None yet for the broad construction-completion contract.
-
-The only honest claim from this audit is that the current source still lacks an
-importable construction-completion boundary.
-
-## Known Limitations
-
-- construction completion is still inline in `App.tsx`
-- `resolveBuildingSnapshotMerge.js` is not the completion seam
-- `resolveLocalDestructionCompletion.js` belongs to another process family
-- `_offlineTimersSynced` is caller-side persistence suppression, not a pure
-  transition authority
-- no second-pass behavior was proven against production source
-
-## Smallest Missing Seam
-
-A minimal owner-approved pure helper extracted from the construction-completion
-branch in `App.tsx`, for example a construction-specific decision helper under
-`src/game/buildings/`, is the smallest missing piece needed before a real
-production-bound replay can run.
+- Construction completion still leaves trace logging and PocketBase writes to `App.tsx`.
+- The helper is construction-specific and does not absorb upgrade completion.
+- Upgrade, production, destruction, reload, reconnect, and multi-client contracts remain separate.
 
 ## T050 Status
 
-- `T050` completed: `no`
-- `T051` may proceed: `no`
-
-T050 remains open until the construction-completion boundary becomes importable
-or an owner-approved seam is explicitly extracted.
+- T050 complete: `yes`
+- T051 remains open: `yes`
+- five-file checkpoint ready to commit: `yes`
+- broad persisted-process exactly-once scenario remains `UNCONFIRMED_RUNTIME_BEHAVIOR` outside the narrow construction subcase
