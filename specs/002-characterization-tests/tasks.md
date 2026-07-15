@@ -143,7 +143,7 @@ Every task must follow this checklist shape:
 ### Scenario 4 - Offline catch-up cannot duplicate completion or reward
 
 - [x] T054 [US2] Freeze the accepted narrow construction-completion invariants in `tests/characterization/slice-b/scenario-03-invariants.md` and capture the supporting note in `tests/characterization/slice-b/scenario-03-invariants-note.md`; keep the freeze limited to the owner-accepted local construction contract and stop if it broadens into broader persisted-process behavior. (SC-007, SC-009)
-- [ ] T055 [US2] Record the preliminary classification and known-bug review for scenario 4 in `tests/characterization/slice-b/scenario-04-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
+- [X] T055 [US2] Record the preliminary classification and known-bug review for scenario 4 in `tests/characterization/slice-b/scenario-04-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
 - [ ] T056 [US2] Decide whether scenario 4 needs a seam in `tests/characterization/slice-b/scenario-04-seam.md`; request a minimal seam only if the current catch-up path cannot show the reward fence. (FR-007, FR-011, SC-005, SC-006)
 - [ ] T057 [US2] Design the offline catch-up fixture in `tests/characterization/slice-b/scenario-04-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
 - [ ] T058 [US2] Record the controlled observation or deterministic replay evidence for scenario 4 in `tests/characterization/slice-b/scenario-04-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
