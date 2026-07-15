@@ -119,7 +119,7 @@ Every task must follow this checklist shape:
 - [X] T040 [US1] Decide whether the destroyed-building terminal-state target needs a seam in `tests/characterization/scenario-003-seam-decision.md`; request a minimal seam only if the current merge path cannot keep the terminal state from being overwritten by a later stale snapshot. (FR-007, FR-011, SC-005, SC-006)
 - [X] T041 [US1] Design the local-terminal-state fixture in `tests/characterization/scenario-003-fixture-design.md` after the narrowing decision is recorded. (FR-010, SC-007)
 - [X] T042 [US1] Record the controlled observation or deterministic replay evidence for the local-terminal-state subcase in `tests/characterization/scenario-003-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
-- [ ] T043 [US1] Record the explicit owner acceptance and final promotion decision for the local-terminal-state subcase in `tests/characterization/scenario-003-owner-acceptance.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [X] T043 [US1] Record the explicit owner acceptance and final promotion decision for the local-terminal-state subcase in `tests/characterization/scenario-003-owner-acceptance.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T044 [US1] Implement the permanent atomic characterization test for the local-terminal-state subcase in `tests/characterization/scenario-003-characterization.mjs` only after T043 exists; stop if the test would reintroduce ghost-building behavior or require live PocketBase writes. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T045 [US1] Run the scenario-3 check twice from `tests/characterization/scenario-003-characterization.mjs` and confirm the terminal state does not regress under a stale snapshot; record the result in `tests/characterization/scenario-003-repeatability.md`. (SC-007, SC-009)
 
@@ -411,8 +411,8 @@ Every task must follow this checklist shape:
 | --- | --- |
 | Source evidence does not confirm behavior | T022-T101 |
 | Current behavior is a known bug | T022-T101 |
-| Controlled observation or deterministic replay evidence is missing | T043, T051, T059, T067, T075, T083, T091, T099 |
-| Owner acceptance is missing | T043, T051, T059, T067, T075, T083, T091, T099 |
+| Controlled observation or deterministic replay evidence is missing | T051, T059, T067, T075, T083, T091, T099 |
+| Owner acceptance is missing | T051, T059, T067, T075, T083, T091, T099 |
 | Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Broad runtime refactor would be needed | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
