@@ -136,7 +136,7 @@ Every task must follow this checklist shape:
 - [x] T048 [US2] Decide whether the construction-completion subcase needs a seam in `tests/characterization/slice-b/scenario-03-seam.md`; request a minimal seam only if the current construction completion boundary cannot be observed without a minimal helper. (FR-007, FR-011, SC-005, SC-006)
 - [x] T049 [US2] Design the frozen timestamp fixture for the construction-completion subcase in `tests/characterization/slice-b/scenario-03-fixture-design.md` after the seam decision is recorded. (FR-010, SC-007)
 - [x] T050 [US2] Record the controlled observation or deterministic replay evidence for the construction-completion subcase in `tests/characterization/slice-b/scenario-03-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
-- [ ] T051 [US2] Record the explicit owner acceptance and final promotion decision for the construction-completion subcase in `tests/characterization/slice-b/scenario-03-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [x] T051 [US2] Record the explicit owner acceptance and final promotion decision for the construction-completion subcase in `tests/characterization/slice-b/scenario-03-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T052 [US2] Implement the permanent atomic characterization test for the construction-completion subcase in `tests/characterization/slice-b/scenario-03.mjs` only after T051 exists; stop if the test would alter construction completion semantics, reward timing, or live data. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T053 [US2] Run the construction-completion check twice from `tests/characterization/slice-b/scenario-03.mjs` and confirm the construction completion transition occurs exactly once on unchanged runs; record the result in `tests/characterization/slice-b/scenario-03-repeatability.md`. (SC-007, SC-009)
 
@@ -411,8 +411,8 @@ Every task must follow this checklist shape:
 | --- | --- |
 | Source evidence does not confirm behavior | T022-T101 |
 | Current behavior is a known bug | T022-T101 |
-| Controlled observation or deterministic replay evidence is missing | T051, T059, T067, T075, T083, T091, T099 |
-| Owner acceptance is missing | T051, T059, T067, T075, T083, T091, T099 |
+| Controlled observation or deterministic replay evidence is missing | T059, T067, T075, T083, T091, T099 |
+| Owner acceptance is missing | T059, T067, T075, T083, T091, T099 |
 | Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Broad runtime refactor would be needed | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
