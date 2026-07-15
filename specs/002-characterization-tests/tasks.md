@@ -149,7 +149,7 @@ Every task must follow this checklist shape:
 - [x] T058 [US2] Record the controlled observation or deterministic replay evidence for scenario 4 in `tests/characterization/slice-b/scenario-04-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [x] T059 [US2] Record the explicit owner acceptance and final promotion decision for scenario 4 in `tests/characterization/slice-b/scenario-04-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [x] T060 [US2] Implement the permanent atomic characterization test for scenario 4 in `tests/characterization/slice-b/scenario-04.mjs` only after T059 exists; stop if the test would introduce duplicate reward logic or live writes. (FR-008, FR-009, SC-005, SC-008)
-- [ ] T061 [US2] Run the scenario-4 check twice from `tests/characterization/slice-b/scenario-04.mjs` and confirm completion and reward are both single-shot; record the result in `tests/characterization/slice-b/scenario-04-repeatability.md`. (SC-007, SC-009)
+- [x] T061 [US2] Run the scenario-4 check twice from `tests/characterization/slice-b/scenario-04.mjs` and confirm completion and reward are both single-shot; record the result in `tests/characterization/slice-b/scenario-04-repeatability.md`. (SC-007, SC-009)
 
 ### Scenario 5 - Construction state survives reload and converges from persisted end time
 
