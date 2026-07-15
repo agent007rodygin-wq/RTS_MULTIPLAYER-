@@ -142,7 +142,7 @@ Every task must follow this checklist shape:
 
 ### Scenario 4 - Offline catch-up cannot duplicate completion or reward
 
-- [ ] T054 [P] [US2] Investigate scenario 4 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/07-production-system.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-04-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [x] T054 [US2] Freeze the accepted narrow construction-completion invariants in `tests/characterization/slice-b/scenario-03-invariants.md` and capture the supporting note in `tests/characterization/slice-b/scenario-03-invariants-note.md`; keep the freeze limited to the owner-accepted local construction contract and stop if it broadens into broader persisted-process behavior. (SC-007, SC-009)
 - [ ] T055 [US2] Record the preliminary classification and known-bug review for scenario 4 in `tests/characterization/slice-b/scenario-04-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
 - [ ] T056 [US2] Decide whether scenario 4 needs a seam in `tests/characterization/slice-b/scenario-04-seam.md`; request a minimal seam only if the current catch-up path cannot show the reward fence. (FR-007, FR-011, SC-005, SC-006)
 - [ ] T057 [US2] Design the offline catch-up fixture in `tests/characterization/slice-b/scenario-04-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
@@ -318,9 +318,9 @@ Every task must follow this checklist shape:
 
 | Requirement | Covered by tasks |
 | --- | --- |
-| FR-001 | T007, T022, T030, T038, T046, T054, T062, T070, T078, T086, T094, T108 |
+| FR-001 | T007, T022, T030, T038, T046, T062, T070, T078, T086, T094, T108 |
 | FR-002 | T007, T009 |
-| FR-003 | T009, T010, T022, T030, T038, T046, T054, T062, T070, T078, T086, T094 |
+| FR-003 | T009, T010, T022, T030, T038, T046, T062, T070, T078, T086, T094 |
 | FR-004 | T008, T105 |
 | FR-005 | T008, T010, T105 |
 | FR-006 | T008, T013, T014, T015, T017 |
@@ -335,15 +335,15 @@ Every task must follow this checklist shape:
 
 | Success criterion | Covered by tasks |
 | --- | --- |
-| SC-001 | T007, T022, T030, T038, T046, T054, T062, T070, T078, T086, T094 |
+| SC-001 | T007, T022, T030, T038, T046, T062, T070, T078, T086, T094 |
 | SC-002 | T009, T014, T108 |
 | SC-003 | T010, T016, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100 |
 | SC-004 | T008, T105 |
 | SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109 |
-| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T054, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103 |
-| SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T025, T029, T033, T037, T041, T045, T049, T053, T057, T061, T065, T069, T073, T077, T081, T085, T089, T093, T097, T101, T102, T103 |
+| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103 |
+| SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T025, T029, T033, T037, T041, T045, T049, T053, T054, T057, T061, T065, T069, T073, T077, T081, T085, T089, T093, T097, T101, T102, T103 |
 | SC-008 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099, T104 |
-| SC-009 | T004, T013, T014, T017, T029, T037, T045, T053, T061, T069, T077, T085, T093, T101, T102, T105, T106, T109 |
+| SC-009 | T004, T013, T014, T017, T029, T037, T045, T053, T054, T061, T069, T077, T085, T093, T101, T102, T105, T106, T109 |
 
 ### 3. Scenario-to-Evidence Matrix
 
