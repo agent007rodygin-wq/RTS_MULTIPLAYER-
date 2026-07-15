@@ -1,0 +1,129 @@
+{
+  "taskAuthority": "T065",
+  "scenarioId": "scenario-05",
+  "scenarioTitle": "Construction state survives reload and converges from persisted end time",
+  "scenarioWording": "Construction state survives reload and converges from persisted end time.",
+  "broadScenarioClassification": "UNCONFIRMED_RUNTIME_BEHAVIOR",
+  "seamDecision": "MINIMAL_OWNER_APPROVED_SEAM_REQUIRED",
+  "selectedProcessType": "construction",
+  "selectedProcessTypeReason": "Construction is the smallest deterministic process type that keeps the fixture narrow and replayable.",
+  "acceptedContract": {
+    "summary": "After an expired persisted construction process is replayed by offline catch-up, the local construction completion transition occurs once.",
+    "scope": "construction-convergence seam only",
+    "broaderScenarioStatus": "UNCONFIRMED_RUNTIME_BEHAVIOR"
+  },
+  "frozenClock": {
+    "mode": "deterministic",
+    "now": 1704067200000,
+    "timezone": "UTC"
+  },
+  "frozenInputs": {
+    "initialExpiredConstructionState": {
+      "buildingId": 301,
+      "ownerId": "user-9",
+      "zoneId": "zone-2",
+      "x": 18,
+      "y": 11,
+      "isLocal": true,
+      "isConstructing": true,
+      "workState": "constructing",
+      "constructionEndTime": 1704067140000,
+      "constructionDurationMs": 180000,
+      "constructionMaxLifetimeMs": 240000,
+      "hp": 120,
+      "maxHp": 120,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    },
+    "completedConstructionState": {
+      "buildingId": 301,
+      "ownerId": "user-9",
+      "zoneId": "zone-2",
+      "x": 18,
+      "y": 11,
+      "isLocal": true,
+      "isConstructing": false,
+      "workState": "idle",
+      "constructionEndTime": 1704067140000,
+      "constructionDurationMs": 180000,
+      "constructionMaxLifetimeMs": 240000,
+      "hp": 120,
+      "maxHp": 120,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    }
+  },
+  "protectedFields": [
+    "isConstructing",
+    "workState",
+    "constructionEndTime",
+    "hp",
+    "maxHp",
+    "pendingDamage"
+  ],
+  "unrelatedFields": [
+    "buildingId",
+    "ownerId",
+    "zoneId",
+    "x",
+    "y",
+    "isLocal",
+    "constructionDurationMs",
+    "constructionMaxLifetimeMs",
+    "timestamp"
+  ],
+  "explicitExclusions": [
+    "reward delivery",
+    "inventory/resource changes",
+    "PocketBase writes",
+    "realtime ordering",
+    "reconnect ordering",
+    "stale snapshot convergence",
+    "duplicate-write prevention",
+    "multi-client authority",
+    "upgrade completion",
+    "production completion",
+    "destruction completion",
+    "generic timer behavior",
+    "broad persisted-process guarantees"
+  ],
+  "callerOwnedSideEffects": [
+    "PocketBase writes",
+    "trace logging",
+    "merge orchestration",
+    "reconnect control",
+    "state setters"
+  ],
+  "transitionModel": {
+    "firstPass": {
+      "decision": "complete_construction",
+      "completed": true
+    },
+    "secondPass": {
+      "decision": "no_completion",
+      "completed": false
+    }
+  },
+  "resetAssumptions": [
+    "Each run starts from the same frozen input object.",
+    "No state carries across executions.",
+    "The clock remains fixed to the frozen timestamp."
+  ],
+  "eventOrder": [
+    "expired construction state is loaded",
+    "first construction completion pass runs",
+    "completed state is produced",
+    "same completed state is replayed unchanged",
+    "second pass returns no_completion"
+  ],
+  "stopConditions": [
+    "If reward, reconnect, or PocketBase behavior is required to express the seam, stop and do not widen the fixture.",
+    "If the helper cannot be exercised from this frozen construction state alone, stop."
+  ],
+  "limitations": [
+    "This fixture does not prove runtime behavior.",
+    "This fixture does not establish replay evidence.",
+    "This fixture does not claim owner acceptance.",
+    "This fixture is construction-only and does not cover the broader reload convergence contract."
+  ]
+}
