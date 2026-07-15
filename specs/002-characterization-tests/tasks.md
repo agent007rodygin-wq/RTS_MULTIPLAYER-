@@ -158,7 +158,7 @@ Every task must follow this checklist shape:
 - [x] T064 [US2] Decide whether scenario 5 needs a seam in `tests/characterization/slice-b/scenario-05-seam.md`; request a minimal seam only if construction convergence cannot be observed through the existing boundary. (FR-007, FR-011, SC-005, SC-006)
 - [x] T065 [US2] Design the reload fixture in `tests/characterization/slice-b/scenario-05-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
 - [x] T066 [US2] Record the controlled observation or deterministic replay evidence for scenario 5 in `tests/characterization/slice-b/scenario-05-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
-- [ ] T067 [US2] Record the explicit owner acceptance and final promotion decision for scenario 5 in `tests/characterization/slice-b/scenario-05-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [x] T067 [US2] Record the explicit owner acceptance and final promotion decision for scenario 5 in `tests/characterization/slice-b/scenario-05-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T068 [US2] Implement the permanent atomic characterization test for scenario 5 in `tests/characterization/slice-b/scenario-05.mjs` only after T067 exists; stop if the timer would reset, complete early, or require live PocketBase mutation. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T069 [US2] Run the scenario-5 check twice from `tests/characterization/slice-b/scenario-05.mjs` and confirm the construction timer remains stable across reloads; record the result in `tests/characterization/slice-b/scenario-05-repeatability.md`. (SC-007, SC-009)
 
@@ -411,8 +411,8 @@ Every task must follow this checklist shape:
 | --- | --- |
 | Source evidence does not confirm behavior | T022-T101 |
 | Current behavior is a known bug | T022-T101 |
-| Controlled observation or deterministic replay evidence is missing | T067, T075, T083, T091, T099 |
-| Owner acceptance is missing | T067, T075, T083, T091, T099 |
+| Controlled observation or deterministic replay evidence is missing | T075, T083, T091, T099 |
+| Owner acceptance is missing | T075, T083, T091, T099 |
 | Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
 | Broad runtime refactor would be needed | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
