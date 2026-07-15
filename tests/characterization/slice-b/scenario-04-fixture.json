@@ -1,0 +1,218 @@
+{
+  "scenarioId": "scenario-04",
+  "taskId": "T057",
+  "scenarioClassification": "UNCONFIRMED_RUNTIME_BEHAVIOR",
+  "selectedSubcase": "OFFLINE_COMPLETION_TRANSITION_FIRST",
+  "acceptedContract": "After an expired persisted process is completed by offline catch-up, processing the same unchanged completed process state again does not perform the local completion transition a second time.",
+  "productionBoundaryStatus": "production_boundary_available",
+  "selectedProcessType": "construction",
+  "selectedProcessTypeReason": "Construction is the smallest deterministic process type with an existing importable pure completion helper already called by App.tsx during offline processing.",
+  "sourceAnchors": [
+    "App.tsx:635-750 processOfflineTimers(...)",
+    "src/game/buildings/resolveLocalConstructionCompletion.js:1-37",
+    "types.ts:134-145 PlacedBuilding construction/timer fields",
+    "src/pocketbase.ts:391-395,498-515,592-643,1853-2219",
+    "tests/characterization/slice-b/scenario-04-classification.md",
+    "tests/characterization/slice-b/scenario-04-seam.md"
+  ],
+  "frozenClock": {
+    "now": 1704067200000,
+    "processEndTime": 1704067140000,
+    "proofEndTimePassedOnFirstProcessing": true
+  },
+  "initialState": {
+    "building": {
+      "id": "construction-offline-1",
+      "buildingId": 301,
+      "ownerId": "user-9",
+      "x": 18,
+      "y": 11,
+      "zoneId": "zone-2",
+      "isLocal": true,
+      "isConstructing": true,
+      "constructionEndTime": 1704067140000,
+      "constructionDurationMs": 180000,
+      "constructionMaxLifetimeMs": 240000,
+      "workState": "working",
+      "hp": 120,
+      "maxHp": 120,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    }
+  },
+  "firstPass": {
+    "input": "initialState.building",
+    "expectedDecision": "complete_construction",
+    "expectedCompleted": true,
+    "expectedOutputState": "completedState.building"
+  },
+  "completedState": {
+    "building": {
+      "id": "construction-offline-1",
+      "buildingId": 301,
+      "ownerId": "user-9",
+      "x": 18,
+      "y": 11,
+      "zoneId": "zone-2",
+      "isLocal": true,
+      "isConstructing": false,
+      "constructionEndTime": 1704067140000,
+      "constructionDurationMs": 180000,
+      "constructionMaxLifetimeMs": 240000,
+      "workState": "idle",
+      "hp": 120,
+      "maxHp": 120,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    }
+  },
+  "secondPass": {
+    "input": "completedState.building",
+    "expectedDecision": "no_completion",
+    "expectedCompleted": false,
+    "expectedOutputState": "completedState.building"
+  },
+  "expectedOutcome": {
+    "firstPassDecision": "complete_construction",
+    "firstPassCompleted": true,
+    "secondPassDecision": "no_completion",
+    "secondPassCompleted": false,
+    "repeatability": "IDENTICAL",
+    "narrowClaimSupported": true
+  },
+  "protectedFields": [
+    "isConstructing",
+    "workState",
+    "constructionEndTime",
+    "hp",
+    "maxHp",
+    "pendingDamage"
+  ],
+  "unrelatedFields": [
+    "x",
+    "y",
+    "zoneId",
+    "buildingId",
+    "ownerId",
+    "isLocal",
+    "constructionDurationMs",
+    "constructionMaxLifetimeMs",
+    "timestamp"
+  ],
+  "callerOwnedSideEffects": [
+    "PocketBase writes",
+    "updateDoc / updateBuildingDocSafe calls",
+    "trace logging",
+    "state setters",
+    "refs",
+    "retries",
+    "subscriptions",
+    "reward delivery",
+    "inventory/resource changes",
+    "reconnect handling",
+    "multi-client authority"
+  ],
+  "excludedContracts": [
+    "reward exactly-once",
+    "completion side-effect exactly-once",
+    "PocketBase persistence success",
+    "duplicate-write prevention",
+    "reload / reconnect idempotency",
+    "stale-snapshot convergence",
+    "multi-client finalization authority",
+    "production reward collection",
+    "upgrade completion",
+    "production completion",
+    "destruction completion",
+    "generic work timers",
+    "broad Scenario 4 behavior"
+  ],
+  "resetAssumptions": [
+    "each run rebuilds the fixture from scratch",
+    "all local guards reset between runs",
+    "the same deterministic clock is reused",
+    "no prior-run residue is allowed",
+    "no network or live PocketBase access is used",
+    "_offlineTimersSynced is not treated as persisted authority"
+  ],
+  "eventOrder": [
+    "persisted process is active",
+    "persisted end time has passed",
+    "offline catch-up begins",
+    "first local completion pass executes",
+    "completed local state is produced",
+    "the same unchanged completed state is processed again",
+    "second pass produces no completion transition"
+  ],
+  "controls": [
+    {
+      "id": "completion-time-not-reached",
+      "mutation": "rewind now so the end time has not yet been reached on first processing",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "missing-identity",
+      "mutation": "remove the persisted building identity before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "missing-building-identity",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "second-pass-completes-again",
+      "mutation": "feed the second pass a state that still looks expired instead of the completed first-pass output",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "completed-fields-regress",
+      "mutation": "assert that the completed state regresses protected completion fields after the first pass",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "unrelated-field-changed",
+      "mutation": "change an unrelated field and require the replay to flag the mutation",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "production-boundary-not-available",
+      "mutation": "simulate the production helper being unavailable or not imported",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "production-boundary-not-available",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    }
+  ],
+  "stopConditions": [
+    "the production construction boundary is not importable",
+    "the fixture would require copied App.tsx logic",
+    "reward behavior becomes necessary",
+    "PocketBase writes are required",
+    "reconnect ordering becomes necessary",
+    "more than one process type would need to be merged artificially",
+    "hidden timing is required",
+    "fixture values cannot be derived from source"
+  ],
+  "limitations": [
+    "does not prove PocketBase persistence",
+    "does not prove duplicate-write prevention",
+    "does not prove reward or side-effect exactly-once",
+    "does not prove reload / reconnect safety",
+    "does not prove multi-client authority",
+    "does not cover upgrade completion",
+    "does not cover production completion",
+    "does not cover destruction completion",
+    "does not cover broad persisted-process exactly-once behavior"
+  ]
+}
