@@ -159,7 +159,7 @@ Every task must follow this checklist shape:
 - [x] T065 [US2] Design the reload fixture in `tests/characterization/slice-b/scenario-05-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
 - [x] T066 [US2] Record the controlled observation or deterministic replay evidence for scenario 5 in `tests/characterization/slice-b/scenario-05-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [x] T067 [US2] Record the explicit owner acceptance and final promotion decision for scenario 5 in `tests/characterization/slice-b/scenario-05-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
-- [ ] T068 [US2] Implement the permanent atomic characterization test for scenario 5 in `tests/characterization/slice-b/scenario-05.mjs` only after T067 exists; stop if the timer would reset, complete early, or require live PocketBase mutation. (FR-008, FR-009, SC-005, SC-008)
+- [x] T068 [US2] Implement the permanent atomic characterization test for scenario 5 in `tests/characterization/slice-b/scenario-05.mjs` only after T067 exists; stop if the timer would reset, complete early, or require live PocketBase mutation. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T069 [US2] Run the scenario-5 check twice from `tests/characterization/slice-b/scenario-05.mjs` and confirm the construction timer remains stable across reloads; record the result in `tests/characterization/slice-b/scenario-05-repeatability.md`. (SC-007, SC-009)
 
 ### Scenario 6 - Production completion survives reconnect and rewards once
@@ -413,10 +413,10 @@ Every task must follow this checklist shape:
 | Current behavior is a known bug | T022-T101 |
 | Controlled observation or deterministic replay evidence is missing | T075, T083, T091, T099 |
 | Owner acceptance is missing | T075, T083, T091, T099 |
-| Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
-| Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100, T102-T109 |
+| Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T076, T084, T092, T100, T102-T109 |
+| Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T076, T084, T092, T100, T102-T109 |
 | Broad runtime refactor would be needed | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
-| Schema/config/balance/save-format change required | T006, T012, T015, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100 |
+| Schema/config/balance/save-format change required | T006, T012, T015, T028, T036, T044, T052, T060, T076, T084, T092, T100 |
 | Seam changes gameplay behavior | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
 | Unexpected file changes occur | T001, T002, T004, T006, T102-T109 |
 | P2/P3 surface enters MVP | T006, T008, T105 |
