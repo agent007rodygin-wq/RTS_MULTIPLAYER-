@@ -121,7 +121,7 @@ Every task must follow this checklist shape:
 - [X] T042 [US1] Record the controlled observation or deterministic replay evidence for the local-terminal-state subcase in `tests/characterization/scenario-003-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [X] T043 [US1] Record the explicit owner acceptance and final promotion decision for the local-terminal-state subcase in `tests/characterization/scenario-003-owner-acceptance.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [X] T044 [US1] Implement the permanent atomic characterization test for the local-terminal-state subcase in `tests/characterization/scenario-003-characterization.mjs` only after T043 exists; stop if the test would reintroduce ghost-building behavior or require live PocketBase writes. (FR-008, FR-009, SC-005, SC-008)
-- [ ] T045 [US1] Run the scenario-3 check twice from `tests/characterization/scenario-003-characterization.mjs` and confirm the terminal state does not regress under a stale snapshot; record the result in `tests/characterization/scenario-003-repeatability.md`. (SC-007, SC-009)
+- [X] T045 [US1] Run the scenario-3 check twice from `tests/characterization/scenario-003-characterization.mjs` and confirm the terminal state does not regress under a stale snapshot; record the result in `tests/characterization/scenario-003-repeatability.md`. (SC-007, SC-009)
 
 ## Phase 6: Slice B - Timers and Completion
 
