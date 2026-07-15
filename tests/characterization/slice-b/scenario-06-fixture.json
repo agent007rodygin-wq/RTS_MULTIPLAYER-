@@ -1,0 +1,237 @@
+{
+  "scenarioId": "scenario-06",
+  "taskId": "T073",
+  "scenarioClassification": "UNCONFIRMED_RUNTIME_BEHAVIOR",
+  "selectedSubcase": "REWARD_GRANT_EXACTLY_ONCE_FIRST",
+  "proposedContract": "After a finished production building is collected once, processing the same unchanged collected state again does not grant the reward a second time.",
+  "productionBoundaryStatus": "inline_boundary_only",
+  "inlineRewardBranchAvailable": true,
+  "pureImportableRewardBoundaryAvailable": false,
+  "replayableRewardBoundaryAvailable": false,
+  "minimalOwnerApprovedSeamRequired": true,
+  "selectedRewardAction": "collect_completed_production",
+  "selectedRewardActionReason": "Cafe 2 (ID 67) is a deterministic production target with a fixed 4000 gold payout and no random inventory bonus, so the inline collection branch is the smallest reward fence supported by current source. The design uses the returned idle state as the consumed state.",
+  "sourceAnchors": [
+    "App.tsx:14551-14659 handleCollectProductionFromWorld(...)",
+    "App.tsx:14936-15024 handleCollectProduction(...)",
+    "App.tsx:6552-6560 updatePlayerResources(...)",
+    "data/buildings.ts:29968-30001 Cafe 2 production definition",
+    "tests/characterization/slice-b/scenario-06-source-audit.md",
+    "tests/characterization/slice-b/scenario-06-classification.md",
+    "tests/characterization/slice-b/scenario-06-seam.md"
+  ],
+  "frozenClock": {
+    "now": 1704067200000
+  },
+  "stableIdentity": {
+    "id": "reward-grant-1",
+    "buildingId": 67,
+    "ownerId": "user-9",
+    "x": 18,
+    "y": 11,
+    "zoneId": "zone-2",
+    "isLocal": true
+  },
+  "initialEligibleState": {
+    "building": {
+      "id": "reward-grant-1",
+      "buildingId": 67,
+      "ownerId": "user-9",
+      "x": 18,
+      "y": 11,
+      "zoneId": "zone-2",
+      "isLocal": true,
+      "workState": "finished",
+      "hp": 1632,
+      "maxHp": 1632,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    }
+  },
+  "firstPass": {
+    "input": "initialEligibleState.building",
+    "expectedDecision": "grant_reward",
+    "expectedCompleted": true,
+    "expectedOutputState": "rewardedState.building"
+  },
+  "rewardedState": {
+    "building": {
+      "id": "reward-grant-1",
+      "buildingId": 67,
+      "ownerId": "user-9",
+      "x": 18,
+      "y": 11,
+      "zoneId": "zone-2",
+      "isLocal": true,
+      "workState": "idle",
+      "hp": 1632,
+      "maxHp": 1632,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    }
+  },
+  "secondPass": {
+    "input": "rewardedState.building",
+    "expectedDecision": "no_reward",
+    "expectedCompleted": false,
+    "expectedOutputState": "rewardedState.building"
+  },
+  "expectedOutcome": {
+    "firstPassDecision": "grant_reward",
+    "firstPassCompleted": true,
+    "secondPassDecision": "no_reward",
+    "secondPassCompleted": false,
+    "repeatability": "IDENTICAL",
+    "narrowClaimSupported": true,
+    "rewardPayload": {
+      "goldDelta": 4000,
+      "rubiesDelta": 0,
+      "inventoryDeltas": {}
+    }
+  },
+  "protectedFields": [
+    "workState",
+    "hp",
+    "maxHp",
+    "pendingDamage"
+  ],
+  "unrelatedFields": [
+    "x",
+    "y",
+    "zoneId",
+    "ownerId",
+    "isLocal",
+    "timestamp"
+  ],
+  "callerOwnedSideEffects": [
+    "PocketBase writes",
+    "updatePlayerResources(...)",
+    "inventory/resource mutation",
+    "trace logging",
+    "state setters",
+    "refs",
+    "retries",
+    "subscriptions",
+    "reconnect handling",
+    "production completion mutation"
+  ],
+  "excludedContracts": [
+    "reward persistence exactly once",
+    "resource-credit exactly once",
+    "completion and reward atomicity",
+    "duplicate-write prevention",
+    "reload / reconnect idempotency",
+    "stale-snapshot convergence",
+    "multi-client authority",
+    "server-side transactionality",
+    "production completion behavior",
+    "broad Scenario 6 behavior"
+  ],
+  "resetAssumptions": [
+    "each run rebuilds the fixture from scratch",
+    "all local eligibility state resets between runs",
+    "the same frozen clock is reused",
+    "no prior-run residue is allowed",
+    "no network or live PocketBase access is used",
+    "_offlineTimersSynced is not treated as persisted authority"
+  ],
+  "eventOrder": [
+    "production is already complete",
+    "reward state is eligible",
+    "first reward-fence decision executes",
+    "projected rewarded / consumed state is produced",
+    "the same unchanged rewarded state is processed again",
+    "second pass denies another reward transition"
+  ],
+  "controls": [
+    {
+      "id": "reward-not-yet-eligible",
+      "mutation": "rewind the state so the building is still working on first processing",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "missing-building-identity",
+      "mutation": "remove the stable building identity before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "missing-building-identity",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "second-pass-rewards-again",
+      "mutation": "feed the second pass the pre-reward eligible state again instead of the rewarded output",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "rewarded-state-regresses",
+      "mutation": "assert that the rewarded state regresses protected fields after the first pass",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "unrelated-field-changed",
+      "mutation": "change an unrelated field and require the fixture to flag the mutation",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "production-boundary-not-available",
+      "mutation": "simulate the production boundary being unavailable or not imported",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "production-boundary-not-available",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "reward-payload-mutation-required",
+      "mutation": "require reward eligibility to mutate resources or inventory inside the boundary",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "reward-payload-mutation-required",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "live-pocketbase-required",
+      "mutation": "require live PocketBase mutation to prove repeated reward handling",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "live-pocketbase-required",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    }
+  ],
+  "stopConditions": [
+    "the collection boundary is not source-backed as a pure importable reward boundary",
+    "the fixture would require copied App.tsx reward logic",
+    "reward eligibility cannot be separated from resource mutation",
+    "PocketBase writes are required",
+    "live reconnect behavior is required",
+    "multi-client authority is required",
+    "a synthetic claim token would need to be invented",
+    "more than one contract must be merged artificially",
+    "T074 may not proceed to production-bound replay unless a pure importable reward-specific seam is implemented and approved"
+  ],
+  "limitations": [
+    "does not prove reward persistence exactly once",
+    "does not prove resource-credit exactly once",
+    "does not prove completion and reward atomicity",
+    "does not prove PocketBase persistence or duplicate-write prevention",
+    "does not prove reload / reconnect or stale-snapshot convergence",
+    "does not prove multi-client authority",
+    "does not cover upgrade completion",
+    "does not cover production completion",
+    "does not cover destruction completion",
+    "does not cover generic timers",
+    "does not cover broad Scenario 6 behavior",
+    "design-complete but replay-blocked pending the minimal seam"
+  ]
+}
