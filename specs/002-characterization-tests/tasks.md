@@ -10,7 +10,7 @@ description: "Task list for Feature 002 characterization foundation"
 
 **Slice labels in this file**: `[US1]` = Slice A (scenarios 1, 2, 10), `[US2]` = Slice B (scenarios 3, 4, 5, 6, 7), `[US3]` = Slice C (scenarios 8, 9)
 
-**Rules**: Every scenario starts as `UNCONFIRMED_RUNTIME_BEHAVIOR`; investigation must precede preliminary classification and known-bug review; preliminary classification must precede seam decision; seam decision must precede fixture design; fixture design must precede controlled observation or deterministic replay evidence; controlled observation or deterministic replay evidence must precede explicit owner acceptance and final promotion; explicit owner acceptance and final promotion must precede permanent test creation; permanent test creation must precede repeatability verification.
+**Rules**: Every scenario starts as `UNCONFIRMED_RUNTIME_BEHAVIOR`; investigation must precede preliminary classification and known-bug review; preliminary classification must precede seam decision; seam decision must precede fixture design; fixture design must precede controlled observation or deterministic replay evidence; if a minimal seam is required, seam implementation must precede explicit owner acceptance and final promotion; explicit owner acceptance and final promotion must precede permanent test creation; permanent test creation must precede repeatability verification.
 
 **Owner promotion rule**: A promotion task cannot be completed by inference or by the agent writing an approval record alone. Before any promotion task can be completed, the executor must present direct source evidence, controlled observation or deterministic replay evidence, known-bug analysis, a proposed final classification, and explicit owner acceptance in the conversation; only then may the decision be recorded.
 
@@ -127,7 +127,7 @@ Every task must follow this checklist shape:
 
 **Goal**: Protect the timer, completion, reward, and reload/reconnect contract before any lower-risk surface enters the MVP.
 
-**Independent Test**: Scenarios 3, 4, 5, 6, and 7 are each investigated, preliminarily classified, seam-decided, fixture-designed, replay-evidenced, owner-accepted for final promotion, and only then promoted into permanent characterization checks if the current source and owner accept the observed contract.
+**Independent Test**: Scenarios 3, 4, 5, 6, and 7 are each investigated, preliminarily classified, seam-decided, fixture-designed, replay-evidenced, seam-implemented when required, owner-accepted for final promotion, and only then promoted into permanent characterization checks if the current source and owner accept the observed contract.
 
 ### Scenario 3 - Persisted process whose end time passed completes exactly once
 
@@ -169,7 +169,11 @@ Every task must follow this checklist shape:
 - [x] T072 [US2] Decide whether scenario 6 needs a seam in `tests/characterization/slice-b/scenario-06-seam.md`; request a minimal seam only if the current production boundary cannot show the one-time reward fence. (FR-007, FR-011, SC-005, SC-006)
 - [x] T073 [US2] Design the reconnect fixture in `tests/characterization/slice-b/scenario-06-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
 - [x] T074 [US2] Record the controlled observation or deterministic replay evidence for scenario 6 in `tests/characterization/slice-b/scenario-06-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
-- [ ] T075 [US2] Record the explicit owner acceptance and final promotion decision for scenario 6 in `tests/characterization/slice-b/scenario-06-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+#### Scenario 6 dependency repair - reward seam blocker
+
+- [ ] T111 [US2] Implement the minimal pure deterministic reward-eligibility seam in `src/game/buildings/resolveLocalRewardEligibility.js` and delegate the reward fence in `App.tsx`; use TDD and fresh verification, and stop if the source-backed fence is not `workState = finished` -> `workState = idle`, if eligibility cannot be separated from reward mutation, if extraction would change payout behavior, if extraction would require a new persistent field, if extraction would require live PocketBase mutation at the test boundary, or if construction, production completion, reconnect, or snapshot behavior would be pulled into the helper. (FR-007, FR-011, SC-005, SC-006)
+
+- [ ] T075 [US2] Record the explicit owner acceptance and final promotion decision for scenario 6 in `tests/characterization/slice-b/scenario-06-promotion.md`; stop until T111 is complete and the replay evidence has been rerun against the real importable seam so the owner can accept actual production-bound evidence as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T076 [US2] Implement the permanent atomic characterization test for scenario 6 in `tests/characterization/slice-b/scenario-06.mjs` only after T075 exists; stop if reward delivery could duplicate or if the fixture would need live writes. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T077 [US2] Run the scenario-6 check twice from `tests/characterization/slice-b/scenario-06.mjs` and confirm finished state and reward stay single-shot; record the result in `tests/characterization/slice-b/scenario-06-repeatability.md`. (SC-007, SC-009)
 
@@ -218,10 +222,10 @@ Every task must follow this checklist shape:
 
 **Independent Test**: The complete suite runs twice with identical fixtures and produces identical scenario-by-scenario results, while rejecting hidden network access, live PocketBase writes, and unpromoted or known-bug scenarios.
 
-- [ ] T102 Run the entire first-wave suite twice from `tests/characterization/runner.mjs` with the same deterministic fixtures and compare scenario-by-scenario results. (SC-007, SC-009)
-- [ ] T103 Verify the suite fails closed in `tests/characterization/runner.mjs` and `tests/characterization/fixtures/manifest.json` when evidence, fixture, or seam data is missing; confirm no live PocketBase or player-data mutation occurs. (FR-010, SC-007, SC-008)
-- [ ] T104 Verify every permanent test in `tests/characterization/promotion-policy.md` was promoted from investigation and that no known bug was silently frozen. (FR-008, FR-009, SC-008)
-- [ ] T105 Verify the MVP boundary in `tests/characterization/scenario-index.md` and `tests/characterization/results-format.md` so P2/P3 surfaces never enter the first wave. (FR-012, SC-004, SC-005)
+- [ ] T103 Run the entire first-wave suite twice from `tests/characterization/runner.mjs` with the same deterministic fixtures and compare scenario-by-scenario results. (SC-007, SC-009)
+- [ ] T104 Verify the suite fails closed in `tests/characterization/runner.mjs` and `tests/characterization/fixtures/manifest.json` when evidence, fixture, or seam data is missing; confirm no live PocketBase or player-data mutation occurs. (FR-010, SC-007, SC-008)
+- [ ] T105 Verify every permanent test in `tests/characterization/promotion-policy.md` was promoted from investigation and that no known bug was silently frozen. (FR-008, FR-009, SC-008)
+- [ ] T106 Verify the MVP boundary in `tests/characterization/scenario-index.md` and `tests/characterization/results-format.md` so P2/P3 surfaces never enter the first wave. (FR-012, SC-004, SC-005)
 
 ---
 
@@ -231,10 +235,10 @@ Every task must follow this checklist shape:
 
 **Independent Test**: Quickstart, contracts, traceability, and final evidence match the implemented runner and fixture boundaries without widening scope or introducing future-wave surfaces.
 
-- [ ] T106 Update `specs/002-characterization-tests/quickstart.md` only after the real repository-defined characterization command is known; keep the runner/toolchain implementation-neutral until then. (SC-009)
-- [ ] T107 Sync `specs/002-characterization-tests/contracts/runner-contract.md`, `specs/002-characterization-tests/contracts/fixture-boundary.md`, `specs/002-characterization-tests/contracts/promotion-policy.md`, and `specs/002-characterization-tests/contracts/seam-boundary.md` with the implemented boundaries only if implementation differs from planning. (FR-006, FR-010, SC-002, SC-007)
-- [ ] T108 Produce final traceability from scenario to source, fixture, seam, classification, and test in `tests/characterization/traceability.md`; keep any future Feature 003 or runtime refactor blocked until Feature 002 passes. (SC-001, SC-002, SC-006)
-- [ ] T109 Finalize risk-appropriate verification notes and completion evidence in `tests/characterization/reports/final.md`; keep the MVP boundary and explicit future-wave exclusions intact. (SC-004, SC-005, SC-009)
+- [ ] T107 Update `specs/002-characterization-tests/quickstart.md` only after the real repository-defined characterization command is known; keep the runner/toolchain implementation-neutral until then. (SC-009)
+- [ ] T108 Sync `specs/002-characterization-tests/contracts/runner-contract.md`, `specs/002-characterization-tests/contracts/fixture-boundary.md`, `specs/002-characterization-tests/contracts/promotion-policy.md`, and `specs/002-characterization-tests/contracts/seam-boundary.md` with the implemented boundaries only if implementation differs from planning. (FR-006, FR-010, SC-002, SC-007)
+- [ ] T109 Produce final traceability from scenario to source, fixture, seam, classification, and test in `tests/characterization/traceability.md`; keep any future Feature 003 or runtime refactor blocked until Feature 002 passes. (SC-001, SC-002, SC-006)
+- [ ] T110 Finalize risk-appropriate verification notes and completion evidence in `tests/characterization/reports/final.md`; keep the MVP boundary and explicit future-wave exclusions intact. (SC-004, SC-005, SC-009)
 
 ---
 
@@ -324,11 +328,11 @@ Every task must follow this checklist shape:
 | FR-004 | T008, T105 |
 | FR-005 | T008, T010, T105 |
 | FR-006 | T008, T013, T014, T015, T017 |
-| FR-007 | T001, T002, T003, T004, T005, T006 |
+| FR-007 | T001, T002, T003, T004, T005, T006, T111 |
 | FR-008 | T008, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
 | FR-009 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
 | FR-010 | T003, T004, T014, T015, T016, T018, T019, T020, T021, T025, T033, T041, T049, T057, T065, T073, T081, T089, T097, T103, T107 |
-| FR-011 | T012, T014, T015, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
+| FR-011 | T012, T014, T015, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096, T111 |
 | FR-012 | T006, T008, T105 |
 
 ### 2. Success-Criteria Coverage Matrix
@@ -339,8 +343,8 @@ Every task must follow this checklist shape:
 | SC-002 | T009, T014, T108 |
 | SC-003 | T010, T016, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100 |
 | SC-004 | T008, T105 |
-| SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109 |
-| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103 |
+| SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109, T111 |
+| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103, T111 |
 | SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T025, T029, T033, T037, T041, T045, T049, T053, T054, T057, T061, T065, T069, T073, T077, T081, T085, T089, T093, T097, T101, T102, T103 |
 | SC-008 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099, T104 |
 | SC-009 | T004, T013, T014, T017, T029, T037, T045, T053, T054, T061, T069, T077, T085, T093, T101, T102, T105, T106, T109 |
@@ -384,7 +388,7 @@ Every task must follow this checklist shape:
 | 3 | `tests/characterization/slice-b/scenario-03-seam.md` - potential owner-approved seam candidate if the completion boundary cannot be observed purely |
 | 4 | `tests/characterization/slice-b/scenario-04-seam.md` - potential owner-approved seam candidate if the reward fence cannot be observed purely |
 | 5 | `tests/characterization/slice-b/scenario-05-seam.md` - potential owner-approved seam candidate if construction convergence cannot be observed purely |
-| 6 | `tests/characterization/slice-b/scenario-06-seam.md` - potential owner-approved seam candidate if the production reward fence cannot be observed purely |
+| 6 | `tests/characterization/slice-b/scenario-06-seam.md` - potential owner-approved seam candidate if the reward fence cannot be observed purely |
 | 7 | `tests/characterization/slice-b/scenario-07-seam.md` - potential owner-approved seam candidate if the upgrade fence cannot be observed purely |
 | 8 | `tests/characterization/slice-c/scenario-08-seam.md` - pure seam candidate; owner-approved seam only if rollback completeness cannot be observed purely |
 | 9 | `tests/characterization/slice-c/scenario-09-seam.md` - pure seam candidate; owner-approved seam only if the reconciliation boundary cannot express late-ack ordering |
@@ -399,7 +403,7 @@ Every task must follow this checklist shape:
 | 3 | when `tests/characterization/slice-b/scenario-03-promotion.md` is written or a minimal completion seam is required |
 | 4 | when `tests/characterization/slice-b/scenario-04-promotion.md` is written or a minimal reward-fence seam is required |
 | 5 | when `tests/characterization/slice-b/scenario-05-promotion.md` is written or a minimal construction seam is required |
-| 6 | when `tests/characterization/slice-b/scenario-06-promotion.md` is written or a minimal production seam is required |
+| 6 | when `tests/characterization/slice-b/scenario-06-promotion.md` is written or a minimal reward-eligibility seam is required |
 | 7 | when `tests/characterization/slice-b/scenario-07-promotion.md` is written or a minimal upgrade seam is required |
 | 8 | when `tests/characterization/slice-c/scenario-08-promotion.md` is written or rollback cannot be observed purely |
 | 9 | when `tests/characterization/slice-c/scenario-09-promotion.md` is written or reconciliation cannot be observed purely |

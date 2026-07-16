@@ -105,4 +105,4 @@ returns the projected consumed state only.
 
 - `T074` complete: `yes`
 - `T074` blocked: `yes`
-- `T075` remains open: `yes`
+- `T075` remains open: `yes` (blocked pending `T111` and a rerun of the replay evidence against the real seam)
