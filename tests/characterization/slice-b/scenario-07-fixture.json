@@ -3,19 +3,21 @@
   "taskId": "T081",
   "scenarioClassification": "UNCONFIRMED_RUNTIME_BEHAVIOR",
   "selectedSubcase": "UPGRADE_TRANSFORMATION_FIRST",
-  "proposedContract": "A source-backed upgrade-ready building is transformed once into its target building shape. The second-pass behavior is not source-backed yet because no pure importable upgrade seam currently exists.",
-  "productionBoundaryStatus": "inline_boundary_only",
-  "pureImportableUpgradeBoundaryAvailable": false,
-  "replayableUpgradeBoundaryAvailable": false,
-  "minimalOwnerApprovedSeamRequired": true,
+  "proposedContract": "After an upgrade-ready building is transformed once into its target building shape, processing the same unchanged transformed state again does not perform the upgrade transformation a second time.",
+  "productionBoundaryStatus": "production_boundary_available",
+  "pureImportableUpgradeBoundaryAvailable": true,
+  "replayableUpgradeBoundaryAvailable": true,
+  "minimalOwnerApprovedSeamRequired": false,
   "sourceAnchors": [
-    "App.tsx:14335-14491 handleUpgrade(...)",
+    "App.tsx:14382-14468 handleUpgrade(...)",
     "App.tsx:7917-8124 updatePlacedBuildingsFromServer(...)",
     "App.tsx:11439-11471 updateBuildingDocSafe(...)",
     "src/pocketbase.ts:1853-2219 onSnapshot(...)",
     "src/game/buildings/resolveBuildingSnapshotMerge.js",
+    "src/game/buildings/resolveLocalUpgradeTransformation.js:1-164",
     "data/buildings.ts:7-31 Town Hall 1 definition",
     "data/buildings.ts:34-60 Town Hall 2 definition",
+    "tests/characterization/slice-b/scenario-07-upgrade-seam.mjs:1-192",
     "tests/characterization/slice-b/scenario-07-source-audit.md",
     "tests/characterization/slice-b/scenario-07-classification.md",
     "tests/characterization/slice-b/scenario-07-seam.md"
@@ -38,7 +40,7 @@
     "id": 301,
     "name": "Городской центр",
     "englishName": "Town Hall",
-    "type": "TownHall",
+    "type": "town_hall",
     "buildable": true,
     "upgradesTo": 306,
     "upgradeCost": 500,
@@ -58,7 +60,7 @@
     "id": 306,
     "name": "Городской центр 2",
     "englishName": "Town Hall 2",
-    "type": "TownHall",
+    "type": "town_hall",
     "buildable": false,
     "constructionRequirements": {
       "resources": [
@@ -110,37 +112,42 @@
       "y": 11,
       "zoneId": "zone-2",
       "isLocal": true,
+      "type": "town_hall",
       "isConstructing": true,
       "constructionEndTime": 1704067640000,
       "lastAttackTime": 1704067200000,
+      "isDestroying": false,
       "hp": 232,
       "maxHp": 232,
+      "destructionStatus": "finished",
       "pendingDamage": 0,
       "timestamp": 1704067198200
     }
   },
   "secondPass": {
     "input": "transformedState.building",
-    "expectedStatus": "BLOCKED",
-    "expectedReason": "blocked_missing_upgrade_seam",
+    "expectedDecision": "no_transformation",
     "expectedCompleted": false,
-    "sourceBacked": false,
-    "note": "Second-pass behavior is not source-backed yet because no pure importable upgrade seam currently exists."
+    "expectedOutputState": "transformedState.building",
+    "sourceBacked": true,
+    "note": "Second-pass behavior is source-backed through resolveLocalUpgradeTransformation.js."
   },
   "expectedOutcome": {
     "firstPassDecision": "transform_upgrade",
     "firstPassCompleted": true,
-    "secondPassStatus": "BLOCKED",
-    "secondPassReason": "blocked_missing_upgrade_seam",
+    "secondPassDecision": "no_transformation",
     "secondPassCompleted": false,
-    "repeatability": "BLOCKED_PENDING_SEAM",
-    "narrowClaimSupported": false
+    "repeatability": "IDENTICAL",
+    "narrowClaimSupported": true
   },
   "protectedFields": [
     "buildingId",
+    "type",
     "isConstructing",
     "constructionEndTime",
     "lastAttackTime",
+    "isDestroying",
+    "destructionStatus",
     "hp",
     "maxHp",
     "pendingDamage"
@@ -193,7 +200,7 @@
     "first upgrade transformation decision executes",
     "transformed upgraded state is produced",
     "the same transformed state is revisited for a second pass",
-    "second pass is blocked because no pure importable upgrade seam exists yet"
+    "second pass returns no_transformation against the source-backed helper"
   ],
   "controls": [
     {
@@ -276,8 +283,7 @@
     "a new persistent field would be required",
     "live PocketBase is required",
     "reconnect behavior is required to decide the transformation",
-    "more than one contract must be merged artificially",
-    "T082 may not proceed unless a real importable seam exists or the owner explicitly approves the replayable boundary"
+    "more than one contract must be merged artificially"
   ],
   "limitations": [
     "does not prove upgrade persistence exactly once",
@@ -289,7 +295,6 @@
     "does not cover production completion",
     "does not cover destruction completion",
     "does not cover broad Scenario 7 behavior",
-    "design remains replay-blocked pending the minimal seam",
-    "second-pass behavior is not source-backed yet because no pure importable upgrade seam currently exists"
+    "replay evidence still belongs in T082"
   ]
 }
