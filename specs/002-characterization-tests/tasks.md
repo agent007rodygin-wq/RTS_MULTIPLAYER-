@@ -190,7 +190,7 @@ Every task must follow this checklist shape:
 - [x] T082 [US2] Record the controlled observation or deterministic replay evidence for scenario 7 in `tests/characterization/slice-b/scenario-07-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [x] T083 [US2] Record the explicit owner acceptance and final promotion decision for scenario 7 in `tests/characterization/slice-b/scenario-07-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [x] T084 [US2] Implement the permanent atomic characterization test for scenario 7 in `tests/characterization/slice-b/scenario-07.mjs` only after T083 exists; stop if the upgrade would transform twice, re-spend resources, or require live data. (FR-008, FR-009, SC-005, SC-008)
-- [ ] T085 [US2] Run the scenario-7 check twice from `tests/characterization/slice-b/scenario-07.mjs` and confirm the building transform occurs once; record the result in `tests/characterization/slice-b/scenario-07-repeatability.md`. (SC-007, SC-009)
+- [x] T085 [US2] Run the scenario-7 check twice from `tests/characterization/slice-b/scenario-07.mjs` and confirm the building transform occurs once; record the result in `tests/characterization/slice-b/scenario-07-repeatability.md`. (SC-007, SC-009)
 
 ## Phase 7: Slice C - Optimistic Commands
 
