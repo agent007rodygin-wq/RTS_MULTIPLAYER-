@@ -175,7 +175,7 @@ Every task must follow this checklist shape:
 
 - [x] T075 [US2] Record the explicit owner acceptance and final promotion decision for scenario 6 in `tests/characterization/slice-b/scenario-06-promotion.md`; stop until T111 is complete and the replay evidence has been rerun against the real importable seam so the owner can accept actual production-bound evidence as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [x] T076 [US2] Implement the permanent atomic characterization test for scenario 6 in `tests/characterization/slice-b/scenario-06.mjs` only after T075 exists; stop if reward delivery could duplicate or if the fixture would need live writes. (FR-008, FR-009, SC-005, SC-008)
-- [ ] T077 [US2] Run the scenario-6 check twice from `tests/characterization/slice-b/scenario-06.mjs` and confirm finished state and reward stay single-shot; record the result in `tests/characterization/slice-b/scenario-06-repeatability.md`. (SC-007, SC-009)
+  - [x] T077 [US2] Run the scenario-6 check twice from `tests/characterization/slice-b/scenario-06.mjs` and confirm finished state and reward stay single-shot; record the result in `tests/characterization/slice-b/scenario-06-repeatability.md`. (SC-007, SC-009)
 
 ### Scenario 7 - Upgrade completion survives reconnect without duplicate transformation
 
