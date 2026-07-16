@@ -3,16 +3,12 @@
   "taskId": "T097",
   "scenarioClassification": "UNCONFIRMED_RUNTIME_BEHAVIOR",
   "selectedSubcase": "PRESERVE_NEWER_LOCAL_INTENT_FIRST",
-  "proposedContract": "When a late server acknowledgement or snapshot represents older state and the caller supplies explicit source-backed evidence that a newer local intent is protected, the pure reconciliation seam preserves the newer local building state. When no protected newer local intent exists, the server state may be accepted. The second pass from the projected canonical state is blocked by identity mismatch, so repeatability remains unproven.",
+  "proposedContract": "Given frozen local building state, frozen server acknowledgement state, and explicit reconciliation context, the real helper deterministically chooses preserve_local and projects the canonical remapped building without mutating its inputs. A separate frozen case proves accept_server when no newer protected local intent exists. Two complete executions rebuilt from identical original inputs produce identical outputs. Projected-state reentry with stale identity context remains a blocked negative control only.",
   "productionBoundaryStatus": "production_boundary_available",
   "pureImportableReconciliationBoundaryAvailable": true,
-  "replayableReconciliationBoundaryAvailable": false,
-  "firstPassReplayable": true,
-  "secondPassReplayable": false,
+  "replayableReconciliationBoundaryAvailable": true,
   "fullReplayableReconciliationBoundaryAvailable": false,
   "minimalOwnerApprovedSeamRequired": false,
-  "helperPath": "src/game/buildings/resolveLateAcknowledgementReconciliation.js",
-  "focusedTestPath": "tests/characterization/slice-c/scenario-09-reconciliation-seam.mjs",
   "sourceAnchors": [
     "App.tsx:3336-3381 optimistic placement and identity refs",
     "App.tsx:5827-6234 placeBuildingAtTile(...) optimistic placement flow",
@@ -86,16 +82,7 @@
     "localIsProtected": true,
     "now": 1704067215000
   },
-  "firstPass": {
-    "input": "localBuilding + serverBuilding + reconciliationContext",
-    "expectedDecision": "preserve_local",
-    "expectedPreserveLocal": true,
-    "expectedAcceptServer": false,
-    "expectedBlocked": false,
-    "expectedOutputState": "reconciledState",
-    "sourceBacked": true
-  },
-  "reconciledState": {
+  "expectedPreserveLocalResult": {
     "id": "doc-ack-9",
     "clientBuildTraceId": "trace-ack-9",
     "buildingId": 301,
@@ -118,18 +105,6 @@
     "localNested": {
       "stage": "optimistic"
     }
-  },
-  "secondPass": {
-    "input": "unchanged deep clone of reconciledState + reconciliationContext",
-    "expectedDecision": "blocked_identity_mismatch",
-    "expectedPreserveLocal": false,
-    "expectedAcceptServer": false,
-    "expectedBlocked": true,
-    "expectedBlockedReason": "identity-mismatch",
-    "expectedOutputState": "reconciledState",
-    "sourceBacked": false,
-    "replayableSecondPass": false,
-    "note": "Second-pass replay from the projected canonical state is blocked by identity mismatch and is not yet source-backed."
   },
   "acceptServerCase": {
     "localBuilding": {
@@ -197,54 +172,28 @@
     "expectedOutputState": "acceptedServerState",
     "sourceBacked": true
   },
-  "acceptedServerState": {
-    "id": "doc-ack-9",
-    "clientBuildTraceId": "trace-ack-9",
-    "buildingId": 301,
-    "ownerId": "user-9",
-    "x": 18,
-    "y": 11,
-    "zoneId": "zone-2",
-    "type": "town_hall",
-    "isLocal": false,
-    "isConstructing": true,
-    "constructionEndTime": 1704067640000,
-    "workState": "idle",
-    "hp": 120,
-    "maxHp": 120,
-    "pendingDamage": 0,
-    "status": "normal",
-    "syncState": "synced",
-    "timestamp": 1704067202000,
-    "serverMarker": "keep-server",
-    "serverNested": {
-      "stage": "acknowledged"
-    }
+  "scenarioExecution1": {
+    "input": "fresh clone of localBuilding + serverBuilding + reconciliationContext",
+    "expectedDecision": "preserve_local",
+    "expectedPreserveLocal": true,
+    "expectedAcceptServer": false,
+    "expectedBlocked": false,
+    "expectedOutputState": "expectedPreserveLocalResult",
+    "sourceBacked": true
   },
-  "expectedOutcome": {
-    "firstPassDecision": "preserve_local",
-    "firstPassPreserveLocal": true,
-    "firstPassAcceptServer": false,
-    "firstPassBlocked": false,
-    "firstPassProjectedState": "reconciledState",
-    "secondPassDecision": "blocked_identity_mismatch",
-    "secondPassPreserveLocal": false,
-    "secondPassAcceptServer": false,
-    "secondPassBlocked": true,
-    "secondPassBlockedReason": "identity-mismatch",
-    "secondPassProjectedState": "reconciledState",
-    "acceptServerDecision": "accept_server",
-    "acceptServerPreserveLocal": false,
-    "acceptServerAcceptServer": true,
-    "acceptServerBlocked": false,
-    "acceptServerProjectedState": "acceptedServerState",
-    "repeatability": "BLOCKED",
-    "narrowClaimSupported": false,
-    "identityRemap": {
-      "tempId": "temp-ack-9",
-      "docId": "doc-ack-9"
-    }
+  "scenarioExecution2": {
+    "input": "fresh clone of localBuilding + serverBuilding + reconciliationContext",
+    "expectedDecision": "preserve_local",
+    "expectedPreserveLocal": true,
+    "expectedAcceptServer": false,
+    "expectedBlocked": false,
+    "expectedOutputState": "expectedPreserveLocalResult",
+    "sourceBacked": true
   },
+  "expectedComparison": "IDENTICAL",
+  "projectedStateReentrySupported": false,
+  "projectedStateReentryDecision": "blocked_identity_mismatch",
+  "projectedStateReentryReason": "identity-mismatch",
   "protectedFields": [
     "reconciledState.id",
     "reconciledState.clientBuildTraceId",
@@ -321,20 +270,43 @@
   ],
   "resetAssumptions": [
     "each complete scenario execution starts from rebuilt deep clones of the local building, the server building, and the reconciliation context",
-    "the second pass uses only the first-pass projected state from the same execution",
+    "each complete execution repeats the same frozen original inputs rather than feeding a projected state forward",
     "the same frozen clock value is reused",
     "no prior-run residue is allowed",
-    "no live PocketBase or network access is used"
+    "no live PocketBase or network access is used",
+    "projected-state reentry is blocked by identity mismatch and is treated as a negative control only"
   ],
   "eventOrder": [
-    "validate fixture inputs",
-    "invoke the real reconciliation helper",
-    "inspect the first-pass projection",
-    "rebuild the second-pass input from the first-pass output",
-    "invoke the helper again",
-    "inspect the deterministic stable result",
-    "later compare two full executions in T098"
+    "validate original frozen inputs",
+    "invoke the real reconciliation helper for the preserve_local case",
+    "repeat the preserve_local case from a fresh clone of the same original inputs",
+    "invoke the accept_server case from its fresh frozen inputs",
+    "repeat the accept_server case from a fresh clone of those original inputs",
+    "probe projected-state reentry as a negative control and observe blocked_identity_mismatch"
   ],
+  "expectedOutcome": {
+    "scenarioExecution1Decision": "preserve_local",
+    "scenarioExecution1PreserveLocal": true,
+    "scenarioExecution1AcceptServer": false,
+    "scenarioExecution1Blocked": false,
+    "scenarioExecution2Decision": "preserve_local",
+    "scenarioExecution2PreserveLocal": true,
+    "scenarioExecution2AcceptServer": false,
+    "scenarioExecution2Blocked": false,
+    "acceptServerDecision": "accept_server",
+    "acceptServerPreserveLocal": false,
+    "acceptServerAcceptServer": true,
+    "acceptServerBlocked": false,
+    "expectedComparison": "IDENTICAL",
+    "projectedStateReentryDecision": "blocked_identity_mismatch",
+    "projectedStateReentryBlocked": true,
+    "projectedStateReentryReason": "identity-mismatch",
+    "identityRemap": {
+      "tempId": "temp-ack-9",
+      "docId": "doc-ack-9"
+    },
+    "narrowClaimSupported": true
+  },
   "controls": [
     {
       "id": "preserve-local",
@@ -357,14 +329,6 @@
       "mutation": "keep optimisticTempId and canonicalDocId distinct so the projected building remaps identity while preserving local fields",
       "expectedStatus": "PASS",
       "expectedReason": "preserve_local",
-      "productionSourceExecution": true,
-      "sourceBoundaryExecuted": true
-    },
-    {
-      "id": "second-pass-blocked-identity-mismatch",
-      "mutation": "rebuild the second pass from the first-pass projected canonical state",
-      "expectedStatus": "BLOCKED",
-      "expectedReason": "identity-mismatch",
       "productionSourceExecution": true,
       "sourceBoundaryExecuted": true
     },
@@ -433,8 +397,8 @@
       "sourceBoundaryExecuted": true
     },
     {
-      "id": "ambiguous-identity-mapping",
-      "mutation": "change the optimistic and canonical ids so they no longer align",
+      "id": "projected-state-with-stale-identity-context",
+      "mutation": "rebuild the projected canonical state while preserving the original optimistic mapping context",
       "expectedStatus": "BLOCKED",
       "expectedReason": "identity-mismatch",
       "productionSourceExecution": true,
@@ -494,9 +458,7 @@
     "helper output does not match the fixture",
     "protected local intent cannot be represented deterministically",
     "server-accept behavior cannot be represented deterministically",
-    "second-pass behavior is not source-backed",
-    "second pass from the projected canonical state is blocked by identity mismatch",
-    "no source-backed repeatability unit exists yet",
+    "projected-state reentry is blocked by identity mismatch",
     "identity remap is ambiguous",
     "live PocketBase is required",
     "runtime event ordering is required",
@@ -516,7 +478,6 @@
     "does not prove server compare-and-swap",
     "does not prove transactionality",
     "does not prove full collection-level merge correctness",
-    "does not prove second-pass replayability",
     "does not prove broad Scenario 9 behavior"
   ]
 }
