@@ -125,6 +125,7 @@ import {
     shouldPreferServerRevivedBuildingState
 } from './src/game/buildings/resolveBuildingSnapshotMerge.js';
 import { resolveLocalConstructionCompletion } from './src/game/buildings/resolveLocalConstructionCompletion.js';
+import { resolveLocalUpgradeTransformation } from './src/game/buildings/resolveLocalUpgradeTransformation.js';
 import { resolveLocalRewardEligibility } from './src/game/buildings/resolveLocalRewardEligibility.js';
 import { resolveLocalDestructionCompletion } from './src/game/buildings/resolveLocalDestructionCompletion.js';
 import { filterReconnectSnapshotBuildingsByTombstones } from './src/game/buildings/filterReconnectSnapshotBuildingsByTombstones.js';
@@ -14378,7 +14379,18 @@ const App: React.FC = () => {
             });
         }
         const upgradeStartedAt = Date.now();
-        const upgradeConstructionEndTime = upgradeStartedAt + (newBuildingInfo.stats.constructionTimeSeconds || 0) * 1000;
+        const upgradeTransformation = resolveLocalUpgradeTransformation({
+            building: selectedBuilding.building,
+            sourceBuildingInfo: currentBuildingInfo,
+            targetBuildingInfo: newBuildingInfo,
+            now: upgradeStartedAt,
+        });
+        if (upgradeTransformation.blocked || !upgradeTransformation.transformed || !upgradeTransformation.projectedBuilding) {
+            return;
+        }
+        const projectedUpgradeBuilding = upgradeTransformation.projectedBuilding;
+        const upgradeConstructionEndTime = projectedUpgradeBuilding.constructionEndTime;
+
         updatePlayerResources(-cost, 0, inventoryDeltas);
 
         setVisualEffects(prev => [...prev, createVisualEffect({
@@ -14396,10 +14408,8 @@ const App: React.FC = () => {
         lastInteractionRef.current.set(String(selectedBuilding.building.id), Date.now());
         if (RUNTIME_AUDIT_ENABLED) {
             recordBuildingTimerTrace('local-start', {
-                ...selectedBuilding.building,
-                buildingId: newBuildingInfo.id,
-                isConstructing: true,
-                constructionEndTime: upgradeConstructionEndTime,
+                ...projectedUpgradeBuilding,
+                isLocal: true,
                 workState: 'idle',
                 actionType: 'construction',
             }, {
@@ -14416,22 +14426,7 @@ const App: React.FC = () => {
             const newBuildings = [...prev];
             newBuildings[index] = {
                 ...newBuildings[index],
-                buildingId: newBuildingInfo.id,
-                isConstructing: true,
-                constructionEndTime: upgradeConstructionEndTime,
-                lastAttackTime: upgradeStartedAt,
-                type: newBuildingInfo.type,
-                hp: newBuildingInfo.stats.durability,
-                maxHp: newBuildingInfo.stats.durability,
-                isDestroying: false,
-                destructionStartedAt: undefined,
-                destructionEndTime: undefined,
-                destructionExpiresAt: undefined,
-                destructionDurationMs: undefined,
-                destructionMaxLifetimeMs: undefined,
-                destructionStatus: 'finished',
-                pendingDamage: 0,
-                initiatorId: undefined,
+                ...projectedUpgradeBuilding,
                 isLocal: true // Mark as local optimistic update
             };
             return newBuildings;
@@ -14440,21 +14435,21 @@ const App: React.FC = () => {
         if (isAuthReady && user) {
             const buildingDocId = String(selectedBuilding.building.id);
             updateDoc(doc(db, 'buildings', buildingDocId), {
-                buildingId: newBuildingInfo.id,
-                isConstructing: true,
+                buildingId: projectedUpgradeBuilding.buildingId,
+                isConstructing: projectedUpgradeBuilding.isConstructing,
                 constructionEndTime: upgradeConstructionEndTime,
-                lastAttackTime: upgradeStartedAt,
-                type: newBuildingInfo.type || deleteField(),
-                hp: newBuildingInfo.stats.durability,
-                maxHp: newBuildingInfo.stats.durability,
-                isDestroying: false,
+                lastAttackTime: projectedUpgradeBuilding.lastAttackTime,
+                type: projectedUpgradeBuilding.type || deleteField(),
+                hp: projectedUpgradeBuilding.hp,
+                maxHp: projectedUpgradeBuilding.maxHp,
+                isDestroying: projectedUpgradeBuilding.isDestroying ?? false,
                 destructionStartedAt: deleteField(),
                 destructionEndTime: deleteField(),
                 destructionExpiresAt: deleteField(),
                 destructionDurationMs: deleteField(),
                 destructionMaxLifetimeMs: deleteField(),
                 destructionStatus: 'finished',
-                pendingDamage: 0,
+                pendingDamage: projectedUpgradeBuilding.pendingDamage,
                 initiatorId: deleteField()
             }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
         } else {
@@ -14465,22 +14460,8 @@ const App: React.FC = () => {
                 const newBuildings = [...prev];
                 newBuildings[index] = {
                     ...newBuildings[index],
-                    buildingId: newBuildingInfo.id,
-                    isConstructing: true,
-                    constructionEndTime: upgradeConstructionEndTime,
-                    lastAttackTime: upgradeStartedAt,
-                    type: newBuildingInfo.type,
-                    hp: newBuildingInfo.stats.durability,
-                    maxHp: newBuildingInfo.stats.durability,
-                    isDestroying: false,
-                    destructionStartedAt: undefined,
-                    destructionEndTime: undefined,
-                    destructionExpiresAt: undefined,
-                    destructionDurationMs: undefined,
-                    destructionMaxLifetimeMs: undefined,
-                    destructionStatus: 'finished',
-                    pendingDamage: 0,
-                    initiatorId: undefined
+                    ...projectedUpgradeBuilding,
+                    isLocal: true
                 };
                 return newBuildings;
             });
