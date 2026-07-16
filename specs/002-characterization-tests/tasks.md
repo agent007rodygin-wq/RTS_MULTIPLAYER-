@@ -179,10 +179,14 @@ Every task must follow this checklist shape:
 
 ### Scenario 7 - Upgrade completion survives reconnect without duplicate transformation
 
-  - [x] T078 [P] [US2] Investigate scenario 7 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/08-upgrade-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-07-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [x] T078 [P] [US2] Investigate scenario 7 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/05-timers-and-processes.md`, `specs/_baseline/08-upgrade-system.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-b/scenario-07-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
 - [x] T079 [US2] Record the preliminary classification and known-bug review for scenario 7 in `tests/characterization/slice-b/scenario-07-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
 - [x] T080 [US2] Decide whether scenario 7 needs a seam in `tests/characterization/slice-b/scenario-07-seam.md`; request a minimal seam only if the current upgrade boundary cannot show the one-time transformation. (FR-007, FR-011, SC-005, SC-006)
-- [ ] T081 [US2] Design the reconnect fixture in `tests/characterization/slice-b/scenario-07-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+#### Scenario 7 dependency repair - upgrade seam blocker
+
+- [ ] T112 [US2] Implement the minimal pure deterministic upgrade-transformation seam in `src/game/buildings/resolveLocalUpgradeTransformation.js` and delegate the upgrade fence in `App.tsx`; first add the focused TDD test in `tests/characterization/slice-b/scenario-07-upgrade-seam.mjs`, then use TDD and fresh verification, and stop if the source-backed upgrade transformation cannot be separated from cost mutation, persistence, optimistic UI, reconnect/snapshot behavior, or if a new persistent field or synthetic transformation marker would be required. Verify with `node tests/characterization/slice-b/scenario-07-upgrade-seam.mjs`, `node --check tests/characterization/slice-b/scenario-07-upgrade-seam.mjs`, `node --check src/game/buildings/resolveLocalUpgradeTransformation.js`, `npm run lint`, `node check_regressions_worker6.mjs`, `git diff --check`, and `git status --short --untracked-files=all`. (FR-007, FR-011, SC-005, SC-006)
+
+- [ ] T081 [US2] Design the reconnect fixture in `tests/characterization/slice-b/scenario-07-fixture.json` after T112 is complete and the seam decision is recorded; the existing blocked fixture may only become a completed replayable fixture after T112 is complete and the second-pass no-transformation contract is proven against the real helper. (FR-010, SC-007)
 - [ ] T082 [US2] Record the controlled observation or deterministic replay evidence for scenario 7 in `tests/characterization/slice-b/scenario-07-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [ ] T083 [US2] Record the explicit owner acceptance and final promotion decision for scenario 7 in `tests/characterization/slice-b/scenario-07-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T084 [US2] Implement the permanent atomic characterization test for scenario 7 in `tests/characterization/slice-b/scenario-07.mjs` only after T083 exists; stop if the upgrade would transform twice, re-spend resources, or require live data. (FR-008, FR-009, SC-005, SC-008)
@@ -328,11 +332,11 @@ Every task must follow this checklist shape:
 | FR-004 | T008, T105 |
 | FR-005 | T008, T010, T105 |
 | FR-006 | T008, T013, T014, T015, T017 |
-| FR-007 | T001, T002, T003, T004, T005, T006, T111 |
+| FR-007 | T001, T002, T003, T004, T005, T006, T111, T112 |
 | FR-008 | T008, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
 | FR-009 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
 | FR-010 | T003, T004, T014, T015, T016, T018, T019, T020, T021, T025, T033, T041, T049, T057, T065, T073, T081, T089, T097, T103, T107 |
-| FR-011 | T012, T014, T015, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096, T111 |
+| FR-011 | T012, T014, T015, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096, T111, T112 |
 | FR-012 | T006, T008, T105 |
 
 ### 2. Success-Criteria Coverage Matrix
@@ -343,8 +347,8 @@ Every task must follow this checklist shape:
 | SC-002 | T009, T014, T108 |
 | SC-003 | T010, T016, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100 |
 | SC-004 | T008, T105 |
-| SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109, T111 |
-| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103, T111 |
+| SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109, T111, T112 |
+| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103, T111, T112 |
 | SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T025, T029, T033, T037, T041, T045, T049, T053, T054, T057, T061, T065, T069, T073, T077, T081, T085, T089, T093, T097, T101, T102, T103 |
 | SC-008 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099, T104 |
 | SC-009 | T004, T013, T014, T017, T029, T037, T045, T053, T054, T061, T069, T077, T085, T093, T101, T102, T105, T106, T109 |
