@@ -203,7 +203,8 @@ Every task must follow this checklist shape:
 - [x] T086 [P] [US3] Investigate scenario 8 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/04-pocketbase-contracts.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-c/scenario-08-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
 - [x] T087 [US3] Record the preliminary classification and known-bug review for scenario 8 in `tests/characterization/slice-c/scenario-08-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
 - [x] T088 [US3] Decide whether scenario 8 needs a seam in `tests/characterization/slice-c/scenario-08-seam.md`; request a minimal seam only if the current optimistic boundary cannot show the full rollback. (FR-007, FR-011, SC-005, SC-006)
-- [ ] T089 [US3] Design the pre-state, reject, and rollback-completeness fixture in `tests/characterization/slice-c/scenario-08-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
+- [ ] T113 [US3] Implement the minimal pure deterministic rejected-placement rollback seam in `src/game/buildings/resolveRejectedOptimisticPlacementRollback.js` and delegate only the rejected-placement rollback projection in `App.tsx`; first add the focused TDD test in `tests/characterization/slice-c/scenario-08-rollback-seam.mjs`, then use TDD and fresh verification. Stop if exact pre-command restoration cannot be separated from PocketBase writes, React state mutation, realtime/reconnect behavior, timeout ambiguity, multi-client authority, or if a new persistent field or synthetic rollback token would be required. (FR-007, FR-011, SC-005, SC-006)
+- [ ] T089 [US3] Design the pre-state, reject, and rollback-completeness fixture in `tests/characterization/slice-c/scenario-08-fixture.json` only after T113 is complete; a blocked fixture draft may exist before then only if clearly labeled blocked and kept unpromoted. (FR-010, SC-007)
 - [ ] T090 [US3] Record the controlled observation or deterministic replay evidence for scenario 8 in `tests/characterization/slice-c/scenario-08-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [ ] T091 [US3] Record the explicit owner acceptance and final promotion decision for scenario 8 in `tests/characterization/slice-c/scenario-08-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T092 [US3] Implement the permanent atomic characterization test for scenario 8 in `tests/characterization/slice-c/scenario-08.mjs` only after T091 exists; stop if the rollback is partial, if occupancy/resources are not restored, or if live mutation would be required. (FR-008, FR-009, SC-005, SC-008)
@@ -332,11 +333,11 @@ Every task must follow this checklist shape:
 | FR-004 | T008, T105 |
 | FR-005 | T008, T010, T105 |
 | FR-006 | T008, T013, T014, T015, T017 |
-| FR-007 | T001, T002, T003, T004, T005, T006, T111, T112 |
+| FR-007 | T001, T002, T003, T004, T005, T006, T111, T112, T113 |
 | FR-008 | T008, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
 | FR-009 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
 | FR-010 | T003, T004, T014, T015, T016, T018, T019, T020, T021, T025, T033, T041, T049, T057, T065, T073, T081, T089, T097, T103, T107 |
-| FR-011 | T012, T014, T015, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096, T111, T112 |
+| FR-011 | T012, T014, T015, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096, T111, T112, T113 |
 | FR-012 | T006, T008, T105 |
 
 ### 2. Success-Criteria Coverage Matrix
@@ -347,8 +348,8 @@ Every task must follow this checklist shape:
 | SC-002 | T009, T014, T108 |
 | SC-003 | T010, T016, T028, T036, T044, T052, T060, T068, T076, T084, T092, T100 |
 | SC-004 | T008, T105 |
-| SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109, T111, T112 |
-| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103, T111, T112 |
+| SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109, T111, T112, T113 |
+| SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103, T111, T112, T113 |
 | SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T025, T029, T033, T037, T041, T045, T049, T053, T054, T057, T061, T065, T069, T073, T077, T081, T085, T089, T093, T097, T101, T102, T103 |
 | SC-008 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099, T104 |
 | SC-009 | T004, T013, T014, T017, T029, T037, T045, T053, T054, T061, T069, T077, T085, T093, T101, T102, T105, T106, T109 |
