@@ -173,7 +173,7 @@ Every task must follow this checklist shape:
 
 - [x] T111 [US2] Implement the minimal pure deterministic reward-eligibility seam in `src/game/buildings/resolveLocalRewardEligibility.js` and delegate the reward fence in `App.tsx`; first add the focused TDD test in `tests/characterization/slice-b/scenario-06-reward-seam.mjs`, then use TDD and fresh verification, and stop if the source-backed fence is not `workState = finished` -> `workState = idle`, if eligibility cannot be separated from reward mutation, if extraction would change payout behavior, if extraction would require a new persistent field, if extraction would require live PocketBase mutation at the test boundary, or if construction, production completion, reconnect, or snapshot behavior would be pulled into the helper. Verify with `node tests/characterization/slice-b/scenario-06-reward-seam.mjs`, `node --check tests/characterization/slice-b/scenario-06-reward-seam.mjs`, `node --check src/game/buildings/resolveLocalRewardEligibility.js`, `npm run lint`, `node check_regressions_worker6.mjs`, `git diff --check`, and `git status --short --untracked-files=all`. (FR-007, FR-011, SC-005, SC-006)
 
-- [ ] T075 [US2] Record the explicit owner acceptance and final promotion decision for scenario 6 in `tests/characterization/slice-b/scenario-06-promotion.md`; stop until T111 is complete and the replay evidence has been rerun against the real importable seam so the owner can accept actual production-bound evidence as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
+- [x] T075 [US2] Record the explicit owner acceptance and final promotion decision for scenario 6 in `tests/characterization/slice-b/scenario-06-promotion.md`; stop until T111 is complete and the replay evidence has been rerun against the real importable seam so the owner can accept actual production-bound evidence as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [ ] T076 [US2] Implement the permanent atomic characterization test for scenario 6 in `tests/characterization/slice-b/scenario-06.mjs` only after T075 exists; stop if reward delivery could duplicate or if the fixture would need live writes. (FR-008, FR-009, SC-005, SC-008)
 - [ ] T077 [US2] Run the scenario-6 check twice from `tests/characterization/slice-b/scenario-06.mjs` and confirm finished state and reward stay single-shot; record the result in `tests/characterization/slice-b/scenario-06-repeatability.md`. (SC-007, SC-009)
 
@@ -415,8 +415,8 @@ Every task must follow this checklist shape:
 | --- | --- |
 | Source evidence does not confirm behavior | T022-T101 |
 | Current behavior is a known bug | T022-T101 |
-| Controlled observation or deterministic replay evidence is missing | T075, T083, T091, T099 |
-| Owner acceptance is missing | T075, T083, T091, T099 |
+| Controlled observation or deterministic replay evidence is missing | T083, T091, T099 |
+| Owner acceptance is missing | T083, T091, T099 |
 | Live PocketBase mutation would be required | T003, T016, T018-T021, T028, T036, T044, T052, T060, T076, T084, T092, T100, T102-T109 |
 | Production player data would be used | T003, T016, T018-T021, T028, T036, T044, T052, T060, T076, T084, T092, T100, T102-T109 |
 | Broad runtime refactor would be needed | T012, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096 |
