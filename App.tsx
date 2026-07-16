@@ -127,6 +127,7 @@ import {
 import { resolveLocalConstructionCompletion } from './src/game/buildings/resolveLocalConstructionCompletion.js';
 import { resolveLocalUpgradeTransformation } from './src/game/buildings/resolveLocalUpgradeTransformation.js';
 import { resolveLocalRewardEligibility } from './src/game/buildings/resolveLocalRewardEligibility.js';
+import { resolveRejectedOptimisticPlacementRollback } from './src/game/buildings/resolveRejectedOptimisticPlacementRollback.js';
 import { resolveLocalDestructionCompletion } from './src/game/buildings/resolveLocalDestructionCompletion.js';
 import { filterReconnectSnapshotBuildingsByTombstones } from './src/game/buildings/filterReconnectSnapshotBuildingsByTombstones.js';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
@@ -6176,25 +6177,35 @@ const App: React.FC = () => {
                 })
                 .catch((e) => {
                     const failedTrace = buildTimingTracesRef.current.get(docId);
-                    if (failedTrace) {
-                        logBuildTiming('pb_create_failed', failedTrace, { error: String(e) });
-                    }
+                if (failedTrace) {
+                    logBuildTiming('pb_create_failed', failedTrace, { error: String(e) });
+                }
+                    const rollbackResult = resolveRejectedOptimisticPlacementRollback({
+                        currentBuildings: placedBuildingsRef.current,
+                        optimisticBuilding: newBuilding,
+                        spentResourceDeltas: {
+                            goldDelta: rubyCost > 0 ? 0 : -goldCost,
+                            rubiesDelta: rubyCost > 0 ? -rubyCost : 0,
+                            inventoryDeltas: inventoryCostDeltas,
+                        },
+                        rollbackIdentity: {
+                            tempId,
+                            docId,
+                        },
+                        alreadyRestored: false,
+                    });
                     optimisticBuildDocIdByTempIdRef.current.delete(tempId);
                     optimisticBuildTempIdByDocIdRef.current.delete(docId);
                     lastInteractionRef.current.delete(tempId);
                     lastInteractionRef.current.delete(docId);
-                    setPlacedBuildings(prev => prev.filter(b => String(b.id) !== tempId && String(b.id) !== docId));
+                    updatePlayerResourcesRef.current?.(
+                        rollbackResult.projectedResourceRestoration.goldDelta,
+                        rollbackResult.projectedResourceRestoration.rubiesDelta,
+                        rollbackResult.projectedResourceRestoration.inventoryDeltas,
+                    );
+                    setPlacedBuildings(() => rollbackResult.projectedBuildings ?? placedBuildingsRef.current);
                     buildTimingTracesRef.current.delete(traceId || tempId);
                     buildTimingTracesRef.current.delete(docId);
-                    const inventoryRefundDeltas: Record<number, number> = {};
-                    Object.entries(inventoryCostDeltas).forEach(([id, amount]) => {
-                        inventoryRefundDeltas[Number(id)] = -amount;
-                    });
-                    if (rubyCost > 0) {
-                        updatePlayerResourcesRef.current?.(0, rubyCost, inventoryRefundDeltas);
-                    } else {
-                        updatePlayerResourcesRef.current?.(goldCost, 0, inventoryRefundDeltas);
-                    }
                     handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
                 });
         } else {
