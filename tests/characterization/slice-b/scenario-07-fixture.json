@@ -1,0 +1,295 @@
+{
+  "scenarioId": "scenario-07",
+  "taskId": "T081",
+  "scenarioClassification": "UNCONFIRMED_RUNTIME_BEHAVIOR",
+  "selectedSubcase": "UPGRADE_TRANSFORMATION_FIRST",
+  "proposedContract": "A source-backed upgrade-ready building is transformed once into its target building shape. The second-pass behavior is not source-backed yet because no pure importable upgrade seam currently exists.",
+  "productionBoundaryStatus": "inline_boundary_only",
+  "pureImportableUpgradeBoundaryAvailable": false,
+  "replayableUpgradeBoundaryAvailable": false,
+  "minimalOwnerApprovedSeamRequired": true,
+  "sourceAnchors": [
+    "App.tsx:14335-14491 handleUpgrade(...)",
+    "App.tsx:7917-8124 updatePlacedBuildingsFromServer(...)",
+    "App.tsx:11439-11471 updateBuildingDocSafe(...)",
+    "src/pocketbase.ts:1853-2219 onSnapshot(...)",
+    "src/game/buildings/resolveBuildingSnapshotMerge.js",
+    "data/buildings.ts:7-31 Town Hall 1 definition",
+    "data/buildings.ts:34-60 Town Hall 2 definition",
+    "tests/characterization/slice-b/scenario-07-source-audit.md",
+    "tests/characterization/slice-b/scenario-07-classification.md",
+    "tests/characterization/slice-b/scenario-07-seam.md"
+  ],
+  "frozenClock": {
+    "mode": "deterministic",
+    "now": 1704067200000,
+    "timezone": "UTC"
+  },
+  "stableIdentity": {
+    "id": "upgrade-transform-1",
+    "buildingId": 301,
+    "ownerId": "user-9",
+    "x": 18,
+    "y": 11,
+    "zoneId": "zone-2",
+    "isLocal": true
+  },
+  "sourceBuilding": {
+    "id": 301,
+    "name": "Городской центр",
+    "englishName": "Town Hall",
+    "type": "TownHall",
+    "buildable": true,
+    "upgradesTo": 306,
+    "upgradeCost": 500,
+    "constructionRequirements": {
+      "population": 0
+    },
+    "stats": {
+      "constructionTimeSeconds": 1,
+      "accelerationCost": 0,
+      "permits": 5,
+      "durability": 40,
+      "gloryOnExplosion": 1,
+      "populationBonus": 8
+    }
+  },
+  "targetBuilding": {
+    "id": 306,
+    "name": "Городской центр 2",
+    "englishName": "Town Hall 2",
+    "type": "TownHall",
+    "buildable": false,
+    "constructionRequirements": {
+      "resources": [
+        {
+          "id": 10001,
+          "name": "Дерево",
+          "amount": 1
+        }
+      ],
+      "population": 2
+    },
+    "stats": {
+      "constructionTimeSeconds": 440,
+      "accelerationCost": 4,
+      "permits": 8,
+      "durability": 232,
+      "gloryOnExplosion": 25,
+      "populationBonus": 15
+    }
+  },
+  "initialUpgradeState": {
+    "building": {
+      "id": "upgrade-transform-1",
+      "buildingId": 301,
+      "ownerId": "user-9",
+      "x": 18,
+      "y": 11,
+      "zoneId": "zone-2",
+      "isLocal": true,
+      "isConstructing": false,
+      "hp": 40,
+      "maxHp": 40,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    }
+  },
+  "firstPass": {
+    "input": "initialUpgradeState.building",
+    "expectedDecision": "transform_upgrade",
+    "expectedCompleted": true,
+    "expectedOutputState": "transformedState.building"
+  },
+  "transformedState": {
+    "building": {
+      "id": "upgrade-transform-1",
+      "buildingId": 306,
+      "ownerId": "user-9",
+      "x": 18,
+      "y": 11,
+      "zoneId": "zone-2",
+      "isLocal": true,
+      "isConstructing": true,
+      "constructionEndTime": 1704067640000,
+      "lastAttackTime": 1704067200000,
+      "hp": 232,
+      "maxHp": 232,
+      "pendingDamage": 0,
+      "timestamp": 1704067198200
+    }
+  },
+  "secondPass": {
+    "input": "transformedState.building",
+    "expectedStatus": "BLOCKED",
+    "expectedReason": "blocked_missing_upgrade_seam",
+    "expectedCompleted": false,
+    "sourceBacked": false,
+    "note": "Second-pass behavior is not source-backed yet because no pure importable upgrade seam currently exists."
+  },
+  "expectedOutcome": {
+    "firstPassDecision": "transform_upgrade",
+    "firstPassCompleted": true,
+    "secondPassStatus": "BLOCKED",
+    "secondPassReason": "blocked_missing_upgrade_seam",
+    "secondPassCompleted": false,
+    "repeatability": "BLOCKED_PENDING_SEAM",
+    "narrowClaimSupported": false
+  },
+  "protectedFields": [
+    "buildingId",
+    "isConstructing",
+    "constructionEndTime",
+    "lastAttackTime",
+    "hp",
+    "maxHp",
+    "pendingDamage"
+  ],
+  "unrelatedFields": [
+    "ownerId",
+    "x",
+    "y",
+    "zoneId",
+    "isLocal",
+    "timestamp"
+  ],
+  "callerOwnedSideEffects": [
+    "PocketBase writes",
+    "resource / cost mutation",
+    "optimistic UI updates",
+    "trace logging",
+    "state setters",
+    "refs",
+    "caches",
+    "retries",
+    "subscriptions",
+    "reconnect orchestration",
+    "snapshot merge"
+  ],
+  "excludedContracts": [
+    "upgrade persistence exactly once",
+    "reconnect idempotency",
+    "stale snapshot convergence",
+    "multi-client authority",
+    "transactional upgrade transformation",
+    "duplicate-write prevention",
+    "cost deduction exactly once",
+    "production reward",
+    "construction completion",
+    "destruction completion",
+    "generic timer behavior",
+    "broad Scenario 7 behavior"
+  ],
+  "resetAssumptions": [
+    "each run starts from the same frozen input object",
+    "no state carries across executions",
+    "the same frozen clock value is reused",
+    "no prior-run residue is allowed",
+    "no live PocketBase or network access is used",
+    "_offlineTimersSynced is not treated as persisted authority"
+  ],
+  "eventOrder": [
+    "upgrade-ready source state is loaded",
+    "first upgrade transformation decision executes",
+    "transformed upgraded state is produced",
+    "the same transformed state is revisited for a second pass",
+    "second pass is blocked because no pure importable upgrade seam exists yet"
+  ],
+  "controls": [
+    {
+      "id": "upgrade-not-ready",
+      "mutation": "rewind the state so the source building is still not upgrade-ready on first processing",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "blocked_invalid_upgrade_state",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "missing-building-identity",
+      "mutation": "remove the stable building identity before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "blocked_missing_identity",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "missing-target-building",
+      "mutation": "remove the target building definition before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "blocked_invalid_upgrade_state",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "second-pass-transforms-again",
+      "mutation": "feed the second pass the pre-transform source state again instead of the transformed output",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "transformed-state-regresses",
+      "mutation": "assert that the transformed state regresses protected upgrade fields after the first pass",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "unrelated-field-changed",
+      "mutation": "change an unrelated field and require the fixture to flag the mutation",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "production-boundary-not-available",
+      "mutation": "simulate the upgrade boundary being unavailable or not imported",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "production-boundary-not-available",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "live-pocketbase-required",
+      "mutation": "require live PocketBase mutation to prove repeated upgrade handling",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "live-pocketbase-required",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "reconnect-order-required",
+      "mutation": "require reconnect ordering to decide the upgrade transformation",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "reconnect-order-required",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    }
+  ],
+  "stopConditions": [
+    "no source-backed transformed state can be represented",
+    "source or target identity is ambiguous",
+    "transformation cannot be separated from persistence or cost mutation",
+    "a new persistent field would be required",
+    "live PocketBase is required",
+    "reconnect behavior is required to decide the transformation",
+    "more than one contract must be merged artificially",
+    "T082 may not proceed unless a real importable seam exists or the owner explicitly approves the replayable boundary"
+  ],
+  "limitations": [
+    "does not prove upgrade persistence exactly once",
+    "does not prove reconnect idempotency",
+    "does not prove stale snapshot convergence",
+    "does not prove multi-client authority",
+    "does not prove cost deduction exactly once",
+    "does not cover construction completion",
+    "does not cover production completion",
+    "does not cover destruction completion",
+    "does not cover broad Scenario 7 behavior",
+    "design remains replay-blocked pending the minimal seam",
+    "second-pass behavior is not source-backed yet because no pure importable upgrade seam currently exists"
+  ]
+}
