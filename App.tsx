@@ -125,6 +125,7 @@ import {
     shouldPreferServerRevivedBuildingState
 } from './src/game/buildings/resolveBuildingSnapshotMerge.js';
 import { resolveLocalConstructionCompletion } from './src/game/buildings/resolveLocalConstructionCompletion.js';
+import { resolveLateAcknowledgementReconciliation } from './src/game/buildings/resolveLateAcknowledgementReconciliation.js';
 import { resolveLocalUpgradeTransformation } from './src/game/buildings/resolveLocalUpgradeTransformation.js';
 import { resolveLocalRewardEligibility } from './src/game/buildings/resolveLocalRewardEligibility.js';
 import { resolveRejectedOptimisticPlacementRollback } from './src/game/buildings/resolveRejectedOptimisticPlacementRollback.js';
@@ -6150,15 +6151,33 @@ const App: React.FC = () => {
                             tempId,
                         });
                     }
+                    const currentLocalBuilding =
+                        placedBuildingsRef.current.find((b) => String(b.id) === tempId) ||
+                        newBuilding;
                     const lastInteractionAt = lastInteractionRef.current.get(tempId) || Date.now();
-                    lastInteractionRef.current.delete(tempId);
-                    lastInteractionRef.current.set(docId, lastInteractionAt);
-                    optimisticBuildDocIdByTempIdRef.current.delete(tempId);
-                    optimisticBuildTempIdByDocIdRef.current.delete(docId);
+                    const lastServerSyncAt = lastServerSyncRef.current.get(docId) || 0;
+                    const reconciliation = resolveLateAcknowledgementReconciliation({
+                        localBuilding: currentLocalBuilding,
+                        serverBuilding,
+                        localInteractionAt: lastInteractionAt,
+                        lastServerSyncAt,
+                        optimisticTempId: tempId,
+                        canonicalDocId: docId,
+                        acknowledgementKind: 'ack',
+                        localIsProtected: Boolean(currentLocalBuilding.isLocal || currentLocalBuilding.syncState !== 'synced'),
+                        now: Date.now(),
+                    });
+                    const projectedBuilding = reconciliation.projectedBuilding || currentLocalBuilding;
+                    const remappedTempId = String(reconciliation.identityRemap?.tempId ?? tempId);
+                    const remappedDocId = String(reconciliation.identityRemap?.docId ?? docId);
+                    lastInteractionRef.current.delete(remappedTempId);
+                    lastInteractionRef.current.set(remappedDocId, lastInteractionAt);
+                    optimisticBuildDocIdByTempIdRef.current.delete(remappedTempId);
+                    optimisticBuildTempIdByDocIdRef.current.delete(remappedDocId);
                     setPlacedBuildings(prev => prev.map(b => (
                         String(b.id) === tempId
                             ? {
-                                ...b,
+                                ...projectedBuilding,
                                 id: docId,
                                 tempId: undefined,
                                 status: 'normal',
