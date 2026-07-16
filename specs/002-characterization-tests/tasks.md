@@ -208,7 +208,7 @@ Every task must follow this checklist shape:
 - [x] T090 [US3] Record the controlled observation or deterministic replay evidence for scenario 8 in `tests/characterization/slice-c/scenario-08-replay-evidence.md`; keep the result unpromoted until the owner acceptance step is recorded. (FR-008, FR-009, SC-006, SC-007)
 - [x] T091 [US3] Record the explicit owner acceptance and final promotion decision for scenario 8 in `tests/characterization/slice-c/scenario-08-promotion.md`; stop until the owner accepts the observed contract as `CURRENT_ACCEPTED_BEHAVIOR` or `LEGACY_COMPATIBILITY_BEHAVIOR`. (FR-008, FR-009, SC-008)
 - [x] T092 [US3] Implement the permanent atomic characterization test for scenario 8 in `tests/characterization/slice-c/scenario-08.mjs` only after T091 exists; stop if the rollback is partial, if occupancy/resources are not restored, or if live mutation would be required. (FR-008, FR-009, SC-005, SC-008)
-- [ ] T093 [US3] Run the scenario-8 check twice from `tests/characterization/slice-c/scenario-08.mjs` and confirm the rejected placement restores the full pre-command state; record the result in `tests/characterization/slice-c/scenario-08-repeatability.md`. (SC-007, SC-009)
+- [x] T093 [US3] Run the scenario-8 check twice from `tests/characterization/slice-c/scenario-08.mjs` and confirm the rejected placement restores the full pre-command state; record the result in `tests/characterization/slice-c/scenario-08-repeatability.md`. (SC-007, SC-009)
 
 ### Scenario 9 - Late command acknowledgement cannot overwrite a newer local intent
 
