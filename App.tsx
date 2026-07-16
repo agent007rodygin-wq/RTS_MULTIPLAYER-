@@ -125,6 +125,7 @@ import {
     shouldPreferServerRevivedBuildingState
 } from './src/game/buildings/resolveBuildingSnapshotMerge.js';
 import { resolveLocalConstructionCompletion } from './src/game/buildings/resolveLocalConstructionCompletion.js';
+import { resolveLocalRewardEligibility } from './src/game/buildings/resolveLocalRewardEligibility.js';
 import { resolveLocalDestructionCompletion } from './src/game/buildings/resolveLocalDestructionCompletion.js';
 import { filterReconnectSnapshotBuildingsByTombstones } from './src/game/buildings/filterReconnectSnapshotBuildingsByTombstones.js';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
@@ -14553,18 +14554,22 @@ const App: React.FC = () => {
         if (!info) return;
         if (isBanditCastleBuildingId(building.buildingId)) return;
 
+        const rewardEligibility = resolveLocalRewardEligibility({ building });
+        if (!rewardEligibility.granted) return;
+        const consumedBuilding = rewardEligibility.consumedBuilding ?? building;
+
         const bid = Number(building.buildingId);
         const collectedAt = Date.now();
         if (RUNTIME_AUDIT_ENABLED) {
             recordBuildingTimerTrace('local-tick', {
-                ...building,
+                ...consumedBuilding,
                 workState: 'idle',
-                workEndTime: building.workEndTime,
+                workEndTime: consumedBuilding.workEndTime,
                 actionType: 'idle',
             }, {
                 now: collectedAt,
                 remainingMs: 0,
-                previousWorkEndTime: building.workEndTime,
+                previousWorkEndTime: consumedBuilding.workEndTime,
                 transition: 'collect-production',
                 sourceCode: 'handleCollectProductionFromWorld',
             });
@@ -14840,7 +14845,7 @@ const App: React.FC = () => {
             // Optimistic update
             setPlacedBuildings(prev => prev.map(b => {
                 if (b.id === building.id) {
-                    const newB = { ...b, workState: 'idle' as const, workEndTime: undefined, buildingId: nextBid, isLocal: true };
+                    const newB = { ...consumedBuilding, workState: 'idle' as const, workEndTime: undefined, buildingId: nextBid, isLocal: true };
                     if (nextInfo) {
                         newB.hp = nextInfo.stats.durability;
                         newB.maxHp = nextInfo.stats.durability;
@@ -14938,6 +14943,10 @@ const App: React.FC = () => {
         const { building, info } = selectedBuilding;
         if (isBanditCastleBuildingId(building.buildingId)) return;
 
+        const rewardEligibility = resolveLocalRewardEligibility({ building });
+        if (!rewardEligibility.granted) return;
+        const consumedBuilding = rewardEligibility.consumedBuilding ?? building;
+
         // Play coin collection sound
         playCoinSound();
 
@@ -14954,14 +14963,14 @@ const App: React.FC = () => {
         const collectedAt = Date.now();
         if (RUNTIME_AUDIT_ENABLED) {
             recordBuildingTimerTrace('local-tick', {
-                ...building,
+                ...consumedBuilding,
                 workState: 'idle',
-                workEndTime: building.workEndTime,
+                workEndTime: consumedBuilding.workEndTime,
                 actionType: 'idle',
             }, {
                 now: collectedAt,
                 remainingMs: 0,
-                previousWorkEndTime: building.workEndTime,
+                previousWorkEndTime: consumedBuilding.workEndTime,
                 transition: 'collect-production',
                 sourceCode: 'handleCollectProduction',
             });
@@ -15106,10 +15115,10 @@ const App: React.FC = () => {
             updateDoc(doc(db, 'buildings', buildingDocId), updatedFields).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
             
             // Optimistic update
-            setPlacedBuildings(prev => prev.map(b => 
-                b.id === building.id ? { 
-                    ...b, 
-                    workState: 'idle' as const, 
+            setPlacedBuildings(prev => prev.map(b =>
+                b.id === building.id ? {
+                    ...consumedBuilding,
+                    workState: 'idle' as const,
                     workEndTime: undefined,
                     buildingId: nextBid,
                     hp: nextInfo ? nextInfo.stats.durability : b.hp,
