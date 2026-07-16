@@ -212,7 +212,7 @@ Every task must follow this checklist shape:
 
 ### Scenario 9 - Late command acknowledgement cannot overwrite a newer local intent
 
-- [ ] T094 [P] [US3] Investigate scenario 9 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-c/scenario-09-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
+- [x] T094 [P] [US3] Investigate scenario 9 against `App.tsx`, `src/pocketbase.ts`, `specs/_baseline/03-state-ownership.md`, `specs/_baseline/09-realtime-sync.md`, `specs/_baseline/10-optimistic-ui.md`, `specs/_baseline/11-error-handling.md`, and `specs/_baseline/15-invariants.md`; capture source anchors, ownership model, and observed behavior in `tests/characterization/slice-c/scenario-09-source-audit.md`. (FR-001, FR-003, SC-001, SC-006)
 - [ ] T095 [US3] Record the preliminary classification and known-bug review for scenario 9 in `tests/characterization/slice-c/scenario-09-classification.md`; stop if the behavior is still `UNCONFIRMED_RUNTIME_BEHAVIOR` or `KNOWN_BUG_DO_NOT_FREEZE`. (FR-008, FR-009, SC-006, SC-008)
 - [ ] T096 [US3] Decide whether scenario 9 needs a seam in `tests/characterization/slice-c/scenario-09-seam.md`; request a minimal seam only if the current reconciliation boundary cannot express the late-response fence. (FR-007, FR-011, SC-005, SC-006)
 - [ ] T097 [US3] Design the pre-state, delayed-ack, and newer-intent fixture in `tests/characterization/slice-c/scenario-09-fixture.json` after the seam decision is recorded. (FR-010, SC-007)
