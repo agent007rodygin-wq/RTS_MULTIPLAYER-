@@ -1,0 +1,465 @@
+{
+  "scenarioId": "scenario-08",
+  "taskId": "T089",
+  "scenarioClassification": "UNCONFIRMED_RUNTIME_BEHAVIOR",
+  "selectedSubcase": "REJECTED_OPTIMISTIC_PLACEMENT_FIRST",
+  "proposedContract": "A rejected optimistic building placement removes only its temporary optimistic building and projects restoration of the exact resource deltas spent for that placement. Processing the same already-restored state again produces no second rollback or second resource restoration.",
+  "productionBoundaryStatus": "production_boundary_available",
+  "pureImportableRollbackBoundaryAvailable": true,
+  "replayableRollbackBoundaryAvailable": true,
+  "minimalOwnerApprovedSeamRequired": false,
+  "helperPath": "src/game/buildings/resolveRejectedOptimisticPlacementRollback.js",
+  "focusedTestPath": "tests/characterization/slice-c/scenario-08-rollback-seam.mjs",
+  "frozenClock": {
+    "mode": "deterministic",
+    "now": 1704067200000,
+    "timezone": "UTC"
+  },
+  "sourceAnchors": [
+    "App.tsx:5827-6255 placeBuildingAtTile(...)",
+    "App.tsx:6183-6206 rollback catch path",
+    "src/game/buildings/resolveRejectedOptimisticPlacementRollback.js:1-216",
+    "tests/characterization/slice-c/scenario-08-rollback-seam.mjs:1-279",
+    "tests/characterization/slice-c/scenario-08-source-audit.md",
+    "tests/characterization/slice-c/scenario-08-classification.md",
+    "tests/characterization/slice-c/scenario-08-seam.md"
+  ],
+  "stableIdentity": {
+    "id": "temp-placement-1",
+    "tempId": "temp-placement-1",
+    "docId": "server-placement-1",
+    "buildingId": 301,
+    "ownerId": "user-9",
+    "x": 18,
+    "y": 11,
+    "zoneId": "zone-2",
+    "isLocal": true
+  },
+  "preCommandState": {
+    "currentBuildings": [
+      {
+        "id": "other-building-1",
+        "buildingId": 12,
+        "ownerId": "user-7",
+        "ownerName": "Neighbor",
+        "x": 2,
+        "y": 3,
+        "zoneId": "zone-1",
+        "status": "normal",
+        "syncState": "synced",
+        "isConstructing": false,
+        "constructionEndTime": 0,
+        "workState": "idle",
+        "hp": 10,
+        "maxHp": 10,
+        "pendingDamage": 0,
+        "isLocal": false,
+        "timestamp": 1704067100000,
+        "tag": "keep-me"
+      }
+    ],
+    "resourceState": {
+      "gold": 9400,
+      "rubies": 4,
+      "inventory": {
+        "10001": 11,
+        "10002": 9,
+        "10003": 7
+      },
+      "cosmeticFlag": "keep-me"
+    }
+  },
+  "optimisticPlacement": {
+    "currentBuildings": [
+      {
+        "id": "other-building-1",
+        "buildingId": 12,
+        "ownerId": "user-7",
+        "ownerName": "Neighbor",
+        "x": 2,
+        "y": 3,
+        "zoneId": "zone-1",
+        "status": "normal",
+        "syncState": "synced",
+        "isConstructing": false,
+        "constructionEndTime": 0,
+        "workState": "idle",
+        "hp": 10,
+        "maxHp": 10,
+        "pendingDamage": 0,
+        "isLocal": false,
+        "timestamp": 1704067100000,
+        "tag": "keep-me"
+      },
+      {
+        "id": "temp-placement-1",
+        "tempId": "temp-placement-1",
+        "clientBuildTraceId": "temp-placement-1",
+        "buildingId": 301,
+        "ownerId": "user-9",
+        "ownerName": "Player Nine",
+        "x": 18,
+        "y": 11,
+        "zoneId": "zone-2",
+        "status": "pending",
+        "syncState": "creating",
+        "isConstructing": true,
+        "constructionEndTime": 1704067640000,
+        "workState": "idle",
+        "hp": 40,
+        "maxHp": 40,
+        "pendingDamage": 0,
+        "isLocal": true,
+        "timestamp": 1704067200000,
+        "rollbackAudit": {
+          "source": "optimistic-placement"
+        }
+      }
+    ],
+    "optimisticBuilding": {
+      "id": "temp-placement-1",
+      "tempId": "temp-placement-1",
+      "clientBuildTraceId": "temp-placement-1",
+      "buildingId": 301,
+      "ownerId": "user-9",
+      "ownerName": "Player Nine",
+      "x": 18,
+      "y": 11,
+      "zoneId": "zone-2",
+      "status": "pending",
+      "syncState": "creating",
+      "isConstructing": true,
+      "constructionEndTime": 1704067640000,
+      "workState": "idle",
+      "hp": 40,
+      "maxHp": 40,
+      "pendingDamage": 0,
+      "isLocal": true,
+      "timestamp": 1704067200000,
+      "rollbackAudit": {
+        "source": "optimistic-placement"
+      }
+    },
+    "resourceState": {
+      "gold": 8150,
+      "rubies": 4,
+      "inventory": {
+        "10001": 8,
+        "10002": 8,
+        "10003": 7
+      },
+      "cosmeticFlag": "keep-me"
+    }
+  },
+  "spentResourceDeltas": {
+    "goldDelta": -1250,
+    "rubiesDelta": 0,
+    "inventoryDeltas": {
+      "10001": -3,
+      "10002": -1
+    }
+  },
+  "rollbackIdentity": {
+    "tempId": "temp-placement-1",
+    "docId": "server-placement-1"
+  },
+  "firstPass": {
+    "input": "optimisticPlacement",
+    "alreadyRestored": false,
+    "expectedDecision": "rollback_rejected_placement",
+    "expectedRestored": true,
+    "expectedBlocked": false,
+    "expectedRemoveTemporaryBuilding": true,
+    "expectedOutputState": "restoredState"
+  },
+  "restoredState": {
+    "currentBuildings": [
+      {
+        "id": "other-building-1",
+        "buildingId": 12,
+        "ownerId": "user-7",
+        "ownerName": "Neighbor",
+        "x": 2,
+        "y": 3,
+        "zoneId": "zone-1",
+        "status": "normal",
+        "syncState": "synced",
+        "isConstructing": false,
+        "constructionEndTime": 0,
+        "workState": "idle",
+        "hp": 10,
+        "maxHp": 10,
+        "pendingDamage": 0,
+        "isLocal": false,
+        "timestamp": 1704067100000,
+        "tag": "keep-me"
+      }
+    ],
+    "resourceState": {
+      "gold": 10650,
+      "rubies": 4,
+      "inventory": {
+        "10001": 14,
+        "10002": 10,
+        "10003": 7
+      },
+      "cosmeticFlag": "keep-me"
+    },
+    "projectedResourceRestoration": {
+      "goldDelta": 1250,
+      "rubiesDelta": 0,
+      "inventoryDeltas": {
+        "10001": 3,
+        "10002": 1
+      }
+    },
+    "removeTemporaryBuilding": true
+  },
+  "secondPass": {
+    "input": "restoredState",
+    "alreadyRestored": true,
+    "expectedDecision": "no_rollback",
+    "expectedRestored": false,
+    "expectedBlocked": false,
+    "expectedRemoveTemporaryBuilding": false,
+    "expectedOutputState": "restoredState",
+    "sourceBacked": true,
+    "note": "Second-pass behavior is source-backed through resolveRejectedOptimisticPlacementRollback.js."
+  },
+  "expectedOutcome": {
+    "firstPassDecision": "rollback_rejected_placement",
+    "firstPassRestored": true,
+    "firstPassBlocked": false,
+    "firstPassRemoveTemporaryBuilding": true,
+    "secondPassDecision": "no_rollback",
+    "secondPassRestored": false,
+    "secondPassBlocked": false,
+    "secondPassRemoveTemporaryBuilding": false,
+    "repeatability": "IDENTICAL",
+    "narrowClaimSupported": true,
+    "projectedResourceRestoration": {
+      "goldDelta": 1250,
+      "rubiesDelta": 0,
+      "inventoryDeltas": {
+        "10001": 3,
+        "10002": 1
+      }
+    }
+  },
+  "protectedFields": [
+    "buildings[0].id",
+    "buildings[0].buildingId",
+    "buildings[0].ownerId",
+    "buildings[0].ownerName",
+    "buildings[0].x",
+    "buildings[0].y",
+    "buildings[0].zoneId",
+    "buildings[0].status",
+    "buildings[0].syncState",
+    "buildings[0].isConstructing",
+    "buildings[0].constructionEndTime",
+    "buildings[0].workState",
+    "buildings[0].hp",
+    "buildings[0].maxHp",
+    "buildings[0].pendingDamage",
+    "buildings[0].isLocal",
+    "buildings[0].timestamp",
+    "projectedResourceRestoration.goldDelta",
+    "projectedResourceRestoration.rubiesDelta",
+    "projectedResourceRestoration.inventoryDeltas",
+    "removeTemporaryBuilding",
+    "decision",
+    "restored"
+  ],
+  "unrelatedFields": [
+    "buildings[0].tag",
+    "resourceState.cosmeticFlag"
+  ],
+  "callerOwnedSideEffects": [
+    "actual updatePlayerResourcesRef.current(...) execution",
+    "React setPlacedBuildings(...)",
+    "PocketBase writes",
+    "refs / cache cleanup",
+    "error UI",
+    "traces / logs",
+    "retry behavior",
+    "realtime subscriptions",
+    "reconnect ordering",
+    "snapshot merge",
+    "server-record cleanup"
+  ],
+  "excludedContracts": [
+    "persistence rollback exactly once",
+    "server create failure correctness",
+    "timeout correctness",
+    "lost-response recovery",
+    "retry idempotency",
+    "duplicate backend-create prevention",
+    "stale snapshot convergence",
+    "cross-client authority",
+    "coordinate occupancy fencing",
+    "cost/create transactionality",
+    "broad Scenario 8 behavior"
+  ],
+  "resetAssumptions": [
+    "each run rebuilds from the same frozen source data",
+    "no state carries across executions",
+    "the same frozen clock value is reused",
+    "no prior-run residue is allowed",
+    "no live PocketBase or network access is used",
+    "alreadyRestored advances only from false to true between passes"
+  ],
+  "eventOrder": [
+    "validate fixture inputs",
+    "invoke the real rollback helper on the optimistic placement state",
+    "inspect the first-pass rollback projection",
+    "rebuild the second-pass input from the first-pass restored state",
+    "invoke the real rollback helper again",
+    "inspect the no_rollback result",
+    "compare the two full scenario executions later in T090"
+  ],
+  "controls": [
+    {
+      "id": "missing-rollback-identity",
+      "mutation": "remove the rollback identity before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "missing-rollback-identity",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "missing-optimistic-building",
+      "mutation": "remove the temporary optimistic building before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "missing-optimistic-building",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "missing-current-buildings",
+      "mutation": "remove the currentBuildings array before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "missing-current-buildings",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "missing-resource-deltas",
+      "mutation": "remove the spent resource deltas before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "missing-resource-deltas",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "invalid-optimistic-placement-state",
+      "mutation": "blank the temporary optimistic building identity before the first pass",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "invalid-optimistic-placement-state",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "rollback-identity-mismatch",
+      "mutation": "change the rollback identity so it no longer matches the temporary building",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "rollback-identity-mismatch",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "already-restored",
+      "mutation": "run the helper on the restored first-pass output with alreadyRestored true",
+      "expectedStatus": "PASS",
+      "expectedReason": "no_rollback",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "second-pass-rolls-back-again",
+      "mutation": "feed the second pass the original optimistic state again instead of the restored output",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "restored-state-regresses",
+      "mutation": "assert that the restored state regresses protected fields after the first pass",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "unrelated-building-changed",
+      "mutation": "change the unrelated building and require the fixture to flag the mutation",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "unrelated-resource-field-changed",
+      "mutation": "change the unrelated resource field and require the fixture to flag the mutation",
+      "expectedStatus": "FAIL",
+      "expectedReason": "unexpected-helper-result",
+      "productionSourceExecution": true,
+      "sourceBoundaryExecuted": true
+    },
+    {
+      "id": "production-boundary-not-available",
+      "mutation": "simulate the rollback boundary being unavailable or not imported",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "production-boundary-not-available",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "live-pocketbase-required",
+      "mutation": "require live PocketBase mutation to prove repeated rollback handling",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "live-pocketbase-required",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "timeout-order-required",
+      "mutation": "require timeout ordering to decide the rollback",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "timeout-order-required",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    },
+    {
+      "id": "reconnect-order-required",
+      "mutation": "require reconnect ordering to decide the rollback",
+      "expectedStatus": "BLOCKED",
+      "expectedReason": "reconnect-order-required",
+      "productionSourceExecution": false,
+      "sourceBoundaryExecuted": false
+    }
+  ],
+  "stopConditions": [
+    "no source-backed restored state can be represented",
+    "source or rollback identity is ambiguous",
+    "rollback projection cannot be separated from persistence or resource mutation",
+    "a new persistent field would be required",
+    "live PocketBase is required",
+    "timeout or reconnect behavior is required to decide the rollback",
+    "more than one contract must be merged artificially"
+  ],
+  "limitations": [
+    "does not prove persistence rollback exactly once",
+    "does not prove server create failure correctness",
+    "does not prove timeout correctness",
+    "does not prove lost-response recovery",
+    "does not prove retry idempotency",
+    "does not prove duplicate backend-create prevention",
+    "does not prove stale snapshot convergence",
+    "does not prove cross-client authority",
+    "does not prove coordinate occupancy fencing",
+    "does not prove cost / create transactionality",
+    "does not cover broad Scenario 8 behavior"
+  ]
+}
