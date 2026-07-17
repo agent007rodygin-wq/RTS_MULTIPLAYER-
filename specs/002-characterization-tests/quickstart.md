@@ -13,7 +13,7 @@ This is the future operator flow for Feature 002. It does not create tests yet; 
 
 ## Expected Command
 
-The repeatable characterization command is defined during implementation and should run against deterministic local fixtures only.
+The repeatable characterization command is `node tests/characterization/runner.mjs`, and it should run against deterministic local fixtures only.
 
 ## Future Workflow
 
