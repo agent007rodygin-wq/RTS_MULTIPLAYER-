@@ -149,6 +149,10 @@ function uniqueStrings(values) {
 }
 
 const ALLOWED_CHILD_STATUSES = new Set(['PASS', 'FAIL', 'BLOCKED']);
+const MISSING_MEANINGFUL_EVIDENCE_REASON = 'missing-meaningful-evidence-metadata';
+const MISSING_RUNNER_OWNED_METADATA_REASON = 'missing-runner-owned-metadata';
+const MISSING_RUNNER_FIXTURE_REFERENCE_REASON = 'missing-fixture-reference';
+const MISSING_RUNNER_SEAM_DECISION_REASON = 'missing-seam-decision';
 
 function extractClassification(report) {
   const candidates = [
@@ -195,6 +199,77 @@ function extractFixtureReference(entry, report) {
   }
 
   return entry.fixtureReference;
+}
+
+function hasMeaningfulEvidenceMetadata(entry, evidenceReferences) {
+  return evidenceReferences.some((reference) => reference !== entry.script);
+}
+
+function validateRunnerOwnedMetadata(entry) {
+  const fixtureReference = typeof entry.fixtureReference === 'string' ? entry.fixtureReference.trim() : '';
+  const seamDecision = typeof entry.seamDecision === 'string' ? entry.seamDecision.trim() : '';
+  const missing = [];
+
+  if (!fixtureReference) {
+    missing.push('fixtureReference');
+  }
+
+  if (!seamDecision) {
+    missing.push('seamDecision');
+  }
+
+  if (missing.length === 0) {
+    return {
+      ok: true,
+      reason: null,
+      missing,
+    };
+  }
+
+  return {
+    ok: false,
+    reason:
+      missing.length === 2
+        ? MISSING_RUNNER_OWNED_METADATA_REASON
+        : missing[0] === 'fixtureReference'
+          ? MISSING_RUNNER_FIXTURE_REFERENCE_REASON
+          : MISSING_RUNNER_SEAM_DECISION_REASON,
+    missing,
+  };
+}
+
+function buildRunnerOwnedMetadataBlockReport(entry, command, reason, missing) {
+  return {
+    order: entry.order,
+    scenarioId: entry.scenarioId,
+    sourceScenarioId: entry.sourceScenarioId,
+    label: entry.label,
+    script: entry.script,
+    command,
+    status: 'BLOCKED',
+    reason,
+    exitCode: 1,
+    executionFlags: {
+      productionSourceExecution: false,
+      sourceBoundaryExecuted: false,
+    },
+    classification: 'UNCONFIRMED_RUNTIME_BEHAVIOR',
+    evidenceReferences: uniqueStrings([entry.script, entry.fixtureReference]),
+    fixtureReference: entry.fixtureReference,
+    seamDecision: entry.seamDecision,
+    failureBlockReason: reason,
+    summary: {
+      runStatus: 'BLOCKED',
+      outcome: 'BLOCKED',
+      discoveryStrategy: FIRST_WAVE_ORDER_SOURCE,
+      sourceBoundaryExecuted: false,
+    },
+    loadFailure: {
+      kind: 'missing-runner-metadata',
+      missing,
+      reason,
+    },
+  };
 }
 
 function normalizeChildReport(report) {
@@ -246,6 +321,16 @@ function runScenario(entry) {
         script: entry.script,
       },
     };
+  }
+
+  const runnerOwnedMetadataValidation = validateRunnerOwnedMetadata(entry);
+  if (!runnerOwnedMetadataValidation.ok) {
+    return buildRunnerOwnedMetadataBlockReport(
+      entry,
+      command,
+      runnerOwnedMetadataValidation.reason,
+      runnerOwnedMetadataValidation.missing,
+    );
   }
 
   const child = spawnSync(NODE_EXECUTABLE, [absoluteScriptPath], {
@@ -414,6 +499,11 @@ function runScenario(entry) {
   if (typeof childReport.sourceBoundaryExecuted !== 'boolean') {
     status = 'BLOCKED';
     reason = 'missing-source-boundary-executed-flag';
+  }
+
+  if (status === 'PASS' && !hasMeaningfulEvidenceMetadata(entry, evidenceReferences)) {
+    status = 'BLOCKED';
+    reason = MISSING_MEANINGFUL_EVIDENCE_REASON;
   }
 
   return {
