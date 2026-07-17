@@ -230,6 +230,7 @@ Every task must follow this checklist shape:
 
 - [x] T115 Implement the repository-local first-wave characterization runner in `tests/characterization/runner.mjs` according to `tests/characterization/runner-contract.md` and `tests/characterization/runner-toolchain-decision.md`; run the complete ten-scenario first-wave suite from existing deterministic local characterization inputs, emit stable scenario-by-scenario results, and fail closed when required evidence, fixture, or seam data is unavailable, without live PocketBase access, player-data mutation, or runtime changes. (SC-007, SC-009)
 - [x] T103 Run the entire first-wave suite twice from `tests/characterization/runner.mjs` with the same deterministic fixtures and compare scenario-by-scenario results only after T115 exists. (SC-007, SC-009)
+- [ ] T116 [US3] Implement fail-closed validation in `tests/characterization/runner.mjs` for required runner-owned `fixtureReference`, `seamDecision`, and meaningful evidence metadata so a first-wave scenario cannot normalize to PASS when those inputs are missing or invalid; emit a deterministic blocking reason and non-zero suite exit for invalid metadata, preserve the existing ten-scenario ordering, report shape, offline execution, and no-mutation guarantees, and do not treat the scenario entrypoint path alone as sufficient evidence. This task is an implementation prerequisite for T104. (FR-010, SC-007, SC-008)
 - [ ] T104 Verify the suite fails closed in `tests/characterization/runner.mjs` only after T115 exists when deterministic fixture information, fixture evidence, fixture metadata, or seam data is missing; confirm no live PocketBase or player-data mutation occurs. (FR-010, SC-007, SC-008)
 - [ ] T105 Verify every permanent test in `tests/characterization/promotion-policy.md` was promoted from investigation and that no known bug was silently frozen. (FR-008, FR-009, SC-008)
 - [ ] T106 Verify the MVP boundary in `tests/characterization/scenario-index.md` and `tests/characterization/results-format.md` so P2/P3 surfaces never enter the first wave. (FR-012, SC-004, SC-005)
@@ -338,7 +339,7 @@ Every task must follow this checklist shape:
 | FR-007 | T001, T002, T003, T004, T005, T006, T111, T112, T113, T114 |
 | FR-008 | T008, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
 | FR-009 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099 |
-| FR-010 | T003, T004, T014, T015, T016, T018, T019, T020, T021, T025, T033, T041, T049, T057, T065, T073, T081, T089, T097, T103, T107, T115 |
+| FR-010 | T003, T004, T014, T015, T016, T018, T019, T020, T021, T025, T033, T041, T049, T057, T065, T073, T081, T089, T097, T103, T104, T107, T115, T116 |
 | FR-011 | T012, T014, T015, T024, T032, T040, T048, T056, T064, T072, T080, T088, T096, T111, T112, T113, T114 |
 | FR-012 | T006, T008, T105 |
 
@@ -352,8 +353,8 @@ Every task must follow this checklist shape:
 | SC-004 | T008, T105 |
 | SC-005 | T006, T024, T025, T028, T032, T033, T036, T040, T041, T044, T048, T049, T052, T056, T057, T060, T064, T065, T068, T072, T073, T076, T080, T081, T084, T088, T089, T092, T096, T097, T100, T102, T104, T109, T111, T112, T113, T114 |
 | SC-006 | T007, T008, T009, T022, T023, T026, T030, T031, T034, T038, T039, T042, T046, T047, T050, T055, T058, T062, T063, T066, T070, T071, T074, T078, T079, T082, T086, T087, T090, T094, T095, T098, T103, T111, T112, T113, T114 |
-| SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T025, T029, T033, T037, T041, T045, T049, T053, T054, T057, T061, T065, T069, T073, T077, T081, T085, T089, T093, T097, T101, T102, T103, T115 |
-| SC-008 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099, T104 |
+| SC-007 | T003, T004, T015, T016, T017, T018, T019, T020, T025, T029, T033, T037, T041, T045, T049, T053, T054, T057, T061, T065, T069, T073, T077, T081, T085, T089, T093, T097, T101, T102, T103, T104, T115, T116 |
+| SC-008 | T005, T011, T023, T027, T031, T035, T039, T043, T047, T051, T055, T059, T063, T067, T071, T075, T079, T083, T087, T091, T095, T099, T104, T116 |
 | SC-009 | T004, T013, T014, T017, T029, T037, T045, T053, T054, T061, T069, T077, T085, T093, T101, T102, T105, T106, T109, T115 |
 
 ### 3. Scenario-to-Evidence Matrix
