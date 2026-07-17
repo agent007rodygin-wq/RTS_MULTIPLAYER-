@@ -18,7 +18,7 @@ Define the local deterministic data boundary for the characterization suite.
 - baseline anchors
 - frozen record snapshots
 - replay event sequences
-- expected pass/fail assertions
+- expected status assertions
 - cleanup metadata
 
 ## Forbidden Fixture Content

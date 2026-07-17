@@ -244,7 +244,7 @@ Every task must follow this checklist shape:
 **Independent Test**: Quickstart, contracts, traceability, and final evidence match the implemented runner and fixture boundaries without widening scope or introducing future-wave surfaces.
 
 - [x] T107 Update `specs/002-characterization-tests/quickstart.md` only after the real repository-defined characterization command is known; keep the runner/toolchain implementation-neutral until then. (SC-009)
-- [ ] T108 Sync `specs/002-characterization-tests/contracts/runner-contract.md`, `specs/002-characterization-tests/contracts/fixture-boundary.md`, `specs/002-characterization-tests/contracts/promotion-policy.md`, and `specs/002-characterization-tests/contracts/seam-boundary.md` with the implemented boundaries only if implementation differs from planning. (FR-006, FR-010, SC-002, SC-007)
+- [x] T108 Sync `specs/002-characterization-tests/contracts/runner-contract.md`, `specs/002-characterization-tests/contracts/fixture-boundary.md`, `specs/002-characterization-tests/contracts/promotion-policy.md`, and `specs/002-characterization-tests/contracts/seam-boundary.md` with the implemented boundaries only if implementation differs from planning. (FR-006, FR-010, SC-002, SC-007)
 - [ ] T109 Produce final traceability from scenario to source, fixture, seam, classification, and test in `tests/characterization/traceability.md`; keep any future Feature 003 or runtime refactor blocked until Feature 002 passes. (SC-001, SC-002, SC-006)
 - [ ] T110 Finalize risk-appropriate verification notes and completion evidence in `tests/characterization/reports/final.md`; keep the MVP boundary and explicit future-wave exclusions intact. (SC-004, SC-005, SC-009)
 
