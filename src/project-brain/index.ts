@@ -53,3 +53,4 @@ export * from './mirror-diff.ts';
 export * from './mirror-refresh.ts';
 export * from './mirror-validation.ts';
 export * from './mirror-serialization.ts';
+export * from './agent-request-envelope.ts';
