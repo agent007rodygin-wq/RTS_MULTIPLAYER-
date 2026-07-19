@@ -54,3 +54,4 @@ export * from './mirror-refresh.ts';
 export * from './mirror-validation.ts';
 export * from './mirror-serialization.ts';
 export * from './agent-request-envelope.ts';
+export * from './execution-session.ts';
