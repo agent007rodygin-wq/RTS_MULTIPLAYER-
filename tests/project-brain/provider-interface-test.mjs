@@ -248,6 +248,51 @@ const nonRecoverable = createProviderError({
 assert(nonRecoverable.recoverable === false, 'non-recoverable error');
 
 // ============================================================
+// PROVIDER_INVALID_REQUEST Error Code (Phase 4 Extension)
+// ============================================================
+
+// PROVIDER_INVALID_REQUEST is accepted
+{
+  const err = createProviderError({
+    requestId: 'req-inv',
+    code: 'PROVIDER_INVALID_REQUEST',
+    message: 'Execution precondition failed.',
+    recoverable: false,
+  });
+  assert(err.code === 'PROVIDER_INVALID_REQUEST', 'PROVIDER_INVALID_REQUEST accepted');
+  assert(Object.isFrozen(err), 'PROVIDER_INVALID_REQUEST error is frozen');
+}
+
+// Unknown similar code is rejected
+assertThrows(
+  () => createProviderError({ requestId: 'r1', code: 'PROVIDER_INVALID_INPUT', message: 'Bad', recoverable: false }),
+  'rejects PROVIDER_INVALID_INPUT',
+);
+
+// ProviderResult carrying PROVIDER_INVALID_REQUEST remains deeply frozen
+{
+  const result = createProviderResult({
+    requestId: 'req-inv',
+    status: 'ERROR',
+    error: { requestId: 'req-inv', code: 'PROVIDER_INVALID_REQUEST', message: 'Precondition failed.', recoverable: false },
+  });
+  assert(result.status === 'ERROR', 'PROVIDER_INVALID_REQUEST result status');
+  assert(result.error.code === 'PROVIDER_INVALID_REQUEST', 'PROVIDER_INVALID_REQUEST result error code');
+  assert(Object.isFrozen(result), 'PROVIDER_INVALID_REQUEST result is frozen');
+  assert(Object.isFrozen(result.error), 'PROVIDER_INVALID_REQUEST result error is frozen');
+}
+
+// Request-ID consistency applies to PROVIDER_INVALID_REQUEST
+assertThrows(
+  () => createProviderResult({
+    requestId: 'result-001',
+    status: 'ERROR',
+    error: { requestId: 'different-id', code: 'PROVIDER_INVALID_REQUEST', message: 'Mismatch.', recoverable: false },
+  }),
+  'rejects PROVIDER_INVALID_REQUEST with mismatched error requestId',
+);
+
+// ============================================================
 // Provider Result — Request ID Consistency (LOW-01)
 // ============================================================
 assertThrows(

@@ -40,7 +40,8 @@ export type ProviderErrorCode =
   | 'PROVIDER_RATE_LIMITED'
   | 'PROVIDER_INVALID_RESPONSE'
   | 'PROVIDER_INTERNAL_ERROR'
-  | 'PROVIDER_AUTHENTICATION_ERROR';
+  | 'PROVIDER_AUTHENTICATION_ERROR'
+  | 'PROVIDER_INVALID_REQUEST';
 
 export interface ProviderError {
   readonly requestId: string;
@@ -108,6 +109,7 @@ function normalizeErrorCode(value: unknown): ProviderErrorCode {
     'PROVIDER_INVALID_RESPONSE',
     'PROVIDER_INTERNAL_ERROR',
     'PROVIDER_AUTHENTICATION_ERROR',
+    'PROVIDER_INVALID_REQUEST',
   ];
   if (!validCodes.includes(value as ProviderErrorCode)) {
     throw new Error(`Provider error code must be a valid error code.`);
