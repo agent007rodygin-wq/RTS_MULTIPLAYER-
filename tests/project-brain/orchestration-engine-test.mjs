@@ -315,7 +315,7 @@ function makeThrowingReviewer(message = 'Review crashed') {
 }
 
 // ============================================================
-// Hostile Thrown Object with Throwing toString()
+// Hostile Thrown Object with Throwing toString() — fail-closed at Phase 3
 // ============================================================
 {
   const envelope = makeEnvelope();
@@ -343,7 +343,7 @@ function makeThrowingReviewer(message = 'Review crashed') {
   const outcome = await orchestrateAgentRequest(envelope, hostileProvider, untouchedReviewer);
 
   assert(outcome.decision === 'FAILED', 'hostile exec throw decision FAILED');
-  assert(outcome.summary === 'toString exploded', 'hostile exec throw caught from Phase 3 String()');
+  assert(outcome.summary === 'An unknown error occurred.', 'hostile exec fail-closed at Phase 3 safeErrorMessage');
   assert(outcome.reviewOutcome === undefined, 'hostile exec throw no review outcome');
 }
 

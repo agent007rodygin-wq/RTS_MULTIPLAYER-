@@ -1,6 +1,7 @@
 import type { Provider, ProviderRequest, ProviderResult } from './provider-interface.ts';
 import { createProviderRequest, createProviderResult } from './provider-interface.ts';
 import type { AgentRequestEnvelope } from './agent-request-envelope.ts';
+import { safeErrorMessage } from './safe-error-message.ts';
 
 /**
  * Translates an AgentRequestEnvelope into a ProviderRequest.
@@ -42,7 +43,7 @@ export async function executeAgentRequest(
       error: {
         requestId: envelope.requestId,
         code: 'PROVIDER_INTERNAL_ERROR',
-        message: error instanceof Error ? error.message : String(error),
+        message: safeErrorMessage(error),
         recoverable: true,
       },
     });
@@ -70,7 +71,7 @@ export async function executeAgentRequest(
       error: {
         requestId: envelope.requestId,
         code: 'PROVIDER_INVALID_RESPONSE',
-        message: validationError instanceof Error ? validationError.message : String(validationError),
+        message: safeErrorMessage(validationError),
         recoverable: false,
       },
     });

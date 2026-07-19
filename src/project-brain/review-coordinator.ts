@@ -2,6 +2,7 @@ import { deepFreeze } from './knowledge-artifact.ts';
 import type { Provider, ProviderResult } from './provider-interface.ts';
 import { createProviderRequest, createProviderResult } from './provider-interface.ts';
 import type { AgentRequestEnvelope } from './agent-request-envelope.ts';
+import { safeErrorMessage } from './safe-error-message.ts';
 
 export type ReviewDecision = 'APPROVED' | 'REJECTED' | 'UNABLE_TO_REVIEW';
 
@@ -28,15 +29,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 const VALID_DECISIONS: readonly ReviewDecision[] = ['APPROVED', 'REJECTED', 'UNABLE_TO_REVIEW'];
-
-function safeErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  try {
-    return String(error);
-  } catch {
-    return 'An unknown error occurred.';
-  }
-}
 const VALID_FINDING_SEVERITIES: readonly ReviewFindingSeverity[] = ['Info', 'Warning', 'Error'];
 
 function normalizeText(value: unknown, fieldName: string): string {

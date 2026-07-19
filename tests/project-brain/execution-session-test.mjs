@@ -150,6 +150,20 @@ assert(throwStringResult.status === 'ERROR', 'thrown string status ERROR');
 assert(throwStringResult.error.code === 'PROVIDER_INTERNAL_ERROR', 'thrown string error code');
 assert(throwStringResult.error.message === 'string error', 'thrown string message preserved');
 
+// Hostile thrown object with throwing toString
+const throwHostileProvider = {
+  identity: createProviderIdentity({ providerId: 'mock-hostile', providerVersion: '1.0' }),
+  capabilities: [executableCapability],
+  async execute(_request) {
+    const badObj = { toString() { throw new Error('toString exploded'); } };
+    throw badObj; // eslint-disable-line no-throw-literal
+  },
+};
+const throwHostileResult = await executeAgentRequest(envelope, throwHostileProvider);
+assert(throwHostileResult.status === 'ERROR', 'hostile thrown toString status ERROR');
+assert(throwHostileResult.error.code === 'PROVIDER_INTERNAL_ERROR', 'hostile thrown toString error code');
+assert(throwHostileResult.error.message === 'An unknown error occurred.', 'hostile thrown toString fallback message');
+
 // ============================================================
 // Malformed Provider Result
 // ============================================================
@@ -358,6 +372,7 @@ const failProviders = [
   missingResponseProvider,
   mismatchProvider,
   invalidStatusProvider,
+  throwHostileProvider,
 ];
 
 for (const fp of failProviders) {

@@ -4,6 +4,7 @@ import { createProviderResult } from './provider-interface.ts';
 import { executeAgentRequest } from './execution-session.ts';
 import { reviewAgentExecution, type ReviewOutcome } from './review-coordinator.ts';
 import type { AgentRequestEnvelope } from './agent-request-envelope.ts';
+import { safeErrorMessage } from './safe-error-message.ts';
 
 export type OrchestrationDecision = 'ACCEPTED' | 'REJECTED' | 'FAILED';
 
@@ -15,15 +16,6 @@ export interface OrchestrationOutcome {
   readonly executionResult: ProviderResult;
   readonly reviewOutcome?: ReviewOutcome;
   readonly summary: string;
-}
-
-function safeMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  try {
-    return String(error);
-  } catch {
-    return 'An unknown error occurred.';
-  }
 }
 
 /**
@@ -69,7 +61,7 @@ export async function orchestrateAgentRequest(
   try {
     executionResult = await executeAgentRequest(envelope, executionProvider);
   } catch (error) {
-    return buildSyntheticFailClosedOutcome(orchestrationId, requestId, taskId, safeMessage(error));
+    return buildSyntheticFailClosedOutcome(orchestrationId, requestId, taskId, safeErrorMessage(error));
   }
 
   if (executionResult.requestId !== requestId) {
@@ -107,7 +99,7 @@ export async function orchestrateAgentRequest(
       decision: 'FAILED',
       executionResult,
       reviewOutcome: undefined,
-      summary: safeMessage(error),
+      summary: safeErrorMessage(error),
     });
   }
 
