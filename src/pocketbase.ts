@@ -17,6 +17,8 @@ console.log(`[POCKETBASE STARTUP] buildMarker=${PB_BUILD_MARKER} mode=${PB_BUILD
 const PB_DEBUG_ENABLED = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_DEBUG === '1'
   || (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_VERBOSE_DEBUG === '1';
 const PB_RUNTIME_AUDIT_ENABLED = PB_DEBUG_ENABLED;
+const PB_WRITE_DIAGNOSTICS = PB_DEBUG_ENABLED
+  || (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_PB_WRITE_DIAGNOSTICS === '1';
 
 type RuntimeAuditKind = 'build' | 'permit' | 'timer';
 interface RuntimeAuditContext {
@@ -402,12 +404,21 @@ const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
   clans: ['name', 'leaderId', 'members', 'description', 'gameId', 'data'],
   market: ['sellerId', 'sellerName', 'itemId', 'itemName', 'quantity', 'price', 'timestamp', 'gameId', 'data'],
   elections: ['candidates', 'sheriffId', 'sheriffName', 'deputies', 'electionEndTime', 'firstElectionCompleted', 'kingId', 'kingName', 'queenId', 'queenName', 'votesTotal', 'gameId', 'data'],
+  // leaderboard_profiles: no gameId/data field — all payload keys are top-level schema fields.
+  leaderboard_profiles: ['userId', 'name', 'avatar', 'glory', 'treesChopped', 'monstersDestroyed', 'buildingsDestroyed', 'theftsCommitted', 'level', 'clanId'],
 };
 
 // Fields that should be stored in the data JSON field even though they're not in KNOWN_FIELDS
 const DATA_FIELDS_BY_COLLECTION: Record<string, string[]> = {
   users: ['banEndTime', 'activeCurse', 'lastX', 'lastY', 'timestamp', 'rank', 'clanPermissions', 'avatar', 'extraBuildingPermits', 'treesChopped', 'monstersDestroyed', 'buildingsDestroyed', 'theftsCommitted'],
 };
+
+// Collections that do NOT have a `data` JSON field in the PocketBase schema.
+// For these, we must strip `payload.data` and `gameId` from every write
+// to avoid a 400 Bad Request caused by an unknown field.
+const NO_DATA_FIELD_COLLECTIONS = new Set<string>([
+  'leaderboard_profiles',
+]);
 
 const SYSTEM_FIELDS = ['id', 'collectionId', 'collectionName', 'created', 'updated', 'expand', 'isLocal'];
 const AUTH_FIELDS = ['email', 'emailVisibility', 'verified', 'tokenKey', 'password'];
@@ -420,7 +431,6 @@ function normalizeFiniteCounter(value: unknown): number {
 }
 
 function sanitizeNumericObjectMap(value: unknown): Record<string, number> {
-  if (!value || typeof value !== 'object') return {};
   const sanitized: Record<string, number> = {};
   for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
     sanitized[key] = normalizeFiniteCounter(entry);
@@ -746,6 +756,10 @@ function buildIdLookupFilter(collectionName: string, pbId: string, logicalId: st
   // In PocketBase, unknown fields in filter expressions return 400.
   // Some auth `users` collections may not have `gameId`, so keep users as id-only.
   if (collectionName === 'users') return idFilter;
+  // leaderboard_profiles has no `gameId` field — use `userId` as the logical-id fallback.
+  if (collectionName === 'leaderboard_profiles') {
+    return `${idFilter} || userId = "${pbFilterString(logicalId)}"`;
+  }
   return `${idFilter} || gameId = "${pbFilterString(logicalId)}"`;
 }
 
@@ -1034,6 +1048,8 @@ export async function getDocs(
 }
 
 /** setDoc — create or replace a document (Robust Upsert) */
+async function freshRead(id: string) { try { return await pb.collection('users').getOne(id); } catch { return null; } }
+
 export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
   const pbId = sanitizePbId(ref.id);
   let payload = wrapData(ref.collectionName, { ...data, gameId: ref.id });
@@ -1115,58 +1131,152 @@ export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
           throw updateErr;
         }
       }
+    } else if (ref.collectionName === 'leaderboard_profiles') {
+      // ── ISOLATED LEADERBOARD PATH ──────────────────────────────────────
+      // Resolved exclusively by userId. Never by pbId. Never falls into generic setDoc.
+      // This prevents: pbId collisions, access-rule 404s, and cross-collection pollution.
+      const userId = String(data?.userId ?? '').trim();
+      if (!userId) {
+        throw new Error('leaderboard_profiles requires field userId');
+      }
+      // Strip fields that don't belong in this flat-schema collection
+      delete payload.data;
+      delete payload.gameId;
+      // Query by exact userId only
+      const qResult = await queuedGetList(ref.collectionName, 1, 2, {
+        filter: `userId="${pbFilterString(userId)}"`,
+      });
+      const matches = (qResult.items as RecordModel[]).filter(r => r.userId === userId);
+      if (matches.length > 1) {
+        throw new Error(`Duplicate leaderboard profiles for userId ${userId}`);
+      }
+      const existing = matches[0] || null;
+      if (existing) {
+        console.info('[LeaderboardResolve]', {
+          authId: null, payloadUserId: userId,
+          foundRecordId: existing.id, foundRecordUserId: existing.userId,
+          operation: 'update',
+        });
+        await pb.collection(ref.collectionName).update(existing.id, payload);
+        } else {
+          console.info('[LeaderboardResolve]', {
+            authId: null, payloadUserId: userId,
+            foundRecordId: null, foundRecordUserId: null,
+            operation: 'create',
+          });
+          const { id: _omitId, ...createPayload } = payload;
+          try {
+            await pb.collection(ref.collectionName).create(createPayload);
+          } catch (createErr: any) {
+            // Unique constraint race: another client created the record between our query and create
+            if (createErr?.status === 400 && createErr?.data?.data?.userId?.code === 'validation_not_unique') {
+              // Re-query and update the existing record
+              const retryQ = await queuedGetList(ref.collectionName, 1, 1, {
+                filter: `userId="${pbFilterString(userId)}"`,
+              });
+              if (retryQ.items.length > 0) {
+                await pb.collection(ref.collectionName).update((retryQ.items[0] as RecordModel).id, payload);
+              } else {
+                throw createErr;
+              }
+            } else {
+              throw createErr;
+            }
+          }
+        }
+      clearDeletedRecord(ref.collectionName, String(ref.id), pbId);
     } else {
-      // Non-auth collections: use getList + create/update pattern
+      // Generic non-auth collections
       const list = await queuedGetList(ref.collectionName, 1, 1, {
         filter: buildIdLookupFilter(ref.collectionName, pbId, String(ref.id)),
       });
       if (list.items.length > 0) {
-        // CRITICAL FIX: Preserve existing `data` JSON fields during setDoc updates.
-        // Same issue as updateDoc: PB PATCH replaces entire JSON field.
-        // We use the RAW data.json from the PB record to preserve ALL fields.
         const rawRecord = list.items[0] as RecordModel;
         const rawJson = (rawRecord as AnyRecord).data;
         const knownFields = KNOWN_FIELDS_BY_COLLECTION[ref.collectionName] || [];
-        // Sync any known fields that are in the payload to data.json as well
-        if (!payload.data) payload.data = {};
-        for (const [key, value] of Object.entries(payload)) {
-          if (key === 'data' || SYSTEM_FIELDS.includes(key) || AUTH_FIELDS.includes(key)) continue;
-          if (knownFields.includes(key) && value !== undefined) {
-            payload.data[key] = value;
-          }
-        }
-        // Merge with existing raw data.json
-        if (rawJson && typeof rawJson === 'object') {
-          payload.data = { ...rawJson, ...payload.data };
-        }
-        // If payload.data is empty, remove it
-        if (Object.keys(payload.data).length === 0) {
+        if (NO_DATA_FIELD_COLLECTIONS.has(ref.collectionName)) {
           delete payload.data;
-        }
-        const targetId = rawRecord.id;
-        await pb.collection(ref.collectionName).update(targetId, payload);
-        clearDeletedRecord(ref.collectionName, String(ref.id), pbId, String(targetId));
-      } else {
-        try {
-          // IMPORTANT: For new records, also sync known fields (like hp, maxHp) into data.json.
-          // This ensures they survive future PocketBase schema migrations that might reset
-          // top-level field defaults to 0 for existing records.
-          const knownFieldsForCreate = KNOWN_FIELDS_BY_COLLECTION[ref.collectionName] || [];
+          delete payload.gameId;
+        } else {
           if (!payload.data) payload.data = {};
           for (const [key, value] of Object.entries(payload)) {
             if (key === 'data' || SYSTEM_FIELDS.includes(key) || AUTH_FIELDS.includes(key)) continue;
-            if (knownFieldsForCreate.includes(key) && value !== undefined) {
+            if (knownFields.includes(key) && value !== undefined) {
               payload.data[key] = value;
             }
           }
-          if (Object.keys(payload.data).length === 0) delete payload.data;
+          if (rawJson && typeof rawJson === 'object') {
+            payload.data = { ...rawJson, ...payload.data };
+          }
+          if (Object.keys(payload.data).length === 0) {
+            delete payload.data;
+          }
+        }
+        const targetId = rawRecord.id;
+        try {
+    await pb.collection(ref.collectionName).update(targetId, payload);
+
+    if (PB_WRITE_DIAGNOSTICS && ref.collectionName === 'users' && payload.data && payload.data.banEndTime) {
+      const verify = await freshRead(targetId);
+      console.log('[PBWriteVerify]', {
+        recordId: targetId,
+        sentBanEndTime: payload.data.banEndTime,
+        sentBodyTopKeys: Object.keys(payload).slice(0, 20),
+        sentDataKeys: Object.keys(payload.data || {}).slice(0, 30),
+        respTopKeys: Object.keys(verify || {}).slice(0, 20),
+        respData: (verify as any)?.data,
+        respDataRawType: typeof (verify as any)?.data,
+        respBanEndTime: ((verify as any)?.data && typeof (verify as any).data === 'object') ? (verify as any).data.banEndTime : (verify as any)?.banEndTime,
+      });
+    }
+          clearDeletedRecord(ref.collectionName, String(ref.id), pbId, String(targetId));
+        } catch (updateErr: any) {
+          if (updateErr?.status === 404) {
+            try {
+              await pb.collection(ref.collectionName).create({ ...payload, id: pbId });
+              clearDeletedRecord(ref.collectionName, String(ref.id), pbId);
+            } catch (createFallbackErr: any) {
+              const alreadyExists =
+                createFallbackErr?.status === 400 &&
+                createFallbackErr?.data?.data?.id?.code === 'validation_not_unique';
+              if (!alreadyExists) {
+                throw createFallbackErr;
+              }
+            }
+          } else {
+            throw updateErr;
+          }
+        }
+      } else {
+        try {
+          const knownFieldsForCreate = KNOWN_FIELDS_BY_COLLECTION[ref.collectionName] || [];
+          if (NO_DATA_FIELD_COLLECTIONS.has(ref.collectionName)) {
+            delete payload.data;
+            delete payload.gameId;
+          } else {
+            if (!payload.data) payload.data = {};
+            for (const [key, value] of Object.entries(payload)) {
+              if (key === 'data' || SYSTEM_FIELDS.includes(key) || AUTH_FIELDS.includes(key)) continue;
+              if (knownFieldsForCreate.includes(key) && value !== undefined) {
+                payload.data[key] = value;
+              }
+            }
+            if (Object.keys(payload.data).length === 0) delete payload.data;
+          }
           await pb.collection(ref.collectionName).create({ ...payload, id: pbId });
           clearDeletedRecord(ref.collectionName, String(ref.id), pbId);
         } catch (createErr: any) {
-          // If another client created the same sanitized ID between lookup/create,
-          // fall back to update to avoid duplicate-id spam.
           if (createErr?.status === 400 && createErr?.data?.data?.id?.code === 'validation_not_unique') {
-            await pb.collection(ref.collectionName).update(pbId, payload);
+            const retryList = await queuedGetList(ref.collectionName, 1, 1, {
+              filter: buildIdLookupFilter(ref.collectionName, pbId, String(ref.id)),
+            });
+            if (retryList.items.length > 0) {
+              const existingRecord = retryList.items[0] as RecordModel;
+              await pb.collection(ref.collectionName).update(existingRecord.id, payload);
+            } else {
+              const { id: _omit, ...createPayload } = payload;
+              await pb.collection(ref.collectionName).create(createPayload);
+            }
             clearDeletedRecord(ref.collectionName, String(ref.id), pbId);
           } else {
             throw createErr;
@@ -1205,6 +1315,17 @@ export async function updateDoc(
   ref: DocRef,
   data: AnyRecord
 ): Promise<void> {
+  // Diagnostic: log every users update with incoming keys and banEndTime
+  if (ref.collectionName === 'users' && PB_WRITE_DIAGNOSTICS) {
+    console.warn('[UpdateDocEntry]', {
+      recordId: ref.id,
+      incomingKeys: Object.keys(data || {}),
+      incomingBanEndTime: (data as any)?.banEndTime,
+      hasGold: 'gold' in (data || {}),
+      goldType: typeof (data as any)?.gold,
+      goldIsIncrement: (data as any)?.gold?.__sentinel === 'increment',
+    });
+  }
   const logicalId = String(ref.id);
   const pbId = sanitizePbId(ref.id);
   let lookupSucceeded = false;
@@ -1406,12 +1527,43 @@ export async function updateDoc(
     if (currentRawDataJson) {
       payload.data = { ...currentRawDataJson, ...payload.data };
     }
+    if (PB_WRITE_DIAGNOSTICS && ref.collectionName === 'users' && payload.data) {
+      console.log('[StartupUserWrite]', {
+        recordId: targetId,
+        banBefore: currentRawDataJson?.banEndTime,
+        banInIncoming: (() => { const k = Object.keys(payload.data || {}); return k.includes('banEndTime') ? payload.data?.banEndTime : 'omitted'; })(),
+        banAfterMerge: payload.data?.banEndTime,
+        payloadDataKeys: Object.keys(payload.data || {}).slice(0, 40),
+        source: new Error().stack?.split('\n').slice(1, 4).map(s => s.trim()).join(' ← '),
+      });
+    }
     // If payload.data is empty, remove it to avoid sending an empty object
     if (Object.keys(payload.data).length === 0) {
       delete payload.data;
     }
 
+    if (PB_WRITE_DIAGNOSTICS && ref.collectionName === 'users') {
+      const inData = payload.data && typeof payload.data === 'object' ? payload.data.banEndTime : undefined;
+      console.warn('[PBWriteVerify:BEFORE]', {
+        recordId: targetId,
+        sentBanEndTime: inData ?? payload.banEndTime,
+        hasDataField: !!payload.data, dataFieldType: typeof payload.data,
+      });
+    }
+
     await pb.collection(ref.collectionName).update(targetId, payload);
+
+    if (PB_WRITE_DIAGNOSTICS && ref.collectionName === 'users') {
+      try {
+        const fresh = await pb.collection('users').getOne(targetId);
+        const fd = (fresh as any)?.data;
+        const parsed = (fd && typeof fd === 'object') ? fd : {};
+        console.warn('[PBWriteVerify:AFTER]', {
+          recordId: targetId, respDataType: typeof fd,
+          respBanEndTime: parsed?.banEndTime,
+        });
+      } catch { console.warn('[PBWriteVerify:AFTER]', { recordId: targetId, error: 'freshRead failed' }); }
+    }
     clearDeletedRecord(ref.collectionName, logicalId, pbId, String(targetId));
     logPbAudit('updateDoc-end', {
       collectionName: ref.collectionName,
@@ -2298,7 +2450,10 @@ export function writeBatch(_db: unknown) {
       ops.push(() => deleteDoc(ref));
     },
     commit: async () => {
-      await Promise.all(ops.map((op) => op()));
+      // Execute sequentially to prevent concurrent read-modify-write races on same document
+      for (const op of ops) {
+        await op();
+      }
     },
   };
 }

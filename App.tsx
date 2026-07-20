@@ -3183,6 +3183,8 @@ const App: React.FC = () => {
     const tutorialPersistStartedRef = useRef(false);
     const townHallTutorialPersistStartedRef = useRef(false);
     const leaderboardStatsRecoveryAttemptedRef = useRef<string | null>(null);
+    const leaderboardSyncDisabledRef = useRef(false);
+    const leaderboardSyncInFlightRef = useRef(false);
     const leaderboardProfileSyncSignatureRef = useRef<string | null>(null);
     const lastInitializedAuthUidRef = useRef<string | null>(null);
     const lastMigratedGuestBuildingsUidRef = useRef<string | null>(null);
@@ -3621,6 +3623,88 @@ const App: React.FC = () => {
 
 
     // Primary logic hooks and helpers (declared early to avoid TDZ)
+    // Ban reconciliation: 0 = explicit unban, stale < active is ignored, higher extends
+    const reconcileBanEndTime = useCallback((prev, incoming) => {
+        if (typeof incoming !== 'number' || !Number.isFinite(incoming)) {
+            console.log('[BanStateTransition] NON_FINITE', { prev, incoming });
+            return prev;
+        }
+        if (incoming !== 0 && incoming > 0 && incoming < 1_000_000_000_000) {
+            console.error('[BanIntegrity] Suspicious banEndTime — expected ms timestamp, got:', incoming);
+            return prev;
+        }
+        let next: number;
+        if (incoming === 0) next = 0;
+        else if (prev <= Date.now()) next = incoming;
+        else next = Math.max(prev, incoming);
+        if (next !== prev) {
+            console.log('[BanStateTransition]', { prev, incoming, next, now: Date.now(), action: next === 0 ? 'UNBAN' : next > prev ? 'EXTEND' : incoming === prev ? 'NOCHANGE' : 'PRESERVE_STALE' });
+        }
+        return next;
+    }, []);
+
+    // Ban deep-probe — development only. Reads PocketBase directly, bypasses React state.
+    useEffect(() => {
+        const history: Array<Record<string, unknown>> = [];
+        
+        async function readServer(): Promise<Record<string, unknown>> {
+            try {
+                const uid = userRef.current?.uid;
+                if (!uid) return { error: 'no_user' };
+                const r = await pb.collection('users').getOne(uid);
+                // Record the raw shape: data field may be object or JSON string
+                const rawData = (r as any).data;
+                const rawDataType = typeof rawData;
+                let parsed: any = rawData;
+                if (rawDataType === 'string') {
+                    try { parsed = JSON.parse(rawData); } catch { parsed = {}; }
+                }
+                return {
+                    recordId: r.id,
+                    collectionId: (r as any).collectionId,
+                    rawDataType,
+                    topLevelKeys: Object.keys(r as object).slice(0, 30),
+                    banEndTime: (parsed && typeof parsed === 'object') ? parsed.banEndTime : (r as any).banEndTime,
+                    banType: typeof ((parsed && typeof parsed === 'object') ? parsed.banEndTime : (r as any).banEndTime),
+                    activeCurse: (r as any).activeCurse,
+                };
+            } catch (e: any) { return { error: e?.message || String(e) }; }
+        }
+        
+        (window as any).__banDeepProbe = {
+            readServer,
+            async capture(label: string) {
+                const now = Date.now();
+                const sv = await readServer();
+                const e = {
+                    seq: history.length, label, capturedAt: now,
+                    authUserId: (pb.authStore as any)?.model?.id || null,
+                    appUserId: userRef.current?.uid || null,
+                    serverRecordId: sv.recordId,
+                    serverBanEndTime: sv.banEndTime,
+                    serverType: sv.type,
+                    localBanEndTime: banEndTimeRef.current,
+                    allUsersBanEndTime: (allUsersRef.current as any)[userRef.current?.uid || '']?.banEndTime,
+                    isBanned: (banEndTimeRef.current || 0) > now,
+                    initialLoadDone: (initialLoadDone as any)?.current,
+                    authReady: isAuthReadyRef.current,
+                };
+                history.push(e); console.table([e]); return e;
+            },
+            getHistory: () => [...history],
+            clear: () => { history.length = 0; },
+        };
+        
+        // Auto-capture at key points
+        const origCapture = (window as any).__banReentryProbe?.capture;
+        if (origCapture) {
+            (window as any).__banReentryProbe.capture = async (l: string) => {
+                await (window as any).__banDeepProbe.capture(l);
+                origCapture(l);
+            };
+        }
+    }, []);
+
     const isBanned = useCallback(() => {
         return banEndTime > currentTime;
     }, [banEndTime, currentTime]);
@@ -4114,6 +4198,8 @@ const App: React.FC = () => {
     const playerGloryRef = useRef(playerGlory);
     const playerLevelRef = useRef(playerLevel);
     const playerGoldRef = useRef(playerGold);
+    const banEndTimeRef = useRef(banEndTime);
+    useEffect(() => { banEndTimeRef.current = banEndTime; }, [banEndTime]);
     const playerLeaderboardStatsRef = useRef(playerLeaderboardStats);
     useEffect(() => { playerLeaderboardStatsRef.current = playerLeaderboardStats; }, [playerLeaderboardStats]);
     useEffect(() => {
@@ -6305,6 +6391,9 @@ const App: React.FC = () => {
             });
             setUser(currentUser);
             setIsAuthReady(true);
+            (window as any).__banReentryProbe?.capture('REENTRY_AUTH_RESOLVED');
+            setTimeout(() => (window as any).__banReentryProbe?.capture('REENTRY_AFTER_2_SECONDS'), 2000);
+            setTimeout(() => (window as any).__banReentryProbe?.capture('REENTRY_AFTER_AUTOSAVE'), 7000);
             if (currentUser) {
                 if (lastInitializedAuthUidRef.current && lastInitializedAuthUidRef.current !== currentUser.uid) {
                     setPlayerActiveCurse(null);
@@ -6720,6 +6809,7 @@ const App: React.FC = () => {
     };
 
     const handleLogout = async () => {
+        (window as any).__banReentryProbe?.capture('BEFORE_GAME_EXIT');
         logStartupStep('logout_started', { uid: user?.uid || null });
         // Save player position before logout
         if (user && initialLoadDone.current) {
@@ -6910,7 +7000,14 @@ const App: React.FC = () => {
                         setPlayerGlory(dbGlory);
                     }
                 }
-                setPlayerReputation(Math.max(0, Number(data.reputation) || 0));
+                // Always hydrate banEndTime on every snapshot, not just initial load
+                const hasBanField = Object.prototype.hasOwnProperty.call(data, 'banEndTime');
+                if (hasBanField) {
+                    const normalizedBanEndTime = Number(data.banEndTime || 0) || 0;
+                    setBanEndTime(prev => reconcileBanEndTime(prev, normalizedBanEndTime));
+                    setTimeout(() => (window as any).__banReentryProbe?.capture('REENTRY_USER_SNAPSHOT'), 0);
+                }
+                setPlayerActiveCurse(data.activeCurse || null);
                 const cachedLeaderboardStats = readCachedLeaderboardStats(user.uid);
                 const mergedLeaderboardStats = mergeLocalUserStatCounters(data, cachedLeaderboardStats);
                 setPlayerLeaderboardStats(mergedLeaderboardStats);
@@ -6976,7 +7073,6 @@ const App: React.FC = () => {
                     const snapshotClanId = normalizeClanIdValue(data.clanId);
                     return snapshotClanId ?? prev ?? null;
                 });
-                setBanEndTime(data.banEndTime || 0);
                 setPlayerActiveCurse(data.activeCurse || null);
                 if (data.name) setPlayerName(repairMojibakeCp1251Utf8(data.name));
                 const resolvedOwnAvatar = resolveUserAvatar(data, readCachedAvatar(user?.uid) || user?.photoURL || null);
@@ -7030,7 +7126,9 @@ const App: React.FC = () => {
                             rank: data.rank ?? 0,
                             clanPermissions: data.clanPermissions || { canInvite: false, canGrantStars: false },
                             activeCurse: data.activeCurse || null,
-                            banEndTime: data.banEndTime || 0,
+                                    banEndTime: Object.prototype.hasOwnProperty.call(data, 'banEndTime')
+                                        ? (data.banEndTime || 0)
+                                        : (prev[selectedPlayerId]?.banEndTime || 0),
                             gender: data.gender || null,
                             ...getUserStatCounters(data),
                         }
@@ -7248,10 +7346,10 @@ const App: React.FC = () => {
             if (!snap.exists()) return;
             const data = snap.data();
 
-            // Update ban state
+            // Update ban state — 0 means explicit unban (authoritative), all other values are monotonic
             if (data.banEndTime !== undefined) {
                 const normalizedBanEndTime = Number(data.banEndTime || 0) || 0;
-                setBanEndTime(normalizedBanEndTime);
+                setBanEndTime(prev => reconcileBanEndTime(prev, normalizedBanEndTime));
                 if (normalizedBanEndTime > Date.now()) {
                     setActiveChatTab('banya');
                 }
@@ -7291,7 +7389,7 @@ const App: React.FC = () => {
                         rank: data.rank ?? existing.rank ?? 0,
                         clanPermissions: data.clanPermissions || existing.clanPermissions || { canInvite: false, canGrantStars: false },
                         activeCurse: newActiveCurse,
-                        banEndTime: newBanEndTime,
+                        banEndTime: reconcileBanEndTime(existing.banEndTime || 0, newBanEndTime),
                         gender: data.gender || existing.gender || null,
                         ...getUserStatCounters(data),
                     },
@@ -7404,7 +7502,9 @@ const App: React.FC = () => {
                             rank: memberData.rank ?? 0,
                             clanPermissions: memberData.clanPermissions || memberData.data?.clanPermissions || { canInvite: false, canGrantStars: false },
                             activeCurse: memberData.activeCurse || null,
-                            banEndTime: memberData.banEndTime || 0,
+                            banEndTime: Object.prototype.hasOwnProperty.call(memberData, 'banEndTime')
+                                ? (memberData.banEndTime || 0)
+                                : (updated[uid]?.banEndTime || 0),
                             gender: memberData.gender || memberData.data?.gender || null,
                             ...getUserStatCounters(memberData),
                         };
@@ -7497,8 +7597,11 @@ const App: React.FC = () => {
 
         const presenceDocRef = doc(db, 'presence', user.uid);
         const leaderboardProfileDocRef = doc(db, LEADERBOARD_PROFILES_COLLECTION, user.uid);
+        let leaderboardSyncFailCount = 0;
         const syncLeaderboardProfile = async () => {
+            if (leaderboardSyncDisabledRef.current || leaderboardSyncInFlightRef.current) return;
             if (!initialLoadDone.current) return;
+            leaderboardSyncInFlightRef.current = true;
 
             const leaderboardStats = getUserStatCounters(playerLeaderboardStatsRef.current);
             const payload = {
@@ -7518,8 +7621,34 @@ const App: React.FC = () => {
             const nextSignature = JSON.stringify(payload);
             if (leaderboardProfileSyncSignatureRef.current === nextSignature) return;
 
-            await setDoc(leaderboardProfileDocRef, payload);
-            leaderboardProfileSyncSignatureRef.current = nextSignature;
+            let writeOk = false;
+            try {
+                await setDoc(leaderboardProfileDocRef, payload);
+                leaderboardSyncFailCount = 0;
+                writeOk = true;
+            } catch (e: any) {
+                leaderboardSyncFailCount++;
+                const isDuplicate = e?.message?.includes('Duplicate leaderboard profiles');
+                console.error('[LeaderboardSyncFailure]', {
+                    failCount: leaderboardSyncFailCount,
+                    status: e?.status,
+                    message: e?.message,
+                    data: e?.data,
+                });
+                // Duplicate errors are non-retriable — stop immediately
+                if (isDuplicate) {
+                    console.warn('[LeaderboardSync] Duplicate profiles detected — disabling sync permanently');
+                    leaderboardSyncDisabledRef.current = true;
+                } else if (leaderboardSyncFailCount >= 5) {
+                    console.warn('[LeaderboardSync] Stopping retries after', leaderboardSyncFailCount, 'consecutive failures');
+                    leaderboardSyncDisabledRef.current = true;
+                }
+            } finally {
+                leaderboardSyncInFlightRef.current = false;
+            }
+            if (writeOk) {
+                leaderboardProfileSyncSignatureRef.current = nextSignature;
+            }
         };
 
         const updatePresence = async () => {
@@ -7797,7 +7926,9 @@ const App: React.FC = () => {
                             reputation: current.reputation ?? data.reputation,
                             avatar: resolveUserAvatar(data, current.avatar || null),
                             activeCurse: data.activeCurse || current.activeCurse || null,
-                            banEndTime: data.banEndTime || current.banEndTime || 0,
+                            banEndTime: Object.prototype.hasOwnProperty.call(data, 'banEndTime')
+                                ? (data.banEndTime || 0)
+                                : (current.banEndTime || 0),
                             clanId: data.clanId ?? current.clanId ?? null,
                             rank: data.rank ?? current.rank ?? 0,
                             clanPermissions: data.clanPermissions || current.clanPermissions || { canInvite: false, canGrantStars: false },
@@ -7878,7 +8009,7 @@ const App: React.FC = () => {
                                     reputation: data.reputation || 0,
                                     avatar: resolveUserAvatar(data),
                                     activeCurse: data.activeCurse || null,
-                                    banEndTime: data.banEndTime || 0,
+                            banEndTime: Object.prototype.hasOwnProperty.call(data, 'banEndTime') ? (data.banEndTime || 0) : (prev[selectedPlayerId]?.banEndTime || 0),
                                     rank: data.rank ?? 0,
                                     clanPermissions: data.clanPermissions || { canInvite: false, canGrantStars: false },
                                     gender: data.gender || null,
@@ -9079,16 +9210,19 @@ const App: React.FC = () => {
 
         // Find the target user's UID and update their banEndTime in PocketBase
         const targetUser = Object.values(allUsersRef.current).find((u: any) => u.name === selectedChatUser) as any;
-        if (targetUser) {
-            const targetUid = targetUser.uid;
-            const newBanEndTime = Date.now() + durationMinutes * 60 * 1000;
-            updateDoc(doc(db, 'users', targetUid), { banEndTime: newBanEndTime })
-                .catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`));
+        if (!targetUser) {
+            alert('Игрок не найден.');
+            return;
         }
+        const targetUid = targetUser.uid;
+        const existingBanEnd = Number(targetUser.banEndTime || 0) || 0;
+        const newBanEndTime = Math.max(existingBanEnd, Date.now()) + durationMinutes * 60 * 1000;
+        updateDoc(doc(db, 'users', targetUid), { banEndTime: newBanEndTime })
+            .catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`));
 
         // Also update local state if banning self
-        if (selectedChatUser === playerName) {
-            setBanEndTime(Date.now() + durationMinutes * 60 * 1000);
+        if (targetUid === user.uid) {
+            setBanEndTime(prev => Math.max(prev || 0, newBanEndTime));
         }
 
         setShowBanMenu(false);
@@ -9101,22 +9235,64 @@ const App: React.FC = () => {
             return;
         }
 
-        const newBanEndTime = Date.now() + durationMinutes * 60 * 1000;
-        console.log('[BanDebug] Banning player:', targetUid, 'until:', newBanEndTime, 'minutes:', durationMinutes);
-        
-        const batch = writeBatch(db);
-        batch.update(doc(db, 'users', targetUid), { banEndTime: newBanEndTime });
-        batch.update(doc(db, 'users', user.uid), { gold: increment(-cost) });
+        if (targetUid === user.uid) {
+            // Self-ban: use direct updateDoc (same-user writes pass updateRule)
+            const localBanEnd = banEndTime || 0;
+            const remoteBanEnd = allUsers[targetUid]?.banEndTime || 0;
+            const existingBanEnd = Math.max(Number(localBanEnd) || 0, Number(remoteBanEnd) || 0);
+            const base = Math.max(existingBanEnd, Date.now());
+            const newBanEndTime = base + durationMinutes * 60 * 1000;
 
+            const batch = writeBatch(db);
+            batch.update(doc(db, 'users', targetUid), { banEndTime: newBanEndTime, gold: increment(-cost) });
+
+            try {
+                await batch.commit();
+                setPlayerGold(prev => prev - cost);
+                setBanEndTime(prev => Math.max(prev, newBanEndTime));
+
+                const banNotification: ChatMessage = {
+                    id: Date.now(),
+                    sender: 'Система',
+                    text: `\u{1F512} ${playerName} забанил себя на ${durationMinutes} мин.`,
+                    type: 'system',
+                    timestamp: Date.now(),
+                    tab: 'general'
+                };
+                const msgId = `${Date.now()}-ban-${targetUid}`;
+                setDoc(doc(db, 'chat_messages', msgId), banNotification).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
+
+                addHistoryLog(`Вы забанили себя на ${durationMinutes} мин. Потрачено ${cost} монет.`, 'social');
+                alert(`Вы успешно себя забанили на ${durationMinutes} мин!`);
+            } catch (e) {
+                handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
+                alert('Ошибка при попытке забанить себя.');
+            }
+            return;
+        }
+
+        // Remote ban: use secure server endpoint
         try {
-            await batch.commit();
-            console.log('[BanDebug] Ban batch committed successfully');
-            setPlayerGold(prev => prev - cost);
+            const response = await pb.send('/api/game/ban-player', {
+                method: 'POST',
+                body: { targetUserId: targetUid, durationMinutes },
+            });
+
+            if (!response || !response.success) {
+                const errMsg = response?.error === 'INSUFFICIENT_GOLD'
+                    ? 'Недостаточно золота!'
+                    : response?.error === 'TARGET_NOT_FOUND'
+                        ? 'Игрок не найден.'
+                        : `Ошибка бана: ${response?.error || 'неизвестная ошибка'}`;
+                alert(errMsg);
+                return;
+            }
+
+            setPlayerGold(response.issuerGold);
 
             const targetUser = allUsers[targetUid];
             const targetName = targetUser?.name || 'неизвестный';
-            
-            // Send system message to general chat about the ban
+
             const banNotification: ChatMessage = {
                 id: Date.now(),
                 sender: 'Система',
@@ -9127,16 +9303,22 @@ const App: React.FC = () => {
             };
             const msgId = `${Date.now()}-ban-${targetUid}`;
             setDoc(doc(db, 'chat_messages', msgId), banNotification).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
-            
+
             addHistoryLog(`Игрок ${targetName} забанен на ${durationMinutes} мин. Потрачено ${cost} монет.`, 'social');
             alert(`Игрок ${targetName} успешно забанен на ${durationMinutes} мин!`);
-
-            if (targetUid === user.uid) {
-                setBanEndTime(newBanEndTime);
+        } catch (e: any) {
+            console.error('[ban-player] Endpoint error:', {
+                status: e?.status,
+                message: e?.message,
+                response: e?.response,
+                data: e?.data,
+            });
+            if (e?.status === 401) {
+                alert('Необходима авторизация.');
+            } else {
+                const detail = (e?.response?.data || e?.data)?.error || e?.message || '';
+                alert('Ошибка соединения с сервером.' + (detail ? ` (${detail})` : ''));
             }
-        } catch (e) {
-            handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
-            alert('Ошибка при попытке забанить игрока.');
         }
     };
     const handleCursePlayerByUid = async (targetUid: string, cost: number, durationMinutes: number, prefix: string, animalName: string) => {
@@ -9152,8 +9334,13 @@ const App: React.FC = () => {
         console.log('[CurseDebug] Cursing player:', targetUid, 'with prefix:', prefix, 'endTime:', activeCurse.endTime);
 
         const batch = writeBatch(db);
-        batch.update(doc(db, 'users', targetUid), { activeCurse });
-        batch.update(doc(db, 'users', user.uid), { gold: increment(-cost) });
+        if (targetUid === user.uid) {
+            // Self-curse: combine curse + gold into one atomic update
+            batch.update(doc(db, 'users', targetUid), { activeCurse, gold: increment(-cost) });
+        } else {
+            batch.update(doc(db, 'users', targetUid), { activeCurse });
+            batch.update(doc(db, 'users', user.uid), { gold: increment(-cost) });
+        }
 
         try {
             await batch.commit();
