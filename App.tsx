@@ -163,74 +163,21 @@ const handleGameLoopError = (error: unknown, operationType: OperationType, path:
 
 // Constants
 const ZOOM_LEVELS = [1, 1.5, 2, 2.5];
-const TILE_WIDTH = 128;
-const TILE_HEIGHT = 64;
 const PLAYER_COLORS = ['#4299E1', '#F56565', '#48BB78', '#ECC94B'];
-const WORLD_WIDTH_TILES = 200;
-const WORLD_HEIGHT_TILES = 200;
-const ZONES_X = 5;
-const ZONES_Y = 5;
-const ZONE_SIZE = 40; // 40x40 tiles per zone to make 200x200 total
+// World geometry and zone helpers — canonical module src/world.js
+import {
+    TILE_WIDTH, TILE_HEIGHT,
+    WORLD_WIDTH_TILES, WORLD_HEIGHT_TILES,
+    ZONES_X, ZONES_Y, ZONE_SIZE,
+    wrapCoord, normalizeWorldCoord,
+    getWrappedDelta, getWrappedDirectionToTarget,
+    getWrappedManhattanDistance, getWrappedChebyshevDistance,
+    getCardinalNeighborTiles, getClosestWrappedWorldCoords,
+    getZoneId,
+} from './src/world.js';
 const ZONE_SYNC_MAX_RETRIES = 2;
 const ZONE_SYNC_RETRY_DELAY_MS = 1500;
 const RENDER_RADIUS = 36; // Reduce initial draw work to improve FPS/loading on fresh sessions
-const wrapCoord = (v: number, max: number) => ((v % max) + max) % max;
-const normalizeWorldCoord = (value: number, max: number, isWrappedWorld: boolean) =>
-    isWrappedWorld ? wrapCoord(value, max) : value;
-const getWrappedDelta = (from: number, to: number, size: number, isWrappedWorld: boolean) => {
-    let delta = to - from;
-    if (!isWrappedWorld) return delta;
-    if (delta > size / 2) delta -= size;
-    else if (delta < -size / 2) delta += size;
-    return delta;
-};
-const getWrappedDirectionToTarget = (
-    from: Pick<PlacedBuilding, 'x' | 'y'>,
-    to: Pick<PlacedBuilding, 'x' | 'y'>,
-    isWrappedWorld: boolean
-) => ({
-    dx: getWrappedDelta(from.x, to.x, WORLD_WIDTH_TILES, isWrappedWorld),
-    dy: getWrappedDelta(from.y, to.y, WORLD_HEIGHT_TILES, isWrappedWorld)
-});
-const getWrappedManhattanDistance = (
-    from: Pick<PlacedBuilding, 'x' | 'y'>,
-    to: Pick<PlacedBuilding, 'x' | 'y'>,
-    isWrappedWorld: boolean
-) => Math.abs(getWrappedDelta(from.x, to.x, WORLD_WIDTH_TILES, isWrappedWorld)) +
-    Math.abs(getWrappedDelta(from.y, to.y, WORLD_HEIGHT_TILES, isWrappedWorld));
-const getWrappedChebyshevDistance = (
-    from: Pick<PlacedBuilding, 'x' | 'y'>,
-    to: Pick<PlacedBuilding, 'x' | 'y'>,
-    isWrappedWorld: boolean
-) => Math.max(
-    Math.abs(getWrappedDelta(from.x, to.x, WORLD_WIDTH_TILES, isWrappedWorld)),
-    Math.abs(getWrappedDelta(from.y, to.y, WORLD_HEIGHT_TILES, isWrappedWorld))
-);
-const getCardinalNeighborTiles = (
-    x: number,
-    y: number,
-    isWrappedWorld: boolean
-): Array<{ x: number; y: number; dx: number; dy: number }> => [
-    { x: x + 1, y, dx: 1, dy: 0 },
-    { x: x - 1, y, dx: -1, dy: 0 },
-    { x, y: y + 1, dx: 0, dy: 1 },
-    { x, y: y - 1, dx: 0, dy: -1 }
-].map((neighbor) => ({
-    ...neighbor,
-    x: normalizeWorldCoord(neighbor.x, WORLD_WIDTH_TILES, isWrappedWorld),
-    y: normalizeWorldCoord(neighbor.y, WORLD_HEIGHT_TILES, isWrappedWorld)
-}));
-const getClosestWrappedWorldCoords = (
-    x: number,
-    y: number,
-    refX: number,
-    refY: number,
-    isWrappedWorld: boolean
-) => ({
-    x: isWrappedWorld ? x + Math.round((refX - x) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : x,
-    y: isWrappedWorld ? y + Math.round((refY - y) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : y
-});
-const getZoneId = (x: number, y: number) => `${Math.floor(x / ZONE_SIZE)}_${Math.floor(y / ZONE_SIZE)}`;
 const GOLD_PER_CHOP = 5000000;
 const TREE_HP = 3;
 const TREE_SERVER_HIT_ENERGY_COST = 2;

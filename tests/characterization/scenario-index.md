@@ -29,3 +29,10 @@ All scenarios start as `UNCONFIRMED_RUNTIME_BEHAVIOR`.
 - Slice B protects time-based completion and reward delivery next.
 - Slice C protects optimistic rollback and late-ack reconciliation last.
 - P2 and P3 surfaces are excluded from the first wave.
+
+## Post-First-Wave Slices
+
+| # | Scenario | Group | Initial Classification | Freeze Slice | Evidence Ref |
+| --- | --- | --- | --- | --- | --- |
+| 11–22 | Monster AI (targeting, movement, patrol, crowding, combat) | Monster Runtime | `UNCONFIRMED_RUNTIME_BEHAVIOR` | D | EA-5 |
+| 23 | World geometry consolidation — single canonical `src/world.js` | World Architecture | `UNCONFIRMED_RUNTIME_BEHAVIOR` | E (Wave 1) | EA-6 |
