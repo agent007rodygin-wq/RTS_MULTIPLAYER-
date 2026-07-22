@@ -2926,6 +2926,7 @@ const App: React.FC = () => {
     const [musicEnabled, setMusicEnabled] = useState(true);
     const [musicVolume, setMusicVolume] = useState(0.10);
     const [gameSoundsVolume, setGameSoundsVolume] = useState(0.5);
+    const [showZoneDebugButton, setShowZoneDebugButton] = useState(false);
     const gameSoundOpenRef = useRef<HTMLAudioElement | null>(null);
     const gameSoundCloseRef = useRef<HTMLAudioElement | null>(null);
     const gameSoundCoinRef = useRef<HTMLAudioElement | null>(null);
@@ -17828,6 +17829,7 @@ const App: React.FC = () => {
                 autoPlay={musicEnabled}
             />
 
+            {showZoneDebugButton && (
             <div className="fixed bottom-2 left-14 z-[9999]">
                 <button
                     type="button"
@@ -17874,6 +17876,7 @@ const App: React.FC = () => {
                     </div>
                 )}
             </div>
+            )}
 
             {/* ... (MoveMode, OilModal, QuarryModal, UserContextModal, BuildingContextModal, MarketModal, BuildMenu, BuildConfirmation, InventoryModal, ShopModal, ExchangeModal, MapModal, ShoutModal unchanged) ... */}
 
@@ -21460,6 +21463,17 @@ const App: React.FC = () => {
                                                 onChange={(e) => setGameSoundsVolume(parseFloat(e.target.value))}
                                                 className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer"
                                             />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ background: 'rgba(0,0,0,0.25)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <h4 className="text-md font-medium text-gray-200 mb-3">Отладка</h4>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-gray-300">Show Zone Debug</span>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" className="sr-only peer" checked={showZoneDebugButton} onChange={(e) => setShowZoneDebugButton(e.target.checked)} />
+                                                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                            </label>
                                         </div>
                                     </div>
 
