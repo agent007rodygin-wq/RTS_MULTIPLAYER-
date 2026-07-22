@@ -19021,7 +19021,7 @@ const App: React.FC = () => {
                     className="absolute inset-0 bg-black/70 flex items-center justify-center z-50"
                     onClick={() => {
                         if (isBuildingActionProcessing) return;
-                        setBuildConfirmation({ ...buildConfirmation, visible: false });
+                        setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     }}
                 >
                     <div className="bg-gray-800/90 w-96 rounded-xl border border-gray-600 flex flex-col" onClick={e => e.stopPropagation()}>
@@ -19030,7 +19030,7 @@ const App: React.FC = () => {
                             <button
                                 onClick={() => {
                                     if (isBuildingActionProcessing) return;
-                                    setBuildConfirmation({ ...buildConfirmation, visible: false });
+                                    setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                                 }}
                                 disabled={isBuildingActionProcessing}
                                 className={`text-gray-400 ${isBuildingActionProcessing ? 'cursor-not-allowed opacity-50' : 'hover:text-white'}`}
@@ -19120,7 +19120,7 @@ const App: React.FC = () => {
                             <button
                                 onClick={() => {
                                     if (isBuildingActionProcessing) return;
-                                    setBuildConfirmation({ ...buildConfirmation, visible: false });
+                                    setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                                     setBuildMenu({ visible: true, x: buildConfirmation.x, y: buildConfirmation.y });
                                 }}
                                 disabled={isBuildingActionProcessing}
