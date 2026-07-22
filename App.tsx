@@ -239,7 +239,6 @@ import { executeMonsterMovementBatch } from './src/game/monsters/monsterMovement
 import { executeMonsterAttackBatch } from './src/game/monsters/monsterAttackRuntime.js';
 import { executeBronekurSpawn, reconcileRegularMonstersForZone } from './src/game/monsters/monsterSpawnRuntime.js';
 import { buildMonsterWorldSpawnPlan } from './src/game/monsters/monsterWorldPlanning.js';
-import { executeMonsterBackgroundSweep } from './src/game/monsters/monsterBackgroundSweepRuntime.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -12521,78 +12520,238 @@ const App: React.FC = () => {
                     });
                 };
 
-                const { actionsTaken: sweepActions } = executeMonsterBackgroundSweep({
-                    now: nowTs,
-                    sweepZoneIds,
-                    buildings: allBuildings as any,
-                    buildingData: buildingData as any,
-                    maxActions: WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE,
-                    stuckThresholdMs: 30000 * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER,
-                    isWorldWrapped,
-                    runtimeState: {
-                        attackTime: monsterAttackTimeRef.current as any,
-                        lastAction: monsterLastActionRef.current as any,
-                        targetLock: monsterTargetLockRef.current as any,
-                    },
-                    onHealZone: async (monsterId, newZoneId) => {
-                        await updateDoc(doc(db, 'buildings', monsterId), { zoneId: newZoneId });
-                    },
-                    onAttackApplied: async (params) => {
-                        const attackTarget = allBuildings.find(b => String(b.id) === params.targetId);
-                        const targetInfo = attackTarget ? buildingData.find(i => i.id === attackTarget.buildingId) : null;
-                        const targetUpdate = params.isFatal
-                            ? {
-                                hp: (attackTarget?.hp ?? (targetInfo?.stats.durability ?? 100)),
-                                maxHp: attackTarget?.maxHp ?? (targetInfo?.stats.durability ?? 100),
-                                shieldHp: params.targetShieldHp ?? deleteField(),
-                                shieldMaxHp: params.targetShieldHp ? attackTarget?.shieldMaxHp : deleteField(),
-                                protectionEndTime: params.targetShieldHp ? attackTarget?.protectionEndTime : deleteField(),
-                                isDestroying: true,
-                                destructionStartedAt: nowTs,
-                                destructionEndTime: params.destructionEndTime ?? nowTs + MONSTER_FATAL_HIT_DELAY_MS,
-                                destructionExpiresAt: params.destructionEndTime ?? nowTs + MONSTER_FATAL_HIT_DELAY_MS,
-                                destructionDurationMs: MONSTER_FATAL_HIT_DELAY_MS,
-                                destructionMaxLifetimeMs: Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
-                                destructionStatus: 'active',
-                                pendingDamage: (attackTarget?.hp ?? (targetInfo?.stats.durability ?? 100))
-                            }
-                            : {
-                                hp: params.targetHp,
-                                shieldHp: params.targetShieldHp ?? deleteField(),
-                                shieldMaxHp: params.targetShieldHp ? attackTarget?.shieldMaxHp : deleteField(),
-                                protectionEndTime: params.targetShieldHp ? attackTarget?.protectionEndTime : deleteField()
-                            };
-                        if (attackTarget) {
-                            await Promise.all([
-                                updateDoc(doc(db, 'buildings', params.targetId), targetUpdate),
-                                updateWorldMonster(params.monsterId, { lastAttackTime: params.monsterLastAttackTime })
-                            ]);
+                for (const sweepZoneId of sweepZoneIds) {
+                    if (worldSweepActions >= WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE) break;
+
+                    const zoneMonsters = allBuildings
+                        .filter(b => {
+                            const info = buildingData.find(i => i.id === b.buildingId);
+                            if (!info?.stats.isMonster) return false;
+                            if (b.isConstructing || b.isDestroying) return false;
+                            if (b.hp !== undefined && b.hp <= 0) return false;
+                            return (b.zoneId || getZoneId(b.x, b.y)) === sweepZoneId;
+                        })
+                        .sort((a, b) => (a.lastMoveTime || 0) - (b.lastMoveTime || 0));
+
+                    for (const monster of zoneMonsters) {
+                        if (worldSweepActions >= WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE) break;
+
+                        const monsterId = String(monster.id);
+                        const actualZoneId = getZoneId(monster.x, monster.y);
+                        if (monster.zoneId !== actualZoneId) {
+                            monster.zoneId = actualZoneId;
+                            await updateDoc(doc(db, 'buildings', monsterId), { zoneId: actualZoneId });
                         }
-                    },
-                    onTeleportStuck: async (params) => {
-                        const teleportSpot = findFreeMonsterTeleportSpot(
-                            allBuildings.find(b => String(b.id) === params.monsterId) || allBuildings[0],
-                            occupied, blockedResourcePositions
+
+                        const attackTarget = getMonsterAdjacentAttackTarget(monster, allBuildings, buildingData, {
+                            preferredTargetId: monsterTargetLockRef.current.get(monsterId) || null,
+                            isWrappedWorld: isWorldWrapped
+                        });
+                        const holdTarget = attackTarget || getMonsterAdjacentHoldTarget(monster, allBuildings, buildingData, {
+                            preferredTargetId: monsterTargetLockRef.current.get(monsterId) || null,
+                            isWrappedWorld: isWorldWrapped
+                        });
+                        if (holdTarget) {
+                            monsterTargetLockRef.current.set(monsterId, String(holdTarget.id));
+                        } else {
+                            monsterTargetLockRef.current.delete(monsterId);
+                        }
+                        const lastAttackTime = Math.max(
+                            monster.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0
                         );
-                        if (teleportSpot) {
-                            occupied.delete(`${params.x},${params.y}`);
-                            occupied.add(`${teleportSpot.x},${teleportSpot.y}`);
-                            const monster = allBuildings.find(b => String(b.id) === params.monsterId);
-                            if (monster) {
+                        if (attackTarget && (nowTs - lastAttackTime) >= MONSTER_ATTACK_INTERVAL_MS) {
+                            const source = 'background_sweep';
+                            const combatTraceId = `${source}:${monsterId}:${String(attackTarget.id)}:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
+                            const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+                            const targetInfo = buildingData.find(i => i.id === attackTarget.buildingId);
+                            const selectedTargetId = String(attackTarget.id);
+                            console.log("[COMBAT TARGET BEFORE HIT]", {
+                                combatTraceId,
+                                source,
+                                monsterId,
+                                targetId: selectedTargetId,
+                                targetHp: attackTarget.hp,
+                                targetIsDestroying: attackTarget.isDestroying,
+                                targetPendingDamage: attackTarget.pendingDamage,
+                                targetDestructionEndTime: attackTarget.destructionEndTime,
+                                deleting: isBuildingDeleting(selectedTargetId),
+                                tombstoned: isBuildingTombstoned(selectedTargetId),
+                                preferredTargetId: monsterTargetLockRef.current.get(monsterId),
+                                timestamp: Date.now(),
+                            });
+                            let damage = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
+                            if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
+                                damage *= 2;
+                            }
+
+                            const targetCurrentShield = Math.max(0, Number(attackTarget.shieldHp) || 0);
+                            let nextShield = targetCurrentShield;
+                            let remainingDamage = damage;
+                            if (nextShield > 0) {
+                                const shieldDamage = Math.min(nextShield, remainingDamage);
+                                nextShield -= shieldDamage;
+                                remainingDamage -= shieldDamage;
+                            }
+
+                            const targetBaseHp = attackTarget.hp ?? (targetInfo?.stats.durability ?? 100);
+                            const nextHp = Math.max(0, targetBaseHp - remainingDamage);
+                            const isFatalHit = remainingDamage > 0 && nextHp <= 0;
+                            console.log("[COMBAT DAMAGE QUEUED]", {
+                                combatTraceId,
+                                source,
+                                monsterId,
+                                targetId: selectedTargetId,
+                                damage,
+                                targetHpBefore: targetBaseHp,
+                                targetHpAfter: nextHp,
+                                targetShieldBefore: targetCurrentShield,
+                                targetShieldAfter: nextShield,
+                                recipientIds: [selectedTargetId],
+                                recipientCount: 1,
+                                timestamp: Date.now(),
+                            });
+                            if (isFatalHit) {
+                        console.log("[COMBAT FATAL HIT]", {
+                                    combatTraceId,
+                                    source,
+                                    monsterId,
+                                    buildingId: selectedTargetId,
+                                    hpBefore: targetBaseHp,
+                                    hpAfterCalculated: nextHp,
+                                    wasAlreadyDestroying: Boolean(attackTarget.isDestroying),
+                                    oldDestructionEndTime: attackTarget.destructionEndTime,
+                                    timestamp: Date.now(),
+                                });
+                                if (attackTarget.isDestroying || attackTarget.destructionEndTime !== undefined) {
+                                    console.error("[DESTRUCTION RESTART DETECTED]", {
+                                        combatTraceId,
+                                        source,
+                                        buildingId: selectedTargetId,
+                                        hp: attackTarget.hp,
+                                        isDestroying: attackTarget.isDestroying,
+                                        destructionEndTime: attackTarget.destructionEndTime,
+                                        pendingDamage: attackTarget.pendingDamage,
+                                        timestamp: Date.now(),
+                                        stack: new Error().stack,
+                                    });
+                                }
+                            }
+                            const targetUpdate = isFatalHit
+                                ? {
+                                    hp: targetBaseHp,
+                                    maxHp: attackTarget.maxHp ?? (targetInfo?.stats.durability ?? 100),
+                                    shieldHp: nextShield > 0 ? nextShield : deleteField(),
+                                    shieldMaxHp: nextShield > 0 ? attackTarget.shieldMaxHp : deleteField(),
+                                    protectionEndTime: nextShield > 0 ? attackTarget.protectionEndTime : deleteField(),
+                                    isDestroying: true,
+                                    destructionStartedAt: nowTs,
+                                    destructionEndTime: nowTs + MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionExpiresAt: nowTs + MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionDurationMs: MONSTER_FATAL_HIT_DELAY_MS,
+                                    destructionMaxLifetimeMs: Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                                    destructionStatus: 'active',
+                                    pendingDamage: targetBaseHp
+                                }
+                                : {
+                                    hp: nextHp,
+                                    shieldHp: nextShield > 0 ? nextShield : deleteField(),
+                                    shieldMaxHp: nextShield > 0 ? attackTarget.shieldMaxHp : deleteField(),
+                                    protectionEndTime: nextShield > 0 ? attackTarget.protectionEndTime : deleteField()
+                                };
+
+                            attackTarget.hp = isFatalHit ? targetBaseHp : nextHp;
+                            attackTarget.shieldHp = nextShield > 0 ? nextShield : undefined;
+                            attackTarget.lastAttackTime = attackTarget.lastAttackTime;
+                            if (isFatalHit) {
+                                attackTarget.isDestroying = true;
+                                attackTarget.destructionStartedAt = nowTs;
+                                attackTarget.destructionEndTime = nowTs + MONSTER_FATAL_HIT_DELAY_MS;
+                                attackTarget.destructionExpiresAt = nowTs + MONSTER_FATAL_HIT_DELAY_MS;
+                                attackTarget.destructionDurationMs = MONSTER_FATAL_HIT_DELAY_MS;
+                                attackTarget.destructionMaxLifetimeMs = Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS);
+                                attackTarget.destructionStatus = 'active';
+                                attackTarget.pendingDamage = targetBaseHp;
+                            }
+                            monster.lastAttackTime = nowTs;
+                            monsterAttackTimeRef.current.set(monsterId, nowTs);
+                            monsterLastActionRef.current.set(monsterId, nowTs);
+
+                            await Promise.all([
+                                updateDoc(doc(db, 'buildings', String(attackTarget.id)), targetUpdate),
+                                updateWorldMonster(monsterId, { lastAttackTime: nowTs })
+                            ]);
+                            worldSweepActions++;
+                            continue;
+                        }
+
+                        if (holdTarget) {
+                            continue;
+                        }
+
+                        const lastMoveTime = monster.lastMoveTime || 0;
+                        const moveInterval = getMonsterMoveInterval(monster.buildingId, monsterId);
+                        if ((nowTs - lastMoveTime) < moveInterval) continue;
+
+                        const movePlan = chooseMonsterBackgroundMove(
+                            monster,
+                            allBuildings,
+                            buildingData,
+                            occupied,
+                            blockedResourcePositions,
+                            monsterZoneCounts,
+                            isWorldWrapped,
+                            monsterPrevPosRef.current.get(monsterId),
+                            monsterDirectionRef.current.get(monsterId),
+                            monsterRecentPositionsRef.current.get(monsterId) || []
+                        );
+
+                        if (movePlan.chosenMove) {
+                            occupied.delete(`${monster.x},${monster.y}`);
+                            occupied.add(`${movePlan.chosenMove.x},${movePlan.chosenMove.y}`);
+                            monsterPrevPosRef.current.set(monsterId, { x: monster.x, y: monster.y });
+                            const recentPositions = monsterRecentPositionsRef.current.get(monsterId) || [];
+                            monsterRecentPositionsRef.current.set(
+                                monsterId,
+                                [...recentPositions, { x: monster.x, y: monster.y }].slice(-MONSTER_RECENT_POSITIONS_LIMIT)
+                            );
+                            monsterDirectionRef.current.set(monsterId, movePlan.nextDir);
+                            monster.x = movePlan.chosenMove.x;
+                            monster.y = movePlan.chosenMove.y;
+                            monster.zoneId = getZoneId(movePlan.chosenMove.x, movePlan.chosenMove.y);
+                            monster.lastMoveTime = nowTs;
+                            await updateWorldMonster(monsterId, {
+                                x: monster.x,
+                                y: monster.y,
+                                zoneId: monster.zoneId,
+                                lastMoveTime: nowTs
+                            });
+                            worldSweepActions++;
+                            continue;
+                        }
+
+                        if ((nowTs - lastMoveTime) >= (moveInterval * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER)) {
+                            const teleportSpot = Number(monster.buildingId) === BRONEKUR_ID
+                                ? null
+                                : findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions);
+                            if (teleportSpot) {
+                                occupied.delete(`${monster.x},${monster.y}`);
+                                occupied.add(`${teleportSpot.x},${teleportSpot.y}`);
                                 monster.x = teleportSpot.x;
                                 monster.y = teleportSpot.y;
                                 monster.zoneId = teleportSpot.zoneId;
+                                monster.lastMoveTime = nowTs;
+                                await updateWorldMonster(monsterId, {
+                                    x: teleportSpot.x,
+                                    y: teleportSpot.y,
+                                    zoneId: teleportSpot.zoneId,
+                                    lastMoveTime: nowTs
+                                });
+                                worldSweepActions++;
                             }
-                            await updateWorldMonster(params.monsterId, {
-                                x: teleportSpot.x, y: teleportSpot.y,
-                                zoneId: teleportSpot.zoneId, lastMoveTime: nowTs
-                            });
-                            return true;
                         }
-                        return false;
-                    },
-                });
-                worldSweepActions += sweepActions;
+                    }
+                }
 
                 executeBronekurSpawn({
                     buildings: allBuildings as any,
