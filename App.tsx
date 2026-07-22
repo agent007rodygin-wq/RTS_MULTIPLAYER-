@@ -4313,12 +4313,20 @@ const App: React.FC = () => {
 
                         console.log(`[TerrainRepair] created: mountains=${createdMountains} rivers=${createdRivers}`);
 
-                        if (createdMountains < missingMountains || createdRivers < missingRivers) {
-                            console.log(`[TerrainRepair] incomplete: mountains=${createdMountains}/${missingMountains} rivers=${createdRivers}/${missingRivers}`);
-                        } else {
+                        // Re-read actual counts to guard against concurrent clients
+                        const verifySnap = await getDocs(collection(db, 'buildings'));
+                        const verifyBuildings = verifySnap.docs.map(d => d.data()) as PlacedBuilding[];
+                        const finalMountains = verifyBuildings.filter(b => Number(b.buildingId) === MOUNTAIN_ID && (b.ownerId === "-1" || b.ownerId === "monster") && (b.hp === undefined || b.hp > 0)).length;
+                        const finalRivers = verifyBuildings.filter(b => Number(b.buildingId) === RIVER_ID && (b.ownerId === "-1" || b.ownerId === "monster") && (b.hp === undefined || b.hp > 0)).length;
+
+                        console.log(`[TerrainRepair] verified: mountains=${finalMountains}/${MAX_MOUNTAINS} rivers=${finalRivers}/${MAX_RIVERS}`);
+
+                        if (finalMountains >= MAX_MOUNTAINS && finalRivers >= MAX_RIVERS) {
                             const existingData = docSnap.data();
                             await setDoc(mapStateRef, { ...existingData, terrainRepairVersion: 1 });
                             console.log('[TerrainRepair] complete');
+                        } else {
+                            console.log(`[TerrainRepair] incomplete after verify: mountains=${finalMountains}/${MAX_MOUNTAINS} rivers=${finalRivers}/${MAX_RIVERS}`);
                         }
                     } catch (err) {
                         console.error('[TerrainRepair] failed:', err);
