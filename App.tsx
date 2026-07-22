@@ -234,7 +234,6 @@ import {
     KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID,
     KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID,
 } from './src/game/monsters/monsterIds.js';
-import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeSnapshot.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -11346,19 +11345,41 @@ const App: React.FC = () => {
             const pendingDestroyedIds = new Set<string>();
             const blockedTargetIds = new Set(deletingBuildingsRef.current);
 
-            const snapshot = buildMonsterRuntimeSnapshot({
-                now,
-                buildings: placedBuildingsRef.current as any,
-                buildingData: buildingData as any,
-                monsterLastAction: monsterLastActionRef.current as any,
-                monsterAttackTime: monsterAttackTimeRef.current as any,
-                isMonsterHost: (b: any) => getIsMonsterHost(b),
-                isWorldWrapped,
-                pendingDestroyedIds,
-                maxMovesPerBatch: MAX_MONSTER_MOVES_PER_BATCH,
+            const monstersMoving = monsterAiTickReady ? placedBuildingsRef.current.filter(b => {
+                if (b.isConstructing || b.isDestroying) return false;
+                // Dead monsters (hp defined and <= 0) must not move or act
+                if (b.hp !== undefined && b.hp <= 0) return false;
+                const info = buildingData.find(i => i.id === b.buildingId);
+                if (!info || !info.stats.isMonster) return false;
+
+                if (!getIsMonsterHost(b)) return false;
+
+                const monsterId = b.id || '';
+                const lastTime = Math.max(b.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
+                const moveInterval = getMonsterMoveInterval(b.buildingId, monsterId);
+                return (now - lastTime >= moveInterval); // Per-type interval
+            }) : [];
+
+            const monstersReadyToAttack = placedBuildingsRef.current.filter(monster => {
+                if (monster.isConstructing || monster.isDestroying) return false;
+                // Dead monsters must not attack
+                if (monster.hp !== undefined && monster.hp <= 0) return false;
+                const info = buildingData.find(i => i.id === monster.buildingId);
+                if (!info || !info.stats.isMonster) return false;
+                if (!getIsMonsterHost(monster)) return false;
+                const monsterId = String(monster.id || '');
+                const lastAttackTime = Math.max(
+                    monster.lastAttackTime || 0,
+                    monsterAttackTimeRef.current.get(monsterId) || 0
+                );
+                if (lastAttackTime > now) return false;
+                if ((now - lastAttackTime) < MONSTER_ATTACK_INTERVAL_MS) return false;
+
+                return !!getMonsterAdjacentAttackTarget(monster, placedBuildingsRef.current, buildingData, {
+                    isWrappedWorld: isWorldWrapped,
+                    pendingDestroyedIds
+                });
             });
-            const monstersReadyToAttack = snapshot.monstersReadyToAttack as PlacedBuilding[];
-            const monsterZoneCounts = snapshot.monsterZoneCounts;
 
             // Cannon defense - lightweight frequent checks, but firing itself is still cooldown-limited.
             const _lastCannonTickKey = '__lastCannonTick';
@@ -11489,7 +11510,7 @@ const App: React.FC = () => {
                 }
             }
 
-            if (buildingsToUpdate.length > 0 || monstersReadyToAttack.length > 0 || cannonsAttacking.length > 0) {
+            if (buildingsToUpdate.length > 0 || monstersMoving.length > 0 || monstersReadyToAttack.length > 0 || cannonsAttacking.length > 0) {
                 let gloryGained = 0;
                 const newExplosions: Array<Omit<VisualEffect, 'createdAt' | 'expiresAt' | 'durationMs' | 'maxLifetimeMs' | 'status'>> = [];
                 const damageInitiatorMap = new Map<string, string | null>();
@@ -11648,9 +11669,52 @@ const App: React.FC = () => {
                     console.log(`[MONSTER_DIAG] movement batch cooldown active waitMs=${waitMs}`);
                 }
                  
-                const actingMonsters = snapshot.actingMonsters as PlacedBuilding[];
-                if (canMoveMonsters && actingMonsters.length > 0) {
-                    lastGlobalMonsterMoveRef.current = now;
+                let allActingMonsters: typeof currentBuildings = [];
+                if (canMoveMonsters) {
+                    allActingMonsters = currentBuildings.filter(b => {
+                        const info = buildingData.find(i => i.id === b.buildingId);
+                        if (!info || !info.stats.isMonster) return false;
+                        // Skip monsters that are being deleted (sold) to prevent 404 PATCH errors
+                        if (deletingBuildingsRef.current.has(String(b.id))) return false;
+                        if (monstersActedThisCycle.has(String(b.id || ''))) return false;
+                        if (!getIsMonsterHost(b)) {
+                            logMonsterDiag(b, 'skip_not_host');
+                            return false;
+                        }
+                        if (b.isConstructing || b.isDestroying) return false;
+                        
+                        const monsterId = b.id || '';
+                        const lastTime = Math.max(b.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
+                        const moveInterval = getMonsterMoveInterval(b.buildingId, monsterId);
+                        if (now - lastTime < moveInterval) {
+                            logMonsterDiag(b, 'skip_move_cooldown', `remainingMs=${Math.max(0, moveInterval - (now - lastTime))}`);
+                            return false;
+                        }
+                        return true;
+                    });
+                    
+                    allActingMonsters.sort((a, b) => {
+                        const aId = a.id || '';
+                        const bId = b.id || '';
+                        const aLastTime = Math.max(a.lastMoveTime || 0, monsterLastActionRef.current.get(aId) || 0);
+                        const bLastTime = Math.max(b.lastMoveTime || 0, monsterLastActionRef.current.get(bId) || 0);
+                        const aOverdue = now - aLastTime - getMonsterMoveInterval(a.buildingId, aId);
+                        const bOverdue = now - bLastTime - getMonsterMoveInterval(b.buildingId, bId);
+
+                        if (aOverdue !== bOverdue) {
+                            return bOverdue - aOverdue;
+                        }
+
+                        return getMonsterMoveSeed(aId, a.buildingId) - getMonsterMoveSeed(bId, b.buildingId);
+                    });
+                }
+
+                // Only process a tiny batch at a time to keep motion smooth without burst lag.
+                const actingMonsters = allActingMonsters.slice(0, MAX_MONSTER_MOVES_PER_BATCH);
+                const monsterZoneCounts = buildMonsterZoneCounts(currentBuildings, buildingData);
+
+                if (actingMonsters.length > 0) {
+                    lastGlobalMonsterMoveRef.current = now; // Reset global cooldown
                 }
 
                 actingMonsters.forEach(monster => {
