@@ -530,7 +530,7 @@ interface PlacementGuardOptions {
 
 interface PlacementGuardResult {
     ok: boolean;
-    reason?: 'occupied' | 'syncing';
+    reason?: 'occupied' | 'syncing' | 'auth-not-ready';
     message?: string;
 }
 
@@ -3548,7 +3548,12 @@ const App: React.FC = () => {
         }
 
         if (!isAuthReadyRef.current || !userRef.current) {
-            return finish({ ok: true }, { cause: 'auth-not-ready' });
+            console.log('[BuildValidation] blocked: auth not ready');
+            return finish({
+                ok: false,
+                reason: 'auth-not-ready',
+                message: 'Данные игрока ещё загружаются. Попробуйте снова через несколько секунд.'
+            }, { cause: 'auth-not-ready' });
         }
 
         const zoneId = getZoneId(x, y);
@@ -5709,7 +5714,13 @@ const App: React.FC = () => {
 
         const isTownHallBuild = TOWN_HALL_IDS.includes(Number(building.id));
         if (isTownHallBuild) {
-            if (user) {
+            if (!isAuthReadyRef.current || !user) {
+                console.log('[BuildValidation] blocked: Town Hall — auth not ready');
+                alert('Данные игрока ещё загружаются. Попробуйте снова через несколько секунд.');
+                setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+                return null;
+            }
+            try {
                 if (traceId) {
                     recordRuntimeTraceStage('build', traceId, 'owner building count start', {
                         buildingId: building.id,
@@ -5735,8 +5746,9 @@ const App: React.FC = () => {
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
-            } else if (hasTownHall) {
-                alert("Р Р€ Р Р†Р В°РЎРѓ РЎС“Р В¶Р Вµ Р ВµРЎРѓРЎвЂљРЎРЉ Р вЂњР С•РЎР‚Р С•Р Т‘РЎРѓР С”Р С•Р в„– РЎвЂ Р ВµР Р…РЎвЂљРЎР‚!");
+            } catch (err) {
+                console.error('[BuildValidation] Town Hall verification failed:', err);
+                alert('Не удалось проверить наличие Городского Центра. Попробуйте снова.');
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                 return null;
             }
@@ -5768,7 +5780,9 @@ const App: React.FC = () => {
                 }
                 effectiveBuildingCount = Math.max(localBuildingCount, serverBuildingCount);
             } catch (countErr) {
-                console.warn('[BuildLimit] Failed to load server building count, fallback to local count:', countErr);
+                console.error('[BuildValidation] building limit verification failed:', countErr);
+                alert('Не удалось проверить лимит построек. Попробуйте снова.');
+                return null;
             }
         }
 
