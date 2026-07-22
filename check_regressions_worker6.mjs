@@ -4,14 +4,12 @@ const appPath = 'App.tsx';
 const targetPath = 'src/game/monsters/monsterTargetSelection.js';
 const movePath = 'src/game/monsters/monsterMovement.js';
 const moveRuntimePath = 'src/game/monsters/monsterMovementRuntime.js';
-const attackRuntimePath = 'src/game/monsters/monsterAttackRuntime.js';
 const source = fs.readFileSync(appPath, 'utf8');
 const targetSource = fs.readFileSync(targetPath, 'utf8');
 const moveSource = fs.readFileSync(movePath, 'utf8');
 const moveRuntimeSource = fs.existsSync(moveRuntimePath) ? fs.readFileSync(moveRuntimePath, 'utf8') : '';
-const attackRuntimeSource = fs.existsSync(attackRuntimePath) ? fs.readFileSync(attackRuntimePath, 'utf8') : '';
 
-const allSource = source + '\n' + targetSource + '\n' + moveSource + '\n' + moveRuntimeSource + '\n' + attackRuntimeSource;
+const allSource = source + '\n' + targetSource + '\n' + moveSource + '\n' + moveRuntimeSource;
 
 const checks = [];
 
@@ -43,7 +41,7 @@ has(
 );
 has(
   'AI target: adjacent target lock is retained while still valid',
-  /preferredTargetId[\s\S]*?getMonsterAdjacentAttackTarget\(monster, buildings, buildingData,[\s\S]*?preferredTargetId,[\s\S]*?\}\);[\s\S]*?\.targetLock\.set\(monsterId, targetId\)/
+  /const preferredTargetId = monsterTargetLockRef\.current\.get\(monsterId\) \|\| null;[\s\S]*?const target = getMonsterAdjacentAttackTarget\(monster, currentBuildings, buildingData, \{[\s\S]*?preferredTargetId,[\s\S]*?\}\);[\s\S]*?monsterTargetLockRef\.current\.set\(monsterId, targetId\);/
 );
 has(
   'AI target: cooldown gates damage, not movement hold',

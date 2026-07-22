@@ -236,7 +236,6 @@ import {
 } from './src/game/monsters/monsterIds.js';
 import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeSnapshot.js';
 import { executeMonsterMovementBatch } from './src/game/monsters/monsterMovementRuntime.js';
-import { executeMonsterAttackBatch } from './src/game/monsters/monsterAttackRuntime.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -11518,58 +11517,125 @@ const App: React.FC = () => {
                 const cannonUpdates = new Map<string, PlacedBuilding>();
                 const monstersActedThisCycle = new Set<string>();
 
-                executeMonsterAttackBatch({
-                    now,
-                    monstersReadyToAttack: monstersReadyToAttack as any,
-                    buildings: currentBuildings as any,
-                    buildingData: buildingData as any,
-                    isWorldWrapped,
-                    pendingDestroyedIds,
-                    runtimeState: {
-                        targetLock: monsterTargetLockRef.current as any,
-                        direction: monsterDirectionRef.current as any,
-                        attackDirection: monsterAttackDirectionRef.current as any,
-                        attackTime: monsterAttackTimeRef.current as any,
-                        attackCancelTime: monsterAttackCancelTimeRef.current as any,
-                        lastAction: monsterLastActionRef.current as any,
-                    },
-                    callbacks: {
-                        onDamageQueued: (monsterId, targetId, dmg) => {
-                            damageMap.set(targetId, (damageMap.get(targetId) || 0) + dmg);
-                            const targetInfo = buildingData.find(i => i.id === Number(targetId));
-                            const target = currentBuildings.find(b => String(b.id) === targetId);
-                            if (target && (damageMap.get(targetId) || 0) >= (target.hp ?? (targetInfo?.stats.durability ?? 100))) {
-                                markPendingDestroyed(targetId);
-                            }
-                        },
-                        onAttackSource: (targetId, monsterId) => {
-                            monsterAttackSourceMap.set(targetId, monsterId);
-                        },
-                        onDamageInitiator: (targetId, ownerId) => {
-                            damageInitiatorMap.set(targetId, ownerId);
-                        },
-                        persistMonsterAttack: (monsterId, update) => {
-                            const docId = String(monsterId);
-                            updateBuildingDocSafe(docId, { lastAttackTime: update.lastAttackTime, hostId: update.hostId }, { throttleMonster: true });
-                        },
-                        onMonsterAttackComplete: (monsterId) => {
-                            const monster = currentBuildings.find(b => String(b.id) === monsterId);
-                            if (monster) {
-                                const newMonsterState = { ...monster, lastAttackTime: now, hostId: userRef.current?.uid || null };
-                                monsterUpdates.set(monsterId, newMonsterState);
-                                monster.lastAttackTime = now;
-                                monster.hostId = userRef.current?.uid || null;
-                                monstersActedThisCycle.add(monsterId);
-                                if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
-                                    // persistMonsterAttack already called in the executor for neutral monsters
-                                }
-                            }
-                        },
-                    },
-                    isBuildingDeleting: (id) => isBuildingDeleting(id),
-                    isBuildingTombstoned: (id) => isBuildingTombstoned(id),
-                    hostId: userRef.current?.uid || null,
-                    isNeutralMonster: (ownerId) => ownerId === "monster" || ownerId === "0" || ownerId === "-1" || (isAuthReadyRef.current && userRef.current && ownerId === userRef.current.uid),
+                monstersReadyToAttack.forEach(monster => {
+                    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+                    const monsterId = String(monster.id || '');
+                    const attackId = `${monsterId}:${now}:${Math.random().toString(36).slice(2, 8)}`;
+                    const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
+                    const target = getMonsterAdjacentAttackTarget(monster, currentBuildings, buildingData, {
+                        preferredTargetId,
+                        isWrappedWorld: isWorldWrapped,
+                        pendingDestroyedIds
+                    });
+
+                    if (!target) {
+                        monsterTargetLockRef.current.delete(monsterId);
+                        return;
+                    }
+                    const targetId = String(target.id);
+                    const source = 'raf_combat';
+                    console.log("[COMBAT TARGET BEFORE HIT]", {
+                        combatTraceId: attackId,
+                        source,
+                        monsterId,
+                        targetId,
+                        targetHp: target.hp,
+                        targetIsDestroying: target.isDestroying,
+                        targetPendingDamage: target.pendingDamage,
+                        targetDestructionEndTime: target.destructionEndTime,
+                        deleting: targetId ? isBuildingDeleting(String(targetId)) : false,
+                        tombstoned: targetId ? isBuildingTombstoned(String(targetId)) : false,
+                        preferredTargetId: monsterTargetLockRef.current.get(monsterId),
+                        timestamp: Date.now(),
+                    });
+                    if (
+                        target.isDestroying ||
+                        (target.hp !== undefined && target.hp <= 0) ||
+                        pendingDestroyedIds.has(targetId) ||
+                        isBuildingDeleting(targetId) ||
+                        isBuildingTombstoned(targetId)
+                    ) {
+                        console.error("[DESTRUCTION RESTART DETECTED]", {
+                            combatTraceId: attackId,
+                            source,
+                            buildingId: targetId,
+                            hp: target.hp,
+                            isDestroying: target.isDestroying,
+                            destructionEndTime: target.destructionEndTime,
+                            pendingDamage: target.pendingDamage,
+                            timestamp: Date.now(),
+                            stack: new Error().stack,
+                        });
+                        monsterTargetLockRef.current.delete(monsterId);
+                        return;
+                    }
+                    monsterTargetLockRef.current.set(monsterId, targetId);
+
+                    let dmg = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
+                    const targetInfo = buildingData.find(i => i.id === target.buildingId);
+                    if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
+                        dmg *= 2;
+                    }
+
+                    const targetDamageKey = targetId;
+                    damageMap.set(targetDamageKey, (damageMap.get(targetDamageKey) || 0) + dmg);
+                    const targetCurrentHp = target.hp ?? (targetInfo?.stats.durability ?? 100);
+                    console.log("[COMBAT DAMAGE QUEUED]", {
+                        combatTraceId: attackId,
+                        source,
+                        monsterId,
+                        targetId: targetDamageKey,
+                        damage: dmg,
+                        damageMapTotal: damageMap?.get?.(String(targetDamageKey)),
+                        recipientIds: [targetDamageKey],
+                        recipientCount: 1,
+                        timestamp: Date.now(),
+                    });
+                    if ((damageMap.get(targetDamageKey) || 0) >= targetCurrentHp) {
+            console.log("[COMBAT FATAL HIT]", {
+                            combatTraceId: attackId,
+                            source,
+                            monsterId,
+                            buildingId: targetDamageKey,
+                            hpBefore: targetCurrentHp,
+                            hpAfterCalculated: 0,
+                            wasAlreadyDestroying: Boolean(target.isDestroying),
+                            oldDestructionEndTime: target.destructionEndTime,
+                            timestamp: Date.now(),
+                        });
+                        markPendingDestroyed(targetDamageKey);
+                    }
+                    monsterAttackSourceMap.set(targetDamageKey, monsterId);
+                    const monsterOwnerId = String(monster.ownerId || '');
+                    const monsterIsNeutral = monsterOwnerId === 'monster' || monsterOwnerId === '-1' || monsterOwnerId === '0';
+                    damageInitiatorMap.set(targetDamageKey, monsterIsNeutral ? null : monsterOwnerId);
+                    const recipientIds = [targetDamageKey];
+                    console.log("[MONSTER DAMAGE RECIPIENTS]", {
+                        attackId,
+                        monsterId,
+                        selectedTargetId: targetDamageKey,
+                        recipientIds,
+                        recipientCount: recipientIds.length,
+                        timestamp: Date.now(),
+                    });
+
+                    const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
+                    monsterDirectionRef.current.set(monsterId, attackDir);
+                    monsterAttackDirectionRef.current.set(monsterId, attackDir);
+                    monsterAttackTimeRef.current.set(monsterId, now);
+                    monsterAttackCancelTimeRef.current.delete(monsterId);
+
+                    const newMonsterState = { ...monster, lastAttackTime: now, hostId: userRef.current?.uid || null };
+                    monsterUpdates.set(String(monster.id), newMonsterState);
+                    monster.lastAttackTime = now;
+                    monster.hostId = userRef.current?.uid || null;
+                    monsterLastActionRef.current.set(monsterId, now);
+                    monstersActedThisCycle.add(String(monsterId));
+
+                    if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
+                        const docId = String(monster.id);
+                        updateBuildingDocSafe(docId, { lastAttackTime: now, hostId: userRef.current?.uid || null }, { throttleMonster: true });
+                    }
                 });
 
                 // Process monster movement separately from attacks so adjacent monsters can keep fighting on cooldown.
