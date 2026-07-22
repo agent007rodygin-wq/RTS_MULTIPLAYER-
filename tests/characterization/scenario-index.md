@@ -35,4 +35,4 @@ All scenarios start as `UNCONFIRMED_RUNTIME_BEHAVIOR`.
 | # | Scenario | Group | Initial Classification | Freeze Slice | Evidence Ref |
 | --- | --- | --- | --- | --- | --- |
 | 11–22 | Monster AI (targeting, movement, patrol, crowding, combat) | Monster Runtime | `UNCONFIRMED_RUNTIME_BEHAVIOR` | D | EA-5 |
-| 24 | Monster pure logic deduplication — canonical imports replace 13+ App.tsx duplicates | Monster Architecture | `UNCONFIRMED_RUNTIME_BEHAVIOR` | E (Wave 2B) | EA-6 |
+| 25 | Monster crowding extraction — `getMonsterZoneId`, `buildMonsterZoneCounts`, `getCrowdingEscapeMove` | Monster Architecture | `UNCONFIRMED_RUNTIME_BEHAVIOR` | E (Wave 2C) | EA-6 |

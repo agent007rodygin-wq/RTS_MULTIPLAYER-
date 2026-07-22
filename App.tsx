@@ -190,9 +190,15 @@ const MAX_QUARRIES = 6;
 const BASE_WILD_MONSTERS_PER_ZONE = 5;
 const WILD_MONSTER_EXTRA_ZONE_COUNT = 4;
 const TARGET_WILD_MONSTERS_TOTAL = 129;
-const WILD_MONSTER_CROWDING_SOFT_CAP = 5;
-const WILD_MONSTER_CROWDING_HARD_CAP = 6;
-const MAX_WILD_MONSTERS_PER_ZONE = 4; // 4 random types (out of 5) per sector
+const MAX_WILD_MONSTERS_PER_ZONE = 4;
+
+import {
+    WILD_MONSTER_CROWDING_SOFT_CAP,
+    WILD_MONSTER_CROWDING_HARD_CAP,
+    getMonsterZoneId,
+    buildMonsterZoneCounts,
+    getCrowdingEscapeMove,
+} from './src/game/monsters/monsterCrowding.js';
 const MAX_WILD_MONSTERS_TOTAL = 100; // 25 РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р С•Р Р† ? 4 Р СР С•Р Р…РЎРѓРЎвЂљРЎР‚Р В°
 const MONSTER_RESPAWN_TIME = 60000; // 60 РЎРѓР ВµР С”РЎС“Р Р…Р Т‘ (1 Р СР С‘Р Р…РЎС“РЎвЂљР В° Р С”РЎС“Р В»Р Т‘Р В°РЎС“Р Р… Р С—Р С•РЎРѓР В»Р Вµ РЎС“Р Р…Р С‘РЎвЂЎРЎвЂљР С•Р В¶Р ВµР Р…Р С‘РЎРЏ)
 const BASE_GOLD_CAPACITY = 500000000;
@@ -1133,88 +1139,6 @@ type MonsterTeleportSpot = { x: number; y: number; zoneId: string };
 
 
 
-
-
-
-function getMonsterZoneId(monster: Pick<PlacedBuilding, 'x' | 'y' | 'zoneId'>): string {
-    return monster.zoneId || getZoneId(monster.x, monster.y);
-}
-
-function buildMonsterZoneCounts(buildings: PlacedBuilding[], buildingData: Building[]): Map<string, number> {
-    const counts = new Map<string, number>();
-    buildings.forEach((building) => {
-        const info = buildingData.find(i => i.id === building.buildingId);
-        if (!info || !info.stats.isMonster) return;
-        if (building.isConstructing || building.isDestroying) return;
-        if (building.hp !== undefined && building.hp <= 0) return;
-        const zoneId = getMonsterZoneId(building);
-        counts.set(zoneId, (counts.get(zoneId) || 0) + 1);
-    });
-    return counts;
-}
-
-function getCrowdingEscapeMove(
-    monster: Pick<PlacedBuilding, 'x' | 'y' | 'zoneId'>,
-    validMoves: MonsterMoveStep[],
-    zoneCounts: Map<string, number>,
-    isWrappedWorld: boolean
-): MonsterMoveStep | null {
-    if (validMoves.length === 0) return null;
-
-    const currentZoneId = getMonsterZoneId(monster);
-    const currentCount = zoneCounts.get(currentZoneId) || 0;
-    if (currentCount < WILD_MONSTER_CROWDING_SOFT_CAP) return null;
-
-    const zoneX = Math.floor(monster.x / ZONE_SIZE);
-    const zoneY = Math.floor(monster.y / ZONE_SIZE);
-    const localX = monster.x - (zoneX * ZONE_SIZE);
-    const localY = monster.y - (zoneY * ZONE_SIZE);
-
-    const neighborChecks = [
-        { dx: -1, dy: 0, zoneX: zoneX - 1, zoneY, borderDist: localX },
-        { dx: 1, dy: 0, zoneX: zoneX + 1, zoneY, borderDist: ZONE_SIZE - 1 - localX },
-        { dx: 0, dy: -1, zoneX, zoneY: zoneY - 1, borderDist: localY },
-        { dx: 0, dy: 1, zoneX, zoneY: zoneY + 1, borderDist: ZONE_SIZE - 1 - localY }
-    ].filter(({ zoneX: nx, zoneY: ny }) =>
-        isWrappedWorld || (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y)
-    );
-
-    let bestDirection: MonsterDirection | null = null;
-    let bestScore = -Infinity;
-    const pressureMultiplier = currentCount >= WILD_MONSTER_CROWDING_HARD_CAP ? 2 : 1;
-
-    neighborChecks.forEach(({ dx, dy, zoneX: nx, zoneY: ny, borderDist }) => {
-        const wrappedX = isWrappedWorld ? wrapCoord(nx, ZONES_X) : nx;
-        const wrappedY = isWrappedWorld ? wrapCoord(ny, ZONES_Y) : ny;
-        const neighborZoneId = `${wrappedX}_${wrappedY}`;
-        const neighborCount = zoneCounts.get(neighborZoneId) || 0;
-        const scarcityScore = currentCount - neighborCount;
-        const borderBonus = Math.max(0, ZONE_SIZE - borderDist);
-        const score = scarcityScore * 100 * pressureMultiplier + borderBonus;
-        if (score > bestScore) {
-            bestScore = score;
-            bestDirection = { dx, dy };
-        }
-    });
-
-    if (!bestDirection) return null;
-
-    const preferredMove = validMoves.find(move => move.dx === bestDirection!.dx && move.dy === bestDirection!.dy);
-    if (preferredMove) return preferredMove;
-
-    let fallbackMove: MonsterMoveStep | null = null;
-    let fallbackScore = -Infinity;
-    validMoves.forEach(move => {
-        const moveZoneId = getZoneId(move.x, move.y);
-        const moveZoneCount = zoneCounts.get(moveZoneId) || 0;
-        const score = -moveZoneCount * 100 - (moveZoneId === currentZoneId ? 25 : 0);
-        if (score > fallbackScore) {
-            fallbackScore = score;
-            fallbackMove = move;
-        }
-    });
-    return fallbackMove;
-}
 
 
 function findFreeMonsterTeleportSpot(
