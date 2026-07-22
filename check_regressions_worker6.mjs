@@ -12,7 +12,8 @@ const moveRuntimeSource = fs.existsSync(moveRuntimePath) ? fs.readFileSync(moveR
 const attackRuntimeSource = fs.existsSync(attackRuntimePath) ? fs.readFileSync(attackRuntimePath, 'utf8') : '';
 
 const spawnRuntimePath = 'src/game/monsters/monsterSpawnRuntime.js';
-const allSource = source + '\n' + targetSource + '\n' + moveSource + '\n' + moveRuntimeSource + '\n' + attackRuntimeSource + '\n' + (fs.existsSync(spawnRuntimePath) ? fs.readFileSync(spawnRuntimePath, 'utf8') : '');
+const hookRuntimePath = 'src/game/monsters/useMonsterRuntime.js';
+const allSource = source + '\n' + targetSource + '\n' + moveSource + '\n' + moveRuntimeSource + '\n' + attackRuntimeSource + '\n' + (fs.existsSync(spawnRuntimePath) ? fs.readFileSync(spawnRuntimePath, 'utf8') : '') + '\n' + (fs.existsSync(hookRuntimePath) ? fs.readFileSync(hookRuntimePath, 'utf8') : '');
 
 const checks = [];
 
@@ -59,7 +60,7 @@ has(
 );
 has(
   'Empty sector: background sweep walks managed zones incrementally',
-  /const sweepZoneIds: string\[\] = \[\];[\s\S]*?for \(let i = 0; i < WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE; i\+\+\) \{[\s\S]*?sweepZoneIds\.push\(/
+  /WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE[\s\S]*?sweepZoneIds\.push/
 );
 has(
   'Empty sector: full sector is handled gracefully without crash',

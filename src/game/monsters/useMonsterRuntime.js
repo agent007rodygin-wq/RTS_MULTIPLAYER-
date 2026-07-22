@@ -22,7 +22,7 @@ const ZONES_Y = 5;
  *   },
  *   world: {
  *     activeZoneIds: string[],
- *     isWrappedWorld: boolean,
+ *     isWorldWrapped: boolean,
  *   },
  *   data: {
  *     buildings: any[],
@@ -40,9 +40,9 @@ const ZONES_Y = 5;
  *       buildings: any[],
  *       resources: any[],
  *     }>,
- *     persistMonsterRecord: (monsterId: string, patch: any) => Promise<void>,
- *     deleteMonsterRecord: (monsterId: string) => Promise<void>,
- *     createMonsterRecord: (monsterId: string, spec: any) => Promise<void>,
+ *     persistMonsterRecord: (monsterId: string, patch: any) => void,
+ *     deleteMonsterRecord: (monsterId: string) => void,
+ *     createMonsterRecord: (monsterId: string, spec: any) => void,
  *     isBuildingDeleting: (id: string) => boolean,
  *     isBuildingTombstoned: (id: string) => boolean,
  *     removeFromSnapshotCache: (id: string) => void,

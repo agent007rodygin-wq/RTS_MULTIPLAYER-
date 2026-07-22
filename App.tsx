@@ -237,10 +237,7 @@ import {
 import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeSnapshot.js';
 import { executeMonsterMovementBatch } from './src/game/monsters/monsterMovementRuntime.js';
 import { executeMonsterAttackBatch } from './src/game/monsters/monsterAttackRuntime.js';
-import { executeBronekurSpawn, reconcileRegularMonstersForZone } from './src/game/monsters/monsterSpawnRuntime.js';
-import { buildMonsterWorldSpawnPlan } from './src/game/monsters/monsterWorldPlanning.js';
-import { executeMonsterBackgroundSweep } from './src/game/monsters/monsterBackgroundSweepRuntime.js';
-import { executeMonsterWorldSweep } from './src/game/monsters/monsterWorldSweepRuntime.js';
+import { useMonsterRuntime } from './src/game/monsters/useMonsterRuntime.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -3054,11 +3051,6 @@ const App: React.FC = () => {
     const snapshotMergeDecisionLogRef = useRef<Map<string, string>>(new Map()); // buildingId -> last logged snapshot merge decision
     const lastInteractionRef = useRef<Map<string | number, number>>(new Map());
     const recentMoveInteractionRef = useRef<Map<string, number>>(new Map());
-    const monsterSpawnRunningRef = useRef(false);
-    const monsterSpawnEffectIdRef = useRef(0);
-    const monsterSpawnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const monsterSpawnInitialTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const monsterWorldSweepCursorRef = useRef(0);
     const currentZonesRef = useRef<string[]>([]);
     const placeBuildingAtTileRef = useRef<((building: Building, x: number, y: number, traceId?: string) => Promise<PlacedBuilding | null>) | null>(null);
     const updatePlayerResourcesRef = useRef<((goldDelta: number, rubiesDelta: number, inventoryDeltas: Record<number, number>) => void) | null>(null);
@@ -12414,242 +12406,73 @@ const App: React.FC = () => {
         return () => clearInterval(chestSpawner);
     }, []);
 
-    // Wild Monster Spawning Logic - Simple & stable
-    // Runs every 60 seconds. If no free spot, just skip - try again next cycle.
-    useEffect(() => {
-        monsterSpawnEffectIdRef.current += 1;
-        const effectId = monsterSpawnEffectIdRef.current;
 
-        if (monsterSpawnIntervalRef.current) {
-            clearInterval(monsterSpawnIntervalRef.current);
-            monsterSpawnIntervalRef.current = null;
-        }
-        if (monsterSpawnInitialTimeoutRef.current) {
-            clearTimeout(monsterSpawnInitialTimeoutRef.current);
-            monsterSpawnInitialTimeoutRef.current = null;
-        }
-
-        const runSpawnCycle = async () => {
-            if (effectId !== monsterSpawnEffectIdRef.current) return;
-            if (!isAuthReadyRef.current || !userRef.current) return;
-
-            // Only the first user (alphabetically) spawns monsters to avoid duplicates
-            const users = Object.keys(allUsersRef.current).sort();
-            if (users.length > 0 && userRef.current.uid !== users[0]) return;
-
-            if (DEBUG_FLAG_ENABLED) {
-                console.log('[MonsterSpawn] Tick starting...');
-            }
-
-            if (monsterSpawnRunningRef.current) return;
-            monsterSpawnRunningRef.current = true;
-
-            try {
-
-                const sweepZoneIds: string[] = [];
-                for (let i = 0; i < WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE; i++) {
-                    const zoneIndex = (monsterWorldSweepCursorRef.current + i) % (ZONES_X * ZONES_Y);
-                    sweepZoneIds.push(`${zoneIndex % ZONES_X}_${Math.floor(zoneIndex / ZONES_X)}`);
-                }
-                monsterWorldSweepCursorRef.current =
-                    (monsterWorldSweepCursorRef.current + WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE) % (ZONES_X * ZONES_Y);
-
-                const managedZoneIds = Array.from(new Set([
-                    ...currentZonesRef.current,
-                    ...sweepZoneIds
-                ]));
-                const buildingsCol = collection(db, 'buildings');
-                const resourcesCol = collection(db, 'map_resources');
-                const [zoneBuildingsSnap, zoneResourcesSnap, bronekurSnap] = await Promise.all([
-                    getDocs(query(buildingsCol, where('zoneId', 'in', managedZoneIds))),
-                    getDocs(query(resourcesCol, where('zoneId', 'in', managedZoneIds))),
-                    getDocs(query(buildingsCol, where('buildingId', '==', BRONEKUR_ID)))
+    // Monster spawn lifecycle � delegated to canonical hook
+    const monsterRuntime = useMonsterRuntime({
+        identity: {
+            authReady: isAuthReady,
+            currentUser: user,
+            onlineUsers: allUsers,
+        },
+        world: {
+            activeZoneIds: currentZones,
+            isWorldWrapped,
+        },
+        data: {
+            buildings: placedBuildings,
+            buildingData,
+            resources: mapResources,
+        },
+        constants: {
+            basePerZone: BASE_WILD_MONSTERS_PER_ZONE,
+            totalTarget: TARGET_WILD_MONSTERS_TOTAL,
+            maxSweepActions: WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE,
+            stuckThresholdMs: 30000 * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER,
+        },
+        adapters: {
+            fetchWorldSnapshot: async (managedZoneIds) => {
+                const [zoneSnap, resourceSnap, bronekurSnap] = await Promise.all([
+                    getDocs(query(collection(db, 'buildings'), where('zoneId', 'in', managedZoneIds))),
+                    getDocs(query(collection(db, 'map_resources'), where('zoneId', 'in', managedZoneIds))),
+                    getDocs(query(collection(db, 'buildings'), where('buildingId', '==', BRONEKUR_ID)))
                 ]);
-                if (effectId !== monsterSpawnEffectIdRef.current) return;
-
-                const allBuildingsMap = new Map<string, PlacedBuilding>();
-                zoneBuildingsSnap.docs.forEach((docSnap) => {
-                    allBuildingsMap.set(String(docSnap.id), {
-                        ...(docSnap.data() as any),
-                        id: String(docSnap.id)
-                    } as PlacedBuilding);
+                const buildingMap = new Map();
+                zoneSnap.docs.forEach(d => buildingMap.set(String(d.id), { ...(d.data()), id: String(d.id) }));
+                bronekurSnap.docs.forEach(d => {
+                    const data = { ...(d.data()), id: String(d.id) };
+                    if (Number(data.buildingId) === BRONEKUR_ID && (data.ownerId === '-1' || data.ownerId === 'monster'))
+                        buildingMap.set(String(d.id), data);
                 });
-                bronekurSnap.docs.forEach((docSnap) => {
-                    const data = {
-                        ...(docSnap.data() as any),
-                        id: String(docSnap.id)
-                    } as PlacedBuilding;
-                    if (Number(data.buildingId) === BRONEKUR_ID && (data.ownerId === '-1' || data.ownerId === 'monster')) {
-                        allBuildingsMap.set(String(docSnap.id), data);
-                    }
+                return {
+                    buildings: Array.from(buildingMap.values()),
+                    resources: resourceSnap.docs.map(d => d.data()),
+                };
+            },
+            persistMonsterRecord: async (monsterId, patch) => {
+                await updateDoc(doc(db, 'buildings', monsterId), { ...patch, hostId: userRef.current?.uid || null });
+            },
+            deleteMonsterRecord: async (monsterId) => {
+                await deleteDoc(doc(db, 'buildings', monsterId));
+            },
+            createMonsterRecord: async (monsterId, spec) => {
+                await setDoc(doc(db, 'buildings', monsterId), {
+                    id: monsterId, x: spec.x, y: spec.y, zoneId: spec.zoneId,
+                    buildingId: spec.buildingId || spec.typeId, ownerId: "monster", ownerName: "РњРѕРЅСЃС‚СЂ",
+                    isConstructing: false, constructionEndTime: 0,
+                    type: BuildingType.Default, workState: 'idle',
+                    hp: spec.durability || BRONEKUR_BOSS_HP, maxHp: spec.durability || BRONEKUR_BOSS_HP,
+                    lastMoveTime: Date.now() - Math.floor(Math.random() * 10000), isActive: true,
+                    monsterType: spec.typeName || 'Р±СЂРѕРЅРµРєСѓСЂ', monsterSlot: spec.slot || 1,
+                    isBoss: spec.typeId === BRONEKUR_ID || spec.buildingId === BRONEKUR_ID
                 });
-
-                const allBuildings = Array.from(allBuildingsMap.values());
-                const allResources = zoneResourcesSnap.docs.map(docSnap => docSnap.data() as MapResource);
-
-                const occupied = new Set([
-                    ...allBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`),
-                    ...allResources.map(r => `${r.x},${r.y}`)
-                ]);
-                const blockedResourcePositions = new Set(allResources.map(r => `${r.x},${r.y}`));
-
-                const nowTs = Date.now();
-
-                const result = await executeMonsterWorldSweep({
-                    now: nowTs,
-                    managedZoneIds,
-                    sweepZoneIds: managedZoneIds.filter(id => !currentZonesRef.current.includes(id)),
-                    allBuildings: allBuildings as any,
-                    allResources,
-                    buildingData: buildingData as any,
-                    isWorldWrapped,
-                    maxSweepActions: WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE,
-                    stuckThresholdMs: 30000 * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER,
-                    constants: { basePerZone: BASE_WILD_MONSTERS_PER_ZONE, totalTarget: TARGET_WILD_MONSTERS_TOTAL },
-                    runtimeState: {
-                        attackTime: monsterAttackTimeRef.current as any,
-                        lastAction: monsterLastActionRef.current as any,
-                        targetLock: monsterTargetLockRef.current as any,
-                    },
-                    shouldContinue: () => effectId === monsterSpawnEffectIdRef.current,
-                    adapters: {
-                        healBackgroundZone: async (monsterId, newZoneId) => {
-                            await updateDoc(doc(db, 'buildings', monsterId), { zoneId: newZoneId });
-                        },
-                        persistBackgroundAttack: async (monsterId, targetId, params) => {
-                            const attackTarget = allBuildings.find(b => String(b.id) === targetId);
-                            const targetInfo = attackTarget ? buildingData.find(i => i.id === attackTarget.buildingId) : null;
-                            const targetUpdate = params.isFatal
-                                ? {
-                                    hp: (attackTarget?.hp ?? (targetInfo?.stats.durability ?? 100)),
-                                    maxHp: attackTarget?.maxHp ?? (targetInfo?.stats.durability ?? 100),
-                                    shieldHp: params.targetShieldHp ?? deleteField(),
-                                    shieldMaxHp: params.targetShieldHp ? attackTarget?.shieldMaxHp : deleteField(),
-                                    protectionEndTime: params.targetShieldHp ? attackTarget?.protectionEndTime : deleteField(),
-                                    isDestroying: true,
-                                    destructionStartedAt: nowTs,
-                                    destructionEndTime: params.destructionEndTime ?? nowTs + MONSTER_FATAL_HIT_DELAY_MS,
-                                    destructionExpiresAt: params.destructionEndTime ?? nowTs + MONSTER_FATAL_HIT_DELAY_MS,
-                                    destructionDurationMs: MONSTER_FATAL_HIT_DELAY_MS,
-                                    destructionMaxLifetimeMs: Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
-                                    destructionStatus: 'active',
-                                    pendingDamage: (attackTarget?.hp ?? (targetInfo?.stats.durability ?? 100))
-                                }
-                                : {
-                                    hp: params.targetHp,
-                                    shieldHp: params.targetShieldHp ?? deleteField(),
-                                    shieldMaxHp: params.targetShieldHp ? attackTarget?.shieldMaxHp : deleteField(),
-                                    protectionEndTime: params.targetShieldHp ? attackTarget?.protectionEndTime : deleteField()
-                                };
-                            if (attackTarget) {
-                                await Promise.all([
-                                    updateDoc(doc(db, 'buildings', targetId), targetUpdate),
-                                    updateDoc(doc(db, 'buildings', monsterId), { lastAttackTime: params.monsterLastAttackTime, hostId: userRef.current?.uid || null })
-                                ]);
-                            }
-                        },
-                        teleportBackground: async (monsterId, params) => {
-                            const teleportSpot = findFreeMonsterTeleportSpot(
-                                allBuildings.find(b => String(b.id) === monsterId) || allBuildings[0],
-                                occupied, blockedResourcePositions
-                            );
-                            if (teleportSpot) {
-                                occupied.delete(`${params.x},${params.y}`);
-                                occupied.add(`${teleportSpot.x},${teleportSpot.y}`);
-                                const monster = allBuildings.find(b => String(b.id) === monsterId);
-                                if (monster) {
-                                    monster.x = teleportSpot.x;
-                                    monster.y = teleportSpot.y;
-                                    monster.zoneId = teleportSpot.zoneId;
-                                }
-                                await updateDoc(doc(db, 'buildings', monsterId), {
-                                    x: teleportSpot.x, y: teleportSpot.y,
-                                    zoneId: teleportSpot.zoneId, lastMoveTime: nowTs,
-                                    hostId: userRef.current?.uid || null
-                                });
-                                return true;
-                            }
-                            return false;
-                        },
-                        deleteExcessRegular: async (monsterId, monster) => {
-                            if (isBuildingDeleting(monsterId) || isBuildingTombstoned(monsterId)) return;
-                            removeBuildingFromSnapshotCaches(monsterId);
-                            await deleteDoc(doc(db, 'buildings', monsterId));
-                        },
-                        healDisplacedRegular: async (monsterId, patch) => {
-                            await updateDoc(doc(db, 'buildings', monsterId), patch);
-                        },
-                        createRegularMonster: async (spec) => {
-                            await setDoc(doc(db, 'buildings', spec.monsterId), {
-                                id: spec.monsterId, x: spec.x, y: spec.y, zoneId: spec.zoneId,
-                                buildingId: spec.typeId, ownerId: "monster", ownerName: "РњРѕРЅСЃС‚СЂ",
-                                isConstructing: false, constructionEndTime: 0,
-                                type: BuildingType.Default, workState: 'idle',
-                                hp: spec.durability, maxHp: spec.durability,
-                                lastMoveTime: Date.now() - Math.floor(Math.random() * 10000), isActive: true,
-                                monsterType: spec.typeName, monsterSlot: spec.slot
-                            });
-                        },
-                        onBronekurSpawn: async (params) => {
-                            await setDoc(doc(db, 'buildings', params.monsterId), {
-                                id: params.monsterId, x: params.x, y: params.y, zoneId: params.zoneId,
-                                buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "РњРѕРЅСЃС‚СЂ",
-                                isConstructing: false, constructionEndTime: 0,
-                                type: BuildingType.Default, workState: 'idle',
-                                hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP,
-                                lastMoveTime: Date.now(), isActive: true,
-                                monsterType: 'Р±СЂРѕРЅРµРєСѓСЂ', monsterSlot: 1, isBoss: true
-                            });
-                            occupied.add(`${params.x},${params.y}`);
-                        },
-                        onBronekurHpNormalize: async (params) => {
-                            await updateDoc(doc(db, 'buildings', params.monsterId), {
-                                hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP
-                            });
-                        },
-                        onInvalidBronekur: async (monsterId) => {
-                            if (isBuildingDeleting(monsterId) || isBuildingTombstoned(monsterId)) return;
-                            removeBuildingFromSnapshotCaches(monsterId);
-                            await deleteDoc(doc(db, 'buildings', monsterId));
-                            occupied.delete(`${allBuildings.find(b => String(b.id) === monsterId)?.x},${allBuildings.find(b => String(b.id) === monsterId)?.y}`);
-                        },
-                    },
-                    occupied,
-                    blockedResourcePositions,
-                });
-
-                if (result.spawned > 0 || result.deletedDuplicates > 0 || result.trimmedExcess > 0) {
-                    console.log(`[MonsterSpawn] Spawned ${result.spawned} monsters, trimmed ${result.trimmedExcess} excess monsters, removed ${result.deletedDuplicates} duplicate bosses this cycle`);
-                }
-                return;
-            } catch (err) {
-                console.error('[MonsterSpawn] Tick failed:', err);
-                return;
-            } finally {
-                monsterSpawnRunningRef.current = false;
-            }
-        };
-
-        monsterSpawnIntervalRef.current = setInterval(runSpawnCycle, 60000);
-
-        // Run once after 5 seconds for initial population
-        monsterSpawnInitialTimeoutRef.current = setTimeout(runSpawnCycle, 5000);
-
-        return () => {
-            if (effectId === monsterSpawnEffectIdRef.current) {
-                monsterSpawnEffectIdRef.current += 1;
-            }
-            if (monsterSpawnIntervalRef.current) {
-                clearInterval(monsterSpawnIntervalRef.current);
-                monsterSpawnIntervalRef.current = null;
-            }
-            if (monsterSpawnInitialTimeoutRef.current) {
-                clearTimeout(monsterSpawnInitialTimeoutRef.current);
-                monsterSpawnInitialTimeoutRef.current = null;
-            }
-        };
-    }, []);
-
+            },
+            isBuildingDeleting,
+            isBuildingTombstoned,
+            removeFromSnapshotCache: removeBuildingFromSnapshotCaches,
+            findFreeTeleportSpot: findFreeMonsterTeleportSpot,
+            getBronekurBossHp: () => BRONEKUR_BOSS_HP,
+        },
+    });
     useEffect(() => {
         const additionalCapacity = placedBuildings
             .filter(b => isMyBuilding(b) && b.type === BuildingType.Storage && !b.isConstructing)
