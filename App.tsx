@@ -1193,68 +1193,7 @@ function findFreeMonsterTeleportSpot(
     return null;
 }
 
-function chooseMonsterBackgroundMove(
-    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y' | 'zoneId'>,
-    buildings: PlacedBuilding[],
-    buildingData: Building[],
-    occupiedPositions: Set<string>,
-    blockedResourcePositions: Set<string>,
-    zoneCounts: Map<string, number>,
-    isWrappedWorld: boolean,
-    previousPos?: { x: number; y: number },
-    lastDir?: MonsterDirection,
-    recentPositions?: Array<{ x: number; y: number }>
-): { chosenMove: MonsterMoveStep | null; nextDir: MonsterDirection } {
-    const nextDir = lastDir || getMonsterPatrolDirection(monster.id, monster.buildingId);
-    const adjacentHoldTarget = getMonsterAdjacentHoldTarget(monster, buildings, buildingData, { isWrappedWorld });
-    if (adjacentHoldTarget) {
-        return {
-            chosenMove: null,
-            nextDir: getWrappedDirectionToTarget(monster, adjacentHoldTarget, isWrappedWorld)
-        };
-    }
-
-    const neighbors: MonsterMoveStep[] = getCardinalNeighborTiles(monster.x, monster.y, isWrappedWorld);
-
-    const validMoves = neighbors.filter(move =>
-        !isMonsterTileBlocked(move.x, move.y, occupiedPositions, blockedResourcePositions, undefined, isWrappedWorld)
-    );
-    if (validMoves.length === 0) {
-        return { chosenMove: null, nextDir };
-    }
-    const recentKeys = new Set((recentPositions || []).map(pos => `${pos.x},${pos.y}`));
-    const preferredMoves = validMoves.filter(move => !recentKeys.has(`${move.x},${move.y}`));
-    const candidateMoves = preferredMoves.length > 0 ? preferredMoves : validMoves;
-
-    const chaseTarget = getMonsterChaseTarget(monster, buildings, buildingData, { isWrappedWorld });
-    let chosenMove: MonsterMoveStep | null = null;
-    if (chaseTarget) {
-        chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWrappedWorld);
-    } else {
-        chosenMove = getCrowdingEscapeMove(monster, candidateMoves, zoneCounts, isWrappedWorld);
-        if (!chosenMove) {
-            chosenMove = chooseMonsterPatrolMove(
-                candidateMoves,
-                nextDir,
-                true,
-                monster.id,
-                monster.buildingId,
-                0,
-                previousPos
-            ).chosenMove;
-        }
-    }
-
-    if (chosenMove && previousPos && chosenMove.x === previousPos.x && chosenMove.y === previousPos.y && candidateMoves.length > 1) {
-        const altMove = candidateMoves.find(m => m.x !== previousPos.x || m.y !== previousPos.y);
-        if (altMove) chosenMove = altMove;
-    }
-
-    return {
-        chosenMove,
-        nextDir: chosenMove ? { dx: chosenMove.dx, dy: chosenMove.dy } : nextDir
-    };
-}
+import { chooseMonsterBackgroundMove } from './src/game/monsters/monsterBackgroundMove.js';
 
 const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding => {
     if (building.hp === undefined && building.maxHp === undefined) return building;
