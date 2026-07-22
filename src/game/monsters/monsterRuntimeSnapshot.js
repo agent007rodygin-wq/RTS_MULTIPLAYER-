@@ -1,0 +1,89 @@
+// @ts-check
+// Monster runtime snapshot builder — filters, classifies, and sorts monsters
+// for the tick loop. Receives all runtime state as explicit arguments.
+// Dependencies: monsterMovement.js, monsterCrowding.js, monsterTargetSelection.js
+
+import { getMonsterMoveInterval, getMonsterMoveSeed } from './monsterMovement.js';
+import { buildMonsterZoneCounts } from './monsterCrowding.js';
+import { getMonsterAdjacentAttackTarget } from './monsterTargetSelection.js';
+
+/**
+ * @typedef {{ x: number; y: number; id?: string|number; buildingId: number; hp?: number; ownerId?: string|number; isConstructing?: boolean; isDestroying?: boolean; lastMoveTime?: number; lastAttackTime?: number }} MonsterRecord
+ */
+
+/**
+ * Builds the per-tick monster snapshot: movement candidates, attack candidates,
+ * and zone population counts.
+ *
+ * @param {{
+ *   now: number,
+ *   buildings: MonsterRecord[],
+ *   buildingData: Array<{ id: number; stats?: { isMonster?: boolean; hates?: string } }>,
+ *   monsterLastAction: Map<string, number>,
+ *   monsterAttackTime: Map<string, number>,
+ *   isMonsterHost: (b: MonsterRecord) => boolean,
+ *   isWorldWrapped: boolean,
+ *   pendingDestroyedIds: Set<string>,
+ *   maxMovesPerBatch: number,
+ * }} params
+ * @returns {{
+ *   actingMonsters: MonsterRecord[],
+ *   monstersReadyToAttack: MonsterRecord[],
+ *   monsterZoneCounts: Map<string, number>,
+ * }}
+ */
+export function buildMonsterRuntimeSnapshot({
+    now, buildings, buildingData,
+    monsterLastAction, monsterAttackTime, isMonsterHost,
+    isWorldWrapped, pendingDestroyedIds, maxMovesPerBatch,
+}) {
+    const monstersMoving = buildings.filter(b => {
+        if (b.isConstructing || b.isDestroying) return false;
+        if (b.hp !== undefined && b.hp <= 0) return false;
+        const info = buildingData.find(i => i.id === b.buildingId);
+        if (!info || !info.stats.isMonster) return false;
+        if (!isMonsterHost(b)) return false;
+        const monsterId = String(b.id || '');
+        const lastTime = Math.max(b.lastMoveTime || 0, monsterLastAction.get(monsterId) || 0);
+        const moveInterval = getMonsterMoveInterval(b.buildingId, monsterId);
+        return (now - lastTime >= moveInterval);
+    });
+
+    const monstersReadyToAttack = buildings.filter(monster => {
+        if (monster.isConstructing || monster.isDestroying) return false;
+        if (monster.hp !== undefined && monster.hp <= 0) return false;
+        const info = buildingData.find(i => i.id === monster.buildingId);
+        if (!info || !info.stats.isMonster) return false;
+        if (!isMonsterHost(monster)) return false;
+        const monsterId = String(monster.id || '');
+        const lastAttackTime = Math.max(
+            monster.lastAttackTime || 0,
+            monsterAttackTime.get(monsterId) || 0
+        );
+        if (lastAttackTime > now) return false;
+        if ((now - lastAttackTime) < 40000) return false; // MONSTER_ATTACK_INTERVAL_MS
+
+        return !!getMonsterAdjacentAttackTarget(monster, buildings, buildingData, {
+            isWrappedWorld: isWorldWrapped,
+            pendingDestroyedIds,
+        });
+    });
+
+    const monsterZoneCounts = buildMonsterZoneCounts(buildings, buildingData);
+
+    // Sort movement candidates: most overdue first, then by deterministic seed
+    const sorted = [...monstersMoving].sort((a, b) => {
+        const aId = String(a.id || '');
+        const bId = String(b.id || '');
+        const aLastTime = Math.max(a.lastMoveTime || 0, monsterLastAction.get(aId) || 0);
+        const bLastTime = Math.max(b.lastMoveTime || 0, monsterLastAction.get(bId) || 0);
+        const aOverdue = now - aLastTime - getMonsterMoveInterval(a.buildingId, aId);
+        const bOverdue = now - bLastTime - getMonsterMoveInterval(b.buildingId, bId);
+        if (aOverdue !== bOverdue) return bOverdue - aOverdue;
+        return getMonsterMoveSeed(aId, a.buildingId) - getMonsterMoveSeed(bId, b.buildingId);
+    });
+
+    const actingMonsters = sorted.slice(0, maxMovesPerBatch);
+
+    return { actingMonsters, monstersReadyToAttack, monsterZoneCounts };
+}
