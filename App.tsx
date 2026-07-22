@@ -1333,22 +1333,14 @@ const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding
 const isBuildingAlive = (building: Pick<PlacedBuilding, 'hp'>): boolean =>
     building.hp === undefined || building.hp > 0;
 
-const REGULAR_MONSTER_SPAWN_CONFIG = [
-    { typeId: GORYNYCH_ID, count: 1, name: 'Р С–Р С•РЎР‚РЎвЂ№Р Р…РЎвЂ№РЎвЂЎ' },
-    { typeId: KILLING_HUT_ID, count: 1, name: 'Р С‘Р В·Р В±РЎС“РЎв‚¬Р С”Р В°' },
-    { typeId: KIND_SANTA_ID, count: 1, name: 'РЎРѓР В°Р Р…РЎвЂљР В°' },
-    { typeId: KOLOBOK_ID, count: 1, name: 'Р С”Р С•Р В»Р С•Р В±Р С•Р С”' },
-    { typeId: BABA_YAGA_ID, count: 1, name: 'Р В±Р В°Р В±Р В° РЎРЏР С–Р В°' }
-];
+import {
+    REGULAR_MONSTER_SPAWN_CONFIG,
+    getRegularMonsterPlanForZone,
+    getRegularMonsterId,
+    getBronekurHomeZoneId,
+    getBronekurMonsterId,
+} from './src/game/monsters/monsterSpawnPlanning.js';
 
-const getRegularMonsterPlanForZone = (zoneX: number, zoneY: number) => {
-    const excludedIndex = ((zoneY * ZONES_X) + zoneX) % REGULAR_MONSTER_SPAWN_CONFIG.length;
-    return REGULAR_MONSTER_SPAWN_CONFIG.filter((_, index) => index !== excludedIndex);
-};
-
-const getRegularMonsterId = (typeId: number, slot: number, zoneId: string) => `m${typeId}s${slot}z${zoneId}`;
-const getBronekurHomeZoneId = () => `${Math.floor(ZONES_X / 2)}_${Math.floor(ZONES_Y / 2)}`;
-const getBronekurMonsterId = () => `m${BRONEKUR_ID}s1z${getBronekurHomeZoneId()}`;
 const makePlacedEntityId = (uid?: string | null) =>
     sanitizePbId(`${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${uid ?? 'guest'}`);
 
