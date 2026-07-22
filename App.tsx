@@ -1,5 +1,6 @@
 
 import LoadingScreen from './LoadingScreen';
+import ResourceBar from './src/components/game/ResourceBar';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { pb } from './src/pocketbase';
 import {
@@ -228,12 +229,11 @@ const BABY_MAX_LEVEL_IDS = new Set([
   BABY_PIGLET_MAX_ID, BABY_CAT_MAX_ID, BABY_ANGEL_BOY_MAX_ID,
   BABY_PANDA_MAX_ID, BABY_FROG_MAX_ID
 ]);
-const KILLING_HUT_ID = 70001;
-const KIND_SANTA_ID = 70002;
-const GORYNYCH_ID = 70003;
-const KOLOBOK_ID = 70004;
-const BABA_YAGA_ID = 70005;
-const BRONEKUR_ID = 70006;
+// Monster IDs — canonical module src/game/monsters/monsterIds.js
+import {
+    KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID,
+    KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID,
+} from './src/game/monsters/monsterIds.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -1077,82 +1077,48 @@ const guiMenuInventoryImageUrl = '/Gui/GUI_Menu/основеное меню/ин
 const royalQueenCrownImageUrl = '/Gui/GUI_Menu/Королевские выборы/Королева Корона/qwincrown.webp';
 const royalKingCrownImageUrl = '/Gui/GUI_Menu/Королевские выборы/корона короля/kingcrown.webp';
 const policeBadgeImageUrl = '/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp';
-const MONSTER_MOVE_JITTER_RATIO = 0.18;
 const ZONE_RING_ONE_DELAY_MS = 900;
 const ZONE_RING_TWO_DELAY_MS = 2200;
 const WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE = 3;
 const WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE = 12;
 const WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER = 6;
-const MONSTER_RECENT_POSITIONS_LIMIT = 6;
 
-// Monster movement intervals by type (in milliseconds).
-// Shorter base intervals make the world feel alive, while per-monster jitter
-// and a batched scheduler keep large packs from moving all at once.
-const MONSTER_MOVE_INTERVALS: Record<number, number> = {
-  [KILLING_HUT_ID]: 26000,
-  [KIND_SANTA_ID]: 23000,
-  [GORYNYCH_ID]: 30000,
-  [KOLOBOK_ID]: 28000,
-  [BABA_YAGA_ID]: 29000,
-  [BRONEKUR_ID]: 18000,
-};
-const DEFAULT_MONSTER_MOVE_INTERVAL = 32000;
+// Monster movement, targeting, IDs — canonical modules
+import {
+    MONSTER_MOVE_INTERVALS,
+    DEFAULT_MONSTER_MOVE_INTERVAL,
+    MONSTER_RECENT_POSITIONS_LIMIT,
+    MONSTER_MOVE_JITTER_RATIO,
+    MONSTER_MOVE_BATCH_INTERVAL_MS,
+    MAX_MONSTER_MOVES_PER_BATCH,
+    MAX_MONSTER_WRITE_UPDATES_PER_TICK,
+    MONSTER_WRITE_MIN_INTERVAL_MS,
+    MONSTER_WALK_DURATION_MULTIPLIER,
+    getMonsterMoveSeed,
+    hashMonsterZoneSeed,
+    seededShuffle,
+    getMonsterMoveInterval,
+    getPlaybackDurationMs,
+    getPlaybackFrameIndex,
+    chooseMonsterMoveTowardTarget,
+    getMonsterPatrolDirection,
+    chooseMonsterPatrolMove,
+    isMonsterTileBlocked,
+} from './src/game/monsters/monsterMovement.js';
+import {
+    isMonsterAttackTargetCandidate,
+    isMonsterHoldTargetCandidate,
+    getMonsterAdjacentAttackTarget,
+    getMonsterAdjacentHoldTarget,
+    getMonsterChaseTarget,
+} from './src/game/monsters/monsterTargetSelection.js';
+
 const MONSTER_FATAL_HIT_DELAY_MS = 1200;
-
-function getMonsterMoveSeed(monsterId: string | number, buildingId: number): number {
-  const source = `${monsterId}:${buildingId}`;
-  let hash = 0;
-  for (let i = 0; i < source.length; i++) {
-    hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function hashMonsterZoneSeed(source: string): number {
-  let hash = 0;
-  for (let i = 0; i < source.length; i++) {
-    hash = ((hash << 5) - hash + source.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function seededShuffle<T>(items: T[], seedSource: string): T[] {
-  const result = [...items];
-  let seed = hashMonsterZoneSeed(seedSource) || 1;
-  for (let i = result.length - 1; i > 0; i--) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    const j = seed % (i + 1);
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-function getMonsterMoveInterval(buildingId: number, monsterId: string | number): number {
-  const baseInterval = MONSTER_MOVE_INTERVALS[buildingId] || DEFAULT_MONSTER_MOVE_INTERVAL;
-  const seed = getMonsterMoveSeed(monsterId, buildingId) % 1000;
-  const jitter = ((seed / 999) * 2 - 1) * MONSTER_MOVE_JITTER_RATIO;
-  return Math.max(12000, Math.round(baseInterval * (1 + jitter)));
-}
-
-function getPlaybackDurationMs(frameCount: number, fps: number, durationMultiplier = 1): number {
-  return frameCount * (1000 / fps) * durationMultiplier;
-}
-
-function getPlaybackFrameIndex(elapsedMs: number, frameCount: number, fps: number, durationMultiplier = 1): number {
-  const effectiveFps = fps / durationMultiplier;
-  return Math.min(Math.floor(elapsedMs / (1000 / effectiveFps)), frameCount - 1);
-}
-
-const MONSTER_WALK_ANIM_DURATION = 5000; // 5 seconds of walk animation after each step
+const MONSTER_WALK_ANIM_DURATION = 5000;
 const MONSTER_ATTACK_INTERVAL_MS = 40000;
 const CANNON_ATTACK_INTERVAL_MS = 40000;
 const CANNON_TICK_INTERVAL_MS = 1000;
 const MONSTER_AI_TICK_INTERVAL_MS = 250;
-const MONSTER_MOVE_BATCH_INTERVAL_MS = 900;
-const MAX_MONSTER_MOVES_PER_BATCH = 6;
-const MAX_MONSTER_WRITE_UPDATES_PER_TICK = 20;
-const MONSTER_WRITE_MIN_INTERVAL_MS = 600;
-const MONSTER_WALK_DURATION_MULTIPLIER = 1.5;
 
 type MonsterMoveStep = { x: number; y: number; dx: number; dy: number };
 type MonsterDirection = { dx: number; dy: number };
@@ -1162,227 +1128,13 @@ type MonsterPatrolMoveResult = {
 };
 type MonsterTeleportSpot = { x: number; y: number; zoneId: string };
 
-function isMonsterAttackTargetCandidate(
-    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
-    target: PlacedBuilding,
-    buildingData: Building[],
-    options?: {
-        blockedTargetIds?: Set<string>;
-        pendingDestroyedIds?: Set<string>;
-    }
-): boolean {
-    const targetId = String(target.id);
-    const targetInfo = buildingData.find(i => i.id === target.buildingId);
-    if (target.ownerId === monster.ownerId) return false;
-    if (target.buildingId === RIVER_ID || target.buildingId === MOUNTAIN_ID) return false;
-    if (targetInfo?.stats.isMonster) return false;
-    if (options?.blockedTargetIds?.has(targetId)) return false;
-    if (options?.pendingDestroyedIds?.has(targetId)) return false;
-    // Keep helper behavior aligned with the live monster AI:
-    // buildings under construction are still valid targets.
-    if (target.isDestroying) return false;
-    if (target.hp !== undefined && target.hp <= 0) return false;
-    return true;
-}
 
-function isMonsterHoldTargetCandidate(
-    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
-    target: PlacedBuilding,
-    buildingData: Building[],
-    options?: {
-        blockedTargetIds?: Set<string>;
-        pendingDestroyedIds?: Set<string>;
-    }
-): boolean {
-    const targetId = String(target.id);
-    const targetInfo = buildingData.find(i => i.id === target.buildingId);
-    if (target.ownerId === monster.ownerId) return false;
-    if (target.buildingId === RIVER_ID || target.buildingId === MOUNTAIN_ID) return false;
-    if (targetInfo?.stats.isMonster) return false;
-    if (options?.blockedTargetIds?.has(targetId)) return false;
-    if (options?.pendingDestroyedIds?.has(targetId)) return false;
-    if (target.hp !== undefined && target.hp <= 0) return false;
-    return true;
-}
 
-function getMonsterAdjacentAttackTarget(
-    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
-    buildings: PlacedBuilding[],
-    buildingData: Building[],
-    options?: {
-        blockedTargetIds?: Set<string>;
-        pendingDestroyedIds?: Set<string>;
-        preferredTargetId?: string | null;
-        isWrappedWorld?: boolean;
-    }
-): PlacedBuilding | null {
-    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
-    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
 
-    const candidates = buildings.filter(target =>
-        neighbors.some(n => n.x === target.x && n.y === target.y) &&
-        isMonsterAttackTargetCandidate(monster, target, buildingData, options)
-    );
-    if (candidates.length === 0) return null;
 
-    const preferredTargetId = options?.preferredTargetId ? String(options.preferredTargetId) : null;
-    if (preferredTargetId) {
-        const preferredTarget = candidates.find((t) => String(t.id) === preferredTargetId);
-        if (preferredTarget) return preferredTarget;
-    }
 
-    const hates = monsterInfo?.stats.hates;
-    const hatedTarget = candidates.find((t) => {
-        const info = buildingData.find(i => i.id === t.buildingId);
-        return hates && info?.category === hates;
-    });
-    return hatedTarget || candidates[0];
-}
 
-function getMonsterAdjacentHoldTarget(
-    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
-    buildings: PlacedBuilding[],
-    buildingData: Building[],
-    options?: {
-        blockedTargetIds?: Set<string>;
-        pendingDestroyedIds?: Set<string>;
-        preferredTargetId?: string | null;
-        isWrappedWorld?: boolean;
-    }
-): PlacedBuilding | null {
-    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
-    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
 
-    const candidates = buildings.filter(target =>
-        neighbors.some(n => n.x === target.x && n.y === target.y) &&
-        isMonsterHoldTargetCandidate(monster, target, buildingData, options)
-    );
-    if (candidates.length === 0) return null;
-
-    const preferredTargetId = options?.preferredTargetId ? String(options.preferredTargetId) : null;
-    if (preferredTargetId) {
-        const preferredTarget = candidates.find((t) => String(t.id) === preferredTargetId);
-        if (preferredTarget) return preferredTarget;
-    }
-
-    const hates = monsterInfo?.stats.hates;
-    const hatedTarget = candidates.find((t) => {
-        const info = buildingData.find(i => i.id === t.buildingId);
-        return hates && info?.category === hates;
-    });
-    return hatedTarget || candidates[0];
-}
-
-function getMonsterChaseTarget(
-    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y'>,
-    buildings: PlacedBuilding[],
-    buildingData: Building[],
-    options?: {
-        searchRadius?: number;
-        blockedTargetIds?: Set<string>;
-        pendingDestroyedIds?: Set<string>;
-        isWrappedWorld?: boolean;
-    }
-): PlacedBuilding | null {
-    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
-    const searchRadius = options?.searchRadius ?? (monster.buildingId === BRONEKUR_ID ? 10 : 5);
-    let nearestTarget: { id: string; x: number; y: number; dist: number; hated: boolean } | null = null;
-
-    buildings.forEach((target) => {
-        if (String(target.id) === String(monster.id)) return;
-        if (!isMonsterAttackTargetCandidate(monster, target, buildingData, options)) return;
-        const dist = getWrappedManhattanDistance(monster, target, !!options?.isWrappedWorld);
-        if (dist > searchRadius) return;
-        const targetInfo = buildingData.find(i => i.id === target.buildingId);
-        const hated = Boolean(monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates);
-        if (
-            !nearestTarget ||
-            (hated && !nearestTarget.hated) ||
-            (hated === nearestTarget.hated && dist < nearestTarget.dist)
-        ) {
-            nearestTarget = { id: String(target.id), x: target.x, y: target.y, dist, hated };
-        }
-    });
-
-    if (!nearestTarget) return null;
-    const target = buildings.find(b => String(b.id) === nearestTarget!.id);
-    return target && isBuildingAlive(target) ? target : null;
-}
-
-function chooseMonsterMoveTowardTarget(
-    validMoves: MonsterMoveStep[],
-    target: Pick<PlacedBuilding, 'x' | 'y'>,
-    isWrappedWorld: boolean
-): MonsterMoveStep | null {
-    if (validMoves.length === 0) return null;
-    let bestMove = validMoves[0];
-    let bestDist = getWrappedManhattanDistance(validMoves[0], target, isWrappedWorld);
-    validMoves.forEach(move => {
-        const dist = getWrappedManhattanDistance(move, target, isWrappedWorld);
-        if (dist < bestDist) {
-            bestDist = dist;
-            bestMove = move;
-        }
-    });
-    return bestMove;
-}
-
-function getMonsterPatrolDirection(monsterId: string | number, buildingId: number): MonsterDirection {
-    const seed = getMonsterMoveSeed(monsterId, buildingId);
-    const dirs = [
-        { dx: 1, dy: 0 },
-        { dx: -1, dy: 0 },
-        { dx: 0, dy: 1 },
-        { dx: 0, dy: -1 }
-    ];
-    return dirs[seed % dirs.length];
-}
-
-function chooseMonsterPatrolMove(
-    validMoves: MonsterMoveStep[],
-    lastDir: MonsterDirection,
-    preferLeftTurn: boolean,
-    monsterId: string | number,
-    buildingId: number,
-    fallbackStepOffset = 0,
-    previousPos?: { x: number; y: number }
-): MonsterPatrolMoveResult {
-    if (validMoves.length === 0) {
-        return { chosenMove: null, selectedTurn: 'none' };
-    }
-
-    const leftTurn = { dx: -lastDir.dy, dy: lastDir.dx };
-    const rightTurn = { dx: lastDir.dy, dy: -lastDir.dx };
-    const preferredTurn = preferLeftTurn ? leftTurn : rightTurn;
-    const alternateTurn = preferLeftTurn ? rightTurn : leftTurn;
-    const preferTurnMove = validMoves.find(m => m.dx === preferredTurn.dx && m.dy === preferredTurn.dy);
-    const altTurnMove = validMoves.find(m => m.dx === alternateTurn.dx && m.dy === alternateTurn.dy);
-    const forwardMove = validMoves.find(m => m.dx === lastDir.dx && m.dy === lastDir.dy);
-
-    let chosenMove: MonsterMoveStep;
-    let selectedTurn: MonsterPatrolMoveResult['selectedTurn'] = 'none';
-
-    if (preferTurnMove) {
-        chosenMove = preferTurnMove;
-        selectedTurn = 'preferred';
-    } else if (forwardMove) {
-        chosenMove = forwardMove;
-        selectedTurn = 'forward';
-    } else if (altTurnMove) {
-        chosenMove = altTurnMove;
-        selectedTurn = 'alternate';
-    } else {
-        chosenMove = validMoves[(getMonsterMoveSeed(monsterId, buildingId) + fallbackStepOffset) % validMoves.length];
-        selectedTurn = 'random';
-    }
-
-    if (previousPos && chosenMove.x === previousPos.x && chosenMove.y === previousPos.y && validMoves.length > 1) {
-        const altMove = validMoves.find(m => m.x !== previousPos.x || m.y !== previousPos.y);
-        if (altMove) chosenMove = altMove;
-    }
-
-    return { chosenMove, selectedTurn };
-}
 
 function getMonsterZoneId(monster: Pick<PlacedBuilding, 'x' | 'y' | 'zoneId'>): string {
     return monster.zoneId || getZoneId(monster.x, monster.y);
@@ -1464,25 +1216,6 @@ function getCrowdingEscapeMove(
     return fallbackMove;
 }
 
-function isMonsterTileBlocked(
-    x: number,
-    y: number,
-    occupiedPositions: Set<string>,
-    blockedResourcePositions: Set<string>,
-    extraBlocked?: (x: number, y: number) => boolean,
-    isWrappedWorld = false
-): boolean {
-    const normalizedX = normalizeWorldCoord(x, WORLD_WIDTH_TILES, isWrappedWorld);
-    const normalizedY = normalizeWorldCoord(y, WORLD_HEIGHT_TILES, isWrappedWorld);
-    if (!isWrappedWorld && (normalizedX < 0 || normalizedX >= WORLD_WIDTH_TILES || normalizedY < 0 || normalizedY >= WORLD_HEIGHT_TILES)) {
-        return true;
-    }
-
-    const key = `${normalizedX},${normalizedY}`;
-    if (occupiedPositions.has(key)) return true;
-    if (blockedResourcePositions.has(key)) return true;
-    return extraBlocked ? extraBlocked(normalizedX, normalizedY) : false;
-}
 
 function findFreeMonsterTeleportSpot(
     monster: Pick<PlacedBuilding, 'x' | 'y' | 'zoneId'>,
@@ -10231,16 +9964,14 @@ const App: React.FC = () => {
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
-                            if (attackDir.dx > 0 && attackDir.dy === 0) {
-                                attackFrames = izbushkaAttackRightFrames;
-                            } else if (attackDir.dx < 0 && attackDir.dy === 0) {
-                                attackFrames = izbushkaAttackLeftFrames;
-                            } else if (attackDir.dy > 0 && attackDir.dx === 0) {
+                            const absDx = Math.abs(attackDir.dx);
+                            const absDy = Math.abs(attackDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 attackFrames = izbushkaAttackBottomFrames;
-                            } else if (attackDir.dy < 0 && attackDir.dx === 0) {
-                                attackFrames = izbushkaAttackTopFrames;
+                            } else if (absDx >= absDy) {
+                                attackFrames = attackDir.dx > 0 ? izbushkaAttackRightFrames : izbushkaAttackLeftFrames;
                             } else {
-                                attackFrames = izbushkaAttackBottomFrames;
+                                attackFrames = attackDir.dy > 0 ? izbushkaAttackBottomFrames : izbushkaAttackTopFrames;
                             }
                             
                             const attackDuration = attackFrames.length * (1000 / 30);
@@ -10256,16 +9987,14 @@ const App: React.FC = () => {
                         // PRIORITY 2: Attack cancel animation (plays after walk ends when no target nearby)
                         if (!playOnce && lastDir && attackCancelTime > 0 && now >= attackCancelTime) {
                             let cancelFrames: string[];
-                            if (lastDir.dx > 0 && lastDir.dy === 0) {
-                                cancelFrames = izbushkaCancelRightFrames;
-                            } else if (lastDir.dx < 0 && lastDir.dy === 0) {
-                                cancelFrames = izbushkaCancelLeftFrames;
-                            } else if (lastDir.dy > 0 && lastDir.dx === 0) {
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 cancelFrames = izbushkaCancelBottomFrames;
-                            } else if (lastDir.dy < 0 && lastDir.dx === 0) {
-                                cancelFrames = izbushkaCancelTopFrames;
+                            } else if (absDx >= absDy) {
+                                cancelFrames = lastDir.dx > 0 ? izbushkaCancelRightFrames : izbushkaCancelLeftFrames;
                             } else {
-                                cancelFrames = izbushkaCancelBottomFrames;
+                                cancelFrames = lastDir.dy > 0 ? izbushkaCancelBottomFrames : izbushkaCancelTopFrames;
                             }
                             
                             const cancelDuration = cancelFrames.length * (1000 / 30);
@@ -10284,16 +10013,14 @@ const App: React.FC = () => {
                         // PRIORITY 3: Walk animation (if not attacking or canceling)
                         if (!playOnce && lastDir && lastMoveTime > 0) {
                             let walkFrames: string[];
-                            if (lastDir.dx > 0 && lastDir.dy === 0) {
-                                walkFrames = izbushkaWalkRightFrames;
-                            } else if (lastDir.dx < 0 && lastDir.dy === 0) {
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 walkFrames = izbushkaWalkLeftFrames;
-                            } else if (lastDir.dy > 0 && lastDir.dx === 0) {
-                                walkFrames = izbushkaWalkDownFrames;
-                            } else if (lastDir.dy < 0 && lastDir.dx === 0) {
-                                walkFrames = izbushkaWalkUpFrames;
+                            } else if (absDx >= absDy) {
+                                walkFrames = lastDir.dx > 0 ? izbushkaWalkRightFrames : izbushkaWalkLeftFrames;
                             } else {
-                                walkFrames = izbushkaWalkLeftFrames;
+                                walkFrames = lastDir.dy > 0 ? izbushkaWalkDownFrames : izbushkaWalkUpFrames;
                             }
                             
                             const walkDuration = getPlaybackDurationMs(walkFrames.length, 30, MONSTER_WALK_DURATION_MULTIPLIER);
@@ -10358,16 +10085,14 @@ const App: React.FC = () => {
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
-                            if (attackDir.dx > 0 && attackDir.dy === 0) {
-                                attackFrames = santaAttackRightFrames;
-                            } else if (attackDir.dx < 0 && attackDir.dy === 0) {
-                                attackFrames = santaAttackLeftFrames;
-                            } else if (attackDir.dy > 0 && attackDir.dx === 0) {
+                            const absDx = Math.abs(attackDir.dx);
+                            const absDy = Math.abs(attackDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 attackFrames = santaAttackBottomFrames;
-                            } else if (attackDir.dy < 0 && attackDir.dx === 0) {
-                                attackFrames = santaAttackTopFrames;
+                            } else if (absDx >= absDy) {
+                                attackFrames = attackDir.dx > 0 ? santaAttackRightFrames : santaAttackLeftFrames;
                             } else {
-                                attackFrames = santaAttackBottomFrames;
+                                attackFrames = attackDir.dy > 0 ? santaAttackBottomFrames : santaAttackTopFrames;
                             }
                             
                             const attackDuration = attackFrames.length * (1000 / SANTA_FPS);
@@ -10385,16 +10110,14 @@ const App: React.FC = () => {
                         // PRIORITY 2: Walk animation
                         if (!playOnce && lastDir && lastMoveTime > 0) {
                             let walkFrames: string[];
-                            if (lastDir.dx > 0 && lastDir.dy === 0) {
-                                walkFrames = santaWalkRightFrames;
-                            } else if (lastDir.dx < 0 && lastDir.dy === 0) {
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 walkFrames = santaWalkLeftFrames;
-                            } else if (lastDir.dy > 0 && lastDir.dx === 0) {
-                                walkFrames = santaWalkDownFrames;
-                            } else if (lastDir.dy < 0 && lastDir.dx === 0) {
-                                walkFrames = santaWalkUpFrames;
+                            } else if (absDx >= absDy) {
+                                walkFrames = lastDir.dx > 0 ? santaWalkRightFrames : santaWalkLeftFrames;
                             } else {
-                                walkFrames = santaWalkLeftFrames;
+                                walkFrames = lastDir.dy > 0 ? santaWalkDownFrames : santaWalkUpFrames;
                             }
                             
                             const walkDuration = getPlaybackDurationMs(walkFrames.length, SANTA_FPS, MONSTER_WALK_DURATION_MULTIPLIER);
@@ -10444,16 +10167,15 @@ const App: React.FC = () => {
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             // Map grid direction to attack animation
-                            if (attackDir.dx > 0 && attackDir.dy === 0) {
-                                attackFrames = bronekurAttackLeftFrames;    // source frames are mirrored horizontally in isometric view
-                            } else if (attackDir.dx < 0 && attackDir.dy === 0) {
-                                attackFrames = bronekurAttackRightFrames;   // source frames are mirrored horizontally in isometric view
-                            } else if (attackDir.dy > 0 && attackDir.dx === 0) {
-                                attackFrames = bronekurAttackBottomFrames;  // attack down (screen bottom-left)
-                            } else if (attackDir.dy < 0 && attackDir.dx === 0) {
-                                attackFrames = bronekurAttackTopFrames;     // attack up (screen top-right)
+                            const absDx = Math.abs(attackDir.dx);
+                            const absDy = Math.abs(attackDir.dy);
+                            if (absDx === 0 && absDy === 0) {
+                                attackFrames = bronekurAttackBottomFrames;
+                            } else if (absDx >= absDy) {
+                                // source frames are mirrored horizontally in isometric view — left/right swapped
+                                attackFrames = attackDir.dx > 0 ? bronekurAttackLeftFrames : bronekurAttackRightFrames;
                             } else {
-                                attackFrames = bronekurAttackBottomFrames;  // fallback
+                                attackFrames = attackDir.dy > 0 ? bronekurAttackBottomFrames : bronekurAttackTopFrames;
                             }
                             
                             const attackDuration = attackFrames.length * (1000 / 30);
@@ -10469,16 +10191,15 @@ const App: React.FC = () => {
                         // PRIORITY 2: Walk animation (if not attacking)
                         if (!playOnce && lastDir && lastMoveTime > 0) {
                             let walkFrames: string[];
-                            if (lastDir.dx > 0 && lastDir.dy === 0) {
-                                walkFrames = bronekurWalkLeftTopFrames;       // right in grid
-                            } else if (lastDir.dx < 0 && lastDir.dy === 0) {
-                                walkFrames = bronekurWalkBottomRightFrames;   // left in grid
-                            } else if (lastDir.dy > 0 && lastDir.dx === 0) {
-                                walkFrames = bronekurWalkTopRightFrames;      // down in grid
-                            } else if (lastDir.dy < 0 && lastDir.dx === 0) {
-                                walkFrames = bronekurWalkBottomFrames;        // up in grid
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
+                                walkFrames = bronekurWalkBottomFrames;
+                            } else if (absDx >= absDy) {
+                                // isometric flip: right in grid → LeftTop frames
+                                walkFrames = lastDir.dx > 0 ? bronekurWalkLeftTopFrames : bronekurWalkBottomRightFrames;
                             } else {
-                                walkFrames = bronekurWalkBottomFrames;        // fallback
+                                walkFrames = lastDir.dy > 0 ? bronekurWalkTopRightFrames : bronekurWalkBottomFrames;
                             }
                             
                             const walkDuration = getPlaybackDurationMs(walkFrames.length, 30, MONSTER_WALK_DURATION_MULTIPLIER);
@@ -10539,16 +10260,14 @@ const App: React.FC = () => {
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
-                            if (attackDir.dx > 0 && attackDir.dy === 0) {
-                                attackFrames = gorynychAttackRightFrames;   // attack right
-                            } else if (attackDir.dx < 0 && attackDir.dy === 0) {
-                                attackFrames = gorynychAttackLeftFrames;     // attack left
-                            } else if (attackDir.dy > 0 && attackDir.dx === 0) {
-                                attackFrames = gorynychAttackBottomFrames;   // attack down
-                            } else if (attackDir.dy < 0 && attackDir.dx === 0) {
-                                attackFrames = gorynychAttackTopFrames;      // attack up
+                            const absDx = Math.abs(attackDir.dx);
+                            const absDy = Math.abs(attackDir.dy);
+                            if (absDx === 0 && absDy === 0) {
+                                attackFrames = gorynychAttackBottomFrames;   // zero vector fallback
+                            } else if (absDx >= absDy) {
+                                attackFrames = attackDir.dx > 0 ? gorynychAttackRightFrames : gorynychAttackLeftFrames;
                             } else {
-                                attackFrames = gorynychAttackBottomFrames;   // fallback
+                                attackFrames = attackDir.dy > 0 ? gorynychAttackBottomFrames : gorynychAttackTopFrames;
                             }
                             
                             const attackDuration = attackFrames.length * (1000 / 30);
@@ -10564,16 +10283,14 @@ const App: React.FC = () => {
                         // PRIORITY 2: Walk animation (if not attacking)
                         if (!playOnce && lastDir && lastMoveTime > 0) {
                             let walkFrames: string[];
-                            if (lastDir.dx > 0 && lastDir.dy === 0) {
-                                walkFrames = gorynychWalkRightFrames;       // right in grid
-                            } else if (lastDir.dx < 0 && lastDir.dy === 0) {
-                                walkFrames = gorynychWalkLeftFrames;        // left in grid
-                            } else if (lastDir.dy > 0 && lastDir.dx === 0) {
-                                walkFrames = gorynychWalkDownFrames;        // down in grid
-                            } else if (lastDir.dy < 0 && lastDir.dx === 0) {
-                                walkFrames = gorynychWalkUpFrames;          // up in grid
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
+                                walkFrames = gorynychWalkDownFrames;
+                            } else if (absDx >= absDy) {
+                                walkFrames = lastDir.dx > 0 ? gorynychWalkRightFrames : gorynychWalkLeftFrames;
                             } else {
-                                walkFrames = gorynychWalkDownFrames;        // fallback
+                                walkFrames = lastDir.dy > 0 ? gorynychWalkDownFrames : gorynychWalkUpFrames;
                             }
                             
                             const walkDuration = getPlaybackDurationMs(walkFrames.length, 30, MONSTER_WALK_DURATION_MULTIPLIER);
@@ -10630,16 +10347,14 @@ const App: React.FC = () => {
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
-                            if (attackDir.dx > 0 && attackDir.dy === 0) {
-                                attackFrames = kolobokAttackRightFrames;
-                            } else if (attackDir.dx < 0 && attackDir.dy === 0) {
-                                attackFrames = kolobokAttackLeftFrames;
-                            } else if (attackDir.dy > 0 && attackDir.dx === 0) {
+                            const absDx = Math.abs(attackDir.dx);
+                            const absDy = Math.abs(attackDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 attackFrames = kolobokAttackBottomFrames;
-                            } else if (attackDir.dy < 0 && attackDir.dx === 0) {
-                                attackFrames = kolobokAttackTopFrames;
+                            } else if (absDx >= absDy) {
+                                attackFrames = attackDir.dx > 0 ? kolobokAttackRightFrames : kolobokAttackLeftFrames;
                             } else {
-                                attackFrames = kolobokAttackBottomFrames;
+                                attackFrames = attackDir.dy > 0 ? kolobokAttackBottomFrames : kolobokAttackTopFrames;
                             }
                             
                             const attackDuration = attackFrames.length * (1000 / 30);
@@ -10655,16 +10370,14 @@ const App: React.FC = () => {
                         // PRIORITY 2: Walk animation (if not attacking)
                         if (!playOnce && lastDir && lastMoveTime > 0) {
                             let walkFrames: string[];
-                            if (lastDir.dx > 0 && lastDir.dy === 0) {
-                                walkFrames = kolobokWalkRightFrames;
-                            } else if (lastDir.dx < 0 && lastDir.dy === 0) {
-                                walkFrames = kolobokWalkLeftFrames;
-                            } else if (lastDir.dy > 0 && lastDir.dx === 0) {
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 walkFrames = kolobokWalkDownFrames;
-                            } else if (lastDir.dy < 0 && lastDir.dx === 0) {
-                                walkFrames = kolobokWalkUpFrames;
+                            } else if (absDx >= absDy) {
+                                walkFrames = lastDir.dx > 0 ? kolobokWalkRightFrames : kolobokWalkLeftFrames;
                             } else {
-                                walkFrames = kolobokWalkDownFrames;
+                                walkFrames = lastDir.dy > 0 ? kolobokWalkDownFrames : kolobokWalkUpFrames;
                             }
                             
                             const walkDuration = getPlaybackDurationMs(walkFrames.length, 30, MONSTER_WALK_DURATION_MULTIPLIER);
@@ -10719,16 +10432,14 @@ const App: React.FC = () => {
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
-                            if (attackDir.dx > 0 && attackDir.dy === 0) {
-                                attackFrames = babaYagaAttackRightFrames;
-                            } else if (attackDir.dx < 0 && attackDir.dy === 0) {
-                                attackFrames = babaYagaAttackLeftFrames;
-                            } else if (attackDir.dy > 0 && attackDir.dx === 0) {
+                            const absDx = Math.abs(attackDir.dx);
+                            const absDy = Math.abs(attackDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 attackFrames = babaYagaAttackBottomFrames;
-                            } else if (attackDir.dy < 0 && attackDir.dx === 0) {
-                                attackFrames = babaYagaAttackTopFrames;
+                            } else if (absDx >= absDy) {
+                                attackFrames = attackDir.dx > 0 ? babaYagaAttackRightFrames : babaYagaAttackLeftFrames;
                             } else {
-                                attackFrames = babaYagaAttackBottomFrames;
+                                attackFrames = attackDir.dy > 0 ? babaYagaAttackBottomFrames : babaYagaAttackTopFrames;
                             }
                             
                             const attackDuration = attackFrames.length * (1000 / 30);
@@ -10744,16 +10455,14 @@ const App: React.FC = () => {
                         // PRIORITY 2: Walk animation (if not attacking)
                         if (!playOnce && lastDir && lastMoveTime > 0) {
                             let walkFrames: string[];
-                            if (lastDir.dx > 0 && lastDir.dy === 0) {
-                                walkFrames = babaYagaWalkRightFrames;
-                            } else if (lastDir.dx < 0 && lastDir.dy === 0) {
-                                walkFrames = babaYagaWalkLeftFrames;
-                            } else if (lastDir.dy > 0 && lastDir.dx === 0) {
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
                                 walkFrames = babaYagaWalkDownFrames;
-                            } else if (lastDir.dy < 0 && lastDir.dx === 0) {
-                                walkFrames = babaYagaWalkUpFrames;
+                            } else if (absDx >= absDy) {
+                                walkFrames = lastDir.dx > 0 ? babaYagaWalkRightFrames : babaYagaWalkLeftFrames;
                             } else {
-                                walkFrames = babaYagaWalkDownFrames;
+                                walkFrames = lastDir.dy > 0 ? babaYagaWalkDownFrames : babaYagaWalkUpFrames;
                             }
                             
                             const walkDuration = getPlaybackDurationMs(walkFrames.length, 30, MONSTER_WALK_DURATION_MULTIPLIER);
@@ -12175,10 +11884,11 @@ const App: React.FC = () => {
                                 if (monster.buildingId === KILLING_HUT_ID) {
                                     // Calculate walk duration based on direction to schedule cancel anim after walk ends
                                     let walkFrameCount = 75; // default
-                                    if (chosenMove.dx < 0 && chosenMove.dy === 0) walkFrameCount = izbushkaWalkLeftFrames.length;
-                                    else if (chosenMove.dx > 0 && chosenMove.dy === 0) walkFrameCount = izbushkaWalkRightFrames.length;
-                                    else if (chosenMove.dy > 0 && chosenMove.dx === 0) walkFrameCount = izbushkaWalkDownFrames.length;
-                                    else if (chosenMove.dy < 0 && chosenMove.dx === 0) walkFrameCount = izbushkaWalkUpFrames.length;
+                                    const absDx = Math.abs(chosenMove.dx);
+                                    const absDy = Math.abs(chosenMove.dy);
+                                    if (absDx === 0 && absDy === 0) walkFrameCount = izbushkaWalkLeftFrames.length;
+                                    else if (absDx >= absDy) walkFrameCount = chosenMove.dx > 0 ? izbushkaWalkRightFrames.length : izbushkaWalkLeftFrames.length;
+                                    else walkFrameCount = chosenMove.dy > 0 ? izbushkaWalkDownFrames.length : izbushkaWalkUpFrames.length;
                                     const walkDuration = getPlaybackDurationMs(walkFrameCount, 30, MONSTER_WALK_DURATION_MULTIPLIER);
                                     monsterAttackCancelTimeRef.current.set(monsterId, now + walkDuration);
                                 }
@@ -18226,7 +17936,7 @@ const App: React.FC = () => {
                 autoPlay={musicEnabled}
             />
 
-            <div className="fixed top-2 right-2 z-[9999]">
+            <div className="fixed bottom-2 left-14 z-[9999]">
                 <button
                     type="button"
                     onClick={() => setZoneGateDebugOpen(prev => !prev)}
@@ -19244,11 +18954,11 @@ const App: React.FC = () => {
             {buildMenu.visible && (
                 // ... (Build Menu content) ...
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); setBuildMenuSearch(''); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px' }}>
+                    <div className="relative flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)' }}>
                         {/* Title centered + close button */}
-                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
+                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '17px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню строительства</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню строительства</h2>
                             </div>
                             <div className="absolute" style={{ right: '42px', top: '1px', width: '220px' }}>
                                 <input
@@ -19265,14 +18975,14 @@ const App: React.FC = () => {
                                         color: '#e5eef8',
                                         padding: '0 12px',
                                         fontFamily: 'Nunito, sans-serif',
-                                        fontSize: '13px',
+                                        fontSize: '11px',
                                         fontWeight: 700,
                                         outline: 'none',
                                         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 0 12px rgba(0,0,0,0.18)'
                                     }}
                                 />
                             </div>
-                            <button onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); setBuildMenuSearch(''); playCloseSound(); }} className="absolute" style={{ right: '-21px', top: '2px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            <button onClick={() => { setBuildMenu({ visible: false, x: 0, y: 0 }); setBuildMenuSearch(''); playCloseSound(); }} className="absolute" style={{ right: '-21px', top: '2px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
                               onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                             >
@@ -19290,7 +19000,7 @@ const App: React.FC = () => {
                                             padding: '7px 10px',
                                             marginBottom: '3px',
                                             borderRadius: '8px',
-                                            fontSize: '12px',
+                                            fontSize: '11px',
                                             fontFamily: 'Nunito, sans-serif',
                                             fontWeight: activeBuildTab === tab.name ? 800 : 600,
                                             background: activeBuildTab === tab.name ? 'rgba(59, 130, 246, 0.7)' : 'rgba(255,255,255,0.05)',
@@ -19310,19 +19020,19 @@ const App: React.FC = () => {
                                     <div className="flex space-x-2 mb-4">
                                         <button
                                             onClick={() => setLetterSubTab('english')}
-                                            style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: letterSubTab === 'english' ? 700 : 500, background: letterSubTab === 'english' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'english' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: letterSubTab === 'english' ? 700 : 500, background: letterSubTab === 'english' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'english' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Английские (A-Z)
                                         </button>
                                         <button
                                             onClick={() => setLetterSubTab('russian')}
-                                            style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: letterSubTab === 'russian' ? 700 : 500, background: letterSubTab === 'russian' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'russian' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: letterSubTab === 'russian' ? 700 : 500, background: letterSubTab === 'russian' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'russian' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Русские (А-Я)
                                         </button>
                                         <button
                                             onClick={() => setLetterSubTab('numbers')}
-                                            style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: letterSubTab === 'numbers' ? 700 : 500, background: letterSubTab === 'numbers' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'numbers' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: letterSubTab === 'numbers' ? 700 : 500, background: letterSubTab === 'numbers' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'numbers' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Цифры (0-9)
                                         </button>
@@ -19333,43 +19043,43 @@ const App: React.FC = () => {
                                     <div className="flex space-x-2 mb-4">
                                         <button
                                             onClick={() => setGiftSubTab('main')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: giftSubTab === 'main' ? 700 : 500, background: giftSubTab === 'main' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'main' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'main' ? 700 : 500, background: giftSubTab === 'main' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'main' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Основные
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('castles')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: giftSubTab === 'castles' ? 700 : 500, background: giftSubTab === 'castles' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'castles' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'castles' ? 700 : 500, background: giftSubTab === 'castles' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'castles' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Замки
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('babies')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: giftSubTab === 'babies' ? 700 : 500, background: giftSubTab === 'babies' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'babies' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'babies' ? 700 : 500, background: giftSubTab === 'babies' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'babies' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Малыши
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('march8')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: giftSubTab === 'march8' ? 700 : 500, background: giftSubTab === 'march8' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'march8' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'march8' ? 700 : 500, background: giftSubTab === 'march8' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'march8' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             8 марта
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('halloween')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: giftSubTab === 'halloween' ? 700 : 500, background: giftSubTab === 'halloween' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'halloween' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'halloween' ? 700 : 500, background: giftSubTab === 'halloween' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'halloween' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Halloween
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('valentine')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: giftSubTab === 'valentine' ? 700 : 500, background: giftSubTab === 'valentine' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'valentine' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'valentine' ? 700 : 500, background: giftSubTab === 'valentine' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'valentine' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             14 февраля
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('spring')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: giftSubTab === 'spring' ? 700 : 500, background: giftSubTab === 'spring' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'spring' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'spring' ? 700 : 500, background: giftSubTab === 'spring' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'spring' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Весеннее обновление
                                         </button>
@@ -19380,13 +19090,13 @@ const App: React.FC = () => {
                                     <div className="flex space-x-2 mb-4">
                                         <button
                                             onClick={() => setDecorSubTab('other')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: decorSubTab === 'other' ? 700 : 500, background: decorSubTab === 'other' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: decorSubTab === 'other' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: decorSubTab === 'other' ? 700 : 500, background: decorSubTab === 'other' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: decorSubTab === 'other' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Декор
                                         </button>
                                         <button
                                             onClick={() => setDecorSubTab('flags')}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '12px', fontWeight: decorSubTab === 'flags' ? 700 : 500, background: decorSubTab === 'flags' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: decorSubTab === 'flags' ? '#fff' : 'rgba(200,210,220,0.8)' }}
+                                            className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: decorSubTab === 'flags' ? 700 : 500, background: decorSubTab === 'flags' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: decorSubTab === 'flags' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
                                             Флаги
                                         </button>
@@ -19547,13 +19257,13 @@ const App: React.FC = () => {
             {showInventory && (
                 // ... (Inventory Modal content) ...
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowInventory(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
-                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
+                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '17px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Инвентарь</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Инвентарь</h2>
                             </div>
-                            <button onClick={() => { setShowInventory(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            <button onClick={() => { setShowInventory(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
                               onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                             >
@@ -19598,13 +19308,13 @@ const App: React.FC = () => {
 
             {showShop && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowShop(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
-                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
+                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '17px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Магазин ресурсов</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Магазин ресурсов</h2>
                             </div>
-                            <button onClick={() => { setShowShop(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            <button onClick={() => { setShowShop(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
                               onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                             >
@@ -19916,13 +19626,13 @@ const App: React.FC = () => {
 
             {showMap && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowMap(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
-                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
+                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '17px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Карта Мира</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Карта Мира</h2>
                             </div>
-                            <button onClick={() => { setShowMap(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            <button onClick={() => { setShowMap(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
                               onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                             >
@@ -20950,13 +20660,13 @@ const App: React.FC = () => {
 
             {showProfileModal && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowProfileModal(false); playCloseSound(); }}>
-                    <div className="relative w-[960px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', padding: '28px 70px 52px 52px', overflow: 'hidden' }}>
+                    <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)', overflow: 'hidden' }}>
                         {/* Title centered + close button */}
-                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '6px' }}>
+                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '17px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Личный кабинет</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Личный кабинет</h2>
                             </div>
-                            <button onClick={() => { setShowProfileModal(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            <button onClick={() => { setShowProfileModal(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
                               onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                             >
@@ -22217,83 +21927,31 @@ const App: React.FC = () => {
                 })}
             </div>
 
-            {/* ... (UI overlays top-left, top-right, bottom, chat window unchanged) ... */}
-            {/* Resources - Top Center */}
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 flex items-center space-x-1 md:space-x-3">
-                {/* Gold */}
-                <div className="flex items-center space-x-1">
-                    <img src={coinImageUrl} alt="Gold" className="w-12 h-12 object-contain md:w-10 md:h-10 resource-icon" />
-                    <span className="text-white font-bold text-lg resource-text" style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{playerGold} / {goldCapacity}</span>
-                </div>
-                
-                {/* Population */}
-                <div className="flex items-center space-x-1">
-                    <img src={populationImageUrl} alt="Population" className="w-12 h-12 object-contain md:w-10 md:h-10 resource-icon" />
-                    <span className="text-white font-bold text-lg resource-text" style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{currentPopulation} / {maxPopulation}</span>
-                </div>
-                
-                {/* Rubies */}
-                <div className="relative group/rubies">
-                    <button
-                        type="button"
-                        onClick={openRubyShopModal}
-                        className="flex items-center space-x-1 cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300/80"
-                        title="Купить рубины"
-                        aria-label="Купить рубины"
-                    >
-                        <img src={rubyImageUrl} alt="Ruby" className="w-12 h-12 object-contain md:w-10 md:h-10 resource-icon" />
-                        <span className="text-pink-400 font-bold text-lg resource-text" style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}>{playerRubies}</span>
-                    </button>
-                    <div
-                        className="absolute hidden group-hover/rubies:block z-50"
-                        style={{ top: '100%', left: '50%', transform: 'translateX(-50%)', paddingTop: '10px' }}
-                    >
-                        <div
-                            style={{
-                                minWidth: '320px',
-                                borderRadius: '16px',
-                                padding: '16px 18px',
-                                background: 'linear-gradient(180deg, rgba(14,22,40,0.96) 0%, rgba(8,12,24,0.96) 100%)',
-                                border: '1px solid rgba(96,165,250,0.35)',
-                                boxShadow: '0 14px 30px rgba(0,0,0,0.38)'
-                            }}
-                        >
-                            <p style={{ margin: 0, color: '#60a5fa', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '16px', lineHeight: 1.45, whiteSpace: 'pre-line' }}>
-                                {'Покачто рубины можно купить через личку в телеграмме вот мой линк\n@BTCtokenbanker напиши мне по поводу покупки рубинов'}
-                            </p>
-                            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <button
-                                    type="button"
-                                    onClick={openRubyShopModal}
-                                    style={{ borderRadius: '14px', border: '1px solid #2d6811', background: 'linear-gradient(180deg, #92cd58 0%, #4f9d27 46%, #387e16 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '18px', lineHeight: 1, padding: '12px 18px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.62), inset 0 -2px 0 rgba(28,73,8,0.38), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.30)' }}
-                                >
-                                    Купить Рубины!
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled
-                                    style={{ borderRadius: '14px', border: '1px solid #5a5a5a', background: 'linear-gradient(180deg, #7f7f7f 0%, #5b5b5b 100%)', color: 'rgba(255,255,255,0.75)', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '18px', lineHeight: 1, padding: '12px 18px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.18)', cursor: 'not-allowed' }}
-                                >
-                                    Посмотри рекламу и получи рубин
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* Resources - Top Center (glass panel) */}
+            <ResourceBar
+                coinImageUrl={coinImageUrl}
+                populationImageUrl={populationImageUrl}
+                rubyImageUrl={rubyImageUrl}
+                coins={playerGold}
+                maxCoins={goldCapacity}
+                workers={currentPopulation}
+                maxWorkers={maxPopulation}
+                rubies={playerRubies}
+                onBuyRubies={openRubyShopModal}
+            />
 
             {/* Player Info - Compact Style (moved to top-left where resources were) */}
-            <div className="absolute top-2 left-2 flex items-center space-x-2 scale-80 origin-left player-info">
+            <div className="absolute top-2 left-2 flex items-center space-x-2 player-info">
                 {/* Profile Menu Button */}
                 <button 
                     onClick={() => { setTempPlayerName(playerName); setShowProfileModal(true); playOpenSound(); }}
                     className="relative group"
                 >
-                    <div className="w-[150px] h-[150px] rounded-full overflow-hidden shadow-lg cursor-pointer hover:scale-105 transition-all relative">
+                    <div className="w-[60px] h-[60px] sm:w-[80px] sm:h-[80px] md:w-[110px] md:h-[110px] lg:w-[150px] lg:h-[150px] rounded-full overflow-hidden shadow-lg cursor-pointer hover:scale-105 transition-all relative">
                         <img src="/Gui/Front/значек личного кабинета вход в личный кабинет/Image-3.webp" alt="Profile Menu" className="w-full h-full object-cover" style={{ transform: 'scale(0.88)' }} />
                         {/* Level Icon Badge */}
-                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-7 h-7 rounded-full flex items-center justify-center shadow-md" style={{ marginLeft: '1px', transform: 'translateX(-50%) translateY(-4px)' }}>
-                            <img src={getLevelIcon(playerLevel)} alt="Level" className="w-6 h-6 object-contain" />
+                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center shadow-md" style={{ marginLeft: '1px', transform: 'translateX(-50%) translateY(-4px)' }}>
+                            <img src={getLevelIcon(playerLevel)} alt="Level" className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 object-contain" />
                         </div>
                     </div>
                 </button>
@@ -22303,7 +21961,7 @@ const App: React.FC = () => {
                     {/* Username */}
                     <button 
                         onClick={() => { setTempPlayerName(playerName); setShowProfileModal(true); playOpenSound(); }}
-                        className="text-[1.65rem] font-bold text-white hover:text-yellow-300 transition-colors text-left leading-tight player-name"
+                        className="text-sm sm:text-base md:text-lg lg:text-[1.65rem] font-bold text-white hover:text-yellow-300 transition-colors text-left leading-tight player-name"
                         style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, textShadow: '2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000' }}
                     >
                         {playerName}
@@ -22312,7 +21970,7 @@ const App: React.FC = () => {
                     {/* XP Bar - Liquid Glass Style */}
                     <div className="relative group/bar">
                         <div 
-                            className="w-36 h-6 rounded-full overflow-hidden stat-bars"
+                            className="w-28 sm:w-32 md:w-36 h-5 sm:h-6 rounded-full overflow-hidden stat-bars"
                             style={{ 
                                 background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.1) 100%)',
                                 backdropFilter: 'blur(10px)',
@@ -22337,7 +21995,7 @@ const App: React.FC = () => {
                                     color: '#223106',
                                     fontFamily: 'Nunito, sans-serif',
                                     fontWeight: 800,
-                                    fontSize: '13px',
+                                    fontSize: '11px',
                                     lineHeight: 1,
                                     textShadow: '0 1px 0 rgba(255,255,255,0.35)'
                                 }}
@@ -22353,7 +22011,7 @@ const App: React.FC = () => {
                     {/* Reputation Bar - Liquid Glass Style */}
                     <div className="relative group/bar">
                         <div 
-                            className="w-36 h-6 rounded-full overflow-hidden stat-bars"
+                            className="w-28 sm:w-32 md:w-36 h-5 sm:h-6 rounded-full overflow-hidden stat-bars"
                             style={{ 
                                 background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.1) 100%)',
                                 backdropFilter: 'blur(10px)',
@@ -22378,7 +22036,7 @@ const App: React.FC = () => {
                                     color: '#223106',
                                     fontFamily: 'Nunito, sans-serif',
                                     fontWeight: 800,
-                                    fontSize: '13px',
+                                    fontSize: '11px',
                                     lineHeight: 1,
                                     textShadow: '0 1px 0 rgba(255,255,255,0.35)'
                                 }}
@@ -22401,7 +22059,7 @@ const App: React.FC = () => {
                             aria-label="Купить энергию"
                         >
                         <div 
-                            className="w-36 h-6 rounded-full overflow-hidden stat-bars"
+                            className="w-28 sm:w-32 md:w-36 h-5 sm:h-6 rounded-full overflow-hidden stat-bars"
                             style={{ 
                                 background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.1) 100%)',
                                 backdropFilter: 'blur(10px)',
@@ -22426,7 +22084,7 @@ const App: React.FC = () => {
                                     color: '#5a3900',
                                     fontFamily: 'Nunito, sans-serif',
                                     fontWeight: 900,
-                                    fontSize: '13px',
+                                    fontSize: '11px',
                                     lineHeight: 1,
                                     textShadow: '0 1px 0 rgba(255,255,255,0.4)'
                                 }}
@@ -22442,31 +22100,35 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Zoom Controls & Settings - Top Right Horizontal */}
-            <div className="fixed top-2 right-2 flex flex-col items-end gap-2 z-50 zoom-controls">
-                {/* Zoom, Settings Row */}
-                <div className="flex items-center gap-2">
-                    {/* Zoom Out (-) */}
+            {/* Zoom Controls & Settings - Top Right, responsive layout */}
+            <div className="fixed top-4 right-4 z-50 zoom-controls">
+                <div className="flex items-center gap-2 max-md:flex-col max-md:items-end max-md:gap-1">
+                    {/* Zoom Out (-) - order last on mobile */}
+                    <div className="zoom-hitarea" style={{ width: '44px', height: '44px', display: 'grid', placeItems: 'center' }}>
                     <button
                         onClick={handleZoomOut}
-                        className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button"
+                        className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-3"
                         title="Отдалить"
-                        style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
                     >
-                        <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '24px', lineHeight: 1, transform: 'translateY(-1px)' }}>−</span>
+                        <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, transform: 'translateY(-1px)' }}>−</span>
                     </button>
+                    </div>
 
-                    {/* Zoom In (+) */}
+                    {/* Zoom In (+) - order middle on mobile */}
+                    <div className="zoom-hitarea" style={{ width: '44px', height: '44px', display: 'grid', placeItems: 'center' }}>
                     <button
                         onClick={handleZoomIn}
-                        className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button"
+                        className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-2"
                         title="Приблизить"
-                        style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
                     >
-                        <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '24px', lineHeight: 1, transform: 'translateY(-1px)' }}>+</span>
+                        <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, transform: 'translateY(-1px)' }}>+</span>
                     </button>
+                    </div>
                     
-                    {/* Settings Button */}
+                    {/* Settings Button - order first on mobile */}
+                    <div className="zoom-hitarea" style={{ width: '44px', height: '44px', display: 'grid', placeItems: 'center' }}>
                     <button
                         onClick={() => {
                             if (showProfileModal && activeProfileTab === 'settings') {
@@ -22478,11 +22140,13 @@ const App: React.FC = () => {
                                 playOpenSound();
                             }
                         }}
-                        className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button"
+                        className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-1"
                         title="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘"
+                        style={{ width: '36px', height: '36px' }}
                     >
-                        <img src="/Gui/Front/значек настроек/Qw5jz.webp" alt="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘" className="w-[42px] h-[42px] object-contain" />
+                        <img src="/Gui/Front/значек настроек/Qw5jz.webp" alt="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘" className="w-[36px] h-[36px] object-contain" />
                     </button>
+                    </div>
                 </div>
             </div>
 
@@ -22503,7 +22167,7 @@ const App: React.FC = () => {
             {/* Tablet Menu Modal */}
             {(showMainTabletMenu || !!activeTabletTutorial) && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={handleDismissTabletModal}>
-                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
+                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: 'min(660px, calc(100vw - 32px))', height: 'min(490px, calc(100vh - 32px))' }}>
                         {/* Tablet background image */}
                         <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         
@@ -22511,13 +22175,13 @@ const App: React.FC = () => {
                         <button 
                             onClick={handleDismissTabletModal} 
                             className="absolute z-10"
-                            style={{ right: '35px', top: '42px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                         />
 
                         {/* Content overlay on tablet screen */}
-                        <div className="relative z-[1] flex flex-col items-center" style={{ width: '620px', padding: '39px 40px 30px 40px' }}>
+                        <div className="relative z-[1] flex flex-col items-center" style={{ width: '620px', padding: '28px 40px 22px 40px' }}>
                             {activeTabletTutorial ? (
                                 <div className="w-full flex flex-col items-center">
                                     <div style={{ border: '4px solid #d4af37', borderRadius: '14px', boxShadow: '0 0 0 2px rgba(255,215,0,0.25), 0 8px 24px rgba(0,0,0,0.45)', overflow: 'hidden', marginTop: '6px', marginBottom: '14px', padding: activeTabletTutorial === 'intro' ? '0' : '8px', background: activeTabletTutorial === 'intro' ? 'transparent' : '#f4ead1' }}>
@@ -22682,20 +22346,20 @@ const App: React.FC = () => {
                             ) : (
                             <>
                             {/* Title */}
-                            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)', marginBottom: '30px' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)', marginBottom: '18px' }}>
                                 <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '20px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню (Основное)</h2>
                             </div>
 
                             {/* Row 1: Р СџР С•Р В»Р С‘РЎвЂ Р С‘РЎРЏ Р Р…РЎР‚Р В°Р Р†Р С•Р Р†, Р СћР С•Р С—, Р С™Р С•РЎР‚Р С•Р В»Р ВµР Р†РЎРѓР С”Р С‘Р Вµ Р Р†РЎвЂ№Р В±Р С•РЎР‚РЎвЂ№ */}
-                            <div className="flex justify-center gap-6 mb-5">
+                            <div className="flex justify-center gap-5 mb-3">
                                 {/* Р СџР С•Р В»Р С‘РЎвЂ Р С‘РЎРЏ Р Р…РЎР‚Р В°Р Р†Р С•Р Р† */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowPoliceMorals(true); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ width: '130px' }}
+                                    style={{ width: '120px' }}
                                 >
-                                    <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src={guiMenuPoliceMoralsImageUrl} alt="Police Morals" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                    <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                        <img src={guiMenuPoliceMoralsImageUrl} alt="Police Morals" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Полиция нравов</span>
                                 </button>
@@ -22704,10 +22368,10 @@ const App: React.FC = () => {
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowTopPlayers(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ width: '130px' }}
+                                    style={{ width: '120px' }}
                                 >
-                                    <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src={guiMenuTopImageUrl} alt="Top Players" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                    <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                        <img src={guiMenuTopImageUrl} alt="Top Players" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Топ</span>
                                 </button>
@@ -22716,25 +22380,25 @@ const App: React.FC = () => {
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowRoyalElections(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ width: '130px' }}
+                                    style={{ width: '120px' }}
                                 >
-                                    <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src={guiMenuRoyalElectionsImageUrl} alt="Royal Elections" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                    <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                        <img src={guiMenuRoyalElectionsImageUrl} alt="Royal Elections" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Королевские выборы</span>
                                 </button>
                             </div>
 
                             {/* Row 2: Р СљР В°Р С–Р В°Р В·Р С‘Р Р…, Р С™Р В°РЎР‚РЎвЂљР В°, Р вЂњР С•РЎР‚Р С•Р Т‘ */}
-                            <div className="flex justify-center gap-6 mb-5">
+                            <div className="flex justify-center gap-5 mb-3">
                                 {/* Р СљР В°Р С–Р В°Р В·Р С‘Р Р… */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowShop(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ width: '130px' }}
+                                    style={{ width: '120px' }}
                                 >
-                                    <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src={guiMenuShopImageUrl} alt="Shop" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                    <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                        <img src={guiMenuShopImageUrl} alt="Shop" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Магазин</span>
                                 </button>
@@ -22743,10 +22407,10 @@ const App: React.FC = () => {
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowMap(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ width: '130px' }}
+                                    style={{ width: '120px' }}
                                 >
-                                    <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src={guiMenuMapImageUrl} alt="Map" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                    <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                        <img src={guiMenuMapImageUrl} alt="Map" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Карта</span>
                                 </button>
@@ -22755,10 +22419,10 @@ const App: React.FC = () => {
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); handleTeleportToTownHall(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ width: '130px' }}
+                                    style={{ width: '120px' }}
                                 >
-                                    <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src={guiMenuTownImageUrl} alt="My City" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                    <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                        <img src={guiMenuTownImageUrl} alt="My City" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
                                     <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Город</span>
                                 </button>
@@ -22769,12 +22433,12 @@ const App: React.FC = () => {
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowInventory(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ width: '130px' }}
+                                    style={{ width: '120px', gap: '2px' }}
                                 >
-                                    <div style={{ width: '100px', height: '100px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
-                                        <img src={guiMenuInventoryImageUrl} alt="Inventory" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                                    <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <img src={guiMenuInventoryImageUrl} alt="Inventory" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Инвентарь</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center', lineHeight: 1 }}>Инвентарь</span>
                                 </button>
                             </div>
                             </>
@@ -22803,7 +22467,8 @@ const App: React.FC = () => {
                     <ChatBubbleIcon className="w-5 h-5 text-gray-300" />
                 </button>
             ) : (
-            <div className={`fixed bottom-2 left-2 bg-black/70 backdrop-blur-sm border border-white/10 shadow-2xl transition-all duration-300 flex flex-col rounded-xl overflow-hidden chat-window ${chatCollapseState === 'open' ? 'w-[45%] h-[35vh]' : 'w-auto h-10 chat-collapsed'}`}>
+            <div className={`fixed bottom-2 left-2 bg-black/70 backdrop-blur-sm border border-white/10 shadow-2xl transition-all duration-300 flex flex-col rounded-xl overflow-hidden chat-window ${chatCollapseState === 'open' ? '' : 'w-auto h-10 chat-collapsed'}`}
+                 style={chatCollapseState === 'open' ? { width: 'min(560px, calc(100vw - 16px))', height: 'clamp(200px, 28vh, 310px)' } : undefined}>
                 <div className="flex items-center bg-black/50 border-b border-white/10 h-10 shrink-0 chat-tabs">
                     <button
                         onClick={() => setChatCollapseState(chatCollapseState === 'open' ? 'tabs' : chatCollapseState === 'tabs' ? 'button' : 'open')}
@@ -22991,13 +22656,13 @@ const App: React.FC = () => {
 
             {energyModalState && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeEnergyModal}>
-                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
+                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: 'min(660px, calc(100vw - 32px))', height: 'min(490px, calc(100vh - 32px))' }}>
                         <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         <button
                             onClick={closeEnergyModal}
                             className="absolute z-10"
                             aria-label="Закрыть окно энергии"
-                            style={{ right: '35px', top: '42px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                         />
@@ -23052,13 +22717,13 @@ const App: React.FC = () => {
 
             {rubyModalState && (
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeRubyModal}>
-                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
+                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: 'min(660px, calc(100vw - 32px))', height: 'min(490px, calc(100vh - 32px))' }}>
                         <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         <button
                             onClick={closeRubyModal}
                             className="absolute z-10"
                             aria-label="Закрыть окно рубинов"
-                            style={{ right: '35px', top: '42px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                         />
@@ -23108,13 +22773,13 @@ const App: React.FC = () => {
 
             {buildingLimitModalData && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[9999] backdrop-blur-sm" role="dialog" aria-modal="true" onClick={closeBuildingLimitModal}>
-                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: '780px', height: '580px' }}>
+                    <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: 'min(660px, calc(100vw - 32px))', height: 'min(490px, calc(100vh - 32px))' }}>
                         <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                         <button
                             onClick={closeBuildingLimitModal}
                             className="absolute z-10"
                             aria-label="Закрыть окно лимита строительства"
-                            style={{ right: '35px', top: '42px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                            style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                         />

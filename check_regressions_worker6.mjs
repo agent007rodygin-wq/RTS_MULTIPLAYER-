@@ -1,12 +1,18 @@
 import fs from 'fs';
 
 const appPath = 'App.tsx';
+const targetPath = 'src/game/monsters/monsterTargetSelection.js';
+const movePath = 'src/game/monsters/monsterMovement.js';
 const source = fs.readFileSync(appPath, 'utf8');
+const targetSource = fs.readFileSync(targetPath, 'utf8');
+const moveSource = fs.readFileSync(movePath, 'utf8');
+
+const allSource = source + '\n' + targetSource + '\n' + moveSource;
 
 const checks = [];
 
 const has = (name, pattern) => {
-  const ok = pattern.test(source);
+  const ok = pattern.test(allSource);
   checks.push({ name, ok });
 };
 

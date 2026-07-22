@@ -35,4 +35,4 @@ All scenarios start as `UNCONFIRMED_RUNTIME_BEHAVIOR`.
 | # | Scenario | Group | Initial Classification | Freeze Slice | Evidence Ref |
 | --- | --- | --- | --- | --- | --- |
 | 11–22 | Monster AI (targeting, movement, patrol, crowding, combat) | Monster Runtime | `UNCONFIRMED_RUNTIME_BEHAVIOR` | D | EA-5 |
-| 23 | World geometry consolidation — single canonical `src/world.js` | World Architecture | `UNCONFIRMED_RUNTIME_BEHAVIOR` | E (Wave 1) | EA-6 |
+| 24 | Monster pure logic deduplication — canonical imports replace 13+ App.tsx duplicates | Monster Architecture | `UNCONFIRMED_RUNTIME_BEHAVIOR` | E (Wave 2B) | EA-6 |
