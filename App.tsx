@@ -11342,8 +11342,30 @@ const App: React.FC = () => {
                 console.log(`[MONSTER_DIAG] ${reason} monster=${monsterId} type=${label} pos=(${monster.x},${monster.y}) hostId=${monster.hostId || 'none'} ownerId=${monster.ownerId}${extra ? ` ${extra}` : ''}`);
             };
 
+            const isValidMonsterAttackTarget = (monster: PlacedBuilding, target: PlacedBuilding) => {
+                const targetInfo = buildingData.find(i => i.id === target.buildingId);
+                const targetId = String(target.id);
+                if (target.ownerId === monster.ownerId) return false;
+                if (target.buildingId === RIVER_ID || target.buildingId === MOUNTAIN_ID) return false;
+                if (targetInfo?.stats.isMonster) return false;
+                // Skip entities already queued for deletion to prevent monsters
+                // from getting stuck attacking "ghost" records after 404 updates.
+                if (deletingBuildingsRef.current.has(targetId)) return false;
+                // Construction phase is attackable: monsters can target buildings immediately.
+                if (target.hp !== undefined && target.hp <= 0) return false;
+                if (target.isDestroying) return false;
+                return true;
+            };
+            const isValidMonsterChaseTarget = (
+                monster: PlacedBuilding,
+                target: PlacedBuilding,
+                pendingDestroyedIds?: Set<string>
+            ) => {
+                if (!isValidMonsterAttackTarget(monster, target)) return false;
+                if (pendingDestroyedIds?.has(String(target.id))) return false;
+                return true;
+            };
             const pendingDestroyedIds = new Set<string>();
-            const blockedTargetIds = new Set(deletingBuildingsRef.current);
 
             const monstersMoving = monsterAiTickReady ? placedBuildingsRef.current.filter(b => {
                 if (b.isConstructing || b.isDestroying) return false;
@@ -11772,15 +11794,41 @@ const App: React.FC = () => {
                         const candidateMoves = preferredMoves.length > 0 ? preferredMoves : validMoves;
 
                         if (candidateMoves.length > 0) {
-                            const chaseTarget = getMonsterChaseTarget(monster, currentBuildings, buildingData, {
-                                blockedTargetIds,
-                                pendingDestroyedIds,
-                                isWrappedWorld: isWorldWrapped,
+                            // SMART AI: Look for buildings within search radius and move toward them
+                            // Bronekur boss gets a much larger search radius (10 tiles vs 5 for regular monsters)
+                            const SEARCH_RADIUS = monster.buildingId === BRONEKUR_ID ? 10 : 5;
+                            let nearestTarget: PlacedBuilding | null = null;
+                            let nearestTargetDist = Infinity;
+                            let nearestTargetIsHated = false;
+
+                            currentBuildings.forEach((targetBuilding) => {
+                                if (String(targetBuilding.id) === String(monster.id)) return;
+                                if (!isValidMonsterChaseTarget(monster, targetBuilding, pendingDestroyedIds)) return;
+                                const dist = getWrappedManhattanDistance(monster, targetBuilding, isWorldWrapped);
+                                if (dist > SEARCH_RADIUS) return;
+                                const targetInfo = buildingData.find(i => i.id === targetBuilding.buildingId);
+                                const isHated = Boolean(monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates);
+                                if (
+                                    !nearestTarget ||
+                                    (isHated && !nearestTargetIsHated) ||
+                                    (isHated === nearestTargetIsHated && dist < nearestTargetDist)
+                                ) {
+                                    nearestTarget = targetBuilding;
+                                    nearestTargetDist = dist;
+                                    nearestTargetIsHated = isHated;
+                                }
                             });
 
                             let chosenMove: { x: number; y: number; dx: number; dy: number } | null = null;
-                            if (chaseTarget) {
-                                chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWorldWrapped);
+                            if (nearestTarget) {
+                                let bestDist = Infinity;
+                                candidateMoves.forEach(move => {
+                                    const dist = getWrappedManhattanDistance(move, nearestTarget!, isWorldWrapped);
+                                    if (dist < bestDist) {
+                                        bestDist = dist;
+                                        chosenMove = move;
+                                    }
+                                });
                             } else {
                                 const crowdingMove = getCrowdingEscapeMove(monster, candidateMoves, monsterZoneCounts, isWorldWrapped);
                                 if (crowdingMove) {
