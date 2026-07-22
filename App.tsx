@@ -19,7 +19,9 @@ import {
     Play,
     Pause,
     SkipBack,
-    SkipForward
+    SkipForward,
+    Maximize2,
+    Minimize2
 } from 'lucide-react';
 import { buildings as _buildingDataRaw } from './data/buildings';
 import { generateDestructionInfo } from './data/destructionWeapons';
@@ -2064,33 +2066,38 @@ const drawAnimatedCoin = (ctx: CanvasRenderingContext2D, x: number, y: number, s
     ctx.restore();
 };
 
-// Function to draw rotating loading spinner (black)
+// Function to draw dark swirling loading spinner
 const drawLoadingSpinner = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number) => {
-    const rotation = (time / 800) % (Math.PI * 2); // Rotate every 800ms
+    const r = size / 2;
     
     ctx.save();
     ctx.translate(x, y);
     
-    // White background circle
+    // Dark background circle with subtle border
     ctx.beginPath();
-    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
-    ctx.fillStyle = 'white';
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(10, 10, 10, 0.92)';
     ctx.fill();
-    
-    // Black arc (rotating)
-    ctx.beginPath();
-    ctx.arc(0, 0, size / 2 - 2, rotation, rotation + Math.PI * 1.5);
-    ctx.strokeStyle = '#1a1a1a';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     
-    // White outline
-    ctx.beginPath();
-    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Three swirling arcs at different speeds for depth
+    const arcs = [
+        { speed: 600, opacity: 0.85, width: 2.5, length: Math.PI * 1.6, offset: 0 },
+        { speed: 900, opacity: 0.55, width: 2.0, length: Math.PI * 1.2, offset: Math.PI * 0.7 },
+        { speed: 1200, opacity: 0.30, width: 1.5, length: Math.PI * 0.9, offset: Math.PI * 1.4 },
+    ];
+    
+    arcs.forEach(arc => {
+        const rotation = ((time / arc.speed) % 1) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, r - 3, rotation + arc.offset, rotation + arc.offset + arc.length);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${arc.opacity})`;
+        ctx.lineWidth = arc.width;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+    });
     
     ctx.restore();
 };
@@ -2517,6 +2524,7 @@ const App: React.FC = () => {
     const [cameraOffset, setCameraOffset] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 4 });
     const [throttledCameraOffset, setThrottledCameraOffset] = useState(cameraOffset);
     const [zoomIndex, setZoomIndex] = useState(1); // Corresponds to 1.5 zoom
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [placedBuildings, setPlacedBuildings] = useState<PlacedBuilding[]>([]);
     const [mapResources, setMapResources] = useState<MapResource[]>([]);
     const [droppedItems, setDroppedItems] = useState<DroppedItem[]>([]);
@@ -3293,6 +3301,11 @@ const App: React.FC = () => {
     // Sync camera and zoom refs for beforeunload
     useEffect(() => { cameraOffsetRef.current = cameraOffset; }, [cameraOffset]);
     useEffect(() => { zoomIndexRef.current = zoomIndex; }, [zoomIndex]);
+    useEffect(() => {
+        const handler = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', handler);
+        return () => document.removeEventListener('fullscreenchange', handler);
+    }, []);
 
 
     // Primary logic hooks and helpers (declared early to avoid TDZ)
@@ -22003,6 +22016,28 @@ const App: React.FC = () => {
                         style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
                     >
                         <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, transform: 'translateY(-1px)' }}>+</span>
+                    </button>
+                    </div>
+                    
+                    {/* Fullscreen Button - order middle on mobile */}
+                    <div className="zoom-hitarea" style={{ width: '44px', height: '44px', display: 'grid', placeItems: 'center' }}>
+                    <button
+                        onClick={() => {
+                            if (!document.fullscreenElement) {
+                                document.documentElement.requestFullscreen().catch(() => {});
+                            } else {
+                                document.exitFullscreen().catch(() => {});
+                            }
+                        }}
+                        className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-1"
+                        title="Toggle fullscreen"
+                        aria-label="Toggle fullscreen"
+                        style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
+                    >
+                        {isFullscreen
+                            ? <Minimize2 style={{ color: '#e8f0ff', width: '18px', height: '18px' }} />
+                            : <Maximize2 style={{ color: '#e8f0ff', width: '18px', height: '18px' }} />
+                        }
                     </button>
                     </div>
                     
