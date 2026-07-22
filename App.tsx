@@ -238,6 +238,7 @@ import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeS
 import { executeMonsterMovementBatch } from './src/game/monsters/monsterMovementRuntime.js';
 import { executeMonsterAttackBatch } from './src/game/monsters/monsterAttackRuntime.js';
 import { executeBronekurSpawn, reconcileRegularMonstersForZone } from './src/game/monsters/monsterSpawnRuntime.js';
+import { buildMonsterWorldSpawnPlan } from './src/game/monsters/monsterWorldPlanning.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -12819,42 +12820,21 @@ const App: React.FC = () => {
                     },
                 });
 
-                const zoneSpawnRanking: Array<{ zoneId: string; score: number }> = [];
-                const bonusZoneCount = Math.max(0, TARGET_WILD_MONSTERS_TOTAL - (ZONES_X * ZONES_Y * BASE_WILD_MONSTERS_PER_ZONE));
-                for (let scoreZx = 0; scoreZx < ZONES_X; scoreZx++) {
-                    for (let scoreZy = 0; scoreZy < ZONES_Y; scoreZy++) {
-                        const zoneId = `${scoreZx}_${scoreZy}`;
-                        zoneSpawnRanking.push({
-                            zoneId,
-                            score: hashMonsterZoneSeed(`wild-zone:${zoneId}`)
-                        });
-                    }
-                }
-                zoneSpawnRanking.sort((a, b) => b.score - a.score || a.zoneId.localeCompare(b.zoneId));
-                const bonusZoneIds = new Set(zoneSpawnRanking.slice(0, bonusZoneCount).map(z => z.zoneId));
-                const bonusTypes = seededShuffle(REGULAR_MONSTER_SPAWN_CONFIG.map(cfg => cfg.typeId), 'wild-extra-types');
-                const bonusTypeByZone = new Map<string, number>();
-                zoneSpawnRanking.slice(0, bonusZoneCount).forEach((zone, index) => {
-                    bonusTypeByZone.set(zone.zoneId, bonusTypes[index % bonusTypes.length]);
+                const { bonusZoneIds, zonePlans } = buildMonsterWorldSpawnPlan({
+                    managedZoneIds,
+                    constants: { basePerZone: BASE_WILD_MONSTERS_PER_ZONE, totalTarget: TARGET_WILD_MONSTERS_TOTAL },
                 });
 
                 for (const zoneId of managedZoneIds) {
                     if (effectId !== monsterSpawnEffectIdRef.current) return;
-                    const [zX, zY] = zoneId.split('_').map(Number);
-                    if (!Number.isFinite(zX) || !Number.isFinite(zY)) continue;
-                        const zoneTypeOrder = seededShuffle(REGULAR_MONSTER_SPAWN_CONFIG, `wild-types:${zoneId}`);
-                        const duplicateTypeId = bonusZoneIds.has(zoneId) ? bonusTypeByZone.get(zoneId) || null : null;
-                        const zoneTargetCount = BASE_WILD_MONSTERS_PER_ZONE + (bonusZoneIds.has(zoneId) ? 1 : 0);
-                        const desiredTypeCounts = new Map<number, number>();
-                        zoneTypeOrder.forEach(cfg => desiredTypeCounts.set(cfg.typeId, 1));
-                        if (duplicateTypeId !== null) {
-                            desiredTypeCounts.set(duplicateTypeId, 2);
-                        }
+                    const plan = zonePlans.get(zoneId);
+                    if (!plan) continue;
+                    const { zoneX, zoneY, desiredTypeCounts, targetCount } = plan;
 
                         const { deletedCount: zoneDeleted, healedCount: zoneHealed, createdCount: zoneCreated } = reconcileRegularMonstersForZone({
-                            zoneId, zoneX: zX, zoneY: zY,
+                            zoneId, zoneX, zoneY,
                             desiredTypeCounts,
-                            zoneTargetCount,
+                            zoneTargetCount: targetCount,
                             buildings: allBuildings as any,
                             buildingData: buildingData as any,
                             findFreeSpot: (x, y) => findFreeSpot(x, y),
