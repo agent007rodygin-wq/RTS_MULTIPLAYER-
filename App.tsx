@@ -4242,7 +4242,88 @@ const App: React.FC = () => {
                 });
 
                 // Save to map_state
-                setDoc(mapStateRef, { generated: true, seed, forceReloadAt: Date.now() }).catch(e => handleFirestoreError(e, OperationType.CREATE, 'map_state/status'));
+                setDoc(mapStateRef, { generated: true, seed, forceReloadAt: Date.now(), terrainRepairVersion: 1 }).catch(e => handleFirestoreError(e, OperationType.CREATE, 'map_state/status'));
+            } else {
+                // Repair missing terrain
+                const repairVersion = docSnap.data().terrainRepairVersion || 0;
+                if (repairVersion < 1 && isAuthReadyRef.current && userRef.current) {
+                    try {
+                        const allBuildingsSnap = await getDocs(collection(db, 'buildings'));
+                        const allBuildings = allBuildingsSnap.docs.map(d => d.data()) as PlacedBuilding[];
+                        const occupied = new Set(allBuildings.map(b => `${b.x},${b.y}`));
+
+                        const existingMountains = allBuildings.filter(b => Number(b.buildingId) === MOUNTAIN_ID && (b.ownerId === "-1" || b.ownerId === "monster") && (b.hp === undefined || b.hp > 0));
+                        const existingRivers = allBuildings.filter(b => Number(b.buildingId) === RIVER_ID && (b.ownerId === "-1" || b.ownerId === "monster") && (b.hp === undefined || b.hp > 0));
+
+                        const missingMountains = Math.max(0, MAX_MOUNTAINS - existingMountains.length);
+                        const missingRivers = Math.max(0, MAX_RIVERS - existingRivers.length);
+
+                        console.log(`[TerrainRepair] start: mountains=${existingMountains.length}/${MAX_MOUNTAINS} rivers=${existingRivers.length}/${MAX_RIVERS}`);
+                        console.log(`[TerrainRepair] missing: mountains=${missingMountains} rivers=${missingRivers}`);
+
+                        let createdMountains = 0;
+                        let createdRivers = 0;
+
+                        const mountainInfo = buildingData.find(b => b.id === MOUNTAIN_ID);
+                        const riverInfo = buildingData.find(b => b.id === RIVER_ID);
+
+                        // Generate missing mountains
+                        for (let i = 0; i < missingMountains && mountainInfo; i++) {
+                            let x, y, key, tries = 0;
+                            do {
+                                x = Math.floor(Math.random() * WORLD_WIDTH_TILES);
+                                y = Math.floor(Math.random() * WORLD_HEIGHT_TILES);
+                                key = `${x},${y}`;
+                                tries++;
+                            } while (occupied.has(key) && tries < 50);
+                            if (!occupied.has(key)) {
+                                occupied.add(key);
+                                const id = `terrain-m-${Date.now()}-${i}`;
+                                await setDoc(doc(db, 'buildings', id), {
+                                    id, x, y, zoneId: getZoneId(x, y), buildingId: MOUNTAIN_ID,
+                                    ownerId: "-1", ownerName: "Система", isConstructing: false, constructionEndTime: 0,
+                                    type: BuildingType.Default, workState: 'idle',
+                                    hp: mountainInfo.stats.durability, maxHp: mountainInfo.stats.durability
+                                }).catch(() => {});
+                                createdMountains++;
+                            }
+                        }
+
+                        // Generate missing rivers
+                        for (let i = 0; i < missingRivers && riverInfo; i++) {
+                            let x, y, key, tries = 0;
+                            do {
+                                x = Math.floor(Math.random() * WORLD_WIDTH_TILES);
+                                y = Math.floor(Math.random() * WORLD_HEIGHT_TILES);
+                                key = `${x},${y}`;
+                                tries++;
+                            } while (occupied.has(key) && tries < 50);
+                            if (!occupied.has(key)) {
+                                occupied.add(key);
+                                const id = `terrain-r-${Date.now()}-${i}`;
+                                await setDoc(doc(db, 'buildings', id), {
+                                    id, x, y, zoneId: getZoneId(x, y), buildingId: RIVER_ID,
+                                    ownerId: "-1", ownerName: "Система", isConstructing: false, constructionEndTime: 0,
+                                    type: BuildingType.Default, workState: 'idle',
+                                    hp: riverInfo.stats.durability, maxHp: riverInfo.stats.durability
+                                }).catch(() => {});
+                                createdRivers++;
+                            }
+                        }
+
+                        console.log(`[TerrainRepair] created: mountains=${createdMountains} rivers=${createdRivers}`);
+
+                        if (createdMountains < missingMountains || createdRivers < missingRivers) {
+                            console.log(`[TerrainRepair] incomplete: mountains=${createdMountains}/${missingMountains} rivers=${createdRivers}/${missingRivers}`);
+                        } else {
+                            const existingData = docSnap.data();
+                            await setDoc(mapStateRef, { ...existingData, terrainRepairVersion: 1 });
+                            console.log('[TerrainRepair] complete');
+                        }
+                    } catch (err) {
+                        console.error('[TerrainRepair] failed:', err);
+                    }
+                }
             }
         });
     }, [isAuthReady, user]);
