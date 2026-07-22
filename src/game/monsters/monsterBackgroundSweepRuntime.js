@@ -35,7 +35,7 @@ const MONSTER_FATAL_HIT_DELAY_MS = 1200;
  *   }) => void,
  *   onTeleportStuck: (params: {
  *     monsterId: string, x: number, y: number, zoneId: string,
- *   }) => boolean,
+ *   }) => boolean|Promise<boolean>,
  * }} params
  * @returns {{ actionsTaken: number }}
  */
@@ -71,11 +71,11 @@ export function executeMonsterBackgroundSweep({
 
             const attackTarget = getMonsterAdjacentAttackTarget(monster, buildings, buildingData, {
                 preferredTargetId: runtimeState.targetLock.get(monsterId) || null,
-                isWrappedWorld,
+                isWrappedWorld: isWorldWrapped,
             });
             const holdTarget = attackTarget || getMonsterAdjacentHoldTarget(monster, buildings, buildingData, {
                 preferredTargetId: runtimeState.targetLock.get(monsterId) || null,
-                isWrappedWorld,
+                isWrappedWorld: isWorldWrapped,
             });
             if (holdTarget) {
                 runtimeState.targetLock.set(monsterId, String(holdTarget.id));
