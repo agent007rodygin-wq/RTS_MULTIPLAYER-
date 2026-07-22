@@ -146,7 +146,7 @@ const getCanonicalItemName = (itemId: string | number, fallbackName?: string, bu
         });
     }
 
-    return canonicalItem?.name ?? fallbackName ?? `РџСЂРµРґРјРµС‚ #${itemId}`;
+    return canonicalItem?.name ?? fallbackName ?? `Предмет #${itemId}`;
 };
 
 const handleGameLoopError = (error: unknown, operationType: OperationType, path: string | null) => {
@@ -165,7 +165,7 @@ const handleGameLoopError = (error: unknown, operationType: OperationType, path:
 // Constants
 const ZOOM_LEVELS = [1, 1.5, 2, 2.5];
 const PLAYER_COLORS = ['#4299E1', '#F56565', '#48BB78', '#ECC94B'];
-// World geometry and zone helpers вЂ” canonical module src/world.js
+// World geometry and zone helpers — canonical module src/world.js
 import {
     TILE_WIDTH, TILE_HEIGHT,
     WORLD_WIDTH_TILES, WORLD_HEIGHT_TILES,
@@ -193,8 +193,8 @@ const TARGET_WILD_MONSTERS_TOTAL = 129;
 const WILD_MONSTER_CROWDING_SOFT_CAP = 5;
 const WILD_MONSTER_CROWDING_HARD_CAP = 6;
 const MAX_WILD_MONSTERS_PER_ZONE = 4; // 4 random types (out of 5) per sector
-const MAX_WILD_MONSTERS_TOTAL = 100; // 25 Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р вЂ  ? 4 Р В РЎВР В РЎвЂўР В Р вЂ¦Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљР В Р’В°
-const MONSTER_RESPAWN_TIME = 60000; // 60 Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРЎвЂњР В Р вЂ¦Р В РўвЂ (1 Р В РЎВР В РЎвЂР В Р вЂ¦Р РЋРЎвЂњР РЋРІР‚С™Р В Р’В° Р В РЎвЂќР РЋРЎвЂњР В Р’В»Р В РўвЂР В Р’В°Р РЋРЎвЂњР В Р вЂ¦ Р В РЎвЂ”Р В РЎвЂўР РЋР С“Р В Р’В»Р В Р’Вµ Р РЋРЎвЂњР В Р вЂ¦Р В РЎвЂР РЋРІР‚РЋР РЋРІР‚С™Р В РЎвЂўР В Р’В¶Р В Р’ВµР В Р вЂ¦Р В РЎвЂР РЋР РЏ)
+const MAX_WILD_MONSTERS_TOTAL = 100; // 25 РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р С•Р Р† ? 4 Р СР С•Р Р…РЎРѓРЎвЂљРЎР‚Р В°
+const MONSTER_RESPAWN_TIME = 60000; // 60 РЎРѓР ВµР С”РЎС“Р Р…Р Т‘ (1 Р СР С‘Р Р…РЎС“РЎвЂљР В° Р С”РЎС“Р В»Р Т‘Р В°РЎС“Р Р… Р С—Р С•РЎРѓР В»Р Вµ РЎС“Р Р…Р С‘РЎвЂЎРЎвЂљР С•Р В¶Р ВµР Р…Р С‘РЎРЏ)
 const BASE_GOLD_CAPACITY = 500000000;
 const TOWN_HALL_ID = 301;
 const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
@@ -205,7 +205,7 @@ const CLAN_CASTLE_ID = 800;
 const WATCHTOWER_ID = 801;
 const BANDIT_CASTLE_IDS = new Set(
     buildingData
-        .filter(building => building.category === 'РљР»Р°РЅ' && building.name.startsWith('Р‘Р°РЅРґРёС‚СЃРєРёР№ Р·Р°РјРѕРє'))
+        .filter(building => building.category === 'Клан' && building.name.startsWith('Бандитский замок'))
         .map(building => Number(building.id))
 );
 const PROTECTION_SHIELD_HP = 6666;
@@ -229,7 +229,7 @@ const BABY_MAX_LEVEL_IDS = new Set([
   BABY_PIGLET_MAX_ID, BABY_CAT_MAX_ID, BABY_ANGEL_BOY_MAX_ID,
   BABY_PANDA_MAX_ID, BABY_FROG_MAX_ID
 ]);
-// Monster IDs вЂ” canonical module src/game/monsters/monsterIds.js
+// Monster IDs — canonical module src/game/monsters/monsterIds.js
 import {
     KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID,
     KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID,
@@ -260,7 +260,7 @@ const MAX_LEVEL = 30;
 // Recommendation Factory, Military Factories, Alchemical Factories, Coin Factory
 const DIRECT_INTERACTION_FACTORIES = [
     290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 302, 303, 304, 305, // Sawmills (301 is Town Hall, 300 is Sign - not sawmills)
-    55, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, // Sawmill (Р В РІР‚С”Р В Р’ВµР РЋР С“Р В РЎвЂўР В РЎвЂ”Р В РЎвЂР В Р’В»Р В РЎвЂќР В Р’В°) all 16 levels
+    55, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, // Sawmill (Р вЂєР ВµРЎРѓР С•Р С—Р С‘Р В»Р С”Р В°) all 16 levels
     601, // Detonator Factory
     602, // Devil's Machine
     606, 607, // Oil Rigs
@@ -268,16 +268,16 @@ const DIRECT_INTERACTION_FACTORIES = [
     382, 383, 384, 385, // More Military
     386, 387, 388, 389, 390, // Secret Military
     600, // Alchemical factories and others with production
-    430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 469, // Coin Factory (Р В РЎС™Р В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В Р вЂ Р В РЎвЂўР В РўвЂР В РЎвЂР В РЎвЂќ)
-    8, 22, 23, // Movie Theaters (Р В РЎв„ўР В РЎвЂР В Р вЂ¦Р В РЎвЂўР РЋРІР‚С™Р В Р’ВµР В Р’В°Р РЋРІР‚С™Р РЋР вЂљР РЋРІР‚в„–)
-    12, 33, 34, // Banks (Р В РІР‚ВР В Р’В°Р В Р вЂ¦Р В РЎвЂќР В РЎвЂ)
-    60, 61, 62, // TV Towers (Р В РЎС›Р В Р’ВµР В Р’В»Р В Р’ВµР В Р’В±Р В Р’В°Р РЋРІвЂљВ¬Р В Р вЂ¦Р В РЎвЂ)
-    66, 67, // Cafes (Р В РЎв„ўР В Р’В°Р РЋРІР‚С›Р В Р’Вµ)
-    11, 21, // Shops (Р В РЎС™Р В Р’В°Р В РЎвЂ“Р В Р’В°Р В Р’В·Р В РЎвЂР В Р вЂ¦Р РЋРІР‚в„–)
-    2, 17, 18, 19, 30, 31, 32, // Hot Dog Carts (Р В РЎС›Р В Р’ВµР В Р’В»Р В Р’ВµР В Р’В¶Р В РЎвЂќР В РЎвЂ Р РЋР С“ Р РЋРІР‚В¦Р В РЎвЂўР РЋРІР‚С™Р В РўвЂР В РЎвЂўР В РЎвЂ“Р В Р’В°Р В РЎВР В РЎвЂ)
-    400, 401, 402, 403, 404, 405, 406, 407, 408, 409, // Lily Pond chain (Р В РЎСџР РЋР вЂљР РЋРЎвЂњР В РўвЂ Р РЋР С“ Р В Р’В»Р В РЎвЂР В Р’В»Р В РЎвЂР РЋР РЏР В РЎВР В РЎвЂ)
-    577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, // Enhanced Lily Pond (Р В Р в‚¬Р В Р’В»Р РЋРЎвЂњР РЋРІР‚РЋР РЋРІвЂљВ¬Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В РЎвЂ”Р РЋР вЂљР РЋРЎвЂњР В РўвЂ Р РЋР С“ Р В РІР‚С”Р В РЎвЂР В Р’В»Р В РЎвЂР РЋР РЏР В РЎВР В РЎвЂ)
-    273, // Mill (Р В РЎС™Р В Р’ВµР В Р’В»Р РЋР Р‰Р В Р вЂ¦Р В РЎвЂР РЋРІР‚В Р В Р’В°)
+    430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 469, // Coin Factory (Р СљР С•Р Р…Р ВµРЎвЂљР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘Р С‘Р С”)
+    8, 22, 23, // Movie Theaters (Р С™Р С‘Р Р…Р С•РЎвЂљР ВµР В°РЎвЂљРЎР‚РЎвЂ№)
+    12, 33, 34, // Banks (Р вЂР В°Р Р…Р С”Р С‘)
+    60, 61, 62, // TV Towers (Р СћР ВµР В»Р ВµР В±Р В°РЎв‚¬Р Р…Р С‘)
+    66, 67, // Cafes (Р С™Р В°РЎвЂћР Вµ)
+    11, 21, // Shops (Р СљР В°Р С–Р В°Р В·Р С‘Р Р…РЎвЂ№)
+    2, 17, 18, 19, 30, 31, 32, // Hot Dog Carts (Р СћР ВµР В»Р ВµР В¶Р С”Р С‘ РЎРѓ РЎвЂ¦Р С•РЎвЂљР Т‘Р С•Р С–Р В°Р СР С‘)
+    400, 401, 402, 403, 404, 405, 406, 407, 408, 409, // Lily Pond chain (Р СџРЎР‚РЎС“Р Т‘ РЎРѓ Р В»Р С‘Р В»Р С‘РЎРЏР СР С‘)
+    577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, // Enhanced Lily Pond (Р Р€Р В»РЎС“РЎвЂЎРЎв‚¬Р ВµР Р…РЎвЂ№Р в„– Р С—РЎР‚РЎС“Р Т‘ РЎРѓ Р вЂєР С‘Р В»Р С‘РЎРЏР СР С‘)
+    273, // Mill (Р СљР ВµР В»РЎРЉР Р…Р С‘РЎвЂ Р В°)
 ];
 
 // Casino buildings with gambling interaction
@@ -300,7 +300,7 @@ const SHOUT_COST_GOLD = 1300;
 const SHOUT_COST_ENERGY = 60;
 const LOCATION_SHARE_COOLDOWN = 60000; // 1 minute
 const MAX_REPUTATION = 950;
-const PROTECTION_IMAGE_URL = '/buildings/Р·Р°С‰РёС‰РµРЅРЅР°СЏ Р±Р°С€РЅСЏ/337.webp';
+const PROTECTION_IMAGE_URL = '/buildings/защищенная башня/337.webp';
 const TELEPORT_COOLDOWN_MS = 5000;
 const DRAG_COOLDOWN_MS = 1000; // Cooldown after fast drag to prevent building on unloaded cells
 const COLLISION_CHECK_INTERVAL_MS = 121 * 1000; // Check for overlapping buildings every 121 seconds
@@ -338,7 +338,7 @@ const KOLOBOK_EMOJIS = [
 ];
 
 
-type BuildMenuTab = 'Р“СЂСЏРґРєРё' | 'Р–РёР»СЊРµ' | 'Р‘РёР·РЅРµСЃ' | 'Р‘СѓРєРІС‹' | 'Р”РµРєРѕСЂ' | 'Р”РѕСЂРѕРіРё Рё СЃС‚РµРЅС‹' | 'Р—Р°РІРѕРґС‹' | 'РњРѕРЅСЃС‚СЂС‹' | 'РљР»Р°РЅ' | 'РџРѕРґР°СЂРєРё' | 'Р—Р°С‰РёС‚Р°' | 'РЎС‚Р°С‚СѓРё';
+type BuildMenuTab = 'Грядки' | 'Жилье' | 'Бизнес' | 'Буквы' | 'Декор' | 'Дороги и стены' | 'Заводы' | 'Монстры' | 'Клан' | 'Подарки' | 'Защита' | 'Статуи';
 type LetterSubTab = 'english' | 'russian' | 'numbers';
 type GiftSubTab = 'main' | 'castles' | 'babies' | 'march8' | 'halloween' | 'valentine' | 'spring';
 type DecorSubTab = 'flags' | 'other';
@@ -479,7 +479,7 @@ const normalizeClanIdValue = (value: any): number | null => {
 
 const toTopPlayerEntry = (uid: string, data: any) => ({
     uid: String(uid),
-    name: repairMojibakeCp1251Utf8(String(data?.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№')),
+    name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
     avatar: resolveUserAvatar(data),
     glory: Math.max(0, Number(data?.glory || 0) || 0),
     ...getUserStatCounters(data),
@@ -497,7 +497,7 @@ const mergeTopPlayersEntries = (...sources: any[][]) => {
                 merged.set(uid, {
                     ...entry,
                     uid,
-                    name: entry.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№',
+                    name: entry.name || 'Неизвестный',
                     glory: Number(entry.glory || 0) || 0,
                     ...getUserStatCounters(entry),
                 });
@@ -508,7 +508,7 @@ const mergeTopPlayersEntries = (...sources: any[][]) => {
                 ...existing,
                 ...entry,
                 uid,
-                name: entry.name || existing.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№',
+                name: entry.name || existing.name || 'Неизвестный',
                 avatar: entry.avatar || existing.avatar || null,
                 glory: Math.max(Number(existing.glory || 0) || 0, Number(entry.glory || 0) || 0),
                 treesChopped: Math.max(Number(existing.treesChopped || 0) || 0, Number(entry.treesChopped || 0) || 0),
@@ -900,9 +900,9 @@ const processOfflineTimers = (
 // Image assets
 const treeImageUrl = '/Grid/005.webp';
 const groundTileImageUrl = '/Grid/IMG-2378-12.webp';
-const coinImageUrl = '/Gui/Front/Р·РЅР°С‡РµРє РјРѕРЅРµС‚/Image-2.webp';
+const coinImageUrl = '/Gui/Front/значек монет/Image-2.webp';
 const gloryImageUrl = '/last_appx/glory/slav.webp';
-const rubyImageUrl = '/Gui/Front/Р·РЅР°С‡РµРє СЂСѓР±РёРЅРѕРІ/Nj7hb.webp';
+const rubyImageUrl = '/Gui/Front/значек рубинов/Nj7hb.webp';
 const permitGuideImageUrl = '/Gui/Back/permit-guide.webp';
 const townHallTutorialImageUrl = '/Gui/GUI_Tutorial/TH.webp';
 const introTutorialImageUrl = '/Gui/GUI_Tutorial/firsttutorial.webp';
@@ -919,9 +919,9 @@ const formatBuildDuration = (seconds?: number) => {
     const totalSeconds = Math.max(0, Math.floor(seconds || 0));
     const minutes = Math.floor(totalSeconds / 60);
     const remainingSeconds = totalSeconds % 60;
-    if (minutes <= 0) return `${remainingSeconds}СЃ`;
-    if (remainingSeconds === 0) return `${minutes}Рј`;
-    return `${minutes}Рј ${remainingSeconds}СЃ`;
+    if (minutes <= 0) return `${remainingSeconds}с`;
+    if (remainingSeconds === 0) return `${minutes}м`;
+    return `${minutes}м ${remainingSeconds}с`;
 };
 
 const resolveUserAvatar = (data: any, fallback: string | null = null): string | null => {
@@ -1065,28 +1065,28 @@ const sanitizeInventoryCounts = (rawInventory: unknown): Record<number, number> 
 const TUTORIAL_FROG_HOUSE_ID = 1;
 const TUTORIAL_LILY_POND_ID = 400;
 const energyBatteryImageUrl = '/Gui/Back/energy-battery.webp';
-const populationImageUrl = '/Gui/Front/Р·РЅР°С‡РµРє РїРѕРїСѓР»СЏС†РёРё/Image-1.webp';
+const populationImageUrl = '/Gui/Front/значек популяции/Image-1.webp';
 const oilImageUrl = '/last_appx/oil_lake/30000.webp';
-const chestImageUrl = '/buildings/РЎСѓРЅРґСѓРєРё РЅР° РєР°СЂС‚Рµ С‚СЂРµР¶РµСЂ С…Р°РЅС‚/10000.webp';
-const quarryImageUrl = '/buildings/Р·Р°Р±СЂРѕС€РµРЅРЅР°СЏ РєР°РјРµРЅРѕР»РѕРјРЅСЏ/30001.webp';
-const builderIconUrl = '/Gui/Front/Р·РЅР°С‡РµРє РїРѕРїСѓР»СЏС†РёРё/Image-1.webp';
-const guiMenuPoliceMoralsImageUrl = '/Gui/GUI_Menu/РѕСЃРЅРѕРІРµРЅРѕРµ РјРµРЅСЋ/РџРѕР»РёС†РёСЏ РЅСЂР°РІРѕРІ/6Rw-Ov.webp';
-const guiMenuTopImageUrl = '/Gui/GUI_Menu/РѕСЃРЅРѕРІРµРЅРѕРµ РјРµРЅСЋ/С‚РѕРї/topbottom1.webp';
-const guiMenuRoyalElectionsImageUrl = '/Gui/GUI_Menu/РѕСЃРЅРѕРІРµРЅРѕРµ РјРµРЅСЋ/РљРѕСЂРѕР»РµРІСЃРєРёРµ РІС‹Р±РѕСЂС‹/vibori1.webp';
-const guiMenuShopImageUrl = '/Gui/GUI_Menu/РѕСЃРЅРѕРІРµРЅРѕРµ РјРµРЅСЋ/РјР°РіР°Р·РёРЅ/Image-4.webp';
-const guiMenuMapImageUrl = '/Gui/GUI_Menu/РѕСЃРЅРѕРІРµРЅРѕРµ РјРµРЅСЋ/РєР°СЂС‚Р°/mapbottom1.webp';
-const guiMenuTownImageUrl = '/Gui/GUI_Menu/РѕСЃРЅРѕРІРµРЅРѕРµ РјРµРЅСЋ/РіРѕСЂРѕРґ/town-Bottom1.webp';
-const guiMenuInventoryImageUrl = '/Gui/GUI_Menu/РѕСЃРЅРѕРІРµРЅРѕРµ РјРµРЅСЋ/РёРЅРІРµРЅС‚Р°СЂСЊ/Uerc-WWWW.webp';
-const royalQueenCrownImageUrl = '/Gui/GUI_Menu/РљРѕСЂРѕР»РµРІСЃРєРёРµ РІС‹Р±РѕСЂС‹/РљРѕСЂРѕР»РµРІР° РљРѕСЂРѕРЅР°/qwincrown.webp';
-const royalKingCrownImageUrl = '/Gui/GUI_Menu/РљРѕСЂРѕР»РµРІСЃРєРёРµ РІС‹Р±РѕСЂС‹/РєРѕСЂРѕРЅР° РєРѕСЂРѕР»СЏ/kingcrown.webp';
-const policeBadgeImageUrl = '/Gui/GUI_Menu/Р¶РµС‚РѕРЅ РїРѕР»РёС†РёРё РЅСЂР°РІРѕРІ РІ РјРµРЅСЋ/325999-2.webp';
+const chestImageUrl = '/buildings/Сундуки на карте трежер хант/10000.webp';
+const quarryImageUrl = '/buildings/заброшенная каменоломня/30001.webp';
+const builderIconUrl = '/Gui/Front/значек популяции/Image-1.webp';
+const guiMenuPoliceMoralsImageUrl = '/Gui/GUI_Menu/основеное меню/Полиция нравов/6Rw-Ov.webp';
+const guiMenuTopImageUrl = '/Gui/GUI_Menu/основеное меню/топ/topbottom1.webp';
+const guiMenuRoyalElectionsImageUrl = '/Gui/GUI_Menu/основеное меню/Королевские выборы/vibori1.webp';
+const guiMenuShopImageUrl = '/Gui/GUI_Menu/основеное меню/магазин/Image-4.webp';
+const guiMenuMapImageUrl = '/Gui/GUI_Menu/основеное меню/карта/mapbottom1.webp';
+const guiMenuTownImageUrl = '/Gui/GUI_Menu/основеное меню/город/town-Bottom1.webp';
+const guiMenuInventoryImageUrl = '/Gui/GUI_Menu/основеное меню/инвентарь/Uerc-WWWW.webp';
+const royalQueenCrownImageUrl = '/Gui/GUI_Menu/Королевские выборы/Королева Корона/qwincrown.webp';
+const royalKingCrownImageUrl = '/Gui/GUI_Menu/Королевские выборы/корона короля/kingcrown.webp';
+const policeBadgeImageUrl = '/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp';
 const ZONE_RING_ONE_DELAY_MS = 900;
 const ZONE_RING_TWO_DELAY_MS = 2200;
 const WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE = 3;
 const WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE = 12;
 const WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER = 6;
 
-// Monster movement, targeting, IDs вЂ” canonical modules
+// Monster movement, targeting, IDs — canonical modules
 import {
     MONSTER_MOVE_INTERVALS,
     DEFAULT_MONSTER_MOVE_INTERVAL,
@@ -1354,7 +1354,7 @@ const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding
     // When hp/maxHp fields were added to the schema with default=0, all existing records
     // had their top-level hp=0 and maxHp=0. In a healthy game, killed buildings are
     // IMMEDIATELY deleted from the DB, so hp=0/maxHp=0 in a DB record is ALWAYS
-    // a migration artifact Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ never a legitimately dead building.
+    // a migration artifact Р Р†Р вЂљРІР‚Сњ never a legitimately dead building.
     // Legitimately dead buildings (killed by damage) have maxHp = positive durability
     // (set by a prior normalization call) while hp <= 0.
     // IMPORTANT: treat only maxHp=0 as migration artifact.
@@ -1404,11 +1404,11 @@ const isBuildingAlive = (building: Pick<PlacedBuilding, 'hp'>): boolean =>
     building.hp === undefined || building.hp > 0;
 
 const REGULAR_MONSTER_SPAWN_CONFIG = [
-    { typeId: GORYNYCH_ID, count: 1, name: 'Р В РЎвЂ“Р В РЎвЂўР РЋР вЂљР РЋРІР‚в„–Р В Р вЂ¦Р РЋРІР‚в„–Р РЋРІР‚РЋ' },
-    { typeId: KILLING_HUT_ID, count: 1, name: 'Р В РЎвЂР В Р’В·Р В Р’В±Р РЋРЎвЂњР РЋРІвЂљВ¬Р В РЎвЂќР В Р’В°' },
-    { typeId: KIND_SANTA_ID, count: 1, name: 'Р РЋР С“Р В Р’В°Р В Р вЂ¦Р РЋРІР‚С™Р В Р’В°' },
-    { typeId: KOLOBOK_ID, count: 1, name: 'Р В РЎвЂќР В РЎвЂўР В Р’В»Р В РЎвЂўР В Р’В±Р В РЎвЂўР В РЎвЂќ' },
-    { typeId: BABA_YAGA_ID, count: 1, name: 'Р В Р’В±Р В Р’В°Р В Р’В±Р В Р’В° Р РЋР РЏР В РЎвЂ“Р В Р’В°' }
+    { typeId: GORYNYCH_ID, count: 1, name: 'Р С–Р С•РЎР‚РЎвЂ№Р Р…РЎвЂ№РЎвЂЎ' },
+    { typeId: KILLING_HUT_ID, count: 1, name: 'Р С‘Р В·Р В±РЎС“РЎв‚¬Р С”Р В°' },
+    { typeId: KIND_SANTA_ID, count: 1, name: 'РЎРѓР В°Р Р…РЎвЂљР В°' },
+    { typeId: KOLOBOK_ID, count: 1, name: 'Р С”Р С•Р В»Р С•Р В±Р С•Р С”' },
+    { typeId: BABA_YAGA_ID, count: 1, name: 'Р В±Р В°Р В±Р В° РЎРЏР С–Р В°' }
 ];
 
 const getRegularMonsterPlanForZone = (zoneX: number, zoneY: number) => {
@@ -1442,7 +1442,7 @@ for (const id of TOWN_HALL_FLAG_IDS) {
 }
 const TOWN_HALL_FLAG_ID_SET = new Set(TOWN_HALL_FLAG_IDS);
 
-// Decorative Flags (Р В Р’В¤Р В Р’В»Р В Р’В°Р В РЎвЂ“Р В РЎвЂ) animation frames - 61 frames each, continuous loop
+// Decorative Flags (Р В¤Р В»Р В°Р С–Р С‘) animation frames - 61 frames each, continuous loop
 const FLAG_ANIMATION_IDS = [21001, 21002, 21004, 21005, 21006, 21007, 21008, 21009, 21010, 21011, 21012, 21013, 21014, 21015, 21017, 21018, 21019, 21020, 21021, 21022, 21023, 21024, 21025, 21026, 21027, 21029];
 const flagAnimationFrames: Record<number, string[]> = {};
 for (const id of FLAG_ANIMATION_IDS) {
@@ -1458,7 +1458,7 @@ for (const id of COIN_FACTORY_IDS) {
 }
 const COIN_FACTORY_ID_SET = new Set(COIN_FACTORY_IDS);
 
-// Sawmill (Р В РІР‚С”Р В Р’ВµР РЋР С“Р В РЎвЂўР В РЎвЂ”Р В РЎвЂР В Р’В»Р В РЎвЂќР В Р’В°) animation frames
+// Sawmill (Р вЂєР ВµРЎРѓР С•Р С—Р С‘Р В»Р С”Р В°) animation frames
 // Animation folders use different numbering than building IDs
 // Building ID -> Animation folder mapping:
 // Levels 1-5 (IDs 55, 56, 391, 392, 393) -> folders a55, a56, a391, a392, a400 (85 frames, DefineSprite_171_anim)
@@ -1544,13 +1544,13 @@ for (const def of ALCHEMY_FACTORY_ANIM_DEFS) {
   alchemyFactoryIdleFrames[def.id] = Array.from({ length: def.idleFrames }, (_, i) => `/animation/alchemy_factory/${def.id}/idle/${i + 1}.webp`);
 }
 
-// Military Factory (Р В РІР‚в„ўР В РЎвЂўР В Р’ВµР В Р вЂ¦Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В Р вЂ Р В РЎвЂўР В РўвЂ) animation frames - 62 frames, working state only
+// Military Factory (Р вЂ™Р С•Р ВµР Р…Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames - 62 frames, working state only
 // Building IDs: 60332 (base), 604 (Secret lvl1), 605 (Secret lvl2)
 const MILITARY_FACTORY_IDS = [60332, 604, 605];
 const militaryFactoryAnimationFrames: string[] = Array.from({ length: 62 }, (_, i) => `/animation/military_factory/${i + 1}.webp`);
 const MILITARY_FACTORY_ID_SET = new Set(MILITARY_FACTORY_IDS);
 
-// Mushroom Bed (Р В РІР‚СљР РЋР вЂљР В РЎвЂР В Р’В±Р В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В РЎвЂ“Р РЋР вЂљР РЋР РЏР В РўвЂР В РЎвЂќР В Р’В°) animation frames (working + idle states)
+// Mushroom Bed (Р вЂњРЎР‚Р С‘Р В±Р Р…Р В°РЎРЏ Р С–РЎР‚РЎРЏР Т‘Р С”Р В°) animation frames (working + idle states)
 // Levels 1-5: IDs 874-878 > folder "774"
 // Levels 6-10: IDs 879-883 > folder "779"
 // Levels 11-15: IDs 884-888 > folder "784"
@@ -1578,7 +1578,7 @@ for (const group of MB_GROUP_DEFS) {
   mushroomBedIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/mushroom_bed/${group.folder}/idle/${i + 1}.webp`);
 }
 
-// Mine (Р В Р РѓР В Р’В°Р РЋРІР‚В¦Р РЋРІР‚С™Р В Р’В°) animation frames (working + idle states)
+// Mine (Р РЃР В°РЎвЂ¦РЎвЂљР В°) animation frames (working + idle states)
 // Levels 1-10: IDs 668-677 > folder "668" (82 working + 37 idle)
 // Levels 11-15: IDs 678-682 > folder "678" (86 working + 39 idle)
 // Levels 16-20: IDs 683-687 > folder "683" (86 working + 39 idle)
@@ -1604,7 +1604,7 @@ for (const group of MINE_GROUP_DEFS) {
   mineIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/mine/${group.folder}/idle/${i + 1}.webp`);
 }
 
-// Emerald Factory (Р В Р’ВР В Р’В·Р РЋРЎвЂњР В РЎВР РЋР вЂљР РЋРЎвЂњР В РўвЂР В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В Р вЂ Р В РЎвЂўР В РўвЂ) animation frames (working + idle states)
+// Emerald Factory (Р ВР В·РЎС“Р СРЎР‚РЎС“Р Т‘Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
 // Levels 1-5: IDs 640-644 > folder "640" (40 working + 40 idle)
 // Levels 6-10: IDs 645-649 > folder "645" (40 working + 40 idle)
 // Levels 11-15: IDs 650-654 > folder "650" (40 working + 40 idle)
@@ -1632,7 +1632,7 @@ for (const group of EF_GROUP_DEFS) {
   emeraldFactoryIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/emerald_factory/${group.folder}/idle/${i + 1}.webp`);
 }
 
-// Gold Smelter (Р В РІР‚вЂќР В РЎвЂўР В Р’В»Р В РЎвЂўР РЋРІР‚С™Р В РЎвЂўР В РЎвЂ”Р В Р’В»Р В Р’В°Р В Р вЂ Р В РЎвЂР В Р’В»Р РЋР Р‰Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В Р вЂ Р В РЎвЂўР В РўвЂ) animation frames
+// Gold Smelter (Р вЂ”Р С•Р В»Р С•РЎвЂљР С•Р С—Р В»Р В°Р Р†Р С‘Р В»РЎРЉР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames
 // Level 1: ID 266 > folder "266" (80 working frames only, no idle - shows static image when idle)
 // Levels 2-5: IDs 557-560 > folder "557" (35 working + 40 idle)
 // Levels 6-10: IDs 561-565 > folder "561" (35 working + 40 idle)
@@ -1664,7 +1664,7 @@ for (const group of GS_GROUP_DEFS) {
   }
 }
 
-// Steel Rolling Mill (Р В Р Р‹Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р В Р’ВµР В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В РЎвЂќР В Р’В°Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В Р вЂ Р В РЎвЂўР В РўвЂ) animation frames (working + idle states)
+// Steel Rolling Mill (Р РЋРЎвЂљР В°Р В»Р ВµР С—РЎР‚Р С•Р С”Р В°РЎвЂљР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
 // Levels 1-5: IDs 853-857 > folder "853" (80 working + 39 idle)
 // Levels 6-10: IDs 858-862 > folder "858" (55 working + 64 idle)
 // Levels 11-15: IDs 863-867 > folder "863" (80 working + 39 idle)
@@ -1692,7 +1692,7 @@ for (const group of SRM_GROUP_DEFS) {
   steelRollingMillIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/steel_rolling_mill/${group.folder}/idle/${i + 1}.webp`);
 }
 
-// Steel Smelting Factory (Р В Р Р‹Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р В Р’ВµР В РЎвЂ”Р В Р’В»Р В Р’В°Р В Р вЂ Р В РЎвЂР В Р’В»Р РЋР Р‰Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В Р вЂ Р В РЎвЂўР В РўвЂ) animation frames (working + idle states)
+// Steel Smelting Factory (Р РЋРЎвЂљР В°Р В»Р ВµР С—Р В»Р В°Р Р†Р С‘Р В»РЎРЉР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
 // Each level has its own folder: IDs 262, 475-486 (13 levels)
 // All levels: 36 working frames + 40 idle frames
 const STEEL_SMELTING_IDS = [262, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486];
@@ -1704,7 +1704,7 @@ for (const id of STEEL_SMELTING_IDS) {
   steelSmeltingIdleFrames[id] = Array.from({ length: 40 }, (_, i) => `/animation/steel_smelting/${id}/idle/${i + 1}.webp`);
 }
 
-// Stone Crusher (Р В РЎв„ўР В Р’В°Р В РЎВР В Р вЂ¦Р В Р’ВµР В РўвЂР РЋР вЂљР В РЎвЂўР В Р’В±Р В РЎвЂР В Р’В»Р В РЎвЂќР В Р’В°) animation frames (working + idle states)
+// Stone Crusher (Р С™Р В°Р СР Р…Р ВµР Т‘РЎР‚Р С•Р В±Р С‘Р В»Р С”Р В°) animation frames (working + idle states)
 // Building IDs: 6200, 4091, 410-412, 455-467
 const STONE_CRUSHER_ID_TO_FOLDER: Record<number, string> = {
   6200: 'a98',
@@ -1735,7 +1735,7 @@ for (const folder of Object.values(STONE_CRUSHER_ID_TO_FOLDER)) {
   stoneCrusherIdleFrames[folder] = Array.from({ length: 40 }, (_, i) => `/animation/stone_crusher/${folder}/idle/${i + 1}.webp`);
 }
 
-// Lily Pond (Р В РЎСџР РЋР вЂљР РЋРЎвЂњР В РўвЂ Р РЋР С“ Р В Р’В»Р В РЎвЂР В Р’В»Р В РЎвЂР РЋР РЏР В РЎВР В РЎвЂ) animation frames (working + idle states)
+// Lily Pond (Р СџРЎР‚РЎС“Р Т‘ РЎРѓ Р В»Р С‘Р В»Р С‘РЎРЏР СР С‘) animation frames (working + idle states)
 // Levels 1-5: IDs 577-581 > folder "577"
 // Levels 6-10: IDs 582-586 > folder "582"
 // Levels 11-15: IDs 587-591 > folder "587"
@@ -1763,7 +1763,7 @@ for (const group of LP_GROUP_DEFS) {
   lilyPondIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/lily_pond/${group.folder}/idle/${i + 1}.webp`);
 }
 
-// Detonator Factory (Р В РЎСџР В Р’ВµР РЋРІР‚С™Р В Р’В°Р РЋР вЂљР В РўвЂР В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В Р вЂ Р В РЎвЂўР В РўвЂ) animation frames
+// Detonator Factory (Р СџР ВµРЎвЂљР В°РЎР‚Р Т‘Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames
 // Levels 1-6 (IDs 307, 619, 6201, 6211, 6221, 6231): 20 working frames only (no idle)
 // Levels 7-11 (IDs 6241-6281): folder "624", 40 working + 40 idle
 // Levels 12-16 (IDs 6291-6331): folder "629", 40 working + 40 idle
@@ -1793,19 +1793,19 @@ for (const group of DF_GROUP_DEFS) {
   }
 }
 
-// Wild Quarry (Р В РІР‚СњР В РЎвЂР В РЎвЂќР В Р’В°Р РЋР РЏ Р В РЎвЂќР В Р’В°Р В РЎВР В Р’ВµР В Р вЂ¦Р В РЎвЂўР В Р’В»Р В РЎвЂўР В РЎВР В Р вЂ¦Р РЋР РЏ) animation frames - 91 frames, working state only
+// Wild Quarry (Р вЂќР С‘Р С”Р В°РЎРЏ Р С”Р В°Р СР ВµР Р…Р С•Р В»Р С•Р СР Р…РЎРЏ) animation frames - 91 frames, working state only
 // Building ID: 610 (WILD_QUARRY_ID already defined above)
 const wildQuarryAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/wild_quarry/${i + 1}.webp`);
 
-// Recommendation Factory (Р В Р’В¤Р В Р’В°Р В Р’В±Р РЋР вЂљР В РЎвЂР В РЎвЂќР В Р’В° Р РЋР вЂљР В Р’ВµР В РЎвЂќР В РЎвЂўР В РЎВР В Р’ВµР В Р вЂ¦Р В РўвЂР В Р’В°Р РЋРІР‚В Р В РЎвЂР В РІвЂћвЂ“) animation frames - 30 frames, working state only
+// Recommendation Factory (Р В¤Р В°Р В±РЎР‚Р С‘Р С”Р В° РЎР‚Р ВµР С”Р С•Р СР ВµР Р…Р Т‘Р В°РЎвЂ Р С‘Р в„–) animation frames - 30 frames, working state only
 // Building ID: 330
 const recommendationFactoryAnimationFrames: string[] = Array.from({ length: 30 }, (_, i) => `/animation/recommendation_factory/${i + 1}.webp`);
 
-// Gift Lamb (Р В РІР‚ВР В Р’В°Р РЋР вЂљР В Р’В°Р РЋРІвЂљВ¬Р В РЎвЂќР В Р’В°) animation frames - 101 frames, continuous loop
+// Gift Lamb (Р вЂР В°РЎР‚Р В°РЎв‚¬Р С”Р В°) animation frames - 101 frames, continuous loop
 // Building ID: 41801
 const giftLambAnimationFrames: string[] = Array.from({ length: 101 }, (_, i) => `/animation/gift_lamb/${i + 1}.webp`);
 
-// Gift Slipper (Р В РўС’Р РЋР вЂљР РЋРЎвЂњР РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р РЋР Р‰Р В Р вЂ¦Р В Р’В°Р РЋР РЏ Р РЋРІР‚С™Р РЋРЎвЂњР РЋРІР‚С›Р В Р’ВµР В Р’В»Р РЋР Р‰Р В РЎвЂќР В Р’В°) animation frames - 20 frames, continuous loop
+// Gift Slipper (Р ТђРЎР‚РЎС“РЎРѓРЎвЂљР В°Р В»РЎРЉР Р…Р В°РЎРЏ РЎвЂљРЎС“РЎвЂћР ВµР В»РЎРЉР С”Р В°) animation frames - 20 frames, continuous loop
 // Building ID: 45001
 const giftSlipperAnimationFrames: string[] = Array.from({ length: 20 }, (_, i) => `/animation/gift_slipper/${i + 1}.webp`);
 
@@ -1819,7 +1819,7 @@ const babyAngelBoyAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) 
 const babyPandaAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_panda/${i + 1}.webp`);
 const babyFrogAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_frog/${i + 1}.webp`);
 
-// Oil Rig (Р В РЎСљР В Р’ВµР РЋРІР‚С›Р РЋРІР‚С™Р РЋР РЏР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р вЂ Р РЋРІР‚в„–Р РЋРІвЂљВ¬Р В РЎвЂќР В Р’В°) animation frames - 56 frames, working state only
+// Oil Rig (Р СњР ВµРЎвЂћРЎвЂљРЎРЏР Р…Р В°РЎРЏ Р Р†РЎвЂ№РЎв‚¬Р С”Р В°) animation frames - 56 frames, working state only
 // Building IDs: 606 (single), 607 (double)
 const oilRigAnimationFrames: Record<number, string[]> = {
   [OIL_RIG_ID]: Array.from({ length: 56 }, (_, i) => `/animation/oil_rig/15/${i + 1}.webp`),
@@ -2097,7 +2097,7 @@ const drawLoadingSpinner = (ctx: CanvasRenderingContext2D, x: number, y: number,
     ctx.restore();
 };
 
-// Format time in Russian style: 5Рј 17СЃ, 1С‡ 19Рј, 1Рґ 19С‡ 32Рј
+// Format time in Russian style: 5м 17с, 1ч 19м, 1д 19ч 32м
 const formatTimeRussian = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
     const days = Math.floor(totalSeconds / 86400);
@@ -2106,11 +2106,11 @@ const formatTimeRussian = (ms: number): string => {
     const seconds = totalSeconds % 60;
     
     if (days > 0) {
-        return `${days}Рґ ${hours}С‡ ${minutes}Рј`;
+        return `${days}д ${hours}ч ${minutes}м`;
     } else if (hours > 0) {
-        return `${hours}С‡ ${minutes}Рј`;
+        return `${hours}ч ${minutes}м`;
     } else {
-        return `${minutes}Рј ${seconds}СЃ`;
+        return `${minutes}м ${seconds}с`;
     }
 };
 
@@ -2150,7 +2150,7 @@ const ConstructionTimer = ({ endTime, cost, onSpeedUp, isMyBuilding }: { endTime
     return (
         <div className="mt-2 p-2 bg-gray-900/40 rounded border border-blue-500/20">
             <div className="flex items-center space-x-2 mb-1">
-                <span className="text-white font-mono font-bold text-lg">Р’СЂРµРјСЏ: {timeString}</span>
+                <span className="text-white font-mono font-bold text-lg">Время: {timeString}</span>
                 <div className="flex items-center bg-gray-800 px-2 py-0.5 rounded text-pink-400 font-bold border border-pink-500/30">
                     <img src={rubyImageUrl} className="w-4 h-4 mr-1 object-contain" alt="ruby" />
                     {cost}
@@ -2161,7 +2161,7 @@ const ConstructionTimer = ({ endTime, cost, onSpeedUp, isMyBuilding }: { endTime
                     onClick={onSpeedUp}
                     className="text-xs text-purple-300 hover:text-white underline hover:no-underline transition-colors text-left"
                 >
-                    РџРѕСЃС‚СЂРѕРёС‚СЊ РјРіРЅРѕРІРµРЅРЅРѕ РёР»Рё СѓСЃРєРѕСЂРёС‚СЊ Р·Р° СЂСѓР±РёРЅС‹
+                    Построить мгновенно или ускорить за рубины
                 </button>
             )}
         </div>
@@ -2368,7 +2368,7 @@ for (let cp = 32; cp <= 0x052F; cp++) {
     }
 }
 
-for (const ch of ['Р Р†Р вЂљР’В¦', 'Р Р†Р вЂљРІР‚Сљ', 'Р Р†Р вЂљРІР‚Сњ', 'Р Р†Р вЂљРЎС™', 'Р Р†Р вЂљРЎСљ', 'Р Р†Р вЂљР’В', 'Р Р†Р вЂљРІвЂћСћ', 'Р Р†РІР‚С›РІР‚вЂњ']) {
+for (const ch of ['РІР‚В¦', 'РІР‚вЂњ', 'РІР‚вЂќ', 'РІР‚Сљ', 'РІР‚Сњ', 'РІР‚В', 'РІР‚в„ў', 'РІвЂћвЂ“']) {
     const wrong = cp1251Decoder.decode(utf8Encoder.encode(ch));
     if (wrong !== ch) {
         mojibakeReverseMap.set(wrong, ch);
@@ -2377,8 +2377,8 @@ for (const ch of ['Р Р†Р вЂљР’В¦', 'Р Р†Р вЂљРІР‚�
 }
 
 for (const ch of [
-    'Р Р†Р вЂљРЎС›', '<', '>', '-', 'Р вЂ™Р’В¦', '?', '?', '?', '?', '?',
-    '?', 'Р вЂ™Р’В¦'
+    'РІР‚Сћ', '<', '>', '-', 'Р’В¦', '?', '?', '?', '?', '?',
+    '?', 'Р’В¦'
 ]) {
     const wrong = cp1251Decoder.decode(utf8Encoder.encode(ch));
     if (wrong !== ch) {
@@ -2388,23 +2388,23 @@ for (const ch of [
 }
 
 const mojibakeFallbackFixes: Array<[RegExp, string]> = [
-    [/Р В Р вЂ Р В РІР‚С™Р РЋРЎвЂє/g, 'Р Р†Р вЂљРЎС›'],
-    [/Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ/g, 'Р Р†Р вЂљРІР‚Сњ'],
-    [/Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎС™/g, 'Р Р†Р вЂљРІР‚Сљ'],
-    [/Р В Р вЂ Р В РІР‚С™Р вЂ™Р’В¦/g, 'Р Р†Р вЂљР’В¦'],
-    [/Р В Р вЂ Р Р†Р вЂљРЎвЂєР Р†Р вЂљРІР‚Сљ/g, 'Р Р†РІР‚С›РІР‚вЂњ'],
-    [/Р В Р вЂ Р Р†Р вЂљР’В Р РЋРІР‚в„ў/g, '<'],
+    [/Р Р†Р вЂљРЎС›/g, 'РІР‚Сћ'],
+    [/Р Р†Р вЂљРІР‚Сњ/g, 'РІР‚вЂќ'],
+    [/Р Р†Р вЂљРІР‚Сљ/g, 'РІР‚вЂњ'],
+    [/Р Р†Р вЂљР’В¦/g, 'РІР‚В¦'],
+    [/Р Р†РІР‚С›РІР‚вЂњ/g, 'РІвЂћвЂ“'],
+    [/Р Р†РІР‚В РЎвЂ™/g, '<'],
     [/>/g, '>'],
     [/\?/g, '?' ],
     [/\?/g, '?' ],
-    [/Р вЂ™Р’В¦/g, 'Р вЂ™Р’В¦'],
+    [/Р’В¦/g, 'Р’В¦'],
 ];
 
 function repairMojibakeCp1251Utf8(input: string): string {
     if (!input) return input;
     // Process only strings that look like CP1251/UTF-8 mojibake.
-    // The common broken Russian markers are broad: Р В РЎСџ, Р В РЎв„ў, Р РЋР Р‰, Р В Р’Вµ, etc.
-    if (!/[Р В Р РЋР вЂ™Р Р†Р С“Р Р‰Р вЂ№Р вЂљР вЂ°Р РЉР РЏР вЂћР РѓРЎвЂ™РЎС™РЎСџР Р‹Р вЂЎРўС’РўвЂРІвЂћвЂ“]/.test(input)) return input;
+    // The common broken Russian markers are broad: Р Сџ, Р С™, РЎРЉ, Р Вµ, etc.
+    if (!/[Р РЎР’РІРѓРЉР‹Р‚Р‰РЊРЏР„РЃС’СљСџРЋР‡ТђТ‘в„–]/.test(input)) return input;
     let current = input;
 
     for (let pass = 0; pass < 3; pass++) {
@@ -2431,7 +2431,7 @@ function repairMojibakeCp1251Utf8(input: string): string {
             out = out.replace(pattern, replacement);
         }
 
-        if (out === current || !/[Р В Р РЋР вЂ™Р Р†Р С“Р Р‰Р вЂ№Р вЂљР вЂ°Р РЉР РЏР вЂћР РѓРЎвЂ™РЎС™РЎСџР Р‹Р вЂЎРўС’РўвЂРІвЂћвЂ“]/.test(out)) {
+        if (out === current || !/[Р РЎР’РІРѓРЉР‹Р‚Р‰РЊРЏР„РЃС’СљСџРЋР‡ТђТ‘в„–]/.test(out)) {
             return out;
         }
         current = out;
@@ -2526,7 +2526,7 @@ const App: React.FC = () => {
     // State for Global/Player Context
     const [user, setUser] = useState<FirebaseUser | null>(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
-    const [playerName, setPlayerName] = useState(() => repairMojibakeCp1251Utf8('Р В РІР‚СљР В РЎвЂўР РЋР С“Р РЋРІР‚С™Р РЋР Р‰') + ' ' + GUEST_ID.slice(-4).toUpperCase());
+    const [playerName, setPlayerName] = useState(() => repairMojibakeCp1251Utf8('Р вЂњР С•РЎРѓРЎвЂљРЎРЉ') + ' ' + GUEST_ID.slice(-4).toUpperCase());
     const [playerLevel, setPlayerLevel] = useState(1);
     const isWorldWrapped = playerLevel < 8;
     const [playerGlory, setPlayerGlory] = useState(0);
@@ -2715,7 +2715,7 @@ const App: React.FC = () => {
     const [royalElectionEndTime, setRoyalElectionEndTime] = useState<number>(0);
     const [firstRoyalElectionCompleted, setFirstRoyalElectionCompleted] = useState(false);
     const [buildMenu, setBuildMenu] = useState<{ visible: boolean, x: number, y: number }>({ visible: false, x: 0, y: 0 });
-    const [activeBuildTab, setActiveBuildTab] = useState<BuildMenuTab>('Р–РёР»СЊРµ');
+    const [activeBuildTab, setActiveBuildTab] = useState<BuildMenuTab>('Жилье');
     const [buildMenuSearch, setBuildMenuSearch] = useState('');
         const [letterSubTab, setLetterSubTab] = useState<LetterSubTab>('english');
             const [giftSubTab, setGiftSubTab] = useState<GiftSubTab>('main');
@@ -3264,7 +3264,7 @@ const App: React.FC = () => {
                     [ownerId]: {
                         ...prev[ownerId],
                         uid: ownerId,
-                        name: repairMojibakeCp1251Utf8(String(userData.name || selectedBuilding?.building?.ownerName || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“')),
+                        name: repairMojibakeCp1251Utf8(String(userData.name || selectedBuilding?.building?.ownerName || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–')),
                         level: userData.level || 1,
                         glory: userData.glory || 0,
                         reputation: userData.reputation || 0,
@@ -3305,7 +3305,7 @@ const App: React.FC = () => {
             return prev;
         }
         if (incoming !== 0 && incoming > 0 && incoming < 1_000_000_000_000) {
-            console.error('[BanIntegrity] Suspicious banEndTime вЂ” expected ms timestamp, got:', incoming);
+            console.error('[BanIntegrity] Suspicious banEndTime — expected ms timestamp, got:', incoming);
             return prev;
         }
         let next: number;
@@ -3318,7 +3318,7 @@ const App: React.FC = () => {
         return next;
     }, []);
 
-    // Ban deep-probe вЂ” development only. Reads PocketBase directly, bypasses React state.
+    // Ban deep-probe — development only. Reads PocketBase directly, bypasses React state.
     useEffect(() => {
         const history: Array<Record<string, unknown>> = [];
         
@@ -3522,7 +3522,7 @@ const App: React.FC = () => {
             return finish({
                 ok: false,
                 reason: 'occupied',
-                message: "Р­С‚Рѕ РјРµСЃС‚Рѕ СѓР¶Рµ Р·Р°РЅСЏС‚Рѕ РґСЂСѓРіРёРј РѕР±СЉРµРєС‚РѕРј!"
+                message: "Это место уже занято другим объектом!"
             }, { cause: 'previewState' });
         }
 
@@ -3531,7 +3531,7 @@ const App: React.FC = () => {
             return finish({
                 ok: false,
                 reason: 'occupied',
-                message: "Р­С‚Рѕ РјРµСЃС‚Рѕ СѓР¶Рµ Р·Р°РЅСЏС‚Рѕ СЂРµСЃСѓСЂСЃРѕРј!"
+                message: "Это место уже занято ресурсом!"
             }, { cause: 'localResource' });
         }
 
@@ -4005,8 +4005,8 @@ const App: React.FC = () => {
         "/music/Threat Level_ Comfortable (1).mp3",
         "/music/Warm Market Winds of Vvardenfell.mp3",
         "/music/Warm Market Winds of Vvardenfell (1).mp3",
-        "/music/РџСѓС‚СЊ РёР· РєР°РјРЅСЏ Рё РіР»РёРЅС‹.mp3",
-        "/music/РџСѓС‚СЊ РёР· РєР°РјРЅСЏ Рё РіР»РёРЅС‹ (1).mp3",
+        "/music/Путь из камня и глины.mp3",
+        "/music/Путь из камня и глины (1).mp3",
         "/music/Graveyard Garden Groove.mp3",
         "/music/Graveyard Garden Groove (1).mp3",
         "/music/Graveyard Garden Groove (2).mp3",
@@ -4020,19 +4020,19 @@ const App: React.FC = () => {
         "/music/Graveyard Garden Grooves (3).mp3",
         "/music/Fields of Dawn Campaign.mp3",
         "/music/Fields of Dawn Campaign (1).mp3",
-        "/music/Agent TrГЁs Discret.mp3",
-        "/music/Agent TrГЁs Discret (1).mp3",
-        "/music/Agent TrГЁs Discret (2).mp3",
-        "/music/Agent TrГЁs Discret (3).mp3",
-        "/music/LвЂ™Agent TrГЁs Discret.mp3",
-        "/music/LвЂ™Agent TrГЁs Discret (1).mp3",
-        "/music/LвЂ™Agent TrГЁs TrГЁs Secret.mp3",
+        "/music/Agent Très Discret.mp3",
+        "/music/Agent Très Discret (1).mp3",
+        "/music/Agent Très Discret (2).mp3",
+        "/music/Agent Très Discret (3).mp3",
+        "/music/L’Agent Très Discret.mp3",
+        "/music/L’Agent Très Discret (1).mp3",
+        "/music/L’Agent Très Très Secret.mp3",
         "/music/Banana Peels and Secret Agents.mp3",
         "/music/Groove Agent 006.mp3",
         "/music/Groove Agent 006 (1).mp3",
         "/music/Groove Agent In Hot Pursuit.mp3",
         "/music/Groove Agent In Hot Pursuit (1).mp3",
-        "/music/SneakinвЂ™ in 16-Bit.mp3",
+        "/music/Sneakin’ in 16-Bit.mp3",
         "/music/Sneaky Pixels in Pink.mp3",
         "/music/Pink Paws on the Cartridge.mp3",
         "/music/Lawn of the Living Cute.mp3",
@@ -4102,7 +4102,7 @@ const App: React.FC = () => {
                         zoneId: getZoneId(pos.x, pos.y),
                         buildingId: MOUNTAIN_ID,
                         ownerId: "-1",
-                        ownerName: "Р В Р Р‹Р В РЎвЂР РЋР С“Р РЋРІР‚С™Р В Р’ВµР В РЎВР В Р’В°",
+                        ownerName: "Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°",
                         isConstructing: false,
                         constructionEndTime: 0,
                         type: BuildingType.Default,
@@ -4127,7 +4127,7 @@ const App: React.FC = () => {
                         zoneId: getZoneId(pos.x, pos.y),
                         buildingId: RIVER_ID,
                         ownerId: "-1",
-                        ownerName: "Р В Р Р‹Р В РЎвЂР РЋР С“Р РЋРІР‚С™Р В Р’ВµР В РЎВР В Р’В°",
+                        ownerName: "Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°",
                         isConstructing: false,
                         constructionEndTime: 0,
                         type: BuildingType.Default,
@@ -4547,15 +4547,15 @@ const App: React.FC = () => {
 
                         if (hasIntel) {
                             let text = "";
-                            if (newResource.type === 'oil') text = `Р В РІР‚в„ў Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В Р’Вµ ${sectorX}-${sectorY} Р В РЎвЂўР В Р’В±Р В Р вЂ¦Р В Р’В°Р РЋР вЂљР РЋРЎвЂњР В Р’В¶Р В Р’ВµР В Р вЂ¦Р В РЎвЂў Р В Р вЂ¦Р В РЎвЂўР В Р вЂ Р В РЎвЂўР В Р’Вµ Р В РЎВР В Р’ВµР РЋР С“Р РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В¶Р В РўвЂР В Р’ВµР В Р вЂ¦Р В РЎвЂР В Р’Вµ Р В Р вЂ¦Р В Р’ВµР РЋРІР‚С›Р РЋРІР‚С™Р В РЎвЂ!`;
-                            else if (newResource.type === 'quarry') text = `Р В РІР‚в„ў Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В Р’Вµ ${sectorX}-${sectorY} Р В РЎвЂўР В Р’В±Р В Р вЂ¦Р В Р’В°Р РЋР вЂљР РЋРЎвЂњР В Р’В¶Р В Р’ВµР В Р вЂ¦Р В РЎвЂў Р В Р вЂ¦Р В РЎвЂўР В Р вЂ Р В РЎвЂўР В Р’Вµ Р В РЎВР В Р’ВµР РЋР С“Р РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В¶Р В РўвЂР В Р’ВµР В Р вЂ¦Р В РЎвЂР В Р’Вµ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р В РЎвЂўР В Р вЂ !`;
-                            else if (newResource.type === 'chest') text = `Р В РІР‚в„ў Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В Р’Вµ ${sectorX}-${sectorY} Р В РЎвЂўР В Р’В±Р В Р вЂ¦Р В Р’В°Р РЋР вЂљР РЋРЎвЂњР В Р’В¶Р В Р’ВµР В Р вЂ¦ Р РЋР С“Р РЋРЎвЂњР В Р вЂ¦Р В РўвЂР РЋРЎвЂњР В РЎвЂќ Р РЋР С“ Р РЋР С“Р В РЎвЂўР В РЎвЂќР РЋР вЂљР В РЎвЂўР В Р вЂ Р В РЎвЂР РЋРІР‚В°Р В Р’В°Р В РЎВР В РЎвЂ!`;
+                            if (newResource.type === 'oil') text = `Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} Р С•Р В±Р Р…Р В°РЎР‚РЎС“Р В¶Р ВµР Р…Р С• Р Р…Р С•Р Р†Р С•Р Вµ Р СР ВµРЎРѓРЎвЂљР С•РЎР‚Р С•Р В¶Р Т‘Р ВµР Р…Р С‘Р Вµ Р Р…Р ВµРЎвЂћРЎвЂљР С‘!`;
+                            else if (newResource.type === 'quarry') text = `Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} Р С•Р В±Р Р…Р В°РЎР‚РЎС“Р В¶Р ВµР Р…Р С• Р Р…Р С•Р Р†Р С•Р Вµ Р СР ВµРЎРѓРЎвЂљР С•РЎР‚Р С•Р В¶Р Т‘Р ВµР Р…Р С‘Р Вµ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР С•Р Р†!`;
+                            else if (newResource.type === 'chest') text = `Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} Р С•Р В±Р Р…Р В°РЎР‚РЎС“Р В¶Р ВµР Р… РЎРѓРЎС“Р Р…Р Т‘РЎС“Р С” РЎРѓ РЎРѓР С•Р С”РЎР‚Р С•Р Р†Р С‘РЎвЂ°Р В°Р СР С‘!`;
 
                             if (text) {
                                 setChatHistory(history => {
                                     const msg: ChatMessage = {
                                         id: Date.now() + Math.random(),
-                                        sender: 'Р В Р Р‹Р В РЎвЂР РЋР С“Р РЋРІР‚С™Р В Р’ВµР В РЎВР В Р’В°',
+                                        sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°',
                                         text: text,
                                         type: 'system',
                                         timestamp: Date.now(),
@@ -4627,7 +4627,7 @@ const App: React.FC = () => {
     // No need to seed zones when players join - all 7500 trees (300 per sector) are already there
 
     const handleResetMap = async () => {
-        if (!window.confirm("Р В РЎвЂєР В Р Р‹Р В РЎС›Р В РЎвЂєР В Р’В Р В РЎвЂєР В РІР‚вЂњР В РЎСљР В РЎвЂє! Р В Р’В­Р РЋРІР‚С™Р В РЎвЂў Р РЋРЎвЂњР В РўвЂР В Р’В°Р В Р’В»Р В РЎвЂР РЋРІР‚С™ Р В РІР‚в„ўР В Р Р‹Р В РІР‚Сћ Р В Р’В·Р В РўвЂР В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р РЋРІР‚в„– Р В Р вЂ¦Р В Р’В° Р В РЎвЂќР В Р’В°Р РЋР вЂљР РЋРІР‚С™Р В Р’Вµ. Р’С‹ Р РЋРЎвЂњР В Р вЂ Р В Р’ВµР РЋР вЂљР В Р’ВµР В Р вЂ¦Р РЋРІР‚в„–?")) return;
+        if (!window.confirm("Р С›Р РЋР СћР С›Р В Р С›Р вЂ“Р СњР С›! Р В­РЎвЂљР С• РЎС“Р Т‘Р В°Р В»Р С‘РЎвЂљ Р вЂ™Р РЋР вЂў Р В·Р Т‘Р В°Р Р…Р С‘РЎРЏ Р С‘ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓРЎвЂ№ Р Р…Р В° Р С”Р В°РЎР‚РЎвЂљР Вµ. Вы РЎС“Р Р†Р ВµРЎР‚Р ВµР Р…РЎвЂ№?")) return;
 
         try {
             console.log("?? [RESET] Clearing all map data...");
@@ -4636,7 +4636,7 @@ const App: React.FC = () => {
             await deleteAll('map_resources');
             await deleteAll('dropped_items');
 
-            alert("Р В РЎв„ўР В Р’В°Р РЋР вЂљР РЋРІР‚С™Р В Р’В° Р В РЎвЂўР РЋРІР‚РЋР В РЎвЂР РЋРІР‚В°Р В Р’ВµР В Р вЂ¦Р В Р’В°! Р В РЎСџР В Р’ВµР РЋР вЂљР В Р’ВµР В Р’В·Р В Р’В°Р В РЎвЂ“Р РЋР вЂљР РЋРЎвЂњР В Р’В·Р В РЎвЂР РЋРІР‚С™Р В Р’Вµ Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљР В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋРІР‚В Р РЋРЎвЂњ Р В РўвЂР В Р’В»Р РЋР РЏ Р В РЎвЂ“Р В Р’ВµР В Р вЂ¦Р В Р’ВµР РЋР вЂљР В Р’В°Р РЋРІР‚В Р В РЎвЂР В РЎвЂ Р В Р вЂ¦Р В РЎвЂўР В Р вЂ Р РЋРІР‚в„–Р РЋРІР‚В¦ Р В РЎВР В РЎвЂўР В Р вЂ¦Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљР В РЎвЂўР В Р вЂ .");
+            alert("Р С™Р В°РЎР‚РЎвЂљР В° Р С•РЎвЂЎР С‘РЎвЂ°Р ВµР Р…Р В°! Р СџР ВµРЎР‚Р ВµР В·Р В°Р С–РЎР‚РЎС“Р В·Р С‘РЎвЂљР Вµ РЎРѓРЎвЂљРЎР‚Р В°Р Р…Р С‘РЎвЂ РЎС“ Р Т‘Р В»РЎРЏ Р С–Р ВµР Р…Р ВµРЎР‚Р В°РЎвЂ Р С‘Р С‘ Р Р…Р С•Р Р†РЎвЂ№РЎвЂ¦ Р СР С•Р Р…РЎРѓРЎвЂљРЎР‚Р С•Р Р†.");
             window.location.reload();
         } catch (e) {
             handleFirestoreError(e, OperationType.DELETE, "GLOBAL_MAP_RESET");
@@ -4656,21 +4656,21 @@ const App: React.FC = () => {
     // Garden bed IDs - these are upgradeable buildings, upgrades should NOT be considered duplicates
     const GARDEN_BED_IDS = [
         // Mushroom beds
-        254, 255, 256, 257, // Р В РІР‚СљР РЋР вЂљР В РЎвЂР В Р’В±Р В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В РЎвЂ“Р РЋР вЂљР РЋР РЏР В РўвЂР В РЎвЂќР В Р’В° 1-4
+        254, 255, 256, 257, // Р вЂњРЎР‚Р С‘Р В±Р Р…Р В°РЎРЏ Р С–РЎР‚РЎРЏР Т‘Р С”Р В° 1-4
         // Pumpkin beds
-        258, 259, 260, 261, // Р В РЎС›Р РЋРІР‚в„–Р В РЎвЂќР В Р вЂ Р В Р’ВµР В Р вЂ¦Р В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В РЎвЂ“Р РЋР вЂљР РЋР РЏР В РўвЂР В РЎвЂќР В Р’В° 1-4
+        258, 259, 260, 261, // Р СћРЎвЂ№Р С”Р Р†Р ВµР Р…Р Р…Р В°РЎРЏ Р С–РЎР‚РЎРЏР Т‘Р С”Р В° 1-4
         // Flower trees
-        178, 179, 180, 181, 182, 183, 184, // Р В Р’В¦Р В Р вЂ Р В Р’ВµР РЋРІР‚С™Р В РЎвЂўР РЋРІР‚РЋР В Р вЂ¦Р В РЎвЂўР В Р’Вµ Р В РўвЂР В Р’ВµР РЋР вЂљР В Р’ВµР В Р вЂ Р В РЎвЂў 1-7
+        178, 179, 180, 181, 182, 183, 184, // Р В¦Р Р†Р ВµРЎвЂљР С•РЎвЂЎР Р…Р С•Р Вµ Р Т‘Р ВµРЎР‚Р ВµР Р†Р С• 1-7
         // Garden houses
-        228, 229, 230, 231, // Р В РІР‚ВР В Р’ВµР РЋР С“Р В Р’ВµР В РўвЂР В РЎвЂќР В Р’В° 1-4
+        228, 229, 230, 231, // Р вЂР ВµРЎРѓР ВµР Т‘Р С”Р В° 1-4
         // Flowers
-        232, 233, 234, 235, 236, 237, // Р В Р’В¦Р В Р вЂ Р В Р’ВµР РЋРІР‚С™Р В РЎвЂўР РЋРІР‚РЋР В РЎвЂќР В РЎвЂ 1-6
+        232, 233, 234, 235, 236, 237, // Р В¦Р Р†Р ВµРЎвЂљР С•РЎвЂЎР С”Р С‘ 1-6
         // Fountains
-        60012, 60013, // Р В Р’В¤Р В РЎвЂўР В Р вЂ¦Р РЋРІР‚С™Р В Р’В°Р В Р вЂ¦ 1-2
+        60012, 60013, // Р В¤Р С•Р Р…РЎвЂљР В°Р Р… 1-2
         // Enhanced Lily Pond
-        577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, // Р В Р в‚¬Р В Р’В»Р РЋРЎвЂњР РЋРІР‚РЋР РЋРІвЂљВ¬Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В РЎвЂ”Р РЋР вЂљР РЋРЎвЂњР В РўвЂ Р РЋР С“ Р В РІР‚С”Р В РЎвЂР В Р’В»Р В РЎвЂР РЋР РЏР В РЎВР В РЎвЂ 1-21
+        577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, // Р Р€Р В»РЎС“РЎвЂЎРЎв‚¬Р ВµР Р…РЎвЂ№Р в„– Р С—РЎР‚РЎС“Р Т‘ РЎРѓ Р вЂєР С‘Р В»Р С‘РЎРЏР СР С‘ 1-21
         // Enhanced Mushroom Bed
-        874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, // Р В Р в‚¬Р В Р’В»Р РЋРЎвЂњР РЋРІР‚РЋР РЋРІвЂљВ¬Р В Р’ВµР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В РІР‚СљР РЋР вЂљР В РЎвЂР В Р’В±Р В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В РІР‚СљР РЋР вЂљР РЋР РЏР В РўвЂР В РЎвЂќР В Р’В° 1-21
+        874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, // Р Р€Р В»РЎС“РЎвЂЎРЎв‚¬Р ВµР Р…Р В°РЎРЏ Р вЂњРЎР‚Р С‘Р В±Р Р…Р В°РЎРЏ Р вЂњРЎР‚РЎРЏР Т‘Р С”Р В° 1-21
         // Add other garden bed IDs here if needed
     ];
 
@@ -4939,7 +4939,7 @@ const App: React.FC = () => {
                 const buildingToMove = moveMode.building;
                 if (!isMyBuilding(buildingToMove)) {
                     setMoveMode({ active: false, building: null });
-                    alert("РџРµСЂРµРјРµС‰Р°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЃРІРѕРё РїРѕСЃС‚СЂРѕР№РєРё.");
+                    alert("Перемещать можно только свои постройки.");
                     return;
                 }
                 setIsMoveActionProcessing(true);
@@ -4986,7 +4986,7 @@ const App: React.FC = () => {
 
                     setPlayerEnergy(prev => prev - moveCost);
                     const buildingInfo = buildingData.find(b => b.id === buildingToMove.buildingId);
-                    addHistoryLog(`РџРµСЂРµРјРµС‰РµРЅ РѕР±СЉРµРєС‚ "${buildingInfo?.name}" СЃ [${buildingToMove.x}, ${buildingToMove.y}] РЅР° [${gridX}, ${gridY}]. Р Р°СЃС…РѕРґ: ${moveCost} СЌРЅРµСЂРіРёРё.`, 'move');
+                    addHistoryLog(`Перемещен объект "${buildingInfo?.name}" с [${buildingToMove.x}, ${buildingToMove.y}] на [${gridX}, ${gridY}]. Расход: ${moveCost} энергии.`, 'move');
                     setMoveMode({ active: false, building: null });
 
                     if (isAuthReady && user) {
@@ -5026,7 +5026,7 @@ const App: React.FC = () => {
             const droppedItemIndex = droppedItems.findIndex(i => i.x === gridX && i.y === gridY);
             if (droppedItemIndex !== -1) {
                 if (isBanned()) {
-                    alert("Р’С‹ Р В Р’В·Р В Р’В°Р В Р’В±Р В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„– Р В РЎвЂ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р РЋР С“Р В РЎвЂўР В Р’В±Р В РЎвЂР РЋР вЂљР В Р’В°Р РЋРІР‚С™Р РЋР Р‰ Р В РЎвЂ”Р РЋР вЂљР В Р’ВµР В РўвЂР В РЎВР В Р’ВµР РЋРІР‚С™Р РЋРІР‚в„–!");
+                    alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ РЎРѓР С•Р В±Р С‘РЎР‚Р В°РЎвЂљРЎРЉ Р С—РЎР‚Р ВµР Т‘Р СР ВµРЎвЂљРЎвЂ№!");
                     return;
                 }
 
@@ -5042,7 +5042,7 @@ const App: React.FC = () => {
                     if (isAuthReadyRef.current && userRef.current) {
                         updateDoc(doc(db, 'users', userRef.current.uid), { gold: increment(item.amount) }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
                     }
-                    addHistoryLog(`РџРѕРґРѕР±СЂР°РЅРѕ ${item.amount} РјРѕРЅРµС‚!`, 'economy');
+                    addHistoryLog(`Подобрано ${item.amount} монет!`, 'economy');
                 } else {
                     setInventory(prev => ({
                         ...prev,
@@ -5053,7 +5053,7 @@ const App: React.FC = () => {
                         updateDoc(doc(db, 'users', userRef.current.uid), {
                             [`inventory.${item.itemId}`]: increment(item.amount)
                         }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
-                        addHistoryLog(`РџРѕРґРѕР±СЂР°РЅРѕ: ${itemInfo?.name || 'РїСЂРµРґРјРµС‚'} x${item.amount}`, 'social');
+                        addHistoryLog(`Подобрано: ${itemInfo?.name || 'предмет'} x${item.amount}`, 'social');
                     }
                 }
 
@@ -5209,7 +5209,7 @@ const App: React.FC = () => {
                         }
 
                         addHistoryLog(
-                            `Р СѓР±РєР° РґРµСЂРµРІР°. РџРѕР»СѓС‡РµРЅРѕ: РґРµСЂРµРІРѕ (+${hitResult.rewardWood || 1}) Рё ${Math.max(0, hitResult.rewardGold || 0)} РјРѕРЅРµС‚.`,
+                            `Рубка дерева. Получено: дерево (+${hitResult.rewardWood || 1}) и ${Math.max(0, hitResult.rewardGold || 0)} монет.`,
                             'economy'
                         );
 
@@ -5227,8 +5227,8 @@ const App: React.FC = () => {
                             const sectorY = Math.floor(resource.y / ZONE_SIZE) + 1;
                             const theftMsg: ChatMessage = {
                                 id: Date.now() + Math.random(),
-                                sender: 'Р В Р Р‹Р В РЎвЂР РЋР С“Р РЋРІР‚С™Р В Р’ВµР В РЎВР В Р’В°',
-                                text: `?? Р В РЎС™Р В Р’В°Р РЋР вЂљР В РЎвЂўР В РўвЂР РЋРІР‚ВР РЋР вЂљ! Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ "${playerName}" Р РЋР С“Р РЋР вЂљР РЋРЎвЂњР В Р’В±Р В РЎвЂР В Р’В» Р В РўвЂР В Р’ВµР РЋР вЂљР В Р’ВµР В Р вЂ Р В РЎвЂў Р В Р вЂ  Р В Р вЂ Р В Р’В°Р РЋРІвЂљВ¬Р В Р’ВµР В РЎВ Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В Р’Вµ ${sectorX}-${sectorY} [${resource.x}, ${resource.y}]!`,
+                                sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°',
+                                text: `?? Р СљР В°РЎР‚Р С•Р Т‘РЎвЂРЎР‚! Р ВР С–РЎР‚Р С•Р С” "${playerName}" РЎРѓРЎР‚РЎС“Р В±Р С‘Р В» Р Т‘Р ВµРЎР‚Р ВµР Р†Р С• Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} [${resource.x}, ${resource.y}]!`,
                                 type: 'system',
                                 timestamp: Date.now(),
                                 tab: 'loot',
@@ -5255,7 +5255,7 @@ const App: React.FC = () => {
                         }
 
                         if (status === 401) {
-                            alert('РќСѓР¶РЅРѕ Р·Р°РЅРѕРІРѕ РІРѕР№С‚Рё РІ Р°РєРєР°СѓРЅС‚, С‡С‚РѕР±С‹ СЂСѓР±РёС‚СЊ РґРµСЂРµРІСЊСЏ.');
+                            alert('Нужно заново войти в аккаунт, чтобы рубить деревья.');
                             return;
                         }
 
@@ -5305,7 +5305,7 @@ const App: React.FC = () => {
                     const coinRewards = [100, 500, 1000, 2000];
                     const randomCoins = coinRewards[Math.floor(Math.random() * coinRewards.length)];
                     updatePlayerResources(randomCoins, 0, {});
-                    addHistoryLog(`РќР°Р№РґРµРЅ РєР»Р°Рґ РІ С‚РѕС‡РєРµ [${gridX}, ${gridY}]! РџРѕР»СѓС‡РµРЅРѕ ${randomCoins} РјРѕРЅРµС‚.`, 'economy');
+                    addHistoryLog(`Найден клад в точке [${gridX}, ${gridY}]! Получено ${randomCoins} монет.`, 'economy');
                 }
 
                 if (newHp <= 0 || resource.type === 'chest') {
@@ -5333,7 +5333,7 @@ const App: React.FC = () => {
                         // There is a render gap between setUser()/setIsAuthReady() being called
                         // (in the auth listener) and the useCallback being recreated. During
                         // that window the closure still holds user=null / isAuthReady=false,
-                        // which would cause ownerId:"0" and skip setDoc entirely Р Р†Р вЂљРІР‚Сњ making
+                        // which would cause ownerId:"0" and skip setDoc entirely РІР‚вЂќ making
                         // the Town Hall disappear after the next page reload.
                         const currentUser = userRef.current;
                         const currentAuthReady = isAuthReadyRef.current;
@@ -5341,7 +5341,7 @@ const App: React.FC = () => {
                             if (shouldLogTownHallEvent('place-blocked-auth', 10000)) {
                                 console.warn('[TH-PLACE] Placement blocked: auth not ready yet, retrying later is required.');
                             }
-                            alert('РђРєРєР°СѓРЅС‚ РµС‰Рµ СЃРёРЅС…СЂРѕРЅРёР·РёСЂСѓРµС‚СЃСЏ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕСЃС‚Р°РІРёС‚СЊ Р“РѕСЂРѕРґСЃРєРѕР№ С†РµРЅС‚СЂ С‡РµСЂРµР· РїР°СЂСѓ СЃРµРєСѓРЅРґ.');
+                            alert('Аккаунт еще синхронизируется. Попробуйте поставить Городской центр через пару секунд.');
                             return;
                         }
                         const newTownHallId = makePlacedEntityId(currentUser.uid);
@@ -5371,15 +5371,15 @@ const App: React.FC = () => {
                         } catch (e) {
                             setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
                             handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
-                            alert('РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ Р“РѕСЂРѕРґСЃРєРѕРіРѕ С†РµРЅС‚СЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰Рµ СЂР°Р·.');
+                            alert('Ошибка сохранения Городского центра. Попробуйте еще раз.');
                         }
-                        addHistoryLog("РћСЃРЅРѕРІР°РЅ РЅРѕРІС‹Р№ РіРѕСЂРѕРґ!", 'build');
+                        addHistoryLog("Основан новый город!", 'build');
                     }
                 } else {
                     if (tutorialAutoBuildMode === 'frogHouse') {
                         const tutorialHouse = buildingData.find(b => b.id === TUTORIAL_FROG_HOUSE_ID);
                         if (!tutorialHouse) {
-                            alert('РќРµ СѓРґР°Р»РѕСЃСЊ РЅР°Р№С‚Рё РґРѕРј РґР»СЏ С‚СѓС‚РѕСЂРёР°Р»Р°.');
+                            alert('Не удалось найти дом для туториала.');
                             return;
                         }
 
@@ -5412,7 +5412,7 @@ const App: React.FC = () => {
                     if (tutorialAutoBuildMode === 'lilyPond') {
                         const tutorialLilyPond = buildingData.find(b => b.id === TUTORIAL_LILY_POND_ID);
                         if (!tutorialLilyPond) {
-                            alert('РќРµ СѓРґР°Р»РѕСЃСЊ РЅР°Р№С‚Рё В«РџСЂСѓРґ СЃ Р»РёР»РёСЏРјРёВ» РґР»СЏ С‚СѓС‚РѕСЂРёР°Р»Р°.');
+                            alert('Не удалось найти «Пруд с лилиями» для туториала.');
                             return;
                         }
 
@@ -5498,22 +5498,22 @@ const App: React.FC = () => {
                 const buildingInfo = buildingData.find(b => b.id === hoveredBuilding.buildingId);
                 if (buildingInfo) {
                     const info = buildingData.find(bd => bd.id === hoveredBuilding.buildingId);
-                    const isMonster = info?.category === 'РњРѕРЅСЃС‚СЂС‹';
-                    const isNature = info?.category === 'РџСЂРёСЂРѕРґР°';
+                    const isMonster = info?.category === 'Монстры';
+                    const isNature = info?.category === 'Природа';
 
-                    let ownerName = "РќРµРёР·РІРµСЃС‚РЅС‹Р№ РёРіСЂРѕРє";
+                    let ownerName = "Неизвестный игрок";
                     if (isMyBuilding(hoveredBuilding)) {
-                        ownerName = "Р’С‹";
+                        ownerName = "Вы";
                     } else if (hoveredBuilding.ownerId === "-1" || hoveredBuilding.ownerId === "monster") {
                         if (isMonster) {
-                            ownerName = "Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В Р’В° (РџРµСЂСЃРѕРЅР°Р¶: РЅРµС‚)";
+                            ownerName = "Р ВР С–РЎР‚Р В° (Персонаж: нет)";
                         } else if (isNature) {
-                            ownerName = "РџСЂРёСЂРѕРґР°";
+                            ownerName = "Природа";
                         } else {
-                            ownerName = "РџСЂРёСЂРѕРґР°";
+                            ownerName = "Природа";
                         }
                     } else {
-                        ownerName = allUsers[hoveredBuilding.ownerId as string]?.name || "РќРµРёР·РІРµСЃС‚РЅС‹Р№ РёРіСЂРѕРє";
+                        ownerName = allUsers[hoveredBuilding.ownerId as string]?.name || "Неизвестный игрок";
                     }
                     const ownerColor = (hoveredBuilding.ownerId === "-1" || hoveredBuilding.ownerId === "monster") ? 'gray' : 'blue';
 
@@ -5530,21 +5530,21 @@ const App: React.FC = () => {
                     const content = (
                         <div>
                             <p className="font-bold">{buildingInfo.name}</p>
-                            <p className="text-xs">Р’Р»Р°РґРµР»РµС†: <span style={{ color: ownerColor }}>{ownerName}</span></p>
+                            <p className="text-xs">Владелец: <span style={{ color: ownerColor }}>{ownerName}</span></p>
                             {buildingInfo.id !== MOUNTAIN_ID && buildingInfo.id !== RIVER_ID && (
-                                <p className="text-xs">РџСЂРѕС‡РЅРѕСЃС‚СЊ: <span className={curHp < maxHp ? 'text-red-400' : 'text-green-400'}>{curHp} / {maxHp}</span></p>
+                                <p className="text-xs">Прочность: <span className={curHp < maxHp ? 'text-red-400' : 'text-green-400'}>{curHp} / {maxHp}</span></p>
                             )}
                             {buildingInfo.stats.increasesGoldCapacity && (
-                                <p className="text-xs text-yellow-400">Р В РІР‚в„ўР В РЎВР В Р’ВµР РЋР С“Р РЋРІР‚С™Р В РЎвЂР В РЎВР В РЎвЂўР РЋР С“Р РЋРІР‚С™Р РЋР Р‰: +{buildingInfo.stats.increasesGoldCapacity}</p>
+                                <p className="text-xs text-yellow-400">Р вЂ™Р СР ВµРЎРѓРЎвЂљР С‘Р СР С•РЎРѓРЎвЂљРЎРЉ: +{buildingInfo.stats.increasesGoldCapacity}</p>
                             )}
                             {buildingInfo.stats.workTimeSeconds && hoveredBuilding.workState === 'working' && (
-                                <p className="text-xs text-blue-400">Р В Р’В Р В Р’В°Р В Р’В±Р В РЎвЂўР РЋРІР‚С™Р В Р’В°Р В Р’ВµР РЋРІР‚С™...</p>
+                                <p className="text-xs text-blue-400">Р В Р В°Р В±Р С•РЎвЂљР В°Р ВµРЎвЂљ...</p>
                             )}
                             {buildingInfo.id === WATCHTOWER_ID && hoveredBuilding.taxRate !== undefined && (
-                                <p className="text-xs text-purple-400">РќР°Р»РѕРі СЃРµРєС‚РѕСЂР°: {hoveredBuilding.taxRate}%</p>
+                                <p className="text-xs text-purple-400">Налог сектора: {hoveredBuilding.taxRate}%</p>
                             )}
                             {isProtected && (
-                                <p className="text-xs text-blue-300 font-bold mt-1">рџ›ЎпёЏ РџРѕРґ Р·Р°С‰РёС‚РѕР№</p>
+                                <p className="text-xs text-blue-300 font-bold mt-1">🛡️ Под защитой</p>
                             )}
                         </div>
                     );
@@ -5630,12 +5630,12 @@ const App: React.FC = () => {
                     return TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b);
                 });
                 if (hasTownHallOnServer) {
-                    alert("Р В Р в‚¬ Р В Р вЂ Р В Р’В°Р РЋР С“ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р РЋР Р‰ Р В РІР‚СљР В РЎвЂўР РЋР вЂљР В РЎвЂўР В РўвЂР РЋР С“Р В РЎвЂќР В РЎвЂўР В РІвЂћвЂ“ Р РЋРІР‚В Р В Р’ВµР В Р вЂ¦Р РЋРІР‚С™Р РЋР вЂљ!");
+                    alert("Р Р€ Р Р†Р В°РЎРѓ РЎС“Р В¶Р Вµ Р ВµРЎРѓРЎвЂљРЎРЉ Р вЂњР С•РЎР‚Р С•Р Т‘РЎРѓР С”Р С•Р в„– РЎвЂ Р ВµР Р…РЎвЂљРЎР‚!");
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
             } else if (hasTownHall) {
-                alert("Р В Р в‚¬ Р В Р вЂ Р В Р’В°Р РЋР С“ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р РЋР Р‰ Р В РІР‚СљР В РЎвЂўР РЋР вЂљР В РЎвЂўР В РўвЂР РЋР С“Р В РЎвЂќР В РЎвЂўР В РІвЂћвЂ“ Р РЋРІР‚В Р В Р’ВµР В Р вЂ¦Р РЋРІР‚С™Р РЋР вЂљ!");
+                alert("Р Р€ Р Р†Р В°РЎРѓ РЎС“Р В¶Р Вµ Р ВµРЎРѓРЎвЂљРЎРЉ Р вЂњР С•РЎР‚Р С•Р Т‘РЎРѓР С”Р С•Р в„– РЎвЂ Р ВµР Р…РЎвЂљРЎР‚!");
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                 return null;
             }
@@ -5717,28 +5717,28 @@ const App: React.FC = () => {
             if (building.id === WATCHTOWER_ID) {
                 const hasClanCastle = placedBuildings.some(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing);
                 if (!hasClanCastle) {
-                    alert('Р”Р»СЏ РїРѕСЃС‚СЂРѕР№РєРё В«РЎС‚РѕСЂРѕР¶РµРІРѕР№ Р±Р°С€РЅРёВ» С‚СЂРµР±СѓРµС‚СЃСЏ В«Р‘Р°РЅРґРёС‚СЃРєРёР№ Р·Р°РјРѕРєВ».');
+                    alert('Для постройки «Сторожевой башни» требуется «Бандитский замок».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
 
                 if (foreignZoneClanBuilding) {
                     const existingBuildingInfo = buildingData.find(bd => bd.id === foreignZoneClanBuilding.buildingId);
-                    alert(`Р­С‚РѕС‚ СЃРµРєС‚РѕСЂ СѓР¶Рµ РїСЂРёРЅР°РґР»РµР¶РёС‚ РґСЂСѓРіРѕРјСѓ РёРіСЂРѕРєСѓ. Р’ СЃРµРєС‚РѕСЂРµ СѓР¶Рµ РїРѕСЃС‚СЂРѕРµРЅРѕ: ${existingBuildingInfo?.name || 'РєР»Р°РЅРѕРІРѕРµ Р·РґР°РЅРёРµ'}.`);
+                    alert(`Этот сектор уже принадлежит другому игроку. В секторе уже построено: ${existingBuildingInfo?.name || 'клановое здание'}.`);
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
 
                 const ownClanCastleInZone = ownZoneClanBuildings.find(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)));
                 if (!ownClanCastleInZone) {
-                    alert('В«РЎС‚РѕСЂРѕР¶РµРІСѓСЋ Р±Р°С€РЅСЋВ» РјРѕР¶РЅРѕ РїРѕСЃС‚СЂРѕРёС‚СЊ С‚РѕР»СЊРєРѕ РІ С‚РѕРј СЃРµРєС‚РѕСЂРµ, РіРґРµ СѓР¶Рµ СЃС‚РѕРёС‚ РІР°С€ В«Р‘Р°РЅРґРёС‚СЃРєРёР№ Р·Р°РјРѕРєВ».');
+                    alert('«Сторожевую башню» можно построить только в том секторе, где уже стоит ваш «Бандитский замок».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
 
                 const ownWatchtowerInZone = ownZoneClanBuildings.find(b => b.buildingId === WATCHTOWER_ID);
                 if (ownWatchtowerInZone) {
-                    alert('Р’ СЌС‚РѕРј СЃРµРєС‚РѕСЂРµ СѓР¶Рµ РїРѕСЃС‚СЂРѕРµРЅР° РІР°С€Р° В«РЎС‚РѕСЂРѕР¶РµРІР°СЏ Р±Р°С€РЅСЏВ».');
+                    alert('В этом секторе уже построена ваша «Сторожевая башня».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
@@ -5747,14 +5747,14 @@ const App: React.FC = () => {
             if (building.id === CLAN_CASTLE_ID) {
                 if (foreignZoneClanBuilding) {
                     const existingBuildingInfo = buildingData.find(bd => bd.id === foreignZoneClanBuilding.buildingId);
-                    alert(`Р­С‚РѕС‚ СЃРµРєС‚РѕСЂ СѓР¶Рµ РїСЂРёРЅР°РґР»РµР¶РёС‚ РґСЂСѓРіРѕРјСѓ РёРіСЂРѕРєСѓ. Р’ СЃРµРєС‚РѕСЂРµ СѓР¶Рµ РїРѕСЃС‚СЂРѕРµРЅРѕ: ${existingBuildingInfo?.name || 'РєР»Р°РЅРѕРІРѕРµ Р·РґР°РЅРёРµ'}.`);
+                    alert(`Этот сектор уже принадлежит другому игроку. В секторе уже построено: ${existingBuildingInfo?.name || 'клановое здание'}.`);
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
 
                 const ownClanCastleInZone = ownZoneClanBuildings.find(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)));
                 if (ownClanCastleInZone) {
-                    alert('Р’ СЌС‚РѕРј СЃРµРєС‚РѕСЂРµ СѓР¶Рµ РїРѕСЃС‚СЂРѕРµРЅ РІР°С€ В«Р‘Р°РЅРґРёС‚СЃРєРёР№ Р·Р°РјРѕРєВ».');
+                    alert('В этом секторе уже построен ваш «Бандитский замок».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
@@ -5771,7 +5771,7 @@ const App: React.FC = () => {
                 return null;
             }
         } else if (playerGold < goldCost) {
-            alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°!");
+            alert("Недостаточно золота!");
             setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
             return null;
         }
@@ -5780,7 +5780,7 @@ const App: React.FC = () => {
             const requiredPop = building.constructionRequirements.population;
             const availablePop = maxPopulation - currentPopulation;
             if (availablePop < requiredPop) {
-                alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЃРІРѕР±РѕРґРЅРѕРіРѕ РЅР°СЃРµР»РµРЅРёСЏ! РўСЂРµР±СѓРµС‚СЃСЏ: ${requiredPop}`);
+                alert(`Недостаточно свободного населения! Требуется: ${requiredPop}`);
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                 return null;
             }
@@ -5791,7 +5791,7 @@ const App: React.FC = () => {
             const missingResources = building.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
             if (missingResources.length > 0) {
                 const missingNames = missingResources.map(r => r.name).join(', ');
-                alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂРµСЃСѓСЂСЃРѕРІ: ${missingNames}`);
+                alert(`Недостаточно ресурсов: ${missingNames}`);
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                 return null;
             }
@@ -5883,8 +5883,8 @@ const App: React.FC = () => {
             }
         }
 
-        const priceText = rubyCost > 0 ? `${rubyCost} СЂСѓР±РёРЅРѕРІ` : `${goldCost} РјРѕРЅРµС‚`;
-        addHistoryLogRef.current?.(`РџРѕСЃС‚СЂРѕРµРЅРѕ Р·РґР°РЅРёРµ "${building.name}" РІ РєР»РµС‚РєРµ [${x}, ${y}]. РЎС‚РѕРёРјРѕСЃС‚СЊ: ${priceText}.`, 'build');
+        const priceText = rubyCost > 0 ? `${rubyCost} рубинов` : `${goldCost} монет`;
+        addHistoryLogRef.current?.(`Построено здание "${building.name}" в клетке [${x}, ${y}]. Стоимость: ${priceText}.`, 'build');
 
         const serverBuilding: PlacedBuilding = {
             ...newBuilding,
@@ -6107,7 +6107,7 @@ const App: React.FC = () => {
                 }));
                 const isSameSessionUser = lastInitializedAuthUidRef.current === currentUser.uid;
                 if (isSameSessionUser) {
-                    const displayName = currentUser.displayName || playerName || ('Р“РѕСЃС‚СЊ ' + GUEST_ID.slice(-4).toUpperCase());
+                    const displayName = currentUser.displayName || playerName || ('Гость ' + GUEST_ID.slice(-4).toUpperCase());
                     setPlayerName(repairMojibakeCp1251Utf8(displayName));
                     console.log('[App] Auth refresh detected for same user, skipping one-time init:', currentUser.uid);
                     return;
@@ -6129,12 +6129,12 @@ const App: React.FC = () => {
                     try {
                         userSnap = await getDoc(userDocRef);
                     } catch (fetchErr) {
-                        // Non-404 error (network, timeout, 500) Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ do NOT treat as "user doesn't exist"
+                        // Non-404 error (network, timeout, 500) Р Р†Р вЂљРІР‚Сњ do NOT treat as "user doesn't exist"
                         // or we'd overwrite their level with 1.
                         console.warn('[App] getDoc failed with non-404 error, skipping user init to protect data:', fetchErr);
                         userSnap = null;
                     }
-                    const displayName = currentUser.displayName || (userSnap?.data()?.name) || ('Р В РІР‚СљР В РЎвЂўР РЋР С“Р РЋРІР‚С™Р РЋР Р‰ ' + GUEST_ID.slice(-4).toUpperCase());
+                    const displayName = currentUser.displayName || (userSnap?.data()?.name) || ('Р вЂњР С•РЎРѓРЎвЂљРЎРЉ ' + GUEST_ID.slice(-4).toUpperCase());
                     setPlayerName(repairMojibakeCp1251Utf8(displayName));
 
                     if (userSnap && !userSnap.exists()) {
@@ -6164,7 +6164,7 @@ const App: React.FC = () => {
                         });
                     }
 
-                    // Р РЋР вЂљР РЋРЎСџР Р†Р вЂљРЎСљР Р†Р вЂљРЎвЂє Migrate guest buildings to the new user's UID
+                    // РЎР‚РЎСџРІР‚СњРІР‚С› Migrate guest buildings to the new user's UID
                     if (lastMigratedGuestBuildingsUidRef.current !== currentUser.uid) {
                         try {
                             const guestBuildingsSnap = await getDocs(query(collection(db, 'buildings'), where('ownerId', '==', GUEST_ID)));
@@ -6189,7 +6189,7 @@ const App: React.FC = () => {
                     }
 
                     // RECOVERY: save any buildings placed locally before auth resolved.
-                    // These have ownerId:"0" or GUEST_ID and isLocal:true Р Р†Р вЂљРІР‚Сњ they were placed
+                    // These have ownerId:"0" or GUEST_ID and isLocal:true РІР‚вЂќ they were placed
                     // during the race window (render gap between setUser() and re-render) and
                     // never written to PocketBase. We save them now with the correct uid.
                     if (lastRecoveredBuildingsUidRef.current !== currentUser.uid) {
@@ -6237,7 +6237,7 @@ const App: React.FC = () => {
                 tutorialPersistStartedRef.current = false;
                 townHallTutorialPersistStartedRef.current = false;
                 setTownHallTutorialStep(null);
-                setPlayerName(repairMojibakeCp1251Utf8('Р В РІР‚СљР В РЎвЂўР РЋР С“Р РЋРІР‚С™Р РЋР Р‰') + ' ' + GUEST_ID.slice(-4).toUpperCase());
+                setPlayerName(repairMojibakeCp1251Utf8('Р вЂњР С•РЎРѓРЎвЂљРЎРЉ') + ' ' + GUEST_ID.slice(-4).toUpperCase());
                 setPlayerActiveCurse(null);
                 setActiveCurses({});
                 setVisualEffects([]);
@@ -6299,7 +6299,7 @@ const App: React.FC = () => {
         // playerLevel starts at 1 (React default), so saving before load
         // would overwrite the real level in the database with 1.
         if (!initialLoadDone.current) {
-            console.warn('[SaveUserData] Skipped Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ initial load not done yet, would save stale level=1');
+            console.warn('[SaveUserData] Skipped Р Р†Р вЂљРІР‚Сњ initial load not done yet, would save stale level=1');
             return;
         }
         setIsSaving(true);
@@ -6330,7 +6330,7 @@ const App: React.FC = () => {
             await updateDoc(userDocRef, updateData);
         } catch (e) {
             handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
-            setSaveError("Р В РЎвЂєР РЋРІвЂљВ¬Р В РЎвЂР В Р’В±Р В РЎвЂќР В Р’В° Р В РЎвЂ”Р РЋР вЂљР В РЎвЂ Р РЋР С“Р В РЎвЂўР РЋРІР‚В¦Р РЋР вЂљР В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р В РЎвЂР В РЎвЂ Р В РўвЂР В Р’В°Р В Р вЂ¦Р В Р вЂ¦Р РЋРІР‚в„–Р РЋРІР‚В¦.");
+            setSaveError("Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р С—РЎР‚Р С‘ РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р ВµР Р…Р С‘Р С‘ Р Т‘Р В°Р Р…Р Р…РЎвЂ№РЎвЂ¦.");
         } finally {
             setIsSaving(false);
         }
@@ -6393,11 +6393,11 @@ const App: React.FC = () => {
         // Validate registration inputs
         if (isRegisterMode) {
             if (!regPlayerName.trim()) {
-                setAuthError('Р В РЎСџР В РЎвЂўР В Р’В¶Р В Р’В°Р В Р’В»Р РЋРЎвЂњР В РІвЂћвЂ“Р РЋР С“Р РЋРІР‚С™Р В Р’В°, Р В Р вЂ Р В Р вЂ Р В Р’ВµР В РўвЂР В РЎвЂР РЋРІР‚С™Р В Р’Вµ Р В Р вЂ¦Р В РЎвЂР В РЎвЂќ');
+                setAuthError('Р СџР С•Р В¶Р В°Р В»РЎС“Р в„–РЎРѓРЎвЂљР В°, Р Р†Р Р†Р ВµР Т‘Р С‘РЎвЂљР Вµ Р Р…Р С‘Р С”');
                 return;
             }
             if (regPlayerName.trim().length < 3) {
-                setAuthError('Р В РЎСљР В РЎвЂР В РЎвЂќ Р В РўвЂР В РЎвЂўР В Р’В»Р В Р’В¶Р В Р’ВµР В Р вЂ¦ Р В Р’В±Р РЋРІР‚в„–Р РЋРІР‚С™Р РЋР Р‰ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В Р’ВµР В Р вЂ¦Р В Р’ВµР В Р’Вµ 3 Р РЋР С“Р В РЎвЂР В РЎВР В Р вЂ Р В РЎвЂўР В Р’В»Р В РЎвЂўР В Р вЂ ');
+                setAuthError('Р СњР С‘Р С” Р Т‘Р С•Р В»Р В¶Р ВµР Р… Р В±РЎвЂ№РЎвЂљРЎРЉ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 3 РЎРѓР С‘Р СР Р†Р С•Р В»Р С•Р Р†');
                 return;
             }
 
@@ -6405,7 +6405,7 @@ const App: React.FC = () => {
             try {
                 const nameSnap = await getDocs(query(collection(db, 'users'), where('name', '==', regPlayerName.trim())));
                 if (nameSnap.docs && nameSnap.docs.length > 0) {
-                    setAuthError('Р В Р’В­Р РЋРІР‚С™Р В РЎвЂўР РЋРІР‚С™ Р В Р вЂ¦Р В РЎвЂР В РЎвЂќ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В Р’В·Р В Р’В°Р В Р вЂ¦Р РЋР РЏР РЋРІР‚С™, Р В Р вЂ Р РЋРІР‚в„–Р В Р’В±Р В Р’ВµР РЋР вЂљР В РЎвЂР РЋРІР‚С™Р В Р’Вµ Р В РўвЂР РЋР вЂљР РЋРЎвЂњР В РЎвЂ“Р В РЎвЂўР В РІвЂћвЂ“');
+                    setAuthError('Р В­РЎвЂљР С•РЎвЂљ Р Р…Р С‘Р С” РЎС“Р В¶Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљ, Р Р†РЎвЂ№Р В±Р ВµРЎР‚Р С‘РЎвЂљР Вµ Р Т‘РЎР‚РЎС“Р С–Р С•Р в„–');
                     return;
                 }
             } catch (_) { /* allow if check fails */ }
@@ -6455,7 +6455,7 @@ const App: React.FC = () => {
             logStartupStep('auth_success', { mode: isRegisterMode ? 'register' : 'login' });
         } catch (error: any) {
             console.error("Auth error:", error);
-            let msg = "Р В РЎвЂєР РЋРІвЂљВ¬Р В РЎвЂР В Р’В±Р В РЎвЂќР В Р’В° Р В Р’В°Р В Р вЂ Р РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В РЎвЂР В Р’В·Р В Р’В°Р РЋРІР‚В Р В РЎвЂР В РЎвЂ";
+            let msg = "Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р В°Р Р†РЎвЂљР С•РЎР‚Р С‘Р В·Р В°РЎвЂ Р С‘Р С‘";
             if (error.response?.data?.message) {
                 msg = error.response.data.message;
             } else if (error.message) {
@@ -6463,10 +6463,10 @@ const App: React.FC = () => {
             }
 
             // Translate common PocketBase errors
-            if (msg.includes("Failed to authenticate")) msg = "Р В РЎСљР В Р’ВµР В Р вЂ Р В Р’ВµР РЋР вЂљР В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ email Р В РЎвЂР В Р’В»Р В РЎвЂ Р В РЎвЂ”Р В Р’В°Р РЋР вЂљР В РЎвЂўР В Р’В»Р РЋР Р‰";
-            if (msg.includes("must be unique")) msg = "Р В Р’В­Р РЋРІР‚С™Р В РЎвЂўР РЋРІР‚С™ email Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В Р’В·Р В Р’В°Р В Р вЂ¦Р РЋР РЏР РЋРІР‚С™";
-            if (msg.includes("invalid email")) msg = "Р В РЎСљР В Р’ВµР В РЎвЂќР В РЎвЂўР РЋР вЂљР РЋР вЂљР В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ email";
-            if (msg.includes("8 characters")) msg = "Р В РЎСџР В Р’В°Р РЋР вЂљР В РЎвЂўР В Р’В»Р РЋР Р‰ Р В РўвЂР В РЎвЂўР В Р’В»Р В Р’В¶Р В Р’ВµР В Р вЂ¦ Р В Р’В±Р РЋРІР‚в„–Р РЋРІР‚С™Р РЋР Р‰ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В Р’ВµР В Р вЂ¦Р В Р’ВµР В Р’Вµ 8 Р РЋР С“Р В РЎвЂР В РЎВР В Р вЂ Р В РЎвЂўР В Р’В»Р В РЎвЂўР В Р вЂ ";
+            if (msg.includes("Failed to authenticate")) msg = "Р СњР ВµР Р†Р ВµРЎР‚Р Р…РЎвЂ№Р в„– email Р С‘Р В»Р С‘ Р С—Р В°РЎР‚Р С•Р В»РЎРЉ";
+            if (msg.includes("must be unique")) msg = "Р В­РЎвЂљР С•РЎвЂљ email РЎС“Р В¶Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљ";
+            if (msg.includes("invalid email")) msg = "Р СњР ВµР С”Р С•РЎР‚РЎР‚Р ВµР С”РЎвЂљР Р…РЎвЂ№Р в„– email";
+            if (msg.includes("8 characters")) msg = "Р СџР В°РЎР‚Р С•Р В»РЎРЉ Р Т‘Р С•Р В»Р В¶Р ВµР Р… Р В±РЎвЂ№РЎвЂљРЎРЉ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 8 РЎРѓР С‘Р СР Р†Р С•Р В»Р С•Р Р†";
 
             setAuthError(msg);
             logStartupStep('auth_error', {
@@ -6792,7 +6792,7 @@ const App: React.FC = () => {
                         [user.uid]: {
                             ...prev[user.uid],
                             uid: user.uid,
-                            name: data.name || "Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ",
+                            name: data.name || "Р ВР С–РЎР‚Р С•Р С”",
                             level: authoritativeLevel,
                             glory: dbGlory,
                             reputation: Math.max(0, Number(data.reputation) || 0),
@@ -7021,7 +7021,7 @@ const App: React.FC = () => {
             if (!snap.exists()) return;
             const data = snap.data();
 
-            // Update ban state вЂ” 0 means explicit unban (authoritative), all other values are monotonic
+            // Update ban state — 0 means explicit unban (authoritative), all other values are monotonic
             if (data.banEndTime !== undefined) {
                 const normalizedBanEndTime = Number(data.banEndTime || 0) || 0;
                 setBanEndTime(prev => reconcileBanEndTime(prev, normalizedBanEndTime));
@@ -7055,7 +7055,7 @@ const App: React.FC = () => {
                     [user.uid]: {
                         ...existing,
                         uid: user.uid,
-                        name: data.name || existing.name || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“',
+                        name: data.name || existing.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
                         level: resolvedLevel,
                         glory: playerGloryRef.current,
                         reputation: Math.max(0, Number(data.reputation) || 0),
@@ -7168,7 +7168,7 @@ const App: React.FC = () => {
                         updated[uid] = {
                             ...updated[uid],
                             uid: uid,
-                            name: memberData.name || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“',
+                            name: memberData.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
                             level: memberData.level || 1,
                             glory: memberData.glory || 0,
                             reputation: memberData.reputation || 0,
@@ -7281,7 +7281,7 @@ const App: React.FC = () => {
             const leaderboardStats = getUserStatCounters(playerLeaderboardStatsRef.current);
             const payload = {
                 userId: user.uid,
-                name: repairMojibakeCp1251Utf8(String(playerName || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№')),
+                name: repairMojibakeCp1251Utf8(String(playerName || 'Неизвестный')),
                 avatar: playerAvatar || '',
                 glory: Math.max(0, Number(playerGloryRef.current) || 0),
                 treesChopped: leaderboardStats.treesChopped,
@@ -7310,9 +7310,9 @@ const App: React.FC = () => {
                     message: e?.message,
                     data: e?.data,
                 });
-                // Duplicate errors are non-retriable вЂ” stop immediately
+                // Duplicate errors are non-retriable — stop immediately
                 if (isDuplicate) {
-                    console.warn('[LeaderboardSync] Duplicate profiles detected вЂ” disabling sync permanently');
+                    console.warn('[LeaderboardSync] Duplicate profiles detected — disabling sync permanently');
                     leaderboardSyncDisabledRef.current = true;
                 } else if (leaderboardSyncFailCount >= 5) {
                     console.warn('[LeaderboardSync] Stopping retries after', leaderboardSyncFailCount, 'consecutive failures');
@@ -7392,7 +7392,7 @@ const App: React.FC = () => {
                 const uid = String(docSnap.id);
                 return {
                     uid,
-                    name: repairMojibakeCp1251Utf8(String(data?.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№')),
+                    name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
                     level: Number(data?.level || 1) || 1,
                     glory: Math.max(0, Number(data?.glory || 0) || 0),
                     reputation: Math.max(0, Number(data?.reputation || 0) || 0),
@@ -7417,7 +7417,7 @@ const App: React.FC = () => {
                         ...current,
                         ...entry,
                         uid: entry.uid,
-                        name: entry.name || current.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№',
+                        name: entry.name || current.name || 'Неизвестный',
                         avatar: entry.avatar || current.avatar || null,
                         clanId: entry.clanId ?? current.clanId ?? null,
                         rank: entry.rank ?? current.rank ?? 0,
@@ -7459,7 +7459,7 @@ const App: React.FC = () => {
                 const uid = String(data?.userId || docSnap.id);
                 return {
                     uid,
-                    name: repairMojibakeCp1251Utf8(String(data?.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№')),
+                    name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
                     level: Number(data?.level || 1) || 1,
                     glory: Math.max(0, Number(data?.glory || 0) || 0),
                     avatar: resolveUserAvatar(data),
@@ -7483,7 +7483,7 @@ const App: React.FC = () => {
                         ...current,
                         ...entry,
                         uid: entry.uid,
-                        name: entry.name || current.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№',
+                        name: entry.name || current.name || 'Неизвестный',
                         avatar: entry.avatar || current.avatar || null,
                         clanId: entry.clanId ?? current.clanId ?? null,
                         level: Math.max(1, Number(entry.level || current.level || 1) || 1),
@@ -7565,7 +7565,7 @@ const App: React.FC = () => {
                 const data = doc.data();
                 // Only count as online if seen in last 2 minutes
                 if (data && data.lastSeen && (now - data.lastSeen < 120000)) {
-                    const repairedPresenceName = repairMojibakeCp1251Utf8(String(data.name || "Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“"));
+                    const repairedPresenceName = repairMojibakeCp1251Utf8(String(data.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–"));
                     const uid = String(data.uid || doc.id);
                     const normalizedPresenceClanId = normalizeClanIdValue(data.clanId);
 
@@ -7593,7 +7593,7 @@ const App: React.FC = () => {
                         updated[uid] = {
                             ...current,
                             uid,
-                            name: repairMojibakeCp1251Utf8(String(data.name || current.name || "Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“")),
+                            name: repairMojibakeCp1251Utf8(String(data.name || current.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
                             level: data.level,
                             lastSeen: Math.max(Number(current.lastSeen || 0) || 0, Number(data.lastSeen || 0) || 0),
                             // Preserve local glory/reputation values - don't overwrite with stale presence data
@@ -7658,7 +7658,7 @@ const App: React.FC = () => {
                             [selectedPlayerId]: {
                                 ...prev[selectedPlayerId],
                                 uid: selectedPlayerId,
-                                name: repairMojibakeCp1251Utf8(String(cachedOnlinePlayer.name || "Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“")),
+                                name: repairMojibakeCp1251Utf8(String(cachedOnlinePlayer.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
                                 level: cachedOnlinePlayer.level || 1,
                                 glory: prev[selectedPlayerId]?.glory ?? cachedOnlinePlayer.glory ?? 0,
                                 reputation: prev[selectedPlayerId]?.reputation ?? cachedOnlinePlayer.reputation ?? 0,
@@ -7678,7 +7678,7 @@ const App: React.FC = () => {
                                 [selectedPlayerId]: {
                                     ...prev[selectedPlayerId],
                                     uid: selectedPlayerId,
-                                    name: repairMojibakeCp1251Utf8(String(data.name || "Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“")),
+                                    name: repairMojibakeCp1251Utf8(String(data.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
                                     level: data.level || 1,
                                     glory: data.glory || 0,
                                     reputation: data.reputation || 0,
@@ -7710,7 +7710,7 @@ const App: React.FC = () => {
                             [selectedPlayerId]: {
                                 ...prev[selectedPlayerId],
                                 uid: selectedPlayerId,
-                                name: prev[selectedPlayerId]?.name || repairMojibakeCp1251Utf8(String(presenceData.name || "Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“")),
+                                name: prev[selectedPlayerId]?.name || repairMojibakeCp1251Utf8(String(presenceData.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
                                 level: prev[selectedPlayerId]?.level ?? presenceData.level ?? 1,
                                 lastSeen: Math.max(
                                     Number(prev[selectedPlayerId]?.lastSeen || 0) || 0,
@@ -8337,7 +8337,7 @@ const App: React.FC = () => {
                 setRoyalElectionEndTime(data.electionEndTime || 0);
                 setFirstRoyalElectionCompleted(data.firstElectionCompleted || false);
             }
-            // If doc doesn't exist, the init effect will create it Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ no duplicate creation here
+            // If doc doesn't exist, the init effect will create it Р Р†Р вЂљРІР‚Сњ no duplicate creation here
         }, (error) => {
             console.error('[RoyalElections] onSnapshot error:', error);
             handleFirestoreError(error, OperationType.GET, 'elections_royal');
@@ -8443,7 +8443,7 @@ const App: React.FC = () => {
                     
                     if (winnerId && winnerVotes > 0) {
                         // Get winner name from allUsers
-                        const winnerName = allUsers[winnerId]?.name || 'Р В Р РѓР В Р’ВµР РЋР вЂљР В РЎвЂР РЋРІР‚С›';
+                        const winnerName = allUsers[winnerId]?.name || 'Р РЃР ВµРЎР‚Р С‘РЎвЂћ';
                         
                         // Calculate next election time (30 days from now)
                         const nextElectionTime = Date.now() + 2592000000;
@@ -8464,9 +8464,9 @@ const App: React.FC = () => {
                             // Send system message to police chat
                             const msgId = `sheriff-elected-${Date.now()}`;
                             await setDoc(doc(db, 'chat_messages', msgId), {
-                                sender: '[Р В Р Р‹Р В Р’ВР В Р Р‹Р В РЎС›Р В РІР‚СћР В РЎС™Р В РЎвЂ™]',
+                                sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
                                 senderId: 'system',
-                                text: `??? Р В РЎСџР В РЎвЂўР В Р’В·Р В РўвЂР РЋР вЂљР В Р’В°Р В Р вЂ Р В Р’В»Р РЋР РЏР В Р’ВµР В РЎВ! Р В РЎСљР В РЎвЂўР В Р вЂ Р РЋРІР‚в„–Р В РЎВ Р РЋРІвЂљВ¬Р В Р’ВµР РЋР вЂљР В РЎвЂР РЋРІР‚С›Р В РЎвЂўР В РЎВ Р В РЎвЂ“Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В РўвЂР В Р’В° Р РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В» ${winnerName} Р РЋР С“ ${winnerVotes} Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В Р’В°Р В РЎВР В РЎвЂ! Р В РІР‚ВР В Р’В°Р В Р вЂ¦Р В РЎвЂќ Р В Р вЂ Р РЋРІР‚в„–Р В Р’В±Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р вЂ : ${totalBank.toLocaleString()} Р В РЎВР В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™.`,
+                                text: `??? Р СџР С•Р В·Р Т‘РЎР‚Р В°Р Р†Р В»РЎРЏР ВµР С! Р СњР С•Р Р†РЎвЂ№Р С РЎв‚¬Р ВµРЎР‚Р С‘РЎвЂћР С•Р С Р С–Р С•РЎР‚Р С•Р Т‘Р В° РЎРѓРЎвЂљР В°Р В» ${winnerName} РЎРѓ ${winnerVotes} Р С–Р С•Р В»Р С•РЎРѓР В°Р СР С‘! Р вЂР В°Р Р…Р С” Р Р†РЎвЂ№Р В±Р С•РЎР‚Р С•Р Р†: ${totalBank.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ.`,
                                 type: 'system',
                                 timestamp: Date.now(),
                                 tab: 'police'
@@ -8475,9 +8475,9 @@ const App: React.FC = () => {
                             // Send system message to general chat
                             const generalMsgId = `sheriff-elected-general-${Date.now()}`;
                             await setDoc(doc(db, 'chat_messages', generalMsgId), {
-                                sender: '[Р В Р Р‹Р В Р’ВР В Р Р‹Р В РЎС›Р В РІР‚СћР В РЎС™Р В РЎвЂ™]',
+                                sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
                                 senderId: 'system',
-                                text: `??? Р В РЎСџР В РЎвЂўР В Р’В·Р В РўвЂР РЋР вЂљР В Р’В°Р В Р вЂ Р В Р’В»Р РЋР РЏР В Р’ВµР В РЎВ! Р В РЎСљР В РЎвЂўР В Р вЂ Р РЋРІР‚в„–Р В РЎВ Р РЋРІвЂљВ¬Р В Р’ВµР РЋР вЂљР В РЎвЂР РЋРІР‚С›Р В РЎвЂўР В РЎВ Р В РЎвЂ“Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В РўвЂР В Р’В° Р РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В» ${winnerName} Р РЋР С“ ${winnerVotes} Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В Р’В°Р В РЎВР В РЎвЂ!`,
+                                text: `??? Р СџР С•Р В·Р Т‘РЎР‚Р В°Р Р†Р В»РЎРЏР ВµР С! Р СњР С•Р Р†РЎвЂ№Р С РЎв‚¬Р ВµРЎР‚Р С‘РЎвЂћР С•Р С Р С–Р С•РЎР‚Р С•Р Т‘Р В° РЎРѓРЎвЂљР В°Р В» ${winnerName} РЎРѓ ${winnerVotes} Р С–Р С•Р В»Р С•РЎРѓР В°Р СР С‘!`,
                                 type: 'system',
                                 timestamp: Date.now(),
                                 tab: 'general'
@@ -8500,7 +8500,7 @@ const App: React.FC = () => {
             const sendWarning = (message: string) => {
                 const msgId = `police-warning-${Date.now()}`;
                 const notification = {
-                    sender: '[Р В Р Р‹Р В Р’ВР В Р Р‹Р В РЎС›Р В РІР‚СћР В РЎС™Р В РЎвЂ™]',
+                    sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
                     senderId: 'system',
                     text: message,
                     type: 'system',
@@ -8512,19 +8512,19 @@ const App: React.FC = () => {
 
             // Check for each warning threshold (only send once per threshold)
             if (timeLeft <= oneHour && timeLeft > thirtyMin && lastPoliceWarningTime < oneHour) {
-                sendWarning('Р В Р вЂ Р В Р РЏР вЂ™Р’В° Р В РІР‚СњР В РЎвЂў Р В РЎвЂ”Р В РЎвЂўР В РўвЂР РЋР С“Р РЋРІР‚РЋР В Р’ВµР РЋРІР‚С™Р В Р’В° Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ  Р В Р вЂ¦Р В Р’В° Р В РЎвЂ”Р В РЎвЂўР РЋР С“Р РЋРІР‚С™ Р РЋРІвЂљВ¬Р В Р’ВµР РЋР вЂљР В РЎвЂР РЋРІР‚С›Р В Р’В° Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р РЋР С“Р РЋР РЏ 1 Р РЋРІР‚РЋР В Р’В°Р РЋР С“! Р В РЎСџР В РЎвЂўР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В РЎвЂ”Р В РЎвЂР РЋРІР‚С™Р В Р’ВµР РЋР С“Р РЋР Р‰ Р РЋР С“ Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦Р В РЎвЂР В Р’ВµР В РЎВ!');
+                sendWarning('Р Р†Р РЏР’В° Р вЂќР С• Р С—Р С•Р Т‘РЎРѓРЎвЂЎР ВµРЎвЂљР В° Р С–Р С•Р В»Р С•РЎРѓР С•Р Р† Р Р…Р В° Р С—Р С•РЎРѓРЎвЂљ РЎв‚¬Р ВµРЎР‚Р С‘РЎвЂћР В° Р С•РЎРѓРЎвЂљР В°Р В»РЎРѓРЎРЏ 1 РЎвЂЎР В°РЎРѓ! Р СџР С•РЎвЂљР С•РЎР‚Р С•Р С—Р С‘РЎвЂљР ВµРЎРѓРЎРЉ РЎРѓ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р Р…Р С‘Р ВµР С!');
                 setLastPoliceWarningTime(oneHour);
             } else if (timeLeft <= thirtyMin && timeLeft > fifteenMin && lastPoliceWarningTime < thirtyMin) {
-                sendWarning('Р В Р вЂ Р В Р РЏР вЂ™Р’В° Р В РІР‚СњР В РЎвЂў Р В РЎвЂўР В РЎвЂќР В РЎвЂўР В Р вЂ¦Р РЋРІР‚РЋР В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р В РЎвЂўР РЋР С“Р РЋР Р‰ 30 Р В РЎВР В РЎвЂР В Р вЂ¦Р РЋРЎвЂњР РЋРІР‚С™!');
+                sendWarning('Р Р†Р РЏР’В° Р вЂќР С• Р С•Р С”Р С•Р Р…РЎвЂЎР В°Р Р…Р С‘РЎРЏ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р Р…Р С‘РЎРЏ Р С•РЎРѓРЎвЂљР В°Р В»Р С•РЎРѓРЎРЉ 30 Р СР С‘Р Р…РЎС“РЎвЂљ!');
                 setLastPoliceWarningTime(thirtyMin);
             } else if (timeLeft <= fifteenMin && timeLeft > fiveMin && lastPoliceWarningTime < fifteenMin) {
-                sendWarning('Р В Р вЂ Р В Р РЏР вЂ™Р’В° Р В РІР‚СњР В РЎвЂў Р В РЎвЂўР В РЎвЂќР В РЎвЂўР В Р вЂ¦Р РЋРІР‚РЋР В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р В РЎвЂўР РЋР С“Р РЋР Р‰ 15 Р В РЎВР В РЎвЂР В Р вЂ¦Р РЋРЎвЂњР РЋРІР‚С™!');
+                sendWarning('Р Р†Р РЏР’В° Р вЂќР С• Р С•Р С”Р С•Р Р…РЎвЂЎР В°Р Р…Р С‘РЎРЏ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р Р…Р С‘РЎРЏ Р С•РЎРѓРЎвЂљР В°Р В»Р С•РЎРѓРЎРЉ 15 Р СР С‘Р Р…РЎС“РЎвЂљ!');
                 setLastPoliceWarningTime(fifteenMin);
             } else if (timeLeft <= fiveMin && timeLeft > oneMin && lastPoliceWarningTime < fiveMin) {
-                sendWarning('Р В Р вЂ Р В Р РЏР вЂ™Р’В° Р В РІР‚СњР В РЎвЂў Р В РЎвЂўР В РЎвЂќР В РЎвЂўР В Р вЂ¦Р РЋРІР‚РЋР В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р В РЎвЂўР РЋР С“Р РЋР Р‰ 5 Р В РЎВР В РЎвЂР В Р вЂ¦Р РЋРЎвЂњР РЋРІР‚С™! Р В РЎСџР В РЎвЂўР РЋР С“Р В РЎвЂ”Р В Р’ВµР РЋРІвЂљВ¬Р В РЎвЂР РЋРІР‚С™Р В Р’Вµ!');
+                sendWarning('Р Р†Р РЏР’В° Р вЂќР С• Р С•Р С”Р С•Р Р…РЎвЂЎР В°Р Р…Р С‘РЎРЏ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р Р…Р С‘РЎРЏ Р С•РЎРѓРЎвЂљР В°Р В»Р С•РЎРѓРЎРЉ 5 Р СР С‘Р Р…РЎС“РЎвЂљ! Р СџР С•РЎРѓР С—Р ВµРЎв‚¬Р С‘РЎвЂљР Вµ!');
                 setLastPoliceWarningTime(fiveMin);
             } else if (timeLeft <= oneMin && timeLeft > 0 && lastPoliceWarningTime < oneMin) {
-                sendWarning('Р В Р вЂ Р В Р РЏР вЂ™Р’В° Р В РІР‚СњР В РЎвЂў Р В РЎвЂўР В РЎвЂќР В РЎвЂўР В Р вЂ¦Р РЋРІР‚РЋР В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ Р В Р вЂ¦Р В Р’В° Р В РЎвЂ”Р В РЎвЂўР РЋР С“Р РЋРІР‚С™ Р РЋРІвЂљВ¬Р В Р’ВµР РЋР вЂљР В РЎвЂР РЋРІР‚С›Р В Р’В° Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р В РЎвЂўР РЋР С“Р РЋР Р‰ Р В РЎВР В Р’ВµР В Р вЂ¦Р РЋР Р‰Р РЋРІвЂљВ¬Р В Р’Вµ Р В РЎВР В РЎвЂР В Р вЂ¦Р РЋРЎвЂњР РЋРІР‚С™Р РЋРІР‚в„–! Р В РЎв„ўР В РЎвЂўР В РЎВР В РЎвЂР РЋР С“Р РЋР С“Р В РЎвЂР РЋР РЏ Р В Р вЂ¦Р В Р’В°Р РЋРІР‚РЋР В РЎвЂР В Р вЂ¦Р В Р’В°Р В Р’ВµР РЋРІР‚С™ Р В РЎвЂ”Р В РЎвЂўР В РўвЂР РЋР С“Р РЋРІР‚РЋР В Р’ВµР РЋРІР‚С™ Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ, Р В РЎвЂўР В Р’В¶Р В РЎвЂР В РўвЂР В Р’В°Р В РІвЂћвЂ“Р РЋРІР‚С™Р В Р’Вµ...');
+                sendWarning('Р Р†Р РЏР’В° Р вЂќР С• Р С•Р С”Р С•Р Р…РЎвЂЎР В°Р Р…Р С‘РЎРЏ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р Р…Р С‘РЎРЏ Р Р…Р В° Р С—Р С•РЎРѓРЎвЂљ РЎв‚¬Р ВµРЎР‚Р С‘РЎвЂћР В° Р С•РЎРѓРЎвЂљР В°Р В»Р С•РЎРѓРЎРЉ Р СР ВµР Р…РЎРЉРЎв‚¬Р Вµ Р СР С‘Р Р…РЎС“РЎвЂљРЎвЂ№! Р С™Р С•Р СР С‘РЎРѓРЎРѓР С‘РЎРЏ Р Р…Р В°РЎвЂЎР С‘Р Р…Р В°Р ВµРЎвЂљ Р С—Р С•Р Т‘РЎРѓРЎвЂЎР ВµРЎвЂљ Р С–Р С•Р В»Р С•РЎРѓР С•Р Р†Р В°Р Р…Р С‘РЎРЏ, Р С•Р В¶Р С‘Р Т‘Р В°Р в„–РЎвЂљР Вµ...');
                 setLastPoliceWarningTime(oneMin);
             }
         };
@@ -8561,8 +8561,8 @@ const App: React.FC = () => {
                     const [queenWinnerId, queenVotes] = femaleCandidates[0] || [null, 0];
                     
                     if (kingWinnerId && kingVotes > 0) {
-                        const kingWinnerName = allUsers[kingWinnerId]?.name || 'Р В РЎв„ўР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р РЋР Р‰';
-                        const queenWinnerName = queenWinnerId ? (allUsers[queenWinnerId]?.name || 'Р В РЎв„ўР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В Р вЂ Р В Р’В°') : null;
+                        const kingWinnerName = allUsers[kingWinnerId]?.name || 'Р С™Р С•РЎР‚Р С•Р В»РЎРЉ';
+                        const queenWinnerName = queenWinnerId ? (allUsers[queenWinnerId]?.name || 'Р С™Р С•РЎР‚Р С•Р В»Р ВµР Р†Р В°') : null;
                         
                         // Calculate next election time (30 days from now)
                         const nextElectionTime = Date.now() + 2592000000;
@@ -8584,12 +8584,12 @@ const App: React.FC = () => {
                             
                             // Send system message to general chat
                             const msgId = `royal-elected-${Date.now()}`;
-                            let messageText = `?? Р В РЎСџР В РЎвЂўР В Р’В·Р В РўвЂР РЋР вЂљР В Р’В°Р В Р вЂ Р В Р’В»Р РЋР РЏР В Р’ВµР В РЎВ! Р В РЎСљР В РЎвЂўР В Р вЂ Р РЋРІР‚в„–Р В РЎВ Р В РЎв„ўР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В РЎВ Р В РЎвЂ“Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В РўвЂР В Р’В° Р РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В» ${kingWinnerName} Р РЋР С“ ${kingVotes} Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В Р’В°Р В РЎВР В РЎвЂ!`;
+                            let messageText = `?? Р СџР С•Р В·Р Т‘РЎР‚Р В°Р Р†Р В»РЎРЏР ВµР С! Р СњР С•Р Р†РЎвЂ№Р С Р С™Р С•РЎР‚Р С•Р В»Р ВµР С Р С–Р С•РЎР‚Р С•Р Т‘Р В° РЎРѓРЎвЂљР В°Р В» ${kingWinnerName} РЎРѓ ${kingVotes} Р С–Р С•Р В»Р С•РЎРѓР В°Р СР С‘!`;
                             if (queenWinnerName) {
-                                messageText += ` Р В РЎв„ўР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В Р вЂ Р В РЎвЂўР В РІвЂћвЂ“ Р РЋР С“Р РЋРІР‚С™Р В Р’В°Р В Р’В»Р В Р’В° ${queenWinnerName} Р РЋР С“ ${queenVotes} Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В Р’В°Р В РЎВР В РЎвЂ!`;
+                                messageText += ` Р С™Р С•РЎР‚Р С•Р В»Р ВµР Р†Р С•Р в„– РЎРѓРЎвЂљР В°Р В»Р В° ${queenWinnerName} РЎРѓ ${queenVotes} Р С–Р С•Р В»Р С•РЎРѓР В°Р СР С‘!`;
                             }
                             await setDoc(doc(db, 'chat_messages', msgId), {
-                                sender: '[Р В Р Р‹Р В Р’ВР В Р Р‹Р В РЎС›Р В РІР‚СћР В РЎС™Р В РЎвЂ™]',
+                                sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
                                 senderId: 'system',
                                 text: messageText,
                                 type: 'system',
@@ -8750,9 +8750,9 @@ const App: React.FC = () => {
                     [selectedChatUser]: clampedRep
                 };
             });
-            const actionText = type === 'praise' ? 'РїРѕС…РІР°Р»РёР»Рё' : 'РїРѕР¶Р°Р»РѕРІР°Р»РёСЃСЊ РЅР°';
-            addHistoryLog(`Р’С‹ ${actionText} РёРіСЂРѕРєР° ${selectedChatUser} (Р»РѕРєР°Р»СЊРЅРѕ). РџРѕС‚СЂР°С‡РµРЅР° 1 СЂРµРєРѕРјРµРЅРґР°С†РёСЏ.`, 'social');
-            alert(`Р’С‹ СѓСЃРїРµС€РЅРѕ ${type === 'praise' ? 'РїРѕС…РІР°Р»РёР»Рё' : 'РїРѕР¶Р°Р»РѕРІР°Р»РёСЃСЊ РЅР°'} РёРіСЂРѕРєР°!`);
+            const actionText = type === 'praise' ? 'похвалили' : 'пожаловались на';
+            addHistoryLog(`Вы ${actionText} игрока ${selectedChatUser} (локально). Потрачена 1 рекомендация.`, 'social');
+            alert(`Вы успешно ${type === 'praise' ? 'похвалили' : 'пожаловались на'} игрока!`);
         }
     };
 
@@ -8760,7 +8760,7 @@ const App: React.FC = () => {
         if (!user) return;
         const isAdmin = user && user.email === "fabiosluco@gmail.com";
         if (targetUid === user.uid && !isAdmin) {
-            alert("Р’С‹ РЅРµ РјРѕР¶РµС‚Рµ РїРѕС…РІР°Р»РёС‚СЊ СЃР°РјРѕРіРѕ СЃРµР±СЏ!");
+            alert("Вы не можете похвалить самого себя!");
             return;
         }
 
@@ -8806,11 +8806,11 @@ const App: React.FC = () => {
                 return updated;
             });
 
-            addHistoryLog(`Р’С‹ РїРѕС…РІР°Р»РёР»Рё РёРіСЂРѕРєР° ${allUsers[targetUid]?.name || 'РЅРµРёР·РІРµСЃС‚РЅРѕРіРѕ'}. РџРѕС‚СЂР°С‡РµРЅР° 1 СЂРµРєРѕРјРµРЅРґР°С†РёСЏ.`, 'social');
-            alert('Р’С‹ СѓСЃРїРµС€РЅРѕ РїРѕС…РІР°Р»РёР»Рё РёРіСЂРѕРєР°!');
+            addHistoryLog(`Вы похвалили игрока ${allUsers[targetUid]?.name || 'неизвестного'}. Потрачена 1 рекомендация.`, 'social');
+            alert('Вы успешно похвалили игрока!');
         } catch (e: any) {
             if (e.message === "Insufficient recommendations") {
-                alert("РЈ РІР°СЃ РЅРµС‚ СЂРµРєРѕРјРµРЅРґР°С†РёР№!");
+                alert("У вас нет рекомендаций!");
             } else {
                 handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
             }
@@ -8862,11 +8862,11 @@ const App: React.FC = () => {
                 return updated;
             });
 
-            addHistoryLog(`Р’С‹ РїРѕР¶Р°Р»РѕРІР°Р»РёСЃСЊ РЅР° РёРіСЂРѕРєР° ${allUsers[targetUid]?.name || 'РЅРµРёР·РІРµСЃС‚РЅРѕРіРѕ'}. РџРѕС‚СЂР°С‡РµРЅР° 1 СЂРµРєРѕРјРµРЅРґР°С†РёСЏ.`, 'social');
-            alert('Р’С‹ СѓСЃРїРµС€РЅРѕ РїРѕР¶Р°Р»РѕРІР°Р»РёСЃСЊ РЅР° РёРіСЂРѕРєР°!');
+            addHistoryLog(`Вы пожаловались на игрока ${allUsers[targetUid]?.name || 'неизвестного'}. Потрачена 1 рекомендация.`, 'social');
+            alert('Вы успешно пожаловались на игрока!');
         } catch (e: any) {
             if (e.message === "Insufficient recommendations") {
-                alert("РЈ РІР°СЃ РЅРµС‚ СЂРµРєРѕРјРµРЅРґР°С†РёР№!");
+                alert("У вас нет рекомендаций!");
             } else {
                 handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
             }
@@ -8874,19 +8874,19 @@ const App: React.FC = () => {
     };
     const handleBanPlayer = (cost: number, durationMinutes: number) => {
         if (playerGold < cost) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°! РўСЂРµР±СѓРµС‚СЃСЏ ${cost.toLocaleString()} РјРѕРЅРµС‚.`);
+            alert(`Недостаточно золота! Требуется ${cost.toLocaleString()} монет.`);
             return;
         }
 
         setPlayerGold(prev => prev - cost);
 
-        addHistoryLog(`РРіСЂРѕРє ${selectedChatUser} Р·Р°Р±Р°РЅРµРЅ РЅР° ${durationMinutes} РјРёРЅ. РџРѕС‚СЂР°С‡РµРЅРѕ ${cost} РјРѕРЅРµС‚.`, 'social');
-        alert(`РРіСЂРѕРє ${selectedChatUser} СѓСЃРїРµС€РЅРѕ Р·Р°Р±Р°РЅРµРЅ РЅР° ${durationMinutes} РјРёРЅ!`);
+        addHistoryLog(`Игрок ${selectedChatUser} забанен на ${durationMinutes} мин. Потрачено ${cost} монет.`, 'social');
+        alert(`Игрок ${selectedChatUser} успешно забанен на ${durationMinutes} мин!`);
 
         // Find the target user's UID and update their banEndTime in PocketBase
         const targetUser = Object.values(allUsersRef.current).find((u: any) => u.name === selectedChatUser) as any;
         if (!targetUser) {
-            alert('РРіСЂРѕРє РЅРµ РЅР°Р№РґРµРЅ.');
+            alert('Игрок не найден.');
             return;
         }
         const targetUid = targetUser.uid;
@@ -8906,7 +8906,7 @@ const App: React.FC = () => {
     addHistoryLogRef.current = addHistoryLog;
     const handleBanPlayerByUid = async (targetUid: string, cost: number, durationMinutes: number) => {
         if (playerGold < cost || !user) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°! РўСЂРµР±СѓРµС‚СЃСЏ ${cost.toLocaleString()} РјРѕРЅРµС‚.`);
+            alert(`Недостаточно золота! Требуется ${cost.toLocaleString()} монет.`);
             return;
         }
 
@@ -8928,8 +8928,8 @@ const App: React.FC = () => {
 
                 const banNotification: ChatMessage = {
                     id: Date.now(),
-                    sender: 'РЎРёСЃС‚РµРјР°',
-                    text: `\u{1F512} ${playerName} Р·Р°Р±Р°РЅРёР» СЃРµР±СЏ РЅР° ${durationMinutes} РјРёРЅ.`,
+                    sender: 'Система',
+                    text: `\u{1F512} ${playerName} забанил себя на ${durationMinutes} мин.`,
                     type: 'system',
                     timestamp: Date.now(),
                     tab: 'general'
@@ -8937,11 +8937,11 @@ const App: React.FC = () => {
                 const msgId = `${Date.now()}-ban-${targetUid}`;
                 setDoc(doc(db, 'chat_messages', msgId), banNotification).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
 
-                addHistoryLog(`Р’С‹ Р·Р°Р±Р°РЅРёР»Рё СЃРµР±СЏ РЅР° ${durationMinutes} РјРёРЅ. РџРѕС‚СЂР°С‡РµРЅРѕ ${cost} РјРѕРЅРµС‚.`, 'social');
-                alert(`Р’С‹ СѓСЃРїРµС€РЅРѕ СЃРµР±СЏ Р·Р°Р±Р°РЅРёР»Рё РЅР° ${durationMinutes} РјРёРЅ!`);
+                addHistoryLog(`Вы забанили себя на ${durationMinutes} мин. Потрачено ${cost} монет.`, 'social');
+                alert(`Вы успешно себя забанили на ${durationMinutes} мин!`);
             } catch (e) {
                 handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
-                alert('РћС€РёР±РєР° РїСЂРё РїРѕРїС‹С‚РєРµ Р·Р°Р±Р°РЅРёС‚СЊ СЃРµР±СЏ.');
+                alert('Ошибка при попытке забанить себя.');
             }
             return;
         }
@@ -8955,10 +8955,10 @@ const App: React.FC = () => {
 
             if (!response || !response.success) {
                 const errMsg = response?.error === 'INSUFFICIENT_GOLD'
-                    ? 'РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°!'
+                    ? 'Недостаточно золота!'
                     : response?.error === 'TARGET_NOT_FOUND'
-                        ? 'РРіСЂРѕРє РЅРµ РЅР°Р№РґРµРЅ.'
-                        : `РћС€РёР±РєР° Р±Р°РЅР°: ${response?.error || 'РЅРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°'}`;
+                        ? 'Игрок не найден.'
+                        : `Ошибка бана: ${response?.error || 'неизвестная ошибка'}`;
                 alert(errMsg);
                 return;
             }
@@ -8966,12 +8966,12 @@ const App: React.FC = () => {
             setPlayerGold(response.issuerGold);
 
             const targetUser = allUsers[targetUid];
-            const targetName = targetUser?.name || 'РЅРµРёР·РІРµСЃС‚РЅС‹Р№';
+            const targetName = targetUser?.name || 'неизвестный';
 
             const banNotification: ChatMessage = {
                 id: Date.now(),
-                sender: 'РЎРёСЃС‚РµРјР°',
-                text: `\u{1F512} ${playerName} Р·Р°Р±Р°РЅРёР» РёРіСЂРѕРєР° ${targetName} РЅР° ${durationMinutes} РјРёРЅ.`,
+                sender: 'Система',
+                text: `\u{1F512} ${playerName} забанил игрока ${targetName} на ${durationMinutes} мин.`,
                 type: 'system',
                 timestamp: Date.now(),
                 tab: 'general'
@@ -8979,8 +8979,8 @@ const App: React.FC = () => {
             const msgId = `${Date.now()}-ban-${targetUid}`;
             setDoc(doc(db, 'chat_messages', msgId), banNotification).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
 
-            addHistoryLog(`РРіСЂРѕРє ${targetName} Р·Р°Р±Р°РЅРµРЅ РЅР° ${durationMinutes} РјРёРЅ. РџРѕС‚СЂР°С‡РµРЅРѕ ${cost} РјРѕРЅРµС‚.`, 'social');
-            alert(`РРіСЂРѕРє ${targetName} СѓСЃРїРµС€РЅРѕ Р·Р°Р±Р°РЅРµРЅ РЅР° ${durationMinutes} РјРёРЅ!`);
+            addHistoryLog(`Игрок ${targetName} забанен на ${durationMinutes} мин. Потрачено ${cost} монет.`, 'social');
+            alert(`Игрок ${targetName} успешно забанен на ${durationMinutes} мин!`);
         } catch (e: any) {
             console.error('[ban-player] Endpoint error:', {
                 status: e?.status,
@@ -8989,16 +8989,16 @@ const App: React.FC = () => {
                 data: e?.data,
             });
             if (e?.status === 401) {
-                alert('РќРµРѕР±С…РѕРґРёРјР° Р°РІС‚РѕСЂРёР·Р°С†РёСЏ.');
+                alert('Необходима авторизация.');
             } else {
                 const detail = (e?.response?.data || e?.data)?.error || e?.message || '';
-                alert('РћС€РёР±РєР° СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ СЃРµСЂРІРµСЂРѕРј.' + (detail ? ` (${detail})` : ''));
+                alert('Ошибка соединения с сервером.' + (detail ? ` (${detail})` : ''));
             }
         }
     };
     const handleCursePlayerByUid = async (targetUid: string, cost: number, durationMinutes: number, prefix: string, animalName: string) => {
         if (playerGold < cost || !user) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°! РўСЂРµР±СѓРµС‚СЃСЏ ${cost.toLocaleString()} РјРѕРЅРµС‚.`);
+            alert(`Недостаточно золота! Требуется ${cost.toLocaleString()} монет.`);
             return;
         }
 
@@ -9022,13 +9022,13 @@ const App: React.FC = () => {
             console.log('[CurseDebug] Curse batch committed successfully');
             setPlayerGold(prev => prev - cost);
 
-            const targetName = allUsers[targetUid]?.name || 'РЅРµРёР·РІРµСЃС‚РЅС‹Р№';
+            const targetName = allUsers[targetUid]?.name || 'неизвестный';
             
             // Send system message to general chat about the curse
             const curseNotification: ChatMessage = {
                 id: Date.now(),
-                sender: 'РЎРёСЃС‚РµРјР°',
-                text: `\u{1F52E} ${playerName} Р·Р°РєРѕР»РґРѕРІР°Р» РёРіСЂРѕРєР° ${targetName} РІ "${animalName}" РЅР° ${durationMinutes} РјРёРЅ.`,
+                sender: 'Система',
+                text: `\u{1F52E} ${playerName} заколдовал игрока ${targetName} в "${animalName}" на ${durationMinutes} мин.`,
                 type: 'system',
                 timestamp: Date.now(),
                 tab: 'general'
@@ -9048,10 +9048,10 @@ const App: React.FC = () => {
                 setPlayerActiveCurse(activeCurse);
             }
 
-            alert(`РРіСЂРѕРє ${targetName} СѓСЃРїРµС€РЅРѕ Р·Р°РєРѕР»РґРѕРІР°РЅ!`);
+            alert(`Игрок ${targetName} успешно заколдован!`);
         } catch (e) {
             handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
-            alert('РћС€РёР±РєР° РїСЂРё РїРѕРїС‹С‚РєРµ Р·Р°РєРѕР»РґРѕРІР°С‚СЊ РёРіСЂРѕРєР°.');
+            alert('Ошибка при попытке заколдовать игрока.');
         }
     };
     const maxEnergy = useMemo(() => {
@@ -9194,10 +9194,10 @@ const App: React.FC = () => {
 
                     // Delete from DB
                     await deleteDoc(doc(db, 'buildings', docId));
-                    addHistoryLog(`Р”СѓР±Р»РёРєР°С‚ Р“РѕСЂРѕРґСЃРєРѕРіРѕ С†РµРЅС‚СЂР° Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё СѓРґР°Р»РµРЅ.`, 'system');
-                    console.log(`Р В Р вЂ Р РЋРЎв„ўР Р†Р вЂљР’В¦ [CLEANUP] Deleted redundant Town Hall: ${docId}`);
+                    addHistoryLog(`Дубликат Городского центра автоматически удален.`, 'system');
+                    console.log(`Р Р†РЎС™РІР‚В¦ [CLEANUP] Deleted redundant Town Hall: ${docId}`);
                 } catch (error) {
-                    console.error(`Р В Р вЂ Р РЋРЎС™Р В Р вЂ° [CLEANUP] Failed to delete duplicate Town Hall ${dup.id}:`, error);
+                    console.error(`Р Р†РЎСљР Р‰ [CLEANUP] Failed to delete duplicate Town Hall ${dup.id}:`, error);
                 }
             });
         }
@@ -9293,11 +9293,11 @@ const App: React.FC = () => {
     const handleAddFriend = async () => {
         if (!selectedChatUser || !user) return;
         if (selectedChatUser === playerName) {
-            alert("Р’С‹ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р В РўвЂР В РЎвЂўР В Р’В±Р В Р’В°Р В Р вЂ Р В РЎвЂР РЋРІР‚С™Р РЋР Р‰ Р РЋР С“Р В Р’В°Р В РЎВР В РЎвЂўР В РЎвЂ“Р В РЎвЂў Р РЋР С“Р В Р’ВµР В Р’В±Р РЋР РЏ Р В Р вЂ  Р В РўвЂР РЋР вЂљР РЋРЎвЂњР В Р’В·Р РЋР Р‰Р РЋР РЏ.");
+            alert("Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Т‘Р С•Р В±Р В°Р Р†Р С‘РЎвЂљРЎРЉ РЎРѓР В°Р СР С•Р С–Р С• РЎРѓР ВµР В±РЎРЏ Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ.");
             return;
         }
         if (friends.some(f => f.name === selectedChatUser)) {
-            alert("Р В Р’В­Р РЋРІР‚С™Р В РЎвЂўР РЋРІР‚С™ Р В РЎвЂР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В Р вЂ  Р В Р вЂ Р В Р’В°Р РЋРІвЂљВ¬Р В Р’ВµР В РЎВ Р РЋР С“Р В РЎвЂ”Р В РЎвЂР РЋР С“Р В РЎвЂќР В Р’Вµ Р В РўвЂР РЋР вЂљР РЋРЎвЂњР В Р’В·Р В Р’ВµР В РІвЂћвЂ“.");
+            alert("Р В­РЎвЂљР С•РЎвЂљ Р С‘Р С–РЎР‚Р С•Р С” РЎС“Р В¶Р Вµ Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР С—Р С‘РЎРѓР С”Р Вµ Р Т‘РЎР‚РЎС“Р В·Р ВµР в„–.");
             return;
         }
 
@@ -9311,8 +9311,8 @@ const App: React.FC = () => {
         try {
             await persistProfileSettings({ friends: updatedFriends });
             setFriends(updatedFriends);
-            addHistoryLog(`РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ ${selectedChatUser} РґРѕР±Р°РІР»РµРЅ РІ РґСЂСѓР·СЊСЏ.`, 'social');
-            alert(`Р В РЎСџР В РЎвЂўР В Р’В»Р РЋР Р‰Р В Р’В·Р В РЎвЂўР В Р вЂ Р В Р’В°Р РЋРІР‚С™Р В Р’ВµР В Р’В»Р РЋР Р‰ ${selectedChatUser} Р В РўвЂР В РЎвЂўР В Р’В±Р В Р’В°Р В Р вЂ Р В Р’В»Р В Р’ВµР В Р вЂ¦ Р В Р вЂ  Р В РўвЂР РЋР вЂљР РЋРЎвЂњР В Р’В·Р РЋР Р‰Р РЋР РЏ!`);
+            addHistoryLog(`Пользователь ${selectedChatUser} добавлен в друзья.`, 'social');
+            alert(`Р СџР С•Р В»РЎРЉР В·Р С•Р Р†Р В°РЎвЂљР ВµР В»РЎРЉ ${selectedChatUser} Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р… Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!`);
             setSelectedChatUser(null);
             setSelectedChatUserId(null);
         } catch (e) {
@@ -9327,7 +9327,7 @@ const App: React.FC = () => {
         try {
             await persistProfileSettings({ friends: updatedFriends });
             setFriends(updatedFriends); // Update local state immediately
-            addHistoryLog(`РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ ${friendName} СѓРґР°Р»РµРЅ РёР· РґСЂСѓР·РµР№.`, 'social');
+            addHistoryLog(`Пользователь ${friendName} удален из друзей.`, 'social');
         } catch (e) {
             handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
         }
@@ -9392,20 +9392,20 @@ const App: React.FC = () => {
         // Log action
         console.log(`Punished ${targetUid} with ${actionName}`);
         const punishedName = allUsersRef.current[targetUid]?.name || targetUid;
-        addHistoryLog(`Р’С‹ РЅР°РєР°Р·Р°Р»Рё РёРіСЂРѕРєР° ${punishedName}: ${actionName}. РџРѕС‚СЂР°С‡РµРЅРѕ ${cost} СЂСѓР±РёРЅРѕРІ.`, 'social');
-        alert(`РРіСЂРѕРє ${punishedName} РїРѕС‚РµСЂСЏР» ${penalty} СЃР»Р°РІС‹!`);
+        addHistoryLog(`Вы наказали игрока ${punishedName}: ${actionName}. Потрачено ${cost} рубинов.`, 'social');
+        alert(`Игрок ${punishedName} потерял ${penalty} славы!`);
     };
 
     const handleAddFriendByUid = async (targetUid: string) => {
         if (!user) return;
         if (targetUid === user.uid) {
-            alert("Р В РЎСљР В Р’ВµР В Р’В»Р РЋР Р‰Р В Р’В·Р РЋР РЏ Р В РўвЂР В РЎвЂўР В Р’В±Р В Р’В°Р В Р вЂ Р В РЎвЂР РЋРІР‚С™Р РЋР Р‰ Р РЋР С“Р В Р’В°Р В РЎВР В РЎвЂўР В РЎвЂ“Р В РЎвЂў Р РЋР С“Р В Р’ВµР В Р’В±Р РЋР РЏ Р В Р вЂ  Р В РўвЂР РЋР вЂљР РЋРЎвЂњР В Р’В·Р РЋР Р‰Р РЋР РЏ!");
+            alert("Р СњР ВµР В»РЎРЉР В·РЎРЏ Р Т‘Р С•Р В±Р В°Р Р†Р С‘РЎвЂљРЎРЉ РЎРѓР В°Р СР С•Р С–Р С• РЎРѓР ВµР В±РЎРЏ Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!");
             return;
         }
         
         // Check if already friends
         if (friends.some(f => f.uid === targetUid)) {
-            alert("Р В Р’В­Р РЋРІР‚С™Р В РЎвЂўР РЋРІР‚С™ Р В РЎвЂР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В Р вЂ  Р В Р вЂ Р В Р’В°Р РЋРІвЂљВ¬Р В Р’ВµР В РЎВ Р РЋР С“Р В РЎвЂ”Р В РЎвЂР РЋР С“Р В РЎвЂќР В Р’Вµ Р В РўвЂР РЋР вЂљР РЋРЎвЂњР В Р’В·Р В Р’ВµР В РІвЂћвЂ“.");
+            alert("Р В­РЎвЂљР С•РЎвЂљ Р С‘Р С–РЎР‚Р С•Р С” РЎС“Р В¶Р Вµ Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР С—Р С‘РЎРѓР С”Р Вµ Р Т‘РЎР‚РЎС“Р В·Р ВµР в„–.");
             return;
         }
 
@@ -9421,7 +9421,7 @@ const App: React.FC = () => {
                     const userData = targetUserDoc.data();
                     console.log('[Friends] User data keys:', Object.keys(userData));
                     console.log('[Friends] User data name:', userData.name);
-                    targetName = userData.name || 'Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ';
+                    targetName = userData.name || 'Р ВР С–РЎР‚Р С•Р С”';
                 }
             } catch (err) {
                 console.error('[Friends] Failed to fetch user:', err);
@@ -9430,7 +9430,7 @@ const App: React.FC = () => {
 
         console.log('[Friends] Final targetName:', targetName);
         if (!targetName) {
-            alert("Р В РЎСљР В Р’Вµ Р РЋРЎвЂњР В РўвЂР В Р’В°Р В Р’В»Р В РЎвЂўР РЋР С“Р РЋР Р‰ Р В Р вЂ¦Р В Р’В°Р В РІвЂћвЂ“Р РЋРІР‚С™Р В РЎвЂ Р В РЎвЂР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќР В Р’В°.");
+            alert("Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ Р Р…Р В°Р в„–РЎвЂљР С‘ Р С‘Р С–РЎР‚Р С•Р С”Р В°.");
             return;
         }
 
@@ -9449,8 +9449,8 @@ const App: React.FC = () => {
 
             setFriends(updatedFriends); // Update local state immediately
             
-            addHistoryLog(`РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ ${targetName} РґРѕР±Р°РІР»РµРЅ РІ РґСЂСѓР·СЊСЏ.`, 'social');
-            alert(`${targetName} Р В РўвЂР В РЎвЂўР В Р’В±Р В Р’В°Р В Р вЂ Р В Р’В»Р В Р’ВµР В Р вЂ¦ Р В Р вЂ  Р В РўвЂР РЋР вЂљР РЋРЎвЂњР В Р’В·Р РЋР Р‰Р РЋР РЏ!`);
+            addHistoryLog(`Пользователь ${targetName} добавлен в друзья.`, 'social');
+            alert(`${targetName} Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р… Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!`);
         } catch (e) {
             console.error('[Friends] Save failed:', e);
             handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
@@ -9476,7 +9476,7 @@ const App: React.FC = () => {
 
     const handleCursePlayer = (cost: number, durationMinutes: number, prefix: string, animalName: string) => {
         if (playerGold < cost) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°! РўСЂРµР±СѓРµС‚СЃСЏ ${cost.toLocaleString()} РјРѕРЅРµС‚.`);
+            alert(`Недостаточно золота! Требуется ${cost.toLocaleString()} монет.`);
             return;
         }
 
@@ -9505,8 +9505,8 @@ const App: React.FC = () => {
                 }
             }));
 
-            addHistoryLog(`Р’С‹ Р·Р°РєРѕР»РґРѕРІР°Р»Рё РёРіСЂРѕРєР° ${selectedChatUser} РІ "${animalName}". РџРѕС‚СЂР°С‡РµРЅРѕ ${cost} РјРѕРЅРµС‚.`, 'social');
-            alert(`Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ ${selectedChatUser} Р РЋРЎвЂњР РЋР С“Р В РЎвЂ”Р В Р’ВµР РЋРІвЂљВ¬Р В Р вЂ¦Р В РЎвЂў Р В Р’В·Р В Р’В°Р В РЎвЂќР В РЎвЂўР В Р’В»Р В РўвЂР В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦!`);
+            addHistoryLog(`Вы заколдовали игрока ${selectedChatUser} в "${animalName}". Потрачено ${cost} монет.`, 'social');
+            alert(`Р ВР С–РЎР‚Р С•Р С” ${selectedChatUser} РЎС“РЎРѓР С—Р ВµРЎв‚¬Р Р…Р С• Р В·Р В°Р С”Р С•Р В»Р Т‘Р С•Р Р†Р В°Р Р…!`);
         }
 
         setShowCurseMenu(false);
@@ -10167,7 +10167,7 @@ const App: React.FC = () => {
                             if (absDx === 0 && absDy === 0) {
                                 attackFrames = bronekurAttackBottomFrames;
                             } else if (absDx >= absDy) {
-                                // source frames are mirrored horizontally in isometric view вЂ” left/right swapped
+                                // source frames are mirrored horizontally in isometric view — left/right swapped
                                 attackFrames = attackDir.dx > 0 ? bronekurAttackLeftFrames : bronekurAttackRightFrames;
                             } else {
                                 attackFrames = attackDir.dy > 0 ? bronekurAttackBottomFrames : bronekurAttackTopFrames;
@@ -10191,7 +10191,7 @@ const App: React.FC = () => {
                             if (absDx === 0 && absDy === 0) {
                                 walkFrames = bronekurWalkBottomFrames;
                             } else if (absDx >= absDy) {
-                                // isometric flip: right in grid в†’ LeftTop frames
+                                // isometric flip: right in grid → LeftTop frames
                                 walkFrames = lastDir.dx > 0 ? bronekurWalkLeftTopFrames : bronekurWalkBottomRightFrames;
                             } else {
                                 walkFrames = lastDir.dy > 0 ? bronekurWalkTopRightFrames : bronekurWalkBottomFrames;
@@ -10572,10 +10572,10 @@ const App: React.FC = () => {
             
             // Santa monster: keep the sprite centered on the same tile anchor across states.
             // Direction labels come from the asset export:
-            // - left  -> "Р С‘Р Т‘Р ВµРЎвЂљ Р Р† Р В»Р ВµР Р†Р С•" / "Р Р†РЎвЂ№РЎРѓРЎвЂљРЎР‚Р ВµР В» Р Р† Р В»Р ВµР Р†Р С•"
-            // - right -> "Р С‘Р Т‘Р ВµРЎвЂљ Р Р† Р С—РЎР‚Р В°Р Р†Р С•" / "Р Р†РЎвЂ№РЎРѓРЎвЂљРЎР‚Р ВµР В» Р Р† Р С—РЎР‚Р В°Р Р†Р С•"
-            // - top   -> "Р С‘Р Т‘Р ВµРЎвЂљ Р Р…Р В° Р Р†Р ВµРЎР‚РЎвЂ¦" / "Р Р†РЎвЂ№РЎРѓРЎвЂљРЎР‚Р ВµР В» Р Р†Р Р†Р ВµРЎР‚РЎвЂ¦"
-            // - bottom-> "Р С‘Р Т‘Р ВµРЎвЂљ Р Р† Р Р…Р С‘Р В·" / "Р Р†РЎвЂ№РЎРѓРЎвЂљРЎР‚Р ВµР В» Р Р† Р Р…Р С‘Р В·"
+            // - left  -> "РёРґРµС‚ РІ Р»РµРІРѕ" / "РІС‹СЃС‚СЂРµР» РІ Р»РµРІРѕ"
+            // - right -> "РёРґРµС‚ РІ РїСЂР°РІРѕ" / "РІС‹СЃС‚СЂРµР» РІ РїСЂР°РІРѕ"
+            // - top   -> "РёРґРµС‚ РЅР° РІРµСЂС…" / "РІС‹СЃС‚СЂРµР» РІРІРµСЂС…"
+            // - bottom-> "РёРґРµС‚ РІ РЅРёР·" / "РІС‹СЃС‚СЂРµР» РІ РЅРёР·"
             // These are source animation names, not literal screen axes.
             if (isSantaMonster) {
                 drawX -= scaledTileWidth * 0.19;
@@ -11139,15 +11139,15 @@ const App: React.FC = () => {
                     drawLoadingSpinner(context, screenX - 34 * zoom, textY, spinnerSize, Date.now());
                     context.textAlign = 'left';
                     context.fillStyle = 'rgba(186, 230, 253, 0.95)';
-                    context.strokeText('Р—РѕРЅР° Р·Р°РіСЂСѓР¶Р°РµС‚СЃСЏ...', screenX - 18 * zoom, textY - 8 * zoom);
-                    context.fillText('Р—РѕРЅР° Р·Р°РіСЂСѓР¶Р°РµС‚СЃСЏ...', screenX - 18 * zoom, textY - 8 * zoom);
-                    context.strokeText('РџСЂРѕРІРµСЂСЏРµРј РєР»РµС‚РєСѓ', screenX - 18 * zoom, textY + 8 * zoom);
-                    context.fillText('РџСЂРѕРІРµСЂСЏРµРј РєР»РµС‚РєСѓ', screenX - 18 * zoom, textY + 8 * zoom);
+                    context.strokeText('Зона загружается...', screenX - 18 * zoom, textY - 8 * zoom);
+                    context.fillText('Зона загружается...', screenX - 18 * zoom, textY - 8 * zoom);
+                    context.strokeText('Проверяем клетку', screenX - 18 * zoom, textY + 8 * zoom);
+                    context.fillText('Проверяем клетку', screenX - 18 * zoom, textY + 8 * zoom);
                 } else {
                     context.textAlign = 'center';
                     context.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                    context.strokeText('РџРѕСЃС‚СЂРѕРёС‚СЊ', screenX, textY);
-                    context.fillText('РџРѕСЃС‚СЂРѕРёС‚СЊ', screenX, textY);
+                    context.strokeText('Построить', screenX, textY);
+                    context.fillText('Построить', screenX, textY);
                 }
             } else if (isOccupied && (canPlaceByTownHall || moveMode.active)) {
                 const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
@@ -11157,7 +11157,7 @@ const App: React.FC = () => {
                 context.lineWidth = 3 * zoom;
                 context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
                 context.fillStyle = 'rgba(248, 113, 113, 0.95)';
-                const occupiedText = 'Р—Р°РЅСЏС‚Рѕ';
+                const occupiedText = 'Занято';
                 context.strokeText(occupiedText, screenX, screenY + 5 * zoom);
                 context.fillText(occupiedText, screenX, screenY + 5 * zoom);
             } else if (!isOccupied && moveMode.active) {
@@ -11169,12 +11169,12 @@ const App: React.FC = () => {
                 context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
                 context.fillStyle = isSyncingPlacement ? 'rgba(186, 230, 253, 0.95)' : 'rgba(100, 255, 100, 0.8)';
                 context.strokeText(
-                    isSyncingPlacement ? 'РџСЂРѕРІРµСЂРєР°...' : 'РЎСЋРґР°!',
+                    isSyncingPlacement ? 'Проверка...' : 'Сюда!',
                     screenX,
                     screenY
                 );
                 context.fillText(
-                    isSyncingPlacement ? 'РџСЂРѕРІРµСЂРєР°...' : 'РЎСЋРґР°!',
+                    isSyncingPlacement ? 'Проверка...' : 'Сюда!',
                     screenX,
                     screenY
                 );
@@ -11189,7 +11189,7 @@ const App: React.FC = () => {
             context.lineWidth = 3 * zoom;
             context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
             context.fillStyle = 'rgba(248, 113, 113, 0.95)';
-            const mapEdgeText = 'РљСЂР°Р№ РєР°СЂС‚С‹';
+            const mapEdgeText = 'Край карты';
             context.strokeText(mapEdgeText, screenX, screenY);
             context.fillText(mapEdgeText, screenX, screenY);
         }
@@ -11727,7 +11727,7 @@ const App: React.FC = () => {
                             return;
                         }
                         const damage = updatedB.pendingDamage || 0;
-                        // Use maxHp as fallback if hp is undefined Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ never default to 0
+                        // Use maxHp as fallback if hp is undefined Р Р†Р вЂљРІР‚Сњ never default to 0
                         const bInfo = buildingData.find(i => i.id === updatedB.buildingId);
                         const fullHp2 = updatedB.maxHp ?? bInfo?.stats.durability ?? 100;
                         const currentHp = updatedB.hp ?? fullHp2;
@@ -12023,7 +12023,7 @@ const App: React.FC = () => {
                                                     zoneId: getZoneId(updatedB.x, updatedB.y),
                                                     itemId: drop.id,
                                                     amount: drop.amount,
-                                                    ownerName: playerName || "Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“"
+                                                    ownerName: playerName || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–"
                                                 };
                                                 setDroppedItems(prev => [...prev, newDroppedItem]);
                                                 if (isAuthReadyRef.current && userRef.current) {
@@ -12081,7 +12081,7 @@ const App: React.FC = () => {
                                         if (playerClanIdRef.current === destroyedClan.id) {
                                             setPlayerClanId(null);
                                         }
-                                        addHistoryLog(`Р‘Р°РЅРґРёС‚СЃРєРёР№ Р·Р°РјРѕРє СѓРЅРёС‡С‚РѕР¶РµРЅ! РљР»Р°РЅ "${destroyedClan.name}" СЂР°СЃРїСѓС‰РµРЅ.`, 'social');
+                                        addHistoryLog(`Бандитский замок уничтожен! Клан "${destroyedClan.name}" распущен.`, 'social');
                                     }
                                 }
                             } else if (canFinalizeDelete) {
@@ -12955,7 +12955,7 @@ const App: React.FC = () => {
                                         zoneId,
                                         buildingId: cfg.typeId,
                                         ownerId: "monster",
-                                        ownerName: "Р В РЎС™Р В РЎвЂўР В Р вЂ¦Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљ",
+                                        ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
                                         isConstructing: false,
                                         constructionEndTime: 0,
                                         type: BuildingType.Default,
@@ -12988,19 +12988,19 @@ const App: React.FC = () => {
                             try {
                                 await setDoc(doc(db, 'buildings', bossMonsterId), {
                                     id: bossMonsterId, x: pos.x, y: pos.y, zoneId: bossZoneId,
-                                    buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Р В РЎС™Р В РЎвЂўР В Р вЂ¦Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљ",
+                                    buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
                                     isConstructing: false, constructionEndTime: 0,
                                     type: BuildingType.Default, workState: 'idle',
                                     hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP,
                                     lastMoveTime: Date.now(), isActive: true,
-                                    monsterType: 'Р В Р’В±Р РЋР вЂљР В РЎвЂўР В Р вЂ¦Р В Р’ВµР В РЎвЂќР РЋРЎвЂњР РЋР вЂљ', monsterSlot: 1, isBoss: true
+                                    monsterType: 'Р В±РЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚', monsterSlot: 1, isBoss: true
                                 });
                                 occupied.add(`${pos.x},${pos.y}`);
                                 spawned++;
                                 try {
                                     await setDoc(doc(db, 'chat_messages', `bronekur-${Date.now()}`), {
-                                        sender: 'Р В Р Р‹Р В РЎвЂР РЋР С“Р РЋРІР‚С™Р В Р’ВµР В РЎВР В Р’В°', senderId: 'system',
-                                        text: `?? Р В РІР‚в„ўР В РЎСљР В Р’ВР В РЎС™Р В РЎвЂ™Р В РЎСљР В Р’ВР В РІР‚Сћ! Р В РІР‚в„ў Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В Р’Вµ ${bzX}.${bzY} Р В РЎвЂ”Р В РЎвЂўР РЋР РЏР В Р вЂ Р В РЎвЂР В Р’В»Р РЋР С“Р РЋР РЏ Р В РІР‚ВР РЋР вЂљР В РЎвЂўР В Р вЂ¦Р В Р’ВµР В РЎвЂќР РЋРЎвЂњР РЋР вЂљ!`,
+                                        sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°', senderId: 'system',
+                                        text: `?? Р вЂ™Р СњР ВР СљР С’Р СњР ВР вЂў! Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${bzX}.${bzY} Р С—Р С•РЎРЏР Р†Р С‘Р В»РЎРѓРЎРЏ Р вЂРЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚!`,
                                         type: 'system', timestamp: Date.now(), tab: 'general'
                                     });
                                 } catch {
@@ -13023,6 +13023,128 @@ const App: React.FC = () => {
             } finally {
                 monsterSpawnRunningRef.current = false;
             }
+
+            // Use cached data (no extra DB reads) - real-time listeners keep it fresh
+            const allBuildings = placedBuildingsRef.current;
+            const allResources = mapResourcesRef.current;
+
+            // Build global occupied positions set ONCE
+            const occupied = new Set([
+                ...allBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`),
+                ...allResources.map(r => `${r.x},${r.y}`)
+            ]);
+
+            // Monster config: 1 of each regular type per zone
+            const monsterConfig = [
+                { typeId: GORYNYCH_ID, count: 1, name: 'Р С–Р С•РЎР‚РЎвЂ№Р Р…РЎвЂ№РЎвЂЎ' },
+                { typeId: KILLING_HUT_ID, count: 1, name: 'Р С‘Р В·Р В±РЎС“РЎв‚¬Р С”Р В°' },
+                { typeId: KIND_SANTA_ID, count: 1, name: 'РЎРѓР В°Р Р…РЎвЂљР В°' },
+                { typeId: KOLOBOK_ID, count: 1, name: 'Р С”Р С•Р В»Р С•Р В±Р С•Р С”' },
+                { typeId: BABA_YAGA_ID, count: 1, name: 'Р В±Р В°Р В±Р В°РЎРЏР С–Р В°' }
+            ];
+
+            // Helper: find free spot in a zone
+            const findFreeSpot = (zoneX: number, zoneY: number): {x: number, y: number} | null => {
+                const sx = zoneX * ZONE_SIZE;
+                const sy = zoneY * ZONE_SIZE;
+                for (let t = 0; t < 100; t++) {
+                    const x = sx + Math.floor(Math.random() * ZONE_SIZE);
+                    const y = sy + Math.floor(Math.random() * ZONE_SIZE);
+                    if (!occupied.has(`${x},${y}`)) return {x, y};
+                }
+                return null; // zone is full, skip - will retry next cycle
+            };
+
+            let spawned = 0;
+
+            // === REGULAR MONSTERS: 4 random types per zone (out of 5) ===
+            for (let zX = 0; zX < ZONES_X; zX++) {
+                for (let zY = 0; zY < ZONES_Y; zY++) {
+                    const zoneId = `${zX}_${zY}`;
+                    // Shuffle monster config and pick 4 random types for this zone
+                    const shuffled = [...monsterConfig].sort(() => Math.random() - 0.5);
+                    const zoneMonsters = shuffled.slice(0, 4);
+                    for (const cfg of zoneMonsters) {
+                        const existing = allBuildings.filter(b =>
+                            Number(b.buildingId) === cfg.typeId &&
+                            (b.ownerId === "-1" || b.ownerId === "monster") &&
+                            b.zoneId === zoneId &&
+                            (b.hp === undefined || b.hp > 0)
+                        );
+                        if (existing.length >= cfg.count) continue;
+
+                        for (let i = 0; i < cfg.count - existing.length; i++) {
+                            const slot = existing.length + i + 1;
+                            const monsterId = `m${cfg.typeId}s${slot}z${zoneId}`;
+                            // Quick check: does this ID already exist locally?
+                            if (allBuildings.some(b => b.id === monsterId)) continue;
+                            const pos = findFreeSpot(zX, zY);
+                            if (!pos) break; // zone full, skip remaining of this type
+                            const monsterInfo = buildingData.find(b => b.id === cfg.typeId);
+                            if (!monsterInfo) continue;
+                            try {
+                                await setDoc(doc(db, 'buildings', monsterId), {
+                                    id: monsterId, x: pos.x, y: pos.y, zoneId,
+                                    buildingId: cfg.typeId, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
+                                    isConstructing: false, constructionEndTime: 0,
+                                    type: BuildingType.Default, workState: 'idle',
+                                    hp: monsterInfo.stats.durability, maxHp: monsterInfo.stats.durability,
+                                    lastMoveTime: Date.now() - Math.floor(Math.random() * 10000), isActive: true,
+                                    monsterType: cfg.name, monsterSlot: slot
+                                });
+                                occupied.add(`${pos.x},${pos.y}`);
+                                spawned++;
+                            } catch (err) {
+                                console.error(`[MonsterSpawn] Failed ${monsterId}:`, err);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // === BOSS: 1 Bronekur on entire map ===
+            const hasBronekur = allBuildings.some(b =>
+                Number(b.buildingId) === BRONEKUR_ID &&
+                (b.ownerId === "-1" || b.ownerId === "monster") &&
+                (b.hp === undefined || b.hp > 0)
+            );
+            if (!hasBronekur) {
+                const bzX = Math.floor(Math.random() * ZONES_X);
+                const bzY = Math.floor(Math.random() * ZONES_Y);
+                const bossZoneId = `${bzX}_${bzY}`;
+                const pos = findFreeSpot(bzX, bzY);
+                if (pos) {
+                    const bossMonsterId = `m${BRONEKUR_ID}s1z${bossZoneId}`;
+                    const monsterInfo = buildingData.find(b => b.id === BRONEKUR_ID);
+                    if (monsterInfo) {
+                        try {
+                            await setDoc(doc(db, 'buildings', bossMonsterId), {
+                                id: bossMonsterId, x: pos.x, y: pos.y, zoneId: bossZoneId,
+                                buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
+                                isConstructing: false, constructionEndTime: 0,
+                                type: BuildingType.Default, workState: 'idle',
+                                hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP,
+                                lastMoveTime: Date.now(), isActive: true,
+                                monsterType: 'Р В±РЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚', monsterSlot: 1, isBoss: true
+                            });
+                            occupied.add(`${pos.x},${pos.y}`);
+                            spawned++;
+                            // Chat notification
+                            try {
+                                await setDoc(doc(db, 'chat_messages', `bronekur-${Date.now()}`), {
+                                    sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°', senderId: 'system',
+                                    text: `?? Р вЂ™Р СњР ВР СљР С’Р СњР ВР вЂў! Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${bzX}.${bzY} Р С—Р С•РЎРЏР Р†Р С‘Р В»РЎРѓРЎРЏ Р вЂРЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚!`,
+                                    type: 'system', timestamp: Date.now(), tab: 'general'
+                                });
+                            } catch { /* ignore */ }
+                        } catch (err) {
+                            console.error('[MonsterSpawn] Failed boss:', err);
+                        }
+                    }
+                }
+            }
+
+            if (spawned > 0) console.log(`[MonsterSpawn] Spawned ${spawned} monsters this cycle`);
         };
 
         monsterSpawnIntervalRef.current = setInterval(runSpawnCycle, 60000);
@@ -13117,7 +13239,7 @@ const App: React.FC = () => {
 
         if (listing.currency === 'coins') {
             if (playerGold < listing.price) {
-                alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РјРѕРЅРµС‚!");
+                alert("Недостаточно монет!");
                 return;
             }
         } else {
@@ -13189,9 +13311,9 @@ const App: React.FC = () => {
             })
                 .then(() => {
                     const itemInfo = itemData.find(i => i.id === listing.resourceId);
-                    addHistoryLog(`РљСѓРїР»РµРЅРѕ ${listing.amount} ${itemInfo?.name || 'РїСЂРµРґРјРµС‚'} Р·Р° ${listing.price} ${listing.currency === 'coins' ? 'РјРѕРЅРµС‚' : 'СЂСѓР±РёРЅРѕРІ'}`, 'economy');
+                    addHistoryLog(`Куплено ${listing.amount} ${itemInfo?.name || 'предмет'} за ${listing.price} ${listing.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
                     setMarketListings(prev => prev.filter(l => l.id !== listing.id));
-                    alert("РџРѕРєСѓРїРєР° СѓСЃРїРµС€РЅР°!");
+                    alert("Покупка успешна!");
                 })
                 .catch(e => {
                     console.error("Transaction failed: ", e);
@@ -13215,7 +13337,7 @@ const App: React.FC = () => {
                 }));
             }
             const itemInfo = itemData.find(i => i.id === listing.resourceId);
-            addHistoryLog(`РљСѓРїР»РµРЅРѕ ${listing.amount} ${itemInfo?.name || 'РїСЂРµРґРјРµС‚'} Р·Р° ${listing.price} ${listing.currency === 'coins' ? 'РјРѕРЅРµС‚' : 'СЂСѓР±РёРЅРѕРІ'}`, 'economy');
+            addHistoryLog(`Куплено ${listing.amount} ${itemInfo?.name || 'предмет'} за ${listing.price} ${listing.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
             setMarketListings(prev => prev.filter(l => l.id !== listing.id));
         }
     };
@@ -13223,17 +13345,17 @@ const App: React.FC = () => {
     const handleCreateMarketListing = () => {
         if (isMarketProcessing) return;
         if (!sellItemSelection.itemId) {
-            alert("Р’С‹Р±РµСЂРёС‚Рµ РїСЂРµРґРјРµС‚ РґР»СЏ РїСЂРѕРґР°Р¶Рё!");
+            alert("Выберите предмет для продажи!");
             return;
         }
         if (sellItemSelection.amount <= 0 || sellItemSelection.price <= 0) {
-            alert("РќРµРєРѕСЂСЂРµРєС‚РЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ РёР»Рё С†РµРЅР°.");
+            alert("Некорректное количество или цена.");
             return;
         }
 
         const currentAmount = sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId] || 0);
         if (currentAmount < sellItemSelection.amount) {
-            alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РїСЂРµРґРјРµС‚РѕРІ РґР»СЏ РїСЂРѕРґР°Р¶Рё.");
+            alert("Недостаточно предметов для продажи.");
             return;
         }
 
@@ -13276,9 +13398,9 @@ const App: React.FC = () => {
             })
                 .then(() => {
                     const itemInfo = itemData.find(i => i.id === sellItemSelection.itemId);
-                    addHistoryLog(`Р’С‹СЃС‚Р°РІР»РµРЅРѕ РЅР° РїСЂРѕРґР°Р¶Сѓ: ${sellItemSelection.amount} ${itemInfo?.name} Р·Р° ${sellItemSelection.price} ${sellItemSelection.currency === 'coins' ? 'РјРѕРЅРµС‚' : 'СЂСѓР±РёРЅРѕРІ'}`, 'economy');
+                    addHistoryLog(`Выставлено на продажу: ${sellItemSelection.amount} ${itemInfo?.name} за ${sellItemSelection.price} ${sellItemSelection.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
                     setMarketListings(prev => [newListing, ...prev.filter(l => l.id !== newListing.id)]);
-                    alert("РўРѕРІР°СЂ РІС‹СЃС‚Р°РІР»РµРЅ РЅР° РїСЂРѕРґР°Р¶Сѓ!");
+                    alert("Товар выставлен на продажу!");
                     setSellItemSelection(prev => ({ ...prev, itemId: null, amount: 1, price: 10 })); // Reset form
                 })
                 .catch(e => {
@@ -13297,9 +13419,9 @@ const App: React.FC = () => {
                 }));
             }
             const itemInfo = itemData.find(i => i.id === sellItemSelection.itemId);
-            addHistoryLog(`Р’С‹СЃС‚Р°РІР»РµРЅРѕ РЅР° РїСЂРѕРґР°Р¶Сѓ: ${sellItemSelection.amount} ${itemInfo?.name} Р·Р° ${sellItemSelection.price} ${sellItemSelection.currency === 'coins' ? 'РјРѕРЅРµС‚' : 'СЂСѓР±РёРЅРѕРІ'}`, 'economy');
+            addHistoryLog(`Выставлено на продажу: ${sellItemSelection.amount} ${itemInfo?.name} за ${sellItemSelection.price} ${sellItemSelection.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
             setMarketListings(prev => [...prev, newListing]);
-            alert("РўРѕРІР°СЂ РІС‹СЃС‚Р°РІР»РµРЅ РЅР° РїСЂРѕРґР°Р¶Сѓ!");
+            alert("Товар выставлен на продажу!");
             setSellItemSelection(prev => ({ ...prev, itemId: null, amount: 1, price: 10 })); // Reset form
         }
     };
@@ -13307,7 +13429,7 @@ const App: React.FC = () => {
     const handleCancelListing = (listing: MarketListing) => {
         if (isMarketProcessing) return;
         if (!user || listing.sellerId !== user.uid) {
-            alert("Р’С‹ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р РЋР С“Р В Р вЂ¦Р РЋР РЏР РЋРІР‚С™Р РЋР Р‰ Р РЋР С“ Р В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В РўвЂР В Р’В°Р В Р’В¶Р В РЎвЂ Р РЋРІР‚РЋР РЋРЎвЂњР В Р’В¶Р В РЎвЂўР В РІвЂћвЂ“ Р РЋРІР‚С™Р В РЎвЂўР В Р вЂ Р В Р’В°Р РЋР вЂљ!");
+            alert("Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ РЎРѓР Р…РЎРЏРЎвЂљРЎРЉ РЎРѓ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘ РЎвЂЎРЎС“Р В¶Р С•Р в„– РЎвЂљР С•Р Р†Р В°РЎР‚!");
             return;
         }
 
@@ -13335,7 +13457,7 @@ const App: React.FC = () => {
             })
                 .then(() => {
                     setMarketListings(prev => prev.filter(l => l.id !== listing.id));
-                    alert("РўРѕРІР°СЂ СЃРЅСЏС‚ СЃ РїСЂРѕРґР°Р¶Рё.");
+                    alert("Товар снят с продажи.");
                 })
                 .catch(e => {
                     console.error("Cancel failed: ", e);
@@ -13359,12 +13481,12 @@ const App: React.FC = () => {
 
     const handleShareOil = () => {
         if (isBanned()) {
-            alert("Р’С‹ Р В Р’В·Р В Р’В°Р В Р’В±Р В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„– Р В РЎвЂ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р В РўвЂР В Р’ВµР В Р’В»Р В РЎвЂР РЋРІР‚С™Р РЋР Р‰Р РЋР С“Р РЋР РЏ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р В Р’В°Р В РЎВР В РЎвЂ!");
+            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Т‘Р ВµР В»Р С‘РЎвЂљРЎРЉРЎРѓРЎРЏ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°Р СР С‘!");
             return;
         }
         if (!selectedOilDeposit) return;
 
-        const messageText = `Р В Р вЂЎ Р В Р вЂ¦Р В Р’В°Р РЋРІвЂљВ¬Р В Р’ВµР В Р’В» Р В Р вЂ¦Р В Р’ВµР РЋРІР‚С›Р РЋРІР‚С™Р РЋР Р‰! Р В РІР‚СњР В Р’ВµР В Р’В»Р РЋР вЂ№Р РЋР С“Р РЋР Р‰ Р РЋР С“Р В РЎвЂў Р В Р вЂ Р РЋР С“Р В Р’ВµР В РЎВР В РЎвЂ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р В РЎвЂўР В РЎВ.`;
+        const messageText = `Р Р‡ Р Р…Р В°РЎв‚¬Р ВµР В» Р Р…Р ВµРЎвЂћРЎвЂљРЎРЉ! Р вЂќР ВµР В»РЎР‹РЎРѓРЎРЉ РЎРѓР С• Р Р†РЎРѓР ВµР СР С‘ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР С•Р С.`;
         const newMessage: ChatMessage = {
             id: Date.now(),
             sender: playerName,
@@ -13382,12 +13504,12 @@ const App: React.FC = () => {
 
     const handleShareQuarry = () => {
         if (isBanned()) {
-            alert("Р’С‹ Р В Р’В·Р В Р’В°Р В Р’В±Р В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„– Р В РЎвЂ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р В РўвЂР В Р’ВµР В Р’В»Р В РЎвЂР РЋРІР‚С™Р РЋР Р‰Р РЋР С“Р РЋР РЏ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р В Р’В°Р В РЎВР В РЎвЂ!");
+            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Т‘Р ВµР В»Р С‘РЎвЂљРЎРЉРЎРѓРЎРЏ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°Р СР С‘!");
             return;
         }
         if (!selectedQuarry) return;
 
-        const messageText = `Р В Р вЂЎ Р В Р вЂ¦Р В Р’В°Р РЋРІвЂљВ¬Р В Р’ВµР В Р’В» Р В РЎвЂќР В Р’В°Р В РЎВР В Р’ВµР В Р вЂ¦Р В РЎвЂўР В Р’В»Р В РЎвЂўР В РЎВР В Р вЂ¦Р РЋР вЂ№! Р В РІР‚СњР В Р’ВµР В Р’В»Р РЋР вЂ№Р РЋР С“Р РЋР Р‰ Р РЋР С“Р В РЎвЂў Р В Р вЂ Р РЋР С“Р В Р’ВµР В РЎВР В РЎвЂ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р В РЎвЂўР В РЎВ.`;
+        const messageText = `Р Р‡ Р Р…Р В°РЎв‚¬Р ВµР В» Р С”Р В°Р СР ВµР Р…Р С•Р В»Р С•Р СР Р…РЎР‹! Р вЂќР ВµР В»РЎР‹РЎРѓРЎРЉ РЎРѓР С• Р Р†РЎРѓР ВµР СР С‘ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР С•Р С.`;
         const newMessage: ChatMessage = {
             id: Date.now(),
             sender: playerName,
@@ -13415,7 +13537,7 @@ const App: React.FC = () => {
         }
 
         if (playerGold < (oilRigInfo.price || 0)) {
-            alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р° РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°!");
+            alert("Недостаточно золота для строительства!");
             return;
         }
 
@@ -13423,7 +13545,7 @@ const App: React.FC = () => {
             const requiredPop = oilRigInfo.constructionRequirements.population;
             const availablePop = maxPopulation - currentPopulation;
             if (availablePop < requiredPop) {
-                alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РЅР°СЃРµР»РµРЅРёСЏ! РўСЂРµР±СѓРµС‚СЃСЏ: ${requiredPop}`);
+                alert(`Недостаточно населения! Требуется: ${requiredPop}`);
                 return;
             }
         }
@@ -13461,7 +13583,7 @@ const App: React.FC = () => {
             });
             deleteDoc(doc(db, 'map_resources', `${selectedOilDeposit.x}_${selectedOilDeposit.y}`)).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${selectedOilDeposit.x}_${selectedOilDeposit.y}`));
         }
-        addHistoryLog(`РџРѕСЃС‚СЂРѕРµРЅР° РЅРµС„С‚СЏРЅР°СЏ РІС‹С€РєР° РІ [${selectedOilDeposit.x}, ${selectedOilDeposit.y}].`, 'build');
+        addHistoryLog(`Построена нефтяная вышка в [${selectedOilDeposit.x}, ${selectedOilDeposit.y}].`, 'build');
         setSelectedOilDeposit(null);
     };
 
@@ -13477,7 +13599,7 @@ const App: React.FC = () => {
         }
 
         if (playerGold < (wildQuarryInfo.price || 0)) {
-            alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р° РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°!");
+            alert("Недостаточно золота для строительства!");
             return;
         }
 
@@ -13485,7 +13607,7 @@ const App: React.FC = () => {
             const requiredPop = wildQuarryInfo.constructionRequirements.population;
             const availablePop = maxPopulation - currentPopulation;
             if (availablePop < requiredPop) {
-                alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РЅР°СЃРµР»РµРЅРёСЏ! РўСЂРµР±СѓРµС‚СЃСЏ: ${requiredPop}`);
+                alert(`Недостаточно населения! Требуется: ${requiredPop}`);
                 return;
             }
         }
@@ -13523,7 +13645,7 @@ const App: React.FC = () => {
             });
             deleteDoc(doc(db, 'map_resources', `${selectedQuarry.x}_${selectedQuarry.y}`)).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${selectedQuarry.x}_${selectedQuarry.y}`));
         }
-        addHistoryLog(`РџРѕСЃС‚СЂРѕРµРЅР° РґРёРєР°СЏ РєР°РјРµРЅРѕР»РѕРјРЅСЏ РІ [${selectedQuarry.x}, ${selectedQuarry.y}].`, 'build');
+        addHistoryLog(`Построена дикая каменоломня в [${selectedQuarry.x}, ${selectedQuarry.y}].`, 'build');
         setSelectedQuarry(null);
     };
 
@@ -13542,13 +13664,13 @@ const App: React.FC = () => {
                     }
                 }
 
-                addHistoryLog(`РЎРјРµРЅР° РёРјРµРЅРё РЅР° "${tempPlayerName}". РЎС‚РѕРёРјРѕСЃС‚СЊ: ${cost} РјРѕРЅРµС‚.`, 'social');
-                alert("Р В Р’ВР В РЎВР РЋР РЏ Р РЋРЎвЂњР РЋР С“Р В РЎвЂ”Р В Р’ВµР РЋРІвЂљВ¬Р В Р вЂ¦Р В РЎвЂў Р В РЎвЂР В Р’В·Р В РЎВР В Р’ВµР В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р В РЎвЂў!");
+                addHistoryLog(`Смена имени на "${tempPlayerName}". Стоимость: ${cost} монет.`, 'social');
+                alert("Р ВР СРЎРЏ РЎС“РЎРѓР С—Р ВµРЎв‚¬Р Р…Р С• Р С‘Р В·Р СР ВµР Р…Р ВµР Р…Р С•!");
             } else {
-                alert("Р В Р’ВР В РЎВР РЋР РЏ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™ Р В Р’В±Р РЋРІР‚в„–Р РЋРІР‚С™Р РЋР Р‰ Р В РЎвЂ”Р РЋРЎвЂњР РЋР С“Р РЋРІР‚С™Р РЋРІР‚в„–Р В РЎВ.");
+                alert("Р ВР СРЎРЏ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљ Р В±РЎвЂ№РЎвЂљРЎРЉ Р С—РЎС“РЎРѓРЎвЂљРЎвЂ№Р С.");
             }
         } else {
-            alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р° РґР»СЏ СЃРјРµРЅС‹ РёРјРµРЅРё!");
+            alert("Недостаточно золота для смены имени!");
         }
     };
 
@@ -13575,12 +13697,12 @@ const App: React.FC = () => {
                 });
             })
                 .then(() => {
-                    addHistoryLog(`РљСѓРїР»РµРЅРѕ ${buyRubyAmount} СЂСѓР±РёРЅРѕРІ Р·Р° ${totalCost.toLocaleString()} РјРѕРЅРµС‚.`, 'economy');
+                    addHistoryLog(`Куплено ${buyRubyAmount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
                 })
                 .catch(e => {
                     console.error("Buy ruby failed: ", e);
                     if (e.message === "Insufficient gold") {
-                        alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°!");
+                        alert("Недостаточно золота!");
                     } else {
                         handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
                     }
@@ -13589,9 +13711,9 @@ const App: React.FC = () => {
         } else {
             if (playerGold >= totalCost) {
                 updatePlayerResources(-totalCost, buyRubyAmount, {});
-                addHistoryLog(`РљСѓРїР»РµРЅРѕ ${buyRubyAmount} СЂСѓР±РёРЅРѕРІ Р·Р° ${totalCost.toLocaleString()} РјРѕРЅРµС‚.`, 'economy');
+                addHistoryLog(`Куплено ${buyRubyAmount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
             } else {
-                alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°!");
+                alert("Недостаточно золота!");
             }
         }
     };
@@ -13620,7 +13742,7 @@ const App: React.FC = () => {
                 });
             })
                 .then(() => {
-                    addHistoryLog(`РљСѓРїР»РµРЅРѕ ${item.rubyPackQuantity! * quantity} ${item.name} Р·Р° ${quantity} СЂСѓР±РёРЅРѕРІ.`, 'economy');
+                    addHistoryLog(`Куплено ${item.rubyPackQuantity! * quantity} ${item.name} за ${quantity} рубинов.`, 'economy');
                 })
                 .catch(e => {
                     console.error("Buy shop item failed: ", e);
@@ -13634,7 +13756,7 @@ const App: React.FC = () => {
         } else {
             if (playerRubies >= quantity) {
                 updatePlayerResources(0, -quantity, { [item.id]: item.rubyPackQuantity! * quantity });
-                addHistoryLog(`РљСѓРїР»РµРЅРѕ ${item.rubyPackQuantity! * quantity} ${item.name} Р·Р° ${quantity} СЂСѓР±РёРЅРѕРІ.`, 'economy');
+                addHistoryLog(`Куплено ${item.rubyPackQuantity! * quantity} ${item.name} за ${quantity} рубинов.`, 'economy');
             } else {
                 openRubyWarningModal(quantity);
             }
@@ -13679,8 +13801,8 @@ const App: React.FC = () => {
                 .then(() => {
                     setShowExchangeModal(false);
                     setExchangeAmount(1);
-                    addHistoryLog(`РћР±РјРµРЅСЏРЅРѕ ${exchangeAmount} СЂСѓР±РёРЅРѕРІ РЅР° ${coins} РјРѕРЅРµС‚.`, 'economy');
-                    alert(`Р В РЎвЂєР В Р’В±Р В РЎВР В Р’ВµР В Р вЂ¦ Р РЋРЎвЂњР РЋР С“Р В РЎвЂ”Р В Р’ВµР РЋРІвЂљВ¬Р В Р’ВµР В Р вЂ¦! Р’С‹ Р В РЎвЂ”Р В РЎвЂўР В Р’В»Р РЋРЎвЂњР РЋРІР‚РЋР В РЎвЂР В Р’В»Р В РЎвЂ ${coins.toLocaleString()} Р В РЎВР В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™.`);
+                    addHistoryLog(`Обменяно ${exchangeAmount} рубинов на ${coins} монет.`, 'economy');
+                    alert(`Р С›Р В±Р СР ВµР Р… РЎС“РЎРѓР С—Р ВµРЎв‚¬Р ВµР Р…! Вы Р С—Р С•Р В»РЎС“РЎвЂЎР С‘Р В»Р С‘ ${coins.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ.`);
                 })
                 .catch(e => {
                     console.error("Ruby exchange failed: ", e);
@@ -13696,8 +13818,8 @@ const App: React.FC = () => {
                 updatePlayerResources(coins, -exchangeAmount, {});
                 setShowExchangeModal(false);
                 setExchangeAmount(1);
-                addHistoryLog(`РћР±РјРµРЅСЏРЅРѕ ${exchangeAmount} СЂСѓР±РёРЅРѕРІ РЅР° ${coins} РјРѕРЅРµС‚.`, 'economy');
-                alert(`Р В РЎвЂєР В Р’В±Р В РЎВР В Р’ВµР В Р вЂ¦ Р РЋРЎвЂњР РЋР С“Р В РЎвЂ”Р В Р’ВµР РЋРІвЂљВ¬Р В Р’ВµР В Р вЂ¦! Р’С‹ Р В РЎвЂ”Р В РЎвЂўР В Р’В»Р РЋРЎвЂњР РЋРІР‚РЋР В РЎвЂР В Р’В»Р В РЎвЂ ${coins.toLocaleString()} Р В РЎВР В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™.`);
+                addHistoryLog(`Обменяно ${exchangeAmount} рубинов на ${coins} монет.`, 'economy');
+                alert(`Р С›Р В±Р СР ВµР Р… РЎС“РЎРѓР С—Р ВµРЎв‚¬Р ВµР Р…! Вы Р С—Р С•Р В»РЎС“РЎвЂЎР С‘Р В»Р С‘ ${coins.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ.`);
             } else {
                 openRubyWarningModal(exchangeAmount);
             }
@@ -13710,11 +13832,11 @@ const App: React.FC = () => {
     const handleCasinoGamble = () => {
         if (casinoIsSpinning) return;
         if (casinoBetAmount <= 0) {
-            alert("РЎС‚Р°РІРєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ Р±РѕР»СЊС€Рµ 0!");
+            alert("Ставка должна быть больше 0!");
             return;
         }
         if (playerGold < casinoBetAmount) {
-            alert("РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РјРѕРЅРµС‚ РґР»СЏ СЃС‚Р°РІРєРё!");
+            alert("Недостаточно монет для ставки!");
             return;
         }
 
@@ -13762,11 +13884,11 @@ const App: React.FC = () => {
             if (won) {
                 if (isRuby) {
                     updatePlayerResources(-bet, winAmount, {});
-                    addHistoryLog(`РљР°Р·РёРЅРѕ: РІС‹РёРіСЂР°РЅ СЂСѓР±РёРЅ. РЎС‚Р°РІРєР°: ${bet}.`, 'economy');
+                    addHistoryLog(`Казино: выигран рубин. Ставка: ${bet}.`, 'economy');
                 } else {
                     const netWin = winAmount - bet;
                     updatePlayerResources(netWin, 0, {});
-                    addHistoryLog(`РљР°Р·РёРЅРѕ: РІС‹РёРіСЂС‹С€ ${winAmount} РјРѕРЅРµС‚. РЎС‚Р°РІРєР°: ${bet}.`, 'economy');
+                    addHistoryLog(`Казино: выигрыш ${winAmount} монет. Ставка: ${bet}.`, 'economy');
                 }
             } else {
                 updatePlayerResources(-bet, 0, {});
@@ -13788,7 +13910,7 @@ const App: React.FC = () => {
                         }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${casinoBuildingId}`));
                     }
                 }
-                addHistoryLog(`РљР°Р·РёРЅРѕ: РїСЂРѕРёРіСЂС‹С€. РЎС‚Р°РІРєР°: ${bet}. Р’ Р±Р°РЅРє РєР°Р·РёРЅРѕ СѓС€Р»Рѕ ${Math.max(1, Math.floor(bet * 0.2))} РјРѕРЅРµС‚.`, 'economy');
+                addHistoryLog(`Казино: проигрыш. Ставка: ${bet}. В банк казино ушло ${Math.max(1, Math.floor(bet * 0.2))} монет.`, 'economy');
             }
 
             setCasinoResult({ won, amount: winAmount, isRuby });
@@ -13808,12 +13930,12 @@ const App: React.FC = () => {
         const newBuildingInfo = buildingData.find(b => b.id === upgradeTargetId);
 
         if (!newBuildingInfo || cost === undefined) {
-            alert("Р В Р’В­Р РЋРІР‚С™Р В РЎвЂў Р В Р’В·Р В РўвЂР В Р’В°Р В Р вЂ¦Р В РЎвЂР В Р’Вµ Р В Р вЂ¦Р В Р’ВµР В Р’В»Р РЋР Р‰Р В Р’В·Р РЋР РЏ Р РЋРЎвЂњР В Р’В»Р РЋРЎвЂњР РЋРІР‚РЋР РЋРІвЂљВ¬Р В РЎвЂР РЋРІР‚С™Р РЋР Р‰!");
+            alert("Р В­РЎвЂљР С• Р В·Р Т‘Р В°Р Р…Р С‘Р Вµ Р Р…Р ВµР В»РЎРЉР В·РЎРЏ РЎС“Р В»РЎС“РЎвЂЎРЎв‚¬Р С‘РЎвЂљРЎРЉ!");
             return;
         }
 
         if (playerGold < cost) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р° РґР»СЏ СѓР»СѓС‡С€РµРЅРёСЏ! РўСЂРµР±СѓРµС‚СЃСЏ: ${cost} РјРѕРЅРµС‚.`);
+            alert(`Недостаточно золота для улучшения! Требуется: ${cost} монет.`);
             return;
         }
 
@@ -13821,7 +13943,7 @@ const App: React.FC = () => {
             const requiredPop = newBuildingInfo.constructionRequirements.population;
             const availablePop = maxPopulation - currentPopulation;
             if (availablePop < requiredPop) {
-                alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РЅР°СЃРµР»РµРЅРёСЏ РґР»СЏ СѓР»СѓС‡С€РµРЅРёСЏ! РўСЂРµР±СѓРµС‚СЃСЏ: ${requiredPop}`);
+                alert(`Недостаточно населения для улучшения! Требуется: ${requiredPop}`);
                 return;
             }
         }
@@ -13829,8 +13951,8 @@ const App: React.FC = () => {
         if (newBuildingInfo.constructionRequirements.resources) {
             const missingResources = newBuildingInfo.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
             if (missingResources.length > 0) {
-                const missingNames = missingResources.map(r => `${r.name} (РЅСѓР¶РЅРѕ: ${r.amount}, РµСЃС‚СЊ: ${inventory[r.id] || 0})`).join(', ');
-                alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂРµСЃСѓСЂСЃРѕРІ РґР»СЏ СѓР»СѓС‡С€РµРЅРёСЏ: ${missingNames}`);
+                const missingNames = missingResources.map(r => `${r.name} (нужно: ${r.amount}, есть: ${inventory[r.id] || 0})`).join(', ');
+                alert(`Недостаточно ресурсов для улучшения: ${missingNames}`);
                 return;
             }
         }
@@ -13865,7 +13987,7 @@ const App: React.FC = () => {
             duration: UPGRADE_EFFECT_DURATION
         })]);
 
-        addHistoryLog(`РЈР»СѓС‡С€РµРЅРёРµ Р·РґР°РЅРёСЏ "${selectedBuilding.info.name}" РґРѕ "${newBuildingInfo.name}". РЎС‚РѕРёРјРѕСЃС‚СЊ: ${cost} РјРѕРЅРµС‚.`, 'build');
+        addHistoryLog(`Улучшение здания "${selectedBuilding.info.name}" до "${newBuildingInfo.name}". Стоимость: ${cost} монет.`, 'build');
 
         // Optimistic update for all buildings (immediate UI feedback)
         lastInteractionRef.current.set(String(selectedBuilding.building.id), Date.now());
@@ -13940,14 +14062,14 @@ const App: React.FC = () => {
 
         const popCost = info.stats.takesPopulation || 0;
         if (currentPopulation + popCost > maxPopulation) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂР°Р±РѕС‡РёС…! РўСЂРµР±СѓРµС‚СЃСЏ: ${popCost}, РЎРІРѕР±РѕРґРЅРѕ: ${maxPopulation - currentPopulation}`);
+            alert(`Недостаточно рабочих! Требуется: ${popCost}, Свободно: ${maxPopulation - currentPopulation}`);
             return;
         }
 
         if (info.stats.consumes) {
             for (const req of info.stats.consumes) {
                 if ((inventory[req.id] || 0) < (req.amount || 0)) {
-                    alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂРµСЃСѓСЂСЃР°: ${getCanonicalItemName(req.id, req.name, building.id)}`);
+                    alert(`Недостаточно ресурса: ${getCanonicalItemName(req.id, req.name, building.id)}`);
                     return;
                 }
             }
@@ -14258,7 +14380,7 @@ const App: React.FC = () => {
             else if (bid === 623) nextBid = 624;
             else if (bid === 624) nextBid = 625;
             else if (bid === 625) nextBid = 626;
-            // Р В РЎвЂ™Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° 11 (ID: 627) has 45% chance to become Р В Р Р‹Р РЋРЎвЂњР В РЎвЂ”Р В Р’ВµР РЋР вЂљ Р В Р’В°Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° 1 (ID: 628), else back to Р В РЎвЂ™Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° (ID: 600)
+            // Р С’РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° 11 (ID: 627) has 45% chance to become Р РЋРЎС“Р С—Р ВµРЎР‚ Р В°РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° 1 (ID: 628), else back to Р С’РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° (ID: 600)
             else if (bid === 626) nextBid = 627;
             else if (bid === 627) nextBid = Math.random() < 0.45 ? 628 : 600;
             else if (bid === 628) nextBid = 629;
@@ -14266,10 +14388,10 @@ const App: React.FC = () => {
             else if (bid === 630) nextBid = 631;
             else if (bid === 631) nextBid = 632;
             else if (bid === 632) nextBid = 633;
-            // Р В Р Р‹Р РЋРЎвЂњР В РЎвЂ”Р В Р’ВµР РЋР вЂљ Р В Р’В°Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° 7 (ID: 634) becomes Р В РІР‚вЂќР В Р’В°Р В РЎвЂќР РЋР вЂљР РЋРІР‚в„–Р РЋРІР‚С™Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™ (ID: 635)
+            // Р РЋРЎС“Р С—Р ВµРЎР‚ Р В°РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° 7 (ID: 634) becomes Р вЂ”Р В°Р С”РЎР‚РЎвЂ№РЎвЂљРЎвЂ№Р в„– Р С—РЎР‚Р С•Р ВµР С”РЎвЂљ (ID: 635)
             else if (bid === 633) nextBid = 634;
             else if (bid === 634) nextBid = 635;
-            // Р В РІР‚вЂќР В Р’В°Р В РЎвЂќР РЋР вЂљР РЋРІР‚в„–Р РЋРІР‚С™Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™ (ID: 635) returns to Р В РЎвЂ™Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° (ID: 600)
+            // Р вЂ”Р В°Р С”РЎР‚РЎвЂ№РЎвЂљРЎвЂ№Р в„– Р С—РЎР‚Р С•Р ВµР С”РЎвЂљ (ID: 635) returns to Р С’РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° (ID: 600)
             else if (bid === 635) nextBid = 600;
 
             const nextInfo = buildingData.find(bd => bd.id === nextBid);
@@ -14301,7 +14423,7 @@ const App: React.FC = () => {
             }));
             lastInteractionRef.current.set(buildingDocId, Date.now());
 
-            addHistoryLog(`РЎР±РѕСЂ: +${actualGold} РјРѕРЅРµС‚`, 'economy');
+            addHistoryLog(`Сбор: +${actualGold} монет`, 'economy');
         }
     };
 
@@ -14325,14 +14447,14 @@ const App: React.FC = () => {
 
         const popCost = info.stats.takesPopulation || 0;
         if (currentPopulation + popCost > maxPopulation) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂР°Р±РѕС‡РёС…! РўСЂРµР±СѓРµС‚СЃСЏ: ${popCost}, РЎРІРѕР±РѕРґРЅРѕ: ${maxPopulation - currentPopulation}`);
+            alert(`Недостаточно рабочих! Требуется: ${popCost}, Свободно: ${maxPopulation - currentPopulation}`);
             return;
         }
 
         if (info.stats.consumes) {
             for (const req of info.stats.consumes) {
                 if ((inventory[req.id] || 0) < (req.amount || 0)) {
-                    alert(`Р В РЎСљР В Р’ВµР В РўвЂР В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В Р’В°Р РЋРІР‚С™Р В РЎвЂўР РЋРІР‚РЋР В Р вЂ¦Р В РЎвЂў Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р В Р’В°: ${getCanonicalItemName(req.id, req.name, selectedBuilding?.building.id)}`);
+                    alert(`Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°: ${getCanonicalItemName(req.id, req.name, selectedBuilding?.building.id)}`);
                     return;
                 }
             }
@@ -14530,7 +14652,7 @@ const App: React.FC = () => {
             else if (bid === 623) nextBid = 624;
             else if (bid === 624) nextBid = 625;
             else if (bid === 625) nextBid = 626;
-            // Р В РЎвЂ™Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° 11 (ID: 627) has 45% chance to become Р В Р Р‹Р РЋРЎвЂњР В РЎвЂ”Р В Р’ВµР РЋР вЂљ Р В Р’В°Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° 1 (ID: 628), else back to Р В РЎвЂ™Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° (ID: 600)
+            // Р С’РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° 11 (ID: 627) has 45% chance to become Р РЋРЎС“Р С—Р ВµРЎР‚ Р В°РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° 1 (ID: 628), else back to Р С’РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° (ID: 600)
             else if (bid === 626) nextBid = 627;
             else if (bid === 627) nextBid = Math.random() < 0.45 ? 628 : 600;
             else if (bid === 628) nextBid = 629;
@@ -14538,10 +14660,10 @@ const App: React.FC = () => {
             else if (bid === 630) nextBid = 631;
             else if (bid === 631) nextBid = 632;
             else if (bid === 632) nextBid = 633;
-            // Р В Р Р‹Р РЋРЎвЂњР В РЎвЂ”Р В Р’ВµР РЋР вЂљ Р В Р’В°Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° 7 (ID: 634) becomes Р В РІР‚вЂќР В Р’В°Р В РЎвЂќР РЋР вЂљР РЋРІР‚в„–Р РЋРІР‚С™Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™ (ID: 635)
+            // Р РЋРЎС“Р С—Р ВµРЎР‚ Р В°РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° 7 (ID: 634) becomes Р вЂ”Р В°Р С”РЎР‚РЎвЂ№РЎвЂљРЎвЂ№Р в„– Р С—РЎР‚Р С•Р ВµР С”РЎвЂљ (ID: 635)
             else if (bid === 633) nextBid = 634;
             else if (bid === 634) nextBid = 635;
-            // Р В РІР‚вЂќР В Р’В°Р В РЎвЂќР РЋР вЂљР РЋРІР‚в„–Р РЋРІР‚С™Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В Р’ВµР В РЎвЂќР РЋРІР‚С™ (ID: 635) returns to Р В РЎвЂ™Р РЋРІР‚С™Р В РЎвЂўР В РЎВР В Р вЂ¦Р В Р’В°Р РЋР РЏ Р В Р’В±Р В РЎвЂўР В РЎВР В Р’В±Р В Р’В° (ID: 600)
+            // Р вЂ”Р В°Р С”РЎР‚РЎвЂ№РЎвЂљРЎвЂ№Р в„– Р С—РЎР‚Р С•Р ВµР С”РЎвЂљ (ID: 635) returns to Р С’РЎвЂљР С•Р СР Р…Р В°РЎРЏ Р В±Р С•Р СР В±Р В° (ID: 600)
             else if (bid === 635) nextBid = 600;
 
             const nextInfo = buildingData.find(bd => bd.id === nextBid);
@@ -14607,7 +14729,7 @@ const App: React.FC = () => {
 
     const handleStealProduction = () => {
         if (isBanned()) {
-            alert("Р’С‹ Р В Р’В·Р В Р’В°Р В Р’В±Р В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„– Р В РЎвЂ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р В Р вЂ Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р вЂ Р В Р’В°Р РЋРІР‚С™Р РЋР Р‰!");
+            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Р†Р С•РЎР‚Р С•Р Р†Р В°РЎвЂљРЎРЉ!");
             return;
         }
         if (!selectedBuilding) return;
@@ -14615,12 +14737,12 @@ const App: React.FC = () => {
         // Check if player has Den of Thieves (ID 6000)
         const hasDenOfThieves = placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing);
         if (!hasDenOfThieves) {
-            alert("Р В РІР‚СњР В Р’В»Р РЋР РЏ Р В Р вЂ Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р вЂ Р РЋР С“Р РЋРІР‚С™Р В Р вЂ Р В Р’В° Р В Р вЂ¦Р В Р’ВµР В РЎвЂўР В Р’В±Р РЋРІР‚В¦Р В РЎвЂўР В РўвЂР В РЎвЂР В РЎВР В РЎвЂў Р В РЎвЂ”Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р РЋР вЂљР В РЎвЂўР В РЎвЂР РЋРІР‚С™Р РЋР Р‰ Р В РІР‚в„ўР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р вЂ Р РЋР С“Р В РЎвЂќР В РЎвЂўР В Р’Вµ Р В Р’В»Р В РЎвЂўР В РЎвЂ“Р В РЎвЂўР В Р вЂ Р В РЎвЂў!");
+            alert("Р вЂќР В»РЎРЏ Р Р†Р С•РЎР‚Р С•Р Р†РЎРѓРЎвЂљР Р†Р В° Р Р…Р ВµР С•Р В±РЎвЂ¦Р С•Р Т‘Р С‘Р СР С• Р С—Р С•РЎРѓРЎвЂљРЎР‚Р С•Р С‘РЎвЂљРЎРЉ Р вЂ™Р С•РЎР‚Р С•Р Р†РЎРѓР С”Р С•Р Вµ Р В»Р С•Р С–Р С•Р Р†Р С•!");
             return;
         }
 
         if (playerLevel < 2) {
-            alert("Р В РІР‚СњР В Р’В»Р РЋР РЏ Р В Р вЂ Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р вЂ Р РЋР С“Р РЋРІР‚С™Р В Р вЂ Р В Р’В° Р РЋРІР‚С™Р РЋР вЂљР В Р’ВµР В Р’В±Р РЋРЎвЂњР В Р’ВµР РЋРІР‚С™Р РЋР С“Р РЋР РЏ 2 Р РЋРЎвЂњР РЋР вЂљР В РЎвЂўР В Р вЂ Р В Р’ВµР В Р вЂ¦Р РЋР Р‰ Р В Р’В°Р В РЎвЂќР В РЎвЂќР В Р’В°Р РЋРЎвЂњР В Р вЂ¦Р РЋРІР‚С™Р В Р’В°!");
+            alert("Р вЂќР В»РЎРЏ Р Р†Р С•РЎР‚Р С•Р Р†РЎРѓРЎвЂљР Р†Р В° РЎвЂљРЎР‚Р ВµР В±РЎС“Р ВµРЎвЂљРЎРѓРЎРЏ 2 РЎС“РЎР‚Р С•Р Р†Р ВµР Р…РЎРЉ Р В°Р С”Р С”Р В°РЎС“Р Р…РЎвЂљР В°!");
             return;
         }
 
@@ -14746,14 +14868,14 @@ const App: React.FC = () => {
                         // Returned to owner - thief gets nothing
                         const itemName = info.stats.produces?.find(p => p.id === id)?.name ||
                                         info.stats.sometimesProduces?.find(p => p.id === id)?.name ||
-                                        'Р РЋР С“Р РЋРЎвЂњР В РЎвЂ”Р В Р’ВµР РЋР вЂљ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“';
+                                        'РЎРѓРЎС“Р С—Р ВµРЎР‚ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓ';
                         superResourcesReturned.push(`${inventoryDeltas[id]} ${itemName}`);
                         inventoryDeltas[id] = 0;
                     } else {
                         // Thief keeps it
                         const itemName = info.stats.produces?.find(p => p.id === id)?.name ||
                                         info.stats.sometimesProduces?.find(p => p.id === id)?.name ||
-                                        'Р РЋР С“Р РЋРЎвЂњР В РЎвЂ”Р В Р’ВµР РЋР вЂљ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“';
+                                        'РЎРѓРЎС“Р С—Р ВµРЎР‚ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓ';
                         superResourcesKept.push(`${inventoryDeltas[id]} ${itemName}`);
                     }
                 } else {
@@ -14763,14 +14885,14 @@ const App: React.FC = () => {
             }
 
             // Send notification about being caught
-            const thiefName = playerName || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р вЂ Р В РЎвЂўР РЋР вЂљР В РЎвЂР РЋРІвЂљВ¬Р В РЎвЂќР В Р’В°';
+            const thiefName = playerName || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„– Р Р†Р С•РЎР‚Р С‘РЎв‚¬Р С”Р В°';
             const caughtMsgId = `caught-${Date.now()}-${building.ownerId}`;
 
             // Send notification to chat (loot tab)
             const notification = {
-                sender: '[Р В РЎСџР В РЎвЂєР В РІР‚С”Р В Р’ВР В Р’В¦Р В Р’ВР В Р вЂЎ]',
+                sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
                 senderId: 'system',
-                text: `Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ ${thiefName} Р В Р’В±Р РЋРІР‚в„–Р В Р’В» Р В Р’В·Р В Р’В°Р В РЎВР В Р’ВµР РЋРІР‚РЋР В Р’ВµР В Р вЂ¦ Р В Р вЂ  Р В Р вЂ Р В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р вЂ Р РЋР С“Р РЋРІР‚С™Р В Р вЂ Р В Р’Вµ Р РЋРЎвЂњ Р В РЎвЂР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќР В Р’В° Р В Р вЂ¦Р В Р’В° Р В РЎвЂќР В РЎвЂўР В РЎвЂўР РЋР вЂљР В РўвЂР В РЎвЂР В Р вЂ¦Р В Р’В°Р РЋРІР‚С™Р В Р’В°Р РЋРІР‚В¦ (${building.x}, ${building.y})! Р В РЎСџР В РЎвЂўР В Р’В»Р В РЎвЂР РЋРІР‚В Р В Р’ВµР В РІвЂћвЂ“Р РЋР С“Р В РЎвЂќР В РЎвЂР В РІвЂћвЂ“ Р РЋРЎвЂњР РЋРІР‚РЋР В Р’В°Р РЋР С“Р РЋРІР‚С™Р В РЎвЂўР В РЎвЂќ Р В Р’В·Р В Р’В°Р В РўвЂР В Р’ВµР РЋР вЂљР В Р’В¶Р В Р’В°Р В Р’В» Р В Р вЂ Р В РЎвЂўР РЋР вЂљР В Р’В°.`,
+                text: `Р ВР С–РЎР‚Р С•Р С” ${thiefName} Р В±РЎвЂ№Р В» Р В·Р В°Р СР ВµРЎвЂЎР ВµР Р… Р Р† Р Р†Р С•РЎР‚Р С•Р Р†РЎРѓРЎвЂљР Р†Р Вµ РЎС“ Р С‘Р С–РЎР‚Р С•Р С”Р В° Р Р…Р В° Р С”Р С•Р С•РЎР‚Р Т‘Р С‘Р Р…Р В°РЎвЂљР В°РЎвЂ¦ (${building.x}, ${building.y})! Р СџР С•Р В»Р С‘РЎвЂ Р ВµР в„–РЎРѓР С”Р С‘Р в„– РЎС“РЎвЂЎР В°РЎРѓРЎвЂљР С•Р С” Р В·Р В°Р Т‘Р ВµРЎР‚Р В¶Р В°Р В» Р Р†Р С•РЎР‚Р В°.`,
                 type: 'system',
                 timestamp: Date.now(),
                 tab: 'loot'
@@ -14778,17 +14900,17 @@ const App: React.FC = () => {
             setDoc(doc(db, 'chat_messages', caughtMsgId), notification).catch((err) => console.warn('[Chat] Failed to send caught notification:', err));
 
             // Send personal message to the thief about being caught
-            let personalMsg = `Р’С‹ Р±С‹Р»Рё Р·Р°РґРµСЂР¶Р°РЅС‹ РїРѕР»РёС†РµР№СЃРєРёРј СѓС‡Р°СЃС‚РєРѕРј РїСЂРё РїРѕРїС‹С‚РєРµ РІРѕСЂРѕРІСЃС‚РІР°! 50% РЅР°РіСЂР°Р±Р»РµРЅРЅРѕРіРѕ РІРѕР·РІСЂР°С‰РµРЅРѕ РІР»Р°РґРµР»СЊС†Сѓ.`;
+            let personalMsg = `Вы были задержаны полицейским участком при попытке воровства! 50% награбленного возвращено владельцу.`;
             if (superResourcesReturned.length > 0) {
-                personalMsg += ` РЎСѓРїРµСЂ СЂРµСЃСѓСЂСЃС‹ РІРѕР·РІСЂР°С‰РµРЅС‹: ${superResourcesReturned.join(', ')}.`;
+                personalMsg += ` Супер ресурсы возвращены: ${superResourcesReturned.join(', ')}.`;
             }
             if (superResourcesKept.length > 0) {
-                personalMsg += ` РЎСѓРїРµСЂ СЂРµСЃСѓСЂСЃС‹ РѕСЃС‚Р°Р»РёСЃСЊ Сѓ РІР°СЃ: ${superResourcesKept.join(', ')}.`;
+                personalMsg += ` Супер ресурсы остались у вас: ${superResourcesKept.join(', ')}.`;
             }
 
             const personalMsgId = `caught-personal-${Date.now()}-${user?.uid}`;
             const personalNotification = {
-                sender: '[Р В РЎСџР В РЎвЂєР В РІР‚С”Р В Р’ВР В Р’В¦Р В Р’ВР В Р вЂЎ]',
+                sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
                 senderId: 'system',
                 text: personalMsg,
                 type: 'system',
@@ -14819,12 +14941,12 @@ const App: React.FC = () => {
                     }
                 }));
             }
-            const thiefName = playerName || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“ Р В Р вЂ Р В РЎвЂўР РЋР вЂљР В РЎвЂР РЋРІвЂљВ¬Р В РЎвЂќР В Р’В°';
+            const thiefName = playerName || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„– Р Р†Р С•РЎР‚Р С‘РЎв‚¬Р С”Р В°';
             const msgId = `theft-${Date.now()}-${building.ownerId}`;
             const notification = {
-                sender: '[Р В Р Р‹Р В Р’ВР В Р Р‹Р В РЎС›Р В РІР‚СћР В РЎС™Р В РЎвЂ™]',
+                sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
                 senderId: 'system',
-                text: `Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ ${thiefName} Р РЋРЎвЂњР В РЎвЂќР РЋР вЂљР В Р’В°Р В Р’В» Р РЋРЎвЂњ Р В Р вЂ Р В Р’В°Р РЋР С“ Р РЋРЎвЂњР РЋР вЂљР В РЎвЂўР В Р’В¶Р В Р’В°Р В РІвЂћвЂ“ Р РЋР С“ Р В РЎвЂўР В Р’В±Р РЋР вЂ°Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В Р’В° ${info.name} (Р В РЎв„ўР В РЎвЂўР В РЎвЂўР РЋР вЂљР В РўвЂР В РЎвЂР В Р вЂ¦Р В Р’В°Р РЋРІР‚С™Р РЋРІР‚в„–: ${building.x}, ${building.y})!`,
+                text: `Р ВР С–РЎР‚Р С•Р С” ${thiefName} РЎС“Р С”РЎР‚Р В°Р В» РЎС“ Р Р†Р В°РЎРѓ РЎС“РЎР‚Р С•Р В¶Р В°Р в„– РЎРѓ Р С•Р В±РЎР‰Р ВµР С”РЎвЂљР В° ${info.name} (Р С™Р С•Р С•РЎР‚Р Т‘Р С‘Р Р…Р В°РЎвЂљРЎвЂ№: ${building.x}, ${building.y})!`,
                 type: 'system',
                 timestamp: Date.now(),
                 tab: 'loot'
@@ -14839,7 +14961,7 @@ const App: React.FC = () => {
                 const zoneY = Math.floor(building.y / ZONE_SIZE);
                 const policeMsgId = `police-theft-${Date.now()}`;
                 const policeNotification = {
-                    sender: '[Р В РЎСџР В РЎвЂєР В РІР‚С”Р В Р’ВР В Р’В¦Р В Р’ВР В Р вЂЎ]',
+                    sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
                     senderId: 'system',
                     text: `RADIO: Theft in sector ${zoneX}.${zoneY}! Player ${thiefName} stole from ${info.name} at coordinates (${building.x}, ${building.y}). 3 minutes to catch!`,
                     type: 'system',
@@ -14956,10 +15078,10 @@ const App: React.FC = () => {
                 ));
             }
 
-            addHistoryLog(`РЎРЅСЏС‚Рѕ ${bankAmount} РјРѕРЅРµС‚ РёР· Р±Р°РЅРєР° РєР»Р°РЅР°.`, 'social');
-            alert(`Р’С‹ Р РЋР С“Р В Р вЂ¦Р РЋР РЏР В Р’В»Р В РЎвЂ ${bankAmount} Р В РЎВР В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™ Р РЋР С“Р В РЎвЂў Р РЋР С“Р РЋРІР‚РЋР В Р’ВµР РЋРІР‚С™Р В Р’В° Р В РЎвЂќР В Р’В»Р В Р’В°Р В Р вЂ¦Р В Р’В°.`);
+            addHistoryLog(`Снято ${bankAmount} монет из банка клана.`, 'social');
+            alert(`Вы РЎРѓР Р…РЎРЏР В»Р С‘ ${bankAmount} Р СР С•Р Р…Р ВµРЎвЂљ РЎРѓР С• РЎРѓРЎвЂЎР ВµРЎвЂљР В° Р С”Р В»Р В°Р Р…Р В°.`);
         } else {
-            alert("Р В РІР‚ВР В Р’В°Р В Р вЂ¦Р В РЎвЂќ Р В РЎвЂќР В Р’В»Р В Р’В°Р В Р вЂ¦Р В Р’В° Р В РЎвЂ”Р РЋРЎвЂњР РЋР С“Р РЋРІР‚С™.");
+            alert("Р вЂР В°Р Р…Р С” Р С”Р В»Р В°Р Р…Р В° Р С—РЎС“РЎРѓРЎвЂљ.");
         }
     };
 
@@ -14990,7 +15112,7 @@ const App: React.FC = () => {
     const handleMoveClick = () => {
         if (!selectedBuilding) return;
         if (!isMyBuilding(selectedBuilding.building)) {
-            alert("РџРµСЂРµРјРµС‰Р°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЃРІРѕРё РїРѕСЃС‚СЂРѕР№РєРё.");
+            alert("Перемещать можно только свои постройки.");
             return;
         }
 
@@ -15041,19 +15163,19 @@ const App: React.FC = () => {
         if (!selectedBuilding) return;
         const { building, info } = selectedBuilding;
         if (!canRepairBuilding(building)) {
-            alert("Р’С‹ РјРѕР¶РµС‚Рµ С‡РёРЅРёС‚СЊ С‚РѕР»СЊРєРѕ СЃРІРѕРё РїРѕСЃС‚СЂРѕР№РєРё РёР»Рё РїРѕСЃС‚СЂРѕР№РєРё СЃРѕРєР»Р°РЅРѕРІС†РµРІ.");
+            alert("Вы можете чинить только свои постройки или постройки соклановцев.");
             return;
         }
         const cost = calculateRepairCost(building, info);
 
         if (cost <= 0) return;
         if (playerGold < cost) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р° РґР»СЏ РїРѕС‡РёРЅРєРё! РўСЂРµР±СѓРµС‚СЃСЏ ${cost}`);
+            alert(`Недостаточно золота для починки! Требуется ${cost}`);
             return;
         }
 
         setPlayerGold(prev => prev - cost);
-        addHistoryLog(`РџРѕС‡РёРЅРµРЅРѕ Р·РґР°РЅРёРµ "${info.name}". РЎС‚РѕРёРјРѕСЃС‚СЊ: ${cost} РјРѕРЅРµС‚.`, 'economy');
+        addHistoryLog(`Починено здание "${info.name}". Стоимость: ${cost} монет.`, 'economy');
         lastInteractionRef.current.set(String(building.id), Date.now());
 
         const maxHp = building.maxHp ?? info.stats.durability;
@@ -15115,7 +15237,7 @@ const App: React.FC = () => {
 
         const { building, info } = selectedBuilding;
         if (!isMyBuilding(building)) {
-            alert("РџСЂРѕРґР°РІР°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЃРІРѕРё РїРѕСЃС‚СЂРѕР№РєРё.");
+            alert("Продавать можно только свои постройки.");
             return;
         }
         const buildingDocId = String(building.id);
@@ -15151,7 +15273,7 @@ const App: React.FC = () => {
 
         updatePlayerResources(refundGold, 0, inventoryDeltas);
 
-        addHistoryLog(`РџСЂРѕРґР°РЅРѕ Р·РґР°РЅРёРµ "${info.name}". РџРѕР»СѓС‡РµРЅРѕ: ${refundGold} РјРѕРЅРµС‚.`, 'economy');
+        addHistoryLog(`Продано здание "${info.name}". Получено: ${refundGold} монет.`, 'economy');
 
         // Optimistic removal - immediate UI update
         setPlacedBuildings(prev => prev.filter(b => {
@@ -15196,7 +15318,7 @@ const App: React.FC = () => {
                     setPlayerClanId(null);
                 }
                 
-                addHistoryLog(`Р В РІР‚ВР В Р’В°Р В Р вЂ¦Р В РўвЂР В РЎвЂР РЋРІР‚С™Р РЋР С“Р В РЎвЂќР В РЎвЂР В РІвЂћвЂ“ Р В Р’В·Р В Р’В°Р В РЎВР В РЎвЂўР В РЎвЂќ Р В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В РўвЂР В Р’В°Р В Р вЂ¦! Р В РЎв„ўР В Р’В»Р В Р’В°Р В Р вЂ¦ "${soldClan.name}" Р РЋР вЂљР В Р’В°Р РЋР С“Р В РЎвЂ”Р РЋРЎвЂњР РЋРІР‚В°Р В Р’ВµР В Р вЂ¦.`, 'social');
+                addHistoryLog(`Р вЂР В°Р Р…Р Т‘Р С‘РЎвЂљРЎРѓР С”Р С‘Р в„– Р В·Р В°Р СР С•Р С” Р С—РЎР‚Р С•Р Т‘Р В°Р Р…! Р С™Р В»Р В°Р Р… "${soldClan.name}" РЎР‚Р В°РЎРѓР С—РЎС“РЎвЂ°Р ВµР Р….`, 'social');
             }
         }
     };
@@ -15204,7 +15326,7 @@ const App: React.FC = () => {
     const handleApplyProtection = (cost: number, duration: number) => {
         if (!selectedBuilding) return;
         if (!isMyBuilding(selectedBuilding.building)) {
-            alert("Р—Р°С‰РёС‰Р°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ СЃРІРѕРё РїРѕСЃС‚СЂРѕР№РєРё.");
+            alert("Защищать можно только свои постройки.");
             return;
         }
 
@@ -15214,7 +15336,7 @@ const App: React.FC = () => {
         }
 
         setPlayerRubies(prev => prev - cost);
-        addHistoryLog(`РђРєС‚РёРІРёСЂРѕРІР°РЅР° Р·Р°С‰РёС‚Р° РґР»СЏ "${selectedBuilding.info.name}". РЎС‚РѕРёРјРѕСЃС‚СЊ: ${cost} СЂСѓР±РёРЅРѕРІ.`, 'social');
+        addHistoryLog(`Активирована защита для "${selectedBuilding.info.name}". Стоимость: ${cost} рубинов.`, 'social');
 
         const buildingDocId = String(selectedBuilding.building.id);
         const protectionEndTime = Date.now() + duration;
@@ -15271,16 +15393,16 @@ const App: React.FC = () => {
         if (!selectedBuilding) return;
 
         if (isBanned()) {
-            alert("Р’С‹ Р В Р’В·Р В Р’В°Р В Р’В±Р В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„– Р В РЎвЂ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р В Р вЂ¦Р В РЎвЂР РЋРІР‚РЋР В Р’ВµР В РЎвЂ“Р В РЎвЂў Р В Р вЂ Р В Р’В·Р РЋР вЂљР РЋРІР‚в„–Р В Р вЂ Р В Р’В°Р РЋРІР‚С™Р РЋР Р‰!");
+            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Р…Р С‘РЎвЂЎР ВµР С–Р С• Р Р†Р В·РЎР‚РЎвЂ№Р Р†Р В°РЎвЂљРЎРЉ!");
             return;
         }
 
         if (selectedBuilding.building.isConstructing) {
-            alert("Р В РЎСљР В Р’ВµР В Р’В»Р РЋР Р‰Р В Р’В·Р РЋР РЏ Р В Р вЂ Р В Р’В·Р РЋР вЂљР РЋРІР‚в„–Р В Р вЂ Р В Р’В°Р РЋРІР‚С™Р РЋР Р‰ Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљР В РЎвЂўР РЋР РЏР РЋРІР‚В°Р В Р’ВµР В Р’ВµР РЋР С“Р РЋР РЏ Р В Р’В·Р В РўвЂР В Р’В°Р В Р вЂ¦Р В РЎвЂР В Р’Вµ.");
+            alert("Р СњР ВµР В»РЎРЉР В·РЎРЏ Р Р†Р В·РЎР‚РЎвЂ№Р Р†Р В°РЎвЂљРЎРЉ РЎРѓРЎвЂљРЎР‚Р С•РЎРЏРЎвЂ°Р ВµР ВµРЎРѓРЎРЏ Р В·Р Т‘Р В°Р Р…Р С‘Р Вµ.");
             return;
         }
         if (selectedBuilding.building.isDestroying) {
-            alert("Р В РІР‚вЂќР В РўвЂР В Р’В°Р В Р вЂ¦Р В РЎвЂР В Р’Вµ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В Р вЂ¦Р В Р’В°Р РЋРІР‚В¦Р В РЎвЂўР В РўвЂР В РЎвЂР РЋРІР‚С™Р РЋР С“Р РЋР РЏ Р В Р вЂ  Р В РЎвЂ”Р РЋР вЂљР В РЎвЂўР РЋРІР‚В Р В Р’ВµР РЋР С“Р РЋР С“Р В Р’Вµ Р РЋР вЂљР В Р’В°Р В Р’В·Р РЋР вЂљР РЋРЎвЂњР РЋРІвЂљВ¬Р В Р’ВµР В Р вЂ¦Р В РЎвЂР РЋР РЏ.");
+            alert("Р вЂ”Р Т‘Р В°Р Р…Р С‘Р Вµ РЎС“Р В¶Р Вµ Р Р…Р В°РЎвЂ¦Р С•Р Т‘Р С‘РЎвЂљРЎРѓРЎРЏ Р Р† Р С—РЎР‚Р С•РЎвЂ Р ВµРЎРѓРЎРѓР Вµ РЎР‚Р В°Р В·РЎР‚РЎС“РЎв‚¬Р ВµР Р…Р С‘РЎРЏ.");
             return;
         }
 
@@ -15289,7 +15411,7 @@ const App: React.FC = () => {
         const totalItems = quantity;
 
         if (playerGold < totalGold) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°! РќСѓР¶РЅРѕ ${totalGold}.`);
+            alert(`Недостаточно золота! Нужно ${totalGold}.`);
             return;
         }
         if (playerEnergy < totalEnergy) {
@@ -15298,7 +15420,7 @@ const App: React.FC = () => {
         }
         const currentAmount = inventory[destructionOption.resourceId] || 0;
         if (currentAmount < totalItems) {
-            alert(`Р В РЎСљР В Р’ВµР В РўвЂР В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В Р’В°Р РЋРІР‚С™Р В РЎвЂўР РЋРІР‚РЋР В Р вЂ¦Р В РЎвЂў Р В РЎвЂ”Р РЋР вЂљР В Р’ВµР В РўвЂР В РЎВР В Р’ВµР РЋРІР‚С™Р В Р’В° "${destructionOption.weaponName}"! Р В РЎСљР РЋРЎвЂњР В Р’В¶Р В Р вЂ¦Р В РЎвЂў ${totalItems}, Р РЋРЎвЂњ Р В Р вЂ Р В Р’В°Р РЋР С“ ${currentAmount}.`);
+            alert(`Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• Р С—РЎР‚Р ВµР Т‘Р СР ВµРЎвЂљР В° "${destructionOption.weaponName}"! Р СњРЎС“Р В¶Р Р…Р С• ${totalItems}, РЎС“ Р Р†Р В°РЎРѓ ${currentAmount}.`);
             return;
         }
 
@@ -15318,7 +15440,7 @@ const App: React.FC = () => {
             updateDoc(doc(db, 'users', user.uid), userUpdates).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
         }
 
-        addHistoryLog(`Р’Р·РѕСЂРІР°РЅРѕ Р·РґР°РЅРёРµ "${selectedBuilding.info.name}" РІ [${selectedBuilding.building.x}, ${selectedBuilding.building.y}] РѕСЂСѓР¶РёРµРј "${destructionOption.weaponName}" x${quantity}. Р Р°СЃС…РѕРґ: ${totalGold} Р·РѕР»РѕС‚Р°, ${totalEnergy} СЌРЅРµСЂРіРёРё.`, 'destroy');
+        addHistoryLog(`Взорвано здание "${selectedBuilding.info.name}" в [${selectedBuilding.building.x}, ${selectedBuilding.building.y}] оружием "${destructionOption.weaponName}" x${quantity}. Расход: ${totalGold} золота, ${totalEnergy} энергии.`, 'destroy');
 
         const totalDamage = (destructionOption.damage || 0) * quantity;
         const totalTime = destructionOption.timeSeconds * quantity * timeMultiplier;
@@ -15459,7 +15581,7 @@ const App: React.FC = () => {
         }
 
         setPlayerRubies(prev => prev - cost);
-        addHistoryLog(`РЈСЃРєРѕСЂРµРЅРѕ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ "${info.name}". РЎС‚РѕРёРјРѕСЃС‚СЊ: ${cost} СЂСѓР±РёРЅРѕРІ.`, 'economy');
+        addHistoryLog(`Ускорено строительство "${info.name}". Стоимость: ${cost} рубинов.`, 'economy');
 
         // Mark interaction to prevent sticky sync
         lastInteractionRef.current.set(buildingDocId, Date.now());
@@ -15502,7 +15624,7 @@ const App: React.FC = () => {
                     setPlacedBuildings(prev => prev.filter(b => String(b.id) !== buildingDocId));
                     setSelectedBuilding(prev => prev && String(prev.building.id) === buildingDocId ? null : prev);
                     setPlayerRubies(prev => prev + cost);
-                    addHistoryLog(`РЈСЃРєРѕСЂРµРЅРёРµ "${info.name}" РѕС‚РјРµРЅРµРЅРѕ: Р·РґР°РЅРёРµ СѓР¶Рµ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚. Р СѓР±РёРЅС‹ РІРѕР·РІСЂР°С‰РµРЅС‹ (${cost}).`, 'system');
+                    addHistoryLog(`Ускорение "${info.name}" отменено: здание уже отсутствует. Рубины возвращены (${cost}).`, 'system');
                 } else {
                     handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`);
                 }
@@ -15603,12 +15725,12 @@ const App: React.FC = () => {
                         return;
                     }
 
-                    reject(new Error('РР·РѕР±СЂР°Р¶РµРЅРёРµ СЃР»РёС€РєРѕРј Р±РѕР»СЊС€РѕРµ РґР°Р¶Рµ РїРѕСЃР»Рµ СЃР¶Р°С‚РёСЏ.'));
+                    reject(new Error('Изображение слишком большое даже после сжатия.'));
                 };
-                img.onerror = () => reject(new Error('РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РёР·РѕР±СЂР°Р¶РµРЅРёРµ.'));
+                img.onerror = () => reject(new Error('Не удалось загрузить изображение.'));
                 img.src = e.target?.result as string;
             };
-            reader.onerror = () => reject(new Error('РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕС‡РёС‚Р°С‚СЊ С„Р°Р№Р» РёР·РѕР±СЂР°Р¶РµРЅРёСЏ.'));
+            reader.onerror = () => reject(new Error('Не удалось прочитать файл изображения.'));
             reader.readAsDataURL(file);
         });
     }, []);
@@ -15624,7 +15746,7 @@ const App: React.FC = () => {
                 if (user?.uid) {
                     writeCachedAvatar(user.uid, newAvatar);
                 }
-                addHistoryLog("РР·РјРµРЅРµРЅ Р°РІР°С‚Р°СЂ РїСЂРѕС„РёР»СЏ.", 'social');
+                addHistoryLog("Изменен аватар профиля.", 'social');
                 if (user) {
                     console.log('[AVATAR] User found, saving to DB...');
                     try {
@@ -15669,7 +15791,7 @@ const App: React.FC = () => {
                     }
                 }
             } catch (error: any) {
-                alert(error?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±СЂР°Р±РѕС‚Р°С‚СЊ Р°РІР°С‚Р°СЂ.');
+                alert(error?.message || 'Не удалось обработать аватар.');
             } finally {
                 event.target.value = '';
             }
@@ -15678,7 +15800,7 @@ const App: React.FC = () => {
 
     const handleSelectBuildingFromMenu = (building: Building) => {
         if (building.id === 6000 && playerLevel < 2) {
-            alert('Р”Р»СЏ РїРѕСЃС‚СЂРѕР№РєРё В«Р’РѕСЂРѕРІСЃРєРѕРіРѕ Р»РѕРіРѕРІР°В» С‚СЂРµР±СѓРµС‚СЃСЏ 2 СѓСЂРѕРІРµРЅСЊ Р°РєРєР°СѓРЅС‚Р°.');
+            alert('Для постройки «Воровского логова» требуется 2 уровень аккаунта.');
             return;
         }
         setBuildMenu({ visible: false, x: 0, y: 0 });
@@ -15735,7 +15857,7 @@ const App: React.FC = () => {
         if (townHall) {
             handleSectorTeleport(townHall.x, townHall.y);
         } else {
-            alert("РЈ РІР°СЃ РЅРµС‚ РіР»Р°РІРЅРѕРіРѕ Р·РґР°РЅРёСЏ!");
+            alert("У вас нет главного здания!");
         }
     };
 
@@ -15757,7 +15879,7 @@ const App: React.FC = () => {
 
         const bankAmount = activeCasinoBuilding.bank || 0;
         if (bankAmount <= 0) {
-            alert('Р‘Р°РЅРє РєР°Р·РёРЅРѕ РїСѓСЃС‚.');
+            alert('Банк казино пуст.');
             return;
         }
 
@@ -15778,7 +15900,7 @@ const App: React.FC = () => {
                 .catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${casinoBuildingId}`));
         }
 
-        addHistoryLog(`Р—Р°Р±СЂР°РЅР° РїСЂРёР±С‹Р»СЊ РёР· Р±Р°РЅРєР° РєР°Р·РёРЅРѕ: ${bankAmount} РјРѕРЅРµС‚.`, 'economy');
+        addHistoryLog(`Забрана прибыль из банка казино: ${bankAmount} монет.`, 'economy');
         setShowCasinoBankModal(false);
     };
 
@@ -15862,7 +15984,7 @@ const App: React.FC = () => {
         if (!user || !activePrivateChat || !privateMessageText.trim()) return;
 
         if (isBanned()) {
-            alert("Р’С‹ Р В Р’В·Р В Р’В°Р В Р’В±Р В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р РЋРІР‚в„– Р В РЎвЂ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р В РЎвЂ”Р В РЎвЂР РЋР С“Р В Р’В°Р РЋРІР‚С™Р РЋР Р‰ Р В Р’В»Р В РЎвЂР РЋРІР‚РЋР В Р вЂ¦Р РЋРІР‚в„–Р В Р’Вµ Р РЋР С“Р В РЎвЂўР В РЎвЂўР В Р’В±Р РЋРІР‚В°Р В Р’ВµР В Р вЂ¦Р В РЎвЂР РЋР РЏ!");
+            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р С—Р С‘РЎРѓР В°РЎвЂљРЎРЉ Р В»Р С‘РЎвЂЎР Р…РЎвЂ№Р Вµ РЎРѓР С•Р С•Р В±РЎвЂ°Р ВµР Р…Р С‘РЎРЏ!");
             return;
         }
 
@@ -15873,7 +15995,7 @@ const App: React.FC = () => {
             if (playerEnergy < energy) {
                 openEnergyWarningModal(energy);
             } else {
-                alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂРµСЃСѓСЂСЃРѕРІ! РќСѓР¶РЅРѕ ${cost} Р·РѕР»РѕС‚Р° Рё ${energy} СЌРЅРµСЂРіРёРё.`);
+                alert(`Недостаточно ресурсов! Нужно ${cost} золота и ${energy} энергии.`);
             }
             return;
         }
@@ -15902,7 +16024,7 @@ const App: React.FC = () => {
             if (isAnonymousMessage) {
                 setPlayerGold(prev => prev - cost);
                 setPlayerEnergy(prev => prev - energy);
-                addHistoryLog(`РћС‚РїСЂР°РІР»РµРЅРѕ Р°РЅРѕРЅРёРјРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ РёРіСЂРѕРєСѓ ${allUsers[activePrivateChat]?.name || 'РЅРµРёР·РІРµСЃС‚РЅРѕРјСѓ'}.`, 'economy');
+                addHistoryLog(`Отправлено анонимное сообщение игроку ${allUsers[activePrivateChat]?.name || 'неизвестному'}.`, 'economy');
                 // Switch to the anonymous chat view if we just sent an anonymous message
                 setActivePrivateChatId(chatId);
             }
@@ -15934,7 +16056,7 @@ const App: React.FC = () => {
 
     const handleSendMessage = (type: 'normal' | 'shout' = 'normal') => {
         if (isBanned() && activeChatTab !== 'banya' && activeChatTab !== 'clan') {
-            alert('Р’С‹ Р·Р°Р±Р°РЅРµРЅС‹ Рё РјРѕР¶РµС‚Рµ РїРёСЃР°С‚СЊ С‚РѕР»СЊРєРѕ РІ Р±Р°РЅРµ РёР»Рё РєР»Р°РЅРµ!');
+            alert('Вы забанены и можете писать только в бане или клане!');
             return;
         }
         
@@ -15944,7 +16066,7 @@ const App: React.FC = () => {
             const timeSinceLastMessage = now - lastClanChatTime;
             if (timeSinceLastMessage < 60000) { // 1 minute = 60000 ms
                 const remainingSeconds = Math.ceil((60000 - timeSinceLastMessage) / 1000);
-                alert(`Р’С‹ Р·Р°Р±Р°РЅРµРЅС‹! Р’ РєР»Р°РЅРѕРІРѕРј С‡Р°С‚Рµ РјРѕР¶РЅРѕ РїРёСЃР°С‚СЊ С‚РѕР»СЊРєРѕ 1 СЂР°Р· РІ РјРёРЅСѓС‚Сѓ. РџРѕРґРѕР¶РґРёС‚Рµ РµС‰С‘ ${remainingSeconds} СЃРµРє.`);
+                alert(`Вы забанены! В клановом чате можно писать только 1 раз в минуту. Подождите ещё ${remainingSeconds} сек.`);
                 return;
             }
             setLastClanChatTime(now);
@@ -15988,12 +16110,12 @@ const App: React.FC = () => {
 
     const handleConfirmShout = () => {
         if (isBanned()) {
-            alert('Р’С‹ Р·Р°Р±Р°РЅРµРЅС‹ Рё РЅРµ РјРѕР¶РµС‚Рµ РєСЂРёС‡Р°С‚СЊ!');
+            alert('Вы забанены и не можете кричать!');
             setShowShoutModal(false);
             return;
         }
         if (playerGold < SHOUT_COST_GOLD) {
-            alert(`РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ Р·РѕР»РѕС‚Р°! РўСЂРµР±СѓРµС‚СЃСЏ ${SHOUT_COST_GOLD}.`);
+            alert(`Недостаточно золота! Требуется ${SHOUT_COST_GOLD}.`);
             return;
         }
         if (playerEnergy < SHOUT_COST_ENERGY) {
@@ -16003,7 +16125,7 @@ const App: React.FC = () => {
 
         setPlayerGold(prev => prev - SHOUT_COST_GOLD);
         setPlayerEnergy(prev => prev - SHOUT_COST_ENERGY);
-        addHistoryLog(`РСЃРїРѕР»СЊР·РѕРІР°РЅ РєСЂРёРє. Р Р°СЃС…РѕРґ: ${SHOUT_COST_GOLD} РјРѕРЅРµС‚, ${SHOUT_COST_ENERGY} СЌРЅРµСЂРіРёРё.`, 'social');
+        addHistoryLog(`Использован крик. Расход: ${SHOUT_COST_GOLD} монет, ${SHOUT_COST_ENERGY} энергии.`, 'social');
 
         let messageText = chatInput;
         const myCurse = playerActiveCurse;
@@ -16079,13 +16201,13 @@ const App: React.FC = () => {
 
     const handleSendLocation = () => {
         if (isBanned()) {
-            alert('Р’С‹ Р·Р°Р±Р°РЅРµРЅС‹ Рё РЅРµ РјРѕР¶РµС‚Рµ РґРµР»РёС‚СЊСЃСЏ РјРµСЃС‚РѕРїРѕР»РѕР¶РµРЅРёРµРј!');
+            alert('Вы забанены и не можете делиться местоположением!');
             return;
         }
         const now = Date.now();
         if (now - lastLocationShareTime < LOCATION_SHARE_COOLDOWN) {
             const remaining = Math.ceil((LOCATION_SHARE_COOLDOWN - (now - lastLocationShareTime)) / 1000);
-            alert(`РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РїРѕРґРѕР¶РґРёС‚Рµ РµС‰С‘ ${remaining} СЃРµРє. РїРµСЂРµРґ СЃР»РµРґСѓСЋС‰РµР№ РѕС‚РїСЂР°РІРєРѕР№ РєРѕРѕСЂРґРёРЅР°С‚.`);
+            alert(`Пожалуйста, подождите ещё ${remaining} сек. перед следующей отправкой координат.`);
             return;
         }
         setLastLocationShareTime(now);
@@ -16096,7 +16218,7 @@ const App: React.FC = () => {
         const newMessage: ChatMessage = {
             id: Date.now(),
             sender: playerName,
-            text: 'РџРѕСЃРјРѕС‚СЂРёС‚Рµ СЃСЋРґР°',
+            text: 'Посмотрите сюда',
             type: 'normal',
             timestamp: Date.now(),
             tab: activeChatTab,
@@ -16215,7 +16337,7 @@ const App: React.FC = () => {
                 console.log('[CLAN AVATAR] Generated base64, length:', compressedLogo.length);
                 setNewClanAvatar(compressedLogo);
             } catch (error: any) {
-                alert(error?.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±СЂР°Р±РѕС‚Р°С‚СЊ Р»РѕРіРѕС‚РёРї РєР»Р°РЅР°.');
+                alert(error?.message || 'Не удалось обработать логотип клана.');
             } finally {
                 event.target.value = '';
             }
@@ -16228,7 +16350,7 @@ const App: React.FC = () => {
             if (fieldErrors && typeof fieldErrors === 'object') {
                 const messages = Object.entries(fieldErrors)
                     .map(([field, info]: [string, any]) => {
-                        const message = info?.message || info?.code || 'РЅРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°';
+                        const message = info?.message || info?.code || 'неизвестная ошибка';
                         return `${field}: ${message}`;
                     })
                     .filter(Boolean);
@@ -16242,21 +16364,21 @@ const App: React.FC = () => {
                 error?.response?.data?.message ||
                 error?.data?.message;
 
-            return topLevelMessage || 'РќРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР° PocketBase';
+            return topLevelMessage || 'Неизвестная ошибка PocketBase';
         };
 
         if (!newClanName.trim()) {
-            alert('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РєР»Р°РЅР°!');
+            alert('Введите название клана!');
             return;
         }
         if (newClanDesc.length > 500) {
-            alert('РћРїРёСЃР°РЅРёРµ СЃР»РёС€РєРѕРј РґР»РёРЅРЅРѕРµ! РњР°РєСЃРёРјСѓРј 500 СЃРёРјРІРѕР»РѕРІ.');
+            alert('Описание слишком длинное! Максимум 500 символов.');
             return;
         }
         if (!user) return;
 
         if (playerClanId) {
-            alert('Р’С‹ СѓР¶Рµ СЃРѕСЃС‚РѕРёС‚Рµ РІ РєР»Р°РЅРµ.');
+            alert('Вы уже состоите в клане.');
             return;
         }
 
@@ -16333,17 +16455,17 @@ const App: React.FC = () => {
             setNewClanName('');
             setNewClanDesc('');
             setNewClanAvatar(null);
-            addHistoryLog(`РЎРѕР·РґР°РЅ РєР»Р°РЅ "${normalizedClan.name}".`, 'social');
+            addHistoryLog(`Создан клан "${normalizedClan.name}".`, 'social');
             alert(successMessage);
         };
 
         const existingOwnClan = clans.find(c => c.leaderUid === user.uid || (c as any).leaderId === user.uid);
         if (existingOwnClan) {
             try {
-                await persistClanAndAttach(existingOwnClan, 'РљР»Р°РЅ СѓСЃРїРµС€РЅРѕ СЃРѕР·РґР°РЅ!');
+                await persistClanAndAttach(existingOwnClan, 'Клан успешно создан!');
             } catch (e) {
                 handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
-                alert('РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРёРІСЏР·Р°С‚СЊ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєР»Р°РЅ Рє РїСЂРѕС„РёР»СЋ.');
+                alert('Не удалось привязать уже существующий клан к профилю.');
             }
             return;
         }
@@ -16351,7 +16473,7 @@ const App: React.FC = () => {
         try {
             const existingClanFromServer = await findExistingClanByLeader();
             if (existingClanFromServer) {
-                await persistClanAndAttach(existingClanFromServer, 'РљР»Р°РЅ СѓСЃРїРµС€РЅРѕ СЃРѕР·РґР°РЅ!');
+                await persistClanAndAttach(existingClanFromServer, 'Клан успешно создан!');
                 return;
             }
         } catch (e) {
@@ -16360,7 +16482,7 @@ const App: React.FC = () => {
 
         const hasBanditCastle = placedBuildings.some(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing);
         if (!hasBanditCastle) {
-            alert('РќРµРІРѕР·РјРѕР¶РЅРѕ СЃРѕР·РґР°С‚СЊ РєР»Р°РЅ, РїРѕРєР° РЅРµ РїРѕСЃС‚СЂРѕРµРЅ В«Р‘Р°РЅРґРёС‚СЃРєРёР№ Р·Р°РјРѕРєВ».');
+            alert('Невозможно создать клан, пока не построен «Бандитский замок».');
             return;
         }
 
@@ -16416,12 +16538,12 @@ const App: React.FC = () => {
         };
 
         try {
-            await persistClanAndAttach(newClan, 'РљР»Р°РЅ СѓСЃРїРµС€РЅРѕ СЃРѕР·РґР°РЅ!');
+            await persistClanAndAttach(newClan, 'Клан успешно создан!');
         } catch (e) {
             try {
                 const existingClanFromServer = await findExistingClanByLeader();
                 if (existingClanFromServer) {
-                    await persistClanAndAttach(existingClanFromServer, 'РљР»Р°РЅ СѓСЃРїРµС€РЅРѕ СЃРѕР·РґР°РЅ!');
+                    await persistClanAndAttach(existingClanFromServer, 'Клан успешно создан!');
                     return;
                 }
             } catch (recoveryError) {
@@ -16430,7 +16552,7 @@ const App: React.FC = () => {
 
             rollbackOptimisticClanState();
             handleFirestoreError(e, OperationType.CREATE, `clans/${newClan.id}`);
-            alert(`РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РєР»Р°РЅ.\n${formatPocketBaseError(e)}`);
+            alert(`Не удалось создать клан.\n${formatPocketBaseError(e)}`);
         }
     };
 
@@ -16438,7 +16560,7 @@ const App: React.FC = () => {
         if (!user) return;
 
         if (playerClanId === clanId) {
-            alert('Р’С‹ СѓР¶Рµ СЃРѕСЃС‚РѕРёС‚Рµ РІ РєР»Р°РЅРµ!');
+            alert('Вы уже состоите в клане!');
             return;
         }
 
@@ -16478,8 +16600,8 @@ const App: React.FC = () => {
                 return updated;
             });
         }
-        addHistoryLog(`Р’СЃС‚СѓРїР»РµРЅРёРµ РІ РєР»Р°РЅ "${clan.name}".`, 'social');
-        alert('Р’С‹ РІСЃС‚СѓРїРёР»Рё РІ РєР»Р°РЅ!');
+        addHistoryLog(`Вступление в клан "${clan.name}".`, 'social');
+        alert('Вы вступили в клан!');
     };
 
     const handleLeaveClan = () => {
@@ -16504,8 +16626,8 @@ const App: React.FC = () => {
             updateDoc(userDocRef, { clanId: null }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
         }
         setShowLeaveClanConfirmation(false);
-        addHistoryLog("Р’С‹С…РѕРґ РёР· РєР»Р°РЅР°.", 'social');
-        alert("Р’С‹ РїРѕРєРёРЅСѓР»Рё РєР»Р°РЅ.");
+        addHistoryLog("Выход из клана.", 'social');
+        alert("Вы покинули клан.");
     };
 
     const handleSaveClanSettings = async () => {
@@ -16537,8 +16659,8 @@ const App: React.FC = () => {
 
             setShowClanSettings(false);
             setNewClanAvatar(null);
-            addHistoryLog("РќР°СЃС‚СЂРѕР№РєРё РєР»Р°РЅР° РѕР±РЅРѕРІР»РµРЅС‹.", 'social');
-            alert("РќР°СЃС‚СЂРѕР№РєРё РєР»Р°РЅР° СЃРѕС…СЂР°РЅРµРЅС‹!");
+            addHistoryLog("Настройки клана обновлены.", 'social');
+            alert("Настройки клана сохранены!");
         } catch (e) {
             console.error('[ClanSettings] Save failed:', e);
             handleFirestoreError(e, OperationType.UPDATE, `clans/${playerClanId}`);
@@ -16587,7 +16709,7 @@ const App: React.FC = () => {
                                 ...prev2,
                                 [memberUid]: {
                                     uid: memberUid,
-                                    name: data.name || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“',
+                                    name: data.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
                                     level: data.level || 1,
                                     glory: data.glory || 0,
                                     reputation: data.reputation || 0,
@@ -16603,7 +16725,7 @@ const App: React.FC = () => {
                 return updated;
             });
 
-            addHistoryLog(`РћР±РЅРѕРІР»РµРЅС‹ РїСЂР°РІР° СѓС‡Р°СЃС‚РЅРёРєР° РєР»Р°РЅР°.`, 'social');
+            addHistoryLog(`Обновлены права участника клана.`, 'social');
         } catch (e) {
             console.error('[StarUpdate] Save failed:', e);
             handleFirestoreError(e, OperationType.UPDATE, `users/${memberUid}`);
@@ -16631,7 +16753,7 @@ const App: React.FC = () => {
             if (normalizeClanIdValue(u.clanId) !== Number(activeClanId)) return;
             membersByUid.set(memberUid, {
                 uid: memberUid,
-                name: u.name || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“',
+                name: u.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
                 level: u.level || 1,
                 coinsEarned: u.coinsEarned || 0,
                 xpEarned: u.xpEarned || 0,
@@ -16647,7 +16769,7 @@ const App: React.FC = () => {
             const leaderData = allUsers[currentClan.leaderUid] || {};
             membersByUid.set(currentClan.leaderUid, {
                 uid: currentClan.leaderUid,
-                name: leaderData.name || currentClan.leaderName || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№',
+                name: leaderData.name || currentClan.leaderName || 'Неизвестный',
                 level: leaderData.level || 1,
                 coinsEarned: leaderData.coinsEarned || 0,
                 xpEarned: leaderData.xpEarned || 0,
@@ -16665,7 +16787,7 @@ const App: React.FC = () => {
             const selfData = allUsers[user.uid] || {};
             membersByUid.set(user.uid, {
                 uid: user.uid,
-                name: selfData.name || playerName || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№',
+                name: selfData.name || playerName || 'Неизвестный',
                 level: selfData.level || playerLevel || 1,
                 coinsEarned: selfData.coinsEarned || 0,
                 xpEarned: selfData.xpEarned || 0,
@@ -16797,18 +16919,18 @@ const App: React.FC = () => {
     }, [activeProfileTab, currentClan, isAuthReady, normalizeClan, playerAvatar, playerClanId, playerName, user]);
 
     const buildTabs: { name: BuildMenuTab, icon: React.ReactNode, label?: string }[] = [
-        { name: 'Р“СЂСЏРґРєРё', icon: <GreeneryIcon className="w-6 h-6" /> },
-        { name: 'Р–РёР»СЊРµ', icon: <ResidentialIcon className="w-6 h-6" /> },
-        { name: 'Р‘РёР·РЅРµСЃ', icon: <BusinessIcon className="w-6 h-6" /> },
-        { name: 'Р—Р°С‰РёС‚Р°', icon: <DefenseIcon className="w-6 h-6" /> },
-        { name: 'Р‘СѓРєРІС‹', icon: <LettersIcon className="w-6 h-6" /> },
-        { name: 'Р”РµРєРѕСЂ', icon: <GreeneryIcon className="w-6 h-6" /> },
-        { name: 'Р”РѕСЂРѕРіРё Рё СЃС‚РµРЅС‹', icon: <RoadsIcon className="w-6 h-6" />, label: 'Р”РѕСЂРѕРіРё' },
-        { name: 'Р—Р°РІРѕРґС‹', icon: <FactoriesIcon className="w-6 h-6" /> },
-        { name: 'РњРѕРЅСЃС‚СЂС‹', icon: <MonstersIcon className="w-6 h-6" /> },
-        { name: 'РљР»Р°РЅ', icon: <ClanIcon className="w-6 h-6" /> },
-        { name: 'РџРѕРґР°СЂРєРё', icon: <GiftsIcon className="w-6 h-6" /> },
-        { name: 'РЎС‚Р°С‚СѓРё', icon: <ShieldIcon className="w-6 h-6" /> },
+        { name: 'Грядки', icon: <GreeneryIcon className="w-6 h-6" /> },
+        { name: 'Жилье', icon: <ResidentialIcon className="w-6 h-6" /> },
+        { name: 'Бизнес', icon: <BusinessIcon className="w-6 h-6" /> },
+        { name: 'Защита', icon: <DefenseIcon className="w-6 h-6" /> },
+        { name: 'Буквы', icon: <LettersIcon className="w-6 h-6" /> },
+        { name: 'Декор', icon: <GreeneryIcon className="w-6 h-6" /> },
+        { name: 'Дороги и стены', icon: <RoadsIcon className="w-6 h-6" />, label: 'Дороги' },
+        { name: 'Заводы', icon: <FactoriesIcon className="w-6 h-6" /> },
+        { name: 'Монстры', icon: <MonstersIcon className="w-6 h-6" /> },
+        { name: 'Клан', icon: <ClanIcon className="w-6 h-6" /> },
+        { name: 'Подарки', icon: <GiftsIcon className="w-6 h-6" /> },
+        { name: 'Статуи', icon: <ShieldIcon className="w-6 h-6" /> },
     ];
 
     // Custom sort orders for specific tabs
@@ -16820,7 +16942,7 @@ const App: React.FC = () => {
     const normalizedActiveBuildTab = repairMojibakeCp1251Utf8(activeBuildTab);
     const normalizedBuildMenuSearch = repairMojibakeCp1251Utf8(buildMenuSearch).trim().toLowerCase();
     const buildTabCategoryAliases: Record<string, string[]> = {
-        'Р–РёР»СЊРµ': ['Р–РёР»С‹Рµ'],
+        'Жилье': ['Жилые'],
     };
     const buildingsInCurrentTab = buildingData.filter(b => {
             if (TOWN_HALL_IDS.includes(Number(b.id))) return false;
@@ -16833,14 +16955,14 @@ const App: React.FC = () => {
             const allowedCategories = buildTabCategoryAliases[normalizedActiveBuildTab] || [normalizedActiveBuildTab];
             if (!allowedCategories.includes(normalizedCategory)) return false;
             // Filter by letter sub-tab if in Letters category
-            if (normalizedActiveBuildTab === 'Р‘СѓРєРІС‹') {
+            if (normalizedActiveBuildTab === 'Буквы') {
                 const letterSubCategory = (b as any).letterSubCategory;
                 if (letterSubTab === 'english' && letterSubCategory !== 'english') return false;
                 if (letterSubTab === 'russian' && letterSubCategory !== 'russian') return false;
                 if (letterSubTab === 'numbers' && letterSubCategory !== 'numbers') return false;
             }
             // Filter by gift sub-tab if in Gifts category
-            if (normalizedActiveBuildTab === 'РџРѕРґР°СЂРєРё') {
+            if (normalizedActiveBuildTab === 'Подарки') {
                 const giftSubCategory = (b as any).giftSubCategory;
                 if (giftSubTab === 'main' && (giftSubCategory === 'castles' || giftSubCategory === 'babies' || giftSubCategory === 'march8' || giftSubCategory === 'halloween' || giftSubCategory === 'valentine' || giftSubCategory === 'spring')) return false;
                 if (giftSubTab === 'castles' && giftSubCategory !== 'castles') return false;
@@ -16851,7 +16973,7 @@ const App: React.FC = () => {
                 if (giftSubTab === 'spring' && giftSubCategory !== 'spring') return false;
             }
             // Filter by decor sub-tab if in Decor category
-            if (normalizedActiveBuildTab === 'Р”РµРєРѕСЂ') {
+            if (normalizedActiveBuildTab === 'Декор') {
                 const decorSubCategory = (b as any).decorSubCategory;
                 if (decorSubTab === 'flags' && decorSubCategory !== 'flags') return false;
                 if (decorSubTab === 'other' && decorSubCategory === 'flags') return false;
@@ -16859,22 +16981,22 @@ const App: React.FC = () => {
             return true;
         }).sort((a, b) => {
             // Apply custom sort order for specific tabs
-            if (normalizedActiveBuildTab === 'Р“СЂСЏРґРєРё') {
+            if (normalizedActiveBuildTab === 'Грядки') {
                 const ai = gryadkiSortOrder.indexOf(a.id);
                 const bi = gryadkiSortOrder.indexOf(b.id);
                 return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
             }
-            if (normalizedActiveBuildTab === 'Р—Р°РІРѕРґС‹') {
+            if (normalizedActiveBuildTab === 'Заводы') {
                 const ai = zavodySortOrder.indexOf(a.id);
                 const bi = zavodySortOrder.indexOf(b.id);
                 return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
             }
-            if (normalizedActiveBuildTab === 'Р–РёР»СЊРµ') {
+            if (normalizedActiveBuildTab === 'Жилье') {
                 const ai = zhilyeSortOrder.indexOf(a.id);
                 const bi = zhilyeSortOrder.indexOf(b.id);
                 return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
             }
-            if (normalizedActiveBuildTab === 'Р‘РёР·РЅРµСЃ') {
+            if (normalizedActiveBuildTab === 'Бизнес') {
                 const ai = biznesSortOrder.indexOf(a.id);
                 const bi = biznesSortOrder.indexOf(b.id);
                 return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
@@ -16930,18 +17052,18 @@ const App: React.FC = () => {
         });
 
     const topPlayersTabs: Array<{ id: TopPlayersTab; label: string; icon: string }> = [
-        { id: 'glory', label: 'РЎР»Р°РІР°', icon: 'рџЏ†' },
-        { id: 'trees', label: 'Р”РµСЂРµРІСЊСЏ', icon: 'рџЊі' },
-        { id: 'monsters', label: 'РњРѕРЅСЃС‚СЂС‹', icon: 'рџ’Ґ' },
-        { id: 'buildings', label: 'Р—РґР°РЅРёСЏ', icon: 'рџЏљпёЏ' },
-        { id: 'theft', label: 'Р’РѕСЂРѕРІСЃС‚РІРѕ', icon: 'рџҐ·' },
+        { id: 'glory', label: 'Слава', icon: '🏆' },
+        { id: 'trees', label: 'Деревья', icon: '🌳' },
+        { id: 'monsters', label: 'Монстры', icon: '💥' },
+        { id: 'buildings', label: 'Здания', icon: '🏚️' },
+        { id: 'theft', label: 'Воровство', icon: '🥷' },
     ];
 
     const resourceShopTabs: Array<{ id: ResourceShopCategory; label: string }> = [
-        { id: 'resources', label: 'Р РµСЃСѓСЂСЃС‹' },
-        { id: 'gryadki', label: 'Р“СЂСЏРґРєРё' },
-        { id: 'bombs', label: 'Р‘РѕРјР±С‹' },
-        { id: 'monsters', label: 'РњРѕРЅСЃС‚СЂС‹' },
+        { id: 'resources', label: 'Ресурсы' },
+        { id: 'gryadki', label: 'Грядки' },
+        { id: 'bombs', label: 'Бомбы' },
+        { id: 'monsters', label: 'Монстры' },
     ];
 
     const monsterShopItemIds = new Set<number>([10007, 10018]);
@@ -16984,7 +17106,7 @@ const App: React.FC = () => {
         if (!targetUid) {
             return {
                 isOnline: false,
-                label: 'РЎС‚Р°С‚СѓСЃ РЅРµРёР·РІРµСЃС‚РµРЅ',
+                label: 'Статус неизвестен',
                 textClassName: 'text-gray-400',
                 dotClassName: 'bg-gray-500'
             };
@@ -16999,7 +17121,7 @@ const App: React.FC = () => {
         if (isOnline) {
             return {
                 isOnline: true,
-                label: 'Р’ СЃРµС‚Рё',
+                label: 'В сети',
                 textClassName: 'text-green-400',
                 dotClassName: 'bg-green-400'
             };
@@ -17008,7 +17130,7 @@ const App: React.FC = () => {
         if (lastSeen <= 0) {
             return {
                 isOnline: false,
-                label: 'РќРµ РІ СЃРµС‚Рё',
+                label: 'Не в сети',
                 textClassName: 'text-gray-400',
                 dotClassName: 'bg-gray-500'
             };
@@ -17020,7 +17142,7 @@ const App: React.FC = () => {
         if (diffMs < 24 * 60 * 60 * 1000) {
             return {
                 isOnline: false,
-                label: `${diffMinutes} РјРёРЅ. РЅР°Р·Р°Рґ`,
+                label: `${diffMinutes} мин. назад`,
                 textClassName: 'text-amber-300',
                 dotClassName: 'bg-gray-500'
             };
@@ -17044,11 +17166,11 @@ const App: React.FC = () => {
     };
 
     const topPlayersLabelByTab: Record<TopPlayersTab, string> = {
-        glory: 'Р РµР№С‚РёРЅРі РїРѕ СЃР»Р°РІРµ',
-        trees: 'РўРѕРї РїРѕ СЃСЂСѓР±Р»РµРЅРЅС‹Рј РґРµСЂРµРІСЊСЏРј',
-        monsters: 'РўРѕРї РїРѕ РІР·СЂС‹РІСѓ РјРѕРЅСЃС‚СЂРѕРІ',
-        buildings: 'РўРѕРї РїРѕ РІР·СЂС‹РІСѓ Р·РґР°РЅРёР№',
-        theft: 'РўРѕРї РїРѕ РІРѕСЂРѕРІСЃС‚РІСѓ',
+        glory: 'Рейтинг по славе',
+        trees: 'Топ по срубленным деревьям',
+        monsters: 'Топ по взрыву монстров',
+        buildings: 'Топ по взрыву зданий',
+        theft: 'Топ по воровству',
     };
 
     const baseTopPlayersData = mergeTopPlayersEntries(
@@ -17057,7 +17179,7 @@ const App: React.FC = () => {
             return toTopPlayerEntry(entry.uid, {
                 ...supplemental,
                 ...entry,
-                name: entry.name || supplemental.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№',
+                name: entry.name || supplemental.name || 'Неизвестный',
                 avatar: entry.avatar || supplemental.avatar || null,
                 glory: Math.max(Number(entry.glory || 0) || 0, Number(supplemental.glory || 0) || 0),
                 treesChopped: Math.max(Number(entry.treesChopped || 0) || 0, Number(supplemental.treesChopped || 0) || 0),
@@ -17125,7 +17247,7 @@ const App: React.FC = () => {
     const isAdmin = user && user.email === "goldwasdodessabibi@gmail.com";
 
     const resetMap = async () => {
-        if (!isAdmin || !window.confirm("Р’С‹ Р РЋРЎвЂњР В Р вЂ Р В Р’ВµР РЋР вЂљР В Р’ВµР В Р вЂ¦Р РЋРІР‚в„–, Р РЋРІР‚РЋР РЋРІР‚С™Р В РЎвЂў Р РЋРІР‚В¦Р В РЎвЂўР РЋРІР‚С™Р В РЎвЂР РЋРІР‚С™Р В Р’Вµ Р РЋР С“Р В Р’В±Р РЋР вЂљР В РЎвЂўР РЋР С“Р В РЎвЂР РЋРІР‚С™Р РЋР Р‰ Р В РЎвЂќР В Р’В°Р РЋР вЂљР РЋРІР‚С™Р РЋРЎвЂњ? Р В Р’В­Р РЋРІР‚С™Р В РЎвЂў Р РЋРЎвЂњР В РўвЂР В Р’В°Р В Р’В»Р В РЎвЂР РЋРІР‚С™ Р В Р вЂ Р РЋР С“Р В Р’Вµ Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРЎвЂњР РЋР вЂљР РЋР С“Р РЋРІР‚в„– Р В РЎвЂ Р В Р’В·Р В РўвЂР В Р’В°Р В Р вЂ¦Р В РЎвЂР РЋР РЏ!")) return;
+        if (!isAdmin || !window.confirm("Вы РЎС“Р Р†Р ВµРЎР‚Р ВµР Р…РЎвЂ№, РЎвЂЎРЎвЂљР С• РЎвЂ¦Р С•РЎвЂљР С‘РЎвЂљР Вµ РЎРѓР В±РЎР‚Р С•РЎРѓР С‘РЎвЂљРЎРЉ Р С”Р В°РЎР‚РЎвЂљРЎС“? Р В­РЎвЂљР С• РЎС“Р Т‘Р В°Р В»Р С‘РЎвЂљ Р Р†РЎРѓР Вµ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓРЎвЂ№ Р С‘ Р В·Р Т‘Р В°Р Р…Р С‘РЎРЏ!")) return;
 
         try {
             // Delete map status to trigger regeneration
@@ -17427,7 +17549,7 @@ const App: React.FC = () => {
                 });
             }
             setBuildingLimitModalData(null);
-            setPermitPurchaseToast('-1 СЂСѓР±РёРЅ, +1 РјРµСЃС‚Рѕ РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°');
+            setPermitPurchaseToast('-1 рубин, +1 место для строительства');
             if (permitPurchaseToastTimerRef.current !== null) {
                 window.clearTimeout(permitPurchaseToastTimerRef.current);
             }
@@ -17435,7 +17557,7 @@ const App: React.FC = () => {
                 setPermitPurchaseToast(null);
                 permitPurchaseToastTimerRef.current = null;
             }, 1800);
-            addHistoryLog('РљСѓРїР»РµРЅРѕ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРµ СЂР°Р·СЂРµС€РµРЅРёРµ РЅР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ Р·Р° 1 СЂСѓР±РёРЅ.', 'economy');
+            addHistoryLog('Куплено дополнительное разрешение на строительство за 1 рубин.', 'economy');
         } catch (e: any) {
             if (e?.message === 'Insufficient rubies') {
                 openRubyWarningModal(permitPriceRubies);
@@ -17477,7 +17599,7 @@ const App: React.FC = () => {
 
             setPlayerRubies(prev => Math.max(0, prev - rubiesCost));
             setPlayerEnergy(prev => prev + amount);
-            setPermitPurchaseToast(`-${rubiesCost} СЂСѓР±. +${amount} СЌРЅРµСЂРіРёРё`);
+            setPermitPurchaseToast(`-${rubiesCost} руб. +${amount} энергии`);
             if (permitPurchaseToastTimerRef.current !== null) {
                 window.clearTimeout(permitPurchaseToastTimerRef.current);
             }
@@ -17485,7 +17607,7 @@ const App: React.FC = () => {
                 setPermitPurchaseToast(null);
                 permitPurchaseToastTimerRef.current = null;
             }, 1800);
-            addHistoryLog(`РљСѓРїР»РµРЅРѕ ${amount} СЌРЅРµСЂРіРёРё Р·Р° ${rubiesCost} СЂСѓР±.`, 'economy');
+            addHistoryLog(`Куплено ${amount} энергии за ${rubiesCost} руб.`, 'economy');
             setEnergyModalState(null);
         } catch (e: any) {
             if (e?.message === 'Insufficient rubies') {
@@ -17577,17 +17699,17 @@ const App: React.FC = () => {
             {moveMode.active && (
                 <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-blue-600/90 backdrop-blur-md text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center gap-4 border border-blue-400">
                     <div className="flex flex-col items-center">
-                        <span className="font-bold text-lg">Р’С‹Р±РµСЂРёС‚Рµ РЅРѕРІРѕРµ РјРµСЃС‚Рѕ</span>
-                        <span className="text-xs text-blue-200">РЎС‚РѕРёРјРѕСЃС‚СЊ: {(Number(moveMode.building?.buildingId) === MOUNTAIN_ID || Number(moveMode.building?.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} СЌРЅРµСЂРіРёРё</span>
+                        <span className="font-bold text-lg">Выберите новое место</span>
+                        <span className="text-xs text-blue-200">Стоимость: {(Number(moveMode.building?.buildingId) === MOUNTAIN_ID || Number(moveMode.building?.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии</span>
                     </div>
-                    <button onClick={() => setMoveMode({ active: false, building: null })} className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm font-bold transition-colors">РћС‚РјРµРЅР°</button>
+                    <button onClick={() => setMoveMode({ active: false, building: null })} className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm font-bold transition-colors">Отмена</button>
                 </div>
             )}
 
             {selectedOilDeposit && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setSelectedOilDeposit(null)}>
                     <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="text-2xl font-bold text-white mb-4">РњРµСЃС‚РѕСЂРѕР¶РґРµРЅРёРµ РЅРµС„С‚Рё</h2>
+                        <h2 className="text-2xl font-bold text-white mb-4">Месторождение нефти</h2>
                         <button onClick={() => setSelectedOilDeposit(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
                             <CloseIcon className="w-7 h-7" />
                         </button>
@@ -17602,7 +17724,7 @@ const App: React.FC = () => {
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex flex-col items-center justify-center transition-colors"
                             >
                                 <CompassIcon className="w-8 h-8 mb-2" />
-                                <span>РџРѕРґРµР»РёС‚СЊСЃСЏ</span>
+                                <span>Поделиться</span>
                             </button>
 
                             <button
@@ -17612,7 +17734,7 @@ const App: React.FC = () => {
                                 {oilRigInfo && (
                                     <>
                                         <img src={oilRigInfo.imageUrl} alt="Rig" className="w-8 h-8 mb-1 object-contain" />
-                                        <span className="text-sm mb-1">РџРѕСЃС‚СЂРѕРёС‚СЊ</span>
+                                        <span className="text-sm mb-1">Построить</span>
                                         <div className="flex items-center text-yellow-300 text-sm">
                                             <img src={coinImageUrl} className="w-3 h-3 mr-1" />
                                             {oilRigInfo.price?.toLocaleString()}
@@ -17628,7 +17750,7 @@ const App: React.FC = () => {
             {selectedQuarry && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setSelectedQuarry(null)}>
                     <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-                        <h2 className="text-2xl font-bold text-white mb-4">Р—Р°Р±СЂРѕС€РµРЅРЅР°СЏ РєР°РјРµРЅРѕР»РѕРјРЅСЏ</h2>
+                        <h2 className="text-2xl font-bold text-white mb-4">Заброшенная каменоломня</h2>
                         <button onClick={() => setSelectedQuarry(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
                             <CloseIcon className="w-7 h-7" />
                         </button>
@@ -17643,7 +17765,7 @@ const App: React.FC = () => {
                                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex flex-col items-center justify-center transition-colors"
                             >
                                 <CompassIcon className="w-8 h-8 mb-2" />
-                                <span>РџРѕРґРµР»РёС‚СЊСЃСЏ</span>
+                                <span>Поделиться</span>
                             </button>
 
                             <button
@@ -17653,7 +17775,7 @@ const App: React.FC = () => {
                                 {wildQuarryInfo && (
                                     <>
                                         <img src={wildQuarryInfo.imageUrl} alt="Wild Quarry" className="w-8 h-8 mb-1 object-contain" />
-                                        <span className="text-sm mb-1">РџРѕСЃС‚СЂРѕРёС‚СЊ</span>
+                                        <span className="text-sm mb-1">Построить</span>
                                         <div className="flex items-center text-yellow-300 text-sm">
                                             <img src={coinImageUrl} className="w-3 h-3 mr-1" />
                                             {wildQuarryInfo.price?.toLocaleString()}
@@ -17681,8 +17803,8 @@ const App: React.FC = () => {
                                 {/* Casino Under Construction Banner */}
                                 {CASINO_IDS.includes(selectedBuilding.info.id) && selectedBuilding.building.isConstructing && (
                                     <div className="bg-yellow-900/50 p-4 rounded-lg border border-yellow-500/50 mb-4">
-                                        <h3 className="text-lg font-bold text-yellow-400 mb-2 text-center">РРґРµС‚ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ</h3>
-                                        <p className="text-yellow-200 text-sm text-center mb-3">РљР°Р·РёРЅРѕ Р±СѓРґРµС‚ РґРѕСЃС‚СѓРїРЅРѕ РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°</p>
+                                        <h3 className="text-lg font-bold text-yellow-400 mb-2 text-center">Идет строительство</h3>
+                                        <p className="text-yellow-200 text-sm text-center mb-3">Казино будет доступно после завершения строительства</p>
                                         <ConstructionTimer
                                             endTime={selectedBuilding.building.constructionEndTime}
                                             cost={selectedBuilding.info.stats.accelerationCost || 0}
@@ -17692,16 +17814,16 @@ const App: React.FC = () => {
                                     </div>
                                 )}
 
-                                {selectedBuilding.info.stats.workTimeSeconds && selectedBuilding.info.category !== 'Р—Р°С‰РёС‚Р°' && !isBanditCastleBuildingId(selectedBuilding.info.id) && isMyBuilding(selectedBuilding.building) && !selectedBuilding.building.isConstructing && (
+                                {selectedBuilding.info.stats.workTimeSeconds && selectedBuilding.info.category !== 'Защита' && !isBanditCastleBuildingId(selectedBuilding.info.id) && isMyBuilding(selectedBuilding.building) && !selectedBuilding.building.isConstructing && (
                                     <div className="bg-gray-900/50 p-4 rounded-lg border border-blue-500/30 mb-4">
-                                        <h3 className="text-lg font-bold text-blue-300 mb-2">РџСЂРѕРёР·РІРѕРґСЃС‚РІРѕ</h3>
+                                        <h3 className="text-lg font-bold text-blue-300 mb-2">Производство</h3>
 
                                         {/* For direct interaction factories (like lilies/mushrooms), only show menu during production */}
                                         {DIRECT_INTERACTION_FACTORIES.includes(selectedBuilding.info.id) ? (
                                             selectedBuilding.building.workState === 'working' && (
                                                 <div className="text-center py-2">
-                                                    <p className="text-yellow-400 font-bold animate-pulse">РРґРµС‚ РїСЂРѕРёР·РІРѕРґСЃС‚РІРѕ...</p>
-                                                    <p className="text-xs text-gray-400 mt-1">РќР°Р¶РјРёС‚Рµ РЅР° Р·РґР°РЅРёРµ РЅР° РєР°СЂС‚Рµ РґР»СЏ СЃР±РѕСЂР°</p>
+                                                    <p className="text-yellow-400 font-bold animate-pulse">Идет производство...</p>
+                                                    <p className="text-xs text-gray-400 mt-1">Нажмите на здание на карте для сбора</p>
                                                 </div>
                                             )
                                         ) : (
@@ -17712,7 +17834,7 @@ const App: React.FC = () => {
                                                             {selectedBuilding.info.stats.takesPopulation && (
                                                                 <div className={`px-2 py-1 rounded text-sm flex items-center ${maxPopulation - currentPopulation >= selectedBuilding.info.stats.takesPopulation ? 'text-green-400 bg-green-900/30' : 'text-red-400 bg-red-900/30'}`}>
                                                                     <img src={populationImageUrl} className="w-4 h-4 mr-1" alt="pop" />
-                                                                    {selectedBuilding.info.stats.takesPopulation} С‡РµР».
+                                                                    {selectedBuilding.info.stats.takesPopulation} чел.
                                                                 </div>
                                                             )}
                                                             {selectedBuilding.info.stats.consumes?.map(req => {
@@ -17725,15 +17847,15 @@ const App: React.FC = () => {
                                                             })}
                                                         </div>
                                                         <button onClick={handleStartProduction} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded">
-                                                            РќР°С‡Р°С‚СЊ СЂР°Р±РѕС‚Сѓ ({Math.floor((selectedBuilding.info.stats.workTimeSeconds || 0) / 60)}Рј {String((selectedBuilding.info.stats.workTimeSeconds || 0) % 60).padStart(2, '0')}СЃ)
+                                                            Начать работу ({Math.floor((selectedBuilding.info.stats.workTimeSeconds || 0) / 60)}м {String((selectedBuilding.info.stats.workTimeSeconds || 0) % 60).padStart(2, '0')}с)
                                                         </button>
                                                     </div>
                                                 )}
 
                                                 {selectedBuilding.building.workState === 'working' && (
                                                     <div className="text-center py-2">
-                                                        <p className="text-yellow-400 font-bold animate-pulse">РРґРµС‚ РїСЂРѕРёР·РІРѕРґСЃС‚РІРѕ...</p>
-                                                        <p className="text-xs text-gray-400 mt-1">Р’Р·Р°РёРјРѕРґРµР№СЃС‚РІРёРµ РѕРіСЂР°РЅРёС‡РµРЅРѕ</p>
+                                                        <p className="text-yellow-400 font-bold animate-pulse">Идет производство...</p>
+                                                        <p className="text-xs text-gray-400 mt-1">Взаимодействие ограничено</p>
                                                     </div>
                                                 )}
 
@@ -17742,11 +17864,11 @@ const App: React.FC = () => {
                                                         {[400, 401, 402, 403, 404, 406, 407, 408].includes(selectedBuilding.info.id) ? (
                                                             <button onClick={handleStartProduction} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded flex items-center justify-center">
                                                                 <img src={builderIconUrl} className="w-6 h-6 mr-2" alt="worker" />
-                                                                РћС‚РїСЂР°РІРёС‚СЊ СЂР°Р±РѕС‡РµРіРѕ
+                                                                Отправить рабочего
                                                             </button>
                                                         ) : (
                                                             <button onClick={handleCollectProduction} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded animate-bounce">
-                                                                Р—Р°Р±СЂР°С‚СЊ РїСЂРѕРґСѓРєС†РёСЋ
+                                                                Забрать продукцию
                                                             </button>
                                                         )}
                                                     </div>
@@ -17759,8 +17881,8 @@ const App: React.FC = () => {
                                 {/* Watchtower Tax Settings */}
                                 {selectedBuilding.info.id === WATCHTOWER_ID && isMyBuilding(selectedBuilding.building) && (
                                     <div className="bg-gray-900/50 p-4 rounded-lg border border-purple-500/30 mb-4">
-                                        <h3 className="text-lg font-bold text-purple-300 mb-2">РќР°Р»РѕРі СЃРµРєС‚РѕСЂР°</h3>
-                                        <p className="text-sm text-gray-400 mb-2">РЈСЃС‚Р°РЅРѕРІРёС‚Рµ РЅР°Р»РѕРі (0-50%) РґР»СЏ СЌС‚РѕРіРѕ СЃРµРєС‚РѕСЂР°.</p>
+                                        <h3 className="text-lg font-bold text-purple-300 mb-2">Налог сектора</h3>
+                                        <p className="text-sm text-gray-400 mb-2">Установите налог (0-50%) для этого сектора.</p>
                                         <div className="flex items-center space-x-2">
                                             <input
                                                 type="range"
@@ -17790,8 +17912,8 @@ const App: React.FC = () => {
                                 {/* Clan Castle Bank */}
                                 {BANDIT_CASTLE_IDS.has(Number(selectedBuilding.info.id)) && isMyBuilding(selectedBuilding.building) && (
                                     <div className="bg-gray-900/50 p-4 rounded-lg border border-yellow-500/30 mb-4 text-center">
-                                        <h3 className="text-lg font-bold text-yellow-400 mb-2">Р‘Р°РЅРє РєР»Р°РЅР°</h3>
-                                        <p className="text-sm text-gray-400 mb-3">РќР°РєРѕРїР»РµРЅРЅР°СЏ РїСЂРёР±С‹Р»СЊ СЃ РЅР°Р»РѕРіР°.</p>
+                                        <h3 className="text-lg font-bold text-yellow-400 mb-2">Банк клана</h3>
+                                        <p className="text-sm text-gray-400 mb-3">Накопленная прибыль с налога.</p>
                                         <div className="text-2xl font-bold text-white mb-3 flex items-center justify-center">
                                             <img src={coinImageUrl} className="w-6 h-6 mr-2 object-contain" alt="coin" />
                                             {selectedBuilding.building.bank || 0}
@@ -17801,7 +17923,7 @@ const App: React.FC = () => {
                                             disabled={(selectedBuilding.building.bank || 0) <= 0}
                                             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded disabled:bg-gray-600 disabled:cursor-not-allowed"
                                         >
-                                            Р—Р°Р±СЂР°С‚СЊ РїСЂРёР±С‹Р»СЊ
+                                            Забрать прибыль
                                         </button>
                                     </div>
                                 )}
@@ -17811,7 +17933,7 @@ const App: React.FC = () => {
                                 {/* ... (Building info, upgrades, buttons) ... */}
                                 <div className="text-sm space-y-1 text-gray-400">
                                     {selectedBuilding.info.id !== MOUNTAIN_ID && selectedBuilding.info.id !== RIVER_ID && (
-                                        <p>РџСЂРѕС‡РЅРѕСЃС‚СЊ: <span className="font-bold text-white">{selectedBuilding.info.stats.durability}</span></p>
+                                        <p>Прочность: <span className="font-bold text-white">{selectedBuilding.info.stats.durability}</span></p>
                                     )}
                                     {selectedBuilding.building.hp !== undefined && selectedBuilding.info.id !== MOUNTAIN_ID && selectedBuilding.info.id !== RIVER_ID && (
                                         (() => {
@@ -17825,20 +17947,20 @@ const App: React.FC = () => {
                                             return (
                                                 <>
                                                     {shieldMaxHp > 0 && (
-                                                        <p>Р‘СЂРѕРЅСЏ С‰РёС‚Р°: <span className={`${shieldHp < shieldMaxHp ? 'text-yellow-400' : 'text-cyan-300'} font-bold`}>{shieldHp} / {shieldMaxHp}</span></p>
+                                                        <p>Броня щита: <span className={`${shieldHp < shieldMaxHp ? 'text-yellow-400' : 'text-cyan-300'} font-bold`}>{shieldHp} / {shieldMaxHp}</span></p>
                                                     )}
-                                                    <p>Р—РґРѕСЂРѕРІСЊРµ: <span className={`${displayHp < maxHp ? 'text-red-400' : 'text-green-400'} font-bold`}>{displayHp} / {maxHp}</span></p>
+                                                    <p>Здоровье: <span className={`${displayHp < maxHp ? 'text-red-400' : 'text-green-400'} font-bold`}>{displayHp} / {maxHp}</span></p>
                                                 </>
                                             );
                                         })()
                                     )}
-                                    {selectedBuilding.info.stats.populationBonus && <p>Р”Р°РµС‚ РЅР°СЃРµР»РµРЅРёСЏ: <span className="font-bold text-white">{selectedBuilding.info.stats.populationBonus}</span></p>}
-                                    {selectedBuilding.info.stats.givesCoins && !isBanditCastleBuildingId(selectedBuilding.info.id) && <p>Р”Р°РµС‚ РјРѕРЅРµС‚: <span className="font-bold text-white">{selectedBuilding.info.stats.givesCoins}</span></p>}
+                                    {selectedBuilding.info.stats.populationBonus && <p>Дает населения: <span className="font-bold text-white">{selectedBuilding.info.stats.populationBonus}</span></p>}
+                                    {selectedBuilding.info.stats.givesCoins && !isBanditCastleBuildingId(selectedBuilding.info.id) && <p>Дает монет: <span className="font-bold text-white">{selectedBuilding.info.stats.givesCoins}</span></p>}
                                     {selectedBuilding.info.stats.increasesGoldCapacity && (
                                         <p className="flex items-center">
-                                            РҐСЂР°РЅРёС‚:
+                                            Хранит:
                                             <img src={coinImageUrl} className="w-4 h-4 mx-1 object-contain" alt="coin" />
-                                            <span className="font-bold text-white">{selectedBuilding.info.stats.increasesGoldCapacity.toLocaleString()} РјРѕРЅРµС‚</span>
+                                            <span className="font-bold text-white">{selectedBuilding.info.stats.increasesGoldCapacity.toLocaleString()} монет</span>
                                         </p>
                                     )}
 
@@ -17849,14 +17971,14 @@ const App: React.FC = () => {
                                                 <>
                                                     {nextInfo?.stats?.increasesGoldCapacity ? (
                                                         <p className="text-yellow-400 mt-1 flex items-center">
-                                                            Р•СЃР»Рё СѓР»СѓС‡С€РёС‚СЊ:
+                                                            Если улучшить:
                                                             <img src={coinImageUrl} className="w-4 h-4 mx-1 object-contain" alt="coin" />
-                                                            <span>{nextInfo.stats.increasesGoldCapacity.toLocaleString()} РјРѕРЅРµС‚</span>
+                                                            <span>{nextInfo.stats.increasesGoldCapacity.toLocaleString()} монет</span>
                                                         </p>
                                                     ) : null}
                                                     {nextInfo?.constructionRequirements?.resources ? (
                                                         <p className="text-yellow-400 mt-1">
-                                                            Р РµСЃСѓСЂСЃС‹, РЅРµРѕР±С…РѕРґРёРјС‹Рµ РґР»СЏ РїРѕСЃС‚СЂРѕР№РєРё: {nextInfo.constructionRequirements.resources
+                                                            Ресурсы, необходимые для постройки: {nextInfo.constructionRequirements.resources
                                                                 .map(r => `${r.name.toLowerCase()} - ${r.amount}`)
                                                                 .join(', ')}
                                                         </p>
@@ -17878,7 +18000,7 @@ const App: React.FC = () => {
 
                                 {selectedBuilding.info.id === AUCTION_ID && isMyBuilding(selectedBuilding.building) && (
                                     <div className="mt-4 p-3 bg-gray-900/50 rounded border border-yellow-500/30">
-                                        <h4 className="text-yellow-400 font-bold mb-2 text-center">РћР±РјРµРЅ РІР°Р»СЋС‚С‹</h4>
+                                        <h4 className="text-yellow-400 font-bold mb-2 text-center">Обмен валюты</h4>
                                         <div className="flex items-center justify-between mb-2">
                                             <div className="flex items-center text-sm text-gray-300">
                                                 <input
@@ -17894,13 +18016,13 @@ const App: React.FC = () => {
                                                 <img src={rubyImageUrl} className="w-4 h-4 ml-1 object-contain" alt="ruby" />
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-[10px] text-gray-400 mb-1">РЎС‚РѕРёРјРѕСЃС‚СЊ: {(buyRubyAmount * 10000).toLocaleString()}</div>
+                                                <div className="text-[10px] text-gray-400 mb-1">Стоимость: {(buyRubyAmount * 10000).toLocaleString()}</div>
                                                 <button
                                                     onClick={handleBuyRuby}
                                                     disabled={playerGold < (buyRubyAmount * 10000)}
                                                     className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded text-xs disabled:bg-gray-600 disabled:cursor-not-allowed"
                                                 >
-                                                    РљСѓРїРёС‚СЊ
+                                                    Купить
                                                 </button>
                                             </div>
                                         </div>
@@ -17913,14 +18035,14 @@ const App: React.FC = () => {
                                             onClick={() => handleOpenCasinoModal(selectedBuilding.building)}
                                             className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 px-3 rounded text-sm"
                                         >
-                                            Р’РѕР№С‚Рё РІ РєР°Р·РёРЅРѕ
+                                            Войти в казино
                                         </button>
                                         {isMyBuilding(selectedBuilding.building) && (
                                             <button
                                                 onClick={() => handleOpenCasinoBankModal(selectedBuilding.building)}
                                                 className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-3 rounded text-sm"
                                             >
-                                                Р‘Р°РЅРє РєР°Р·РёРЅРѕ
+                                                Банк казино
                                             </button>
                                         )}
                                     </div>
@@ -17933,7 +18055,7 @@ const App: React.FC = () => {
                                         disabled={playerGold < (selectedBuilding.info.upgradeCost || 0) || selectedBuilding.building.isConstructing}
                                         className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded text-xs disabled:bg-gray-600 disabled:cursor-not-allowed"
                                     >
-                                        <span>РЈР»СѓС‡С€РёС‚СЊ ({selectedBuilding.info.upgradeCost})</span>
+                                        <span>Улучшить ({selectedBuilding.info.upgradeCost})</span>
                                     </button>
                                 )}
 
@@ -17943,7 +18065,7 @@ const App: React.FC = () => {
                                         onClick={() => setShowMonsterAcademyModal(true)}
                                         className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded text-xs"
                                     >
-                                        <span>Р’РѕР№С‚Рё РІ Р°РєР°РґРµРјРёСЋ</span>
+                                        <span>Войти в академию</span>
                                     </button>
                                 )}
 
@@ -17954,7 +18076,7 @@ const App: React.FC = () => {
                                             className={`col-span-3 ${selectedBuilding.building.isActive ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'} text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 transition-colors`}
                                         >
                                             <DefenseIcon className="w-5 h-5 mb-1" />
-                                            <span>{selectedBuilding.building.isActive ? 'РђРєС‚РёРІРёСЂРѕРІР°РЅРѕ' : 'РђРєС‚РёРІРёСЂРѕРІР°С‚СЊ'}</span>
+                                            <span>{selectedBuilding.building.isActive ? 'Активировано' : 'Активировать'}</span>
                                         </button>
                                     )}
                                     {isGeneralMarketBuilding(selectedBuilding.info) && isMyBuilding(selectedBuilding.building) && (
@@ -17963,7 +18085,7 @@ const App: React.FC = () => {
                                             className="col-span-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2"
                                         >
                                             <TradeIcon className="w-5 h-5 mb-1" />
-                                            <span>РўРѕСЂРіРѕРІР»СЏ</span>
+                                            <span>Торговля</span>
                                         </button>
                                     )}
 
@@ -17973,7 +18095,7 @@ const App: React.FC = () => {
                                             className="col-span-3 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 border border-red-500"
                                         >
                                             <TradeIcon className="w-5 h-5 mb-1" />
-                                            <span>РљСѓРїРёС‚СЊ/РџСЂРѕРґР°С‚СЊ</span>
+                                            <span>Купить/Продать</span>
                                         </button>
                                     )}
 
@@ -17984,7 +18106,7 @@ const App: React.FC = () => {
                                                     onClick={handleRepair}
                                                     disabled={playerGold < repairCost}
                                                     className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                    title={`РџРѕС‡РёРЅРёС‚СЊ Р·Р° ${repairCost} Р·РѕР»РѕС‚Р°`}
+                                                    title={`Починить за ${repairCost} золота`}
                                                 >
                                                     <RepairIcon className="w-4 h-4 mb-1" />
                                                     <span>{repairCost}</span>
@@ -17992,7 +18114,7 @@ const App: React.FC = () => {
                                             ) : canRepairBuilding(selectedBuilding.building) && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
                                                 <button disabled className="bg-gray-700 text-gray-500 font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 cursor-not-allowed">
                                                     <RepairIcon className="w-4 h-4 mb-1" />
-                                                    <span>РџРѕС‡РёРЅРёС‚СЊ</span>
+                                                    <span>Починить</span>
                                                 </button>
                                             )}
 
@@ -18002,7 +18124,7 @@ const App: React.FC = () => {
                                                     className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
                                                 >
                                                     <ShieldIcon className="w-4 h-4 mb-1" />
-                                                    <span>Р—Р°С‰РёС‚РёС‚СЊ</span>
+                                                    <span>Защитить</span>
                                                 </button>
                                             )}
 
@@ -18010,10 +18132,10 @@ const App: React.FC = () => {
                                                 <button
                                                     onClick={handleMoveClick}
                                                     className={`${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:grayscale disabled:cursor-not-allowed`}
-                                                    title={`РџРµСЂРµРјРµСЃС‚РёС‚СЊ Р·Р° ${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} СЌРЅРµСЂРіРёРё`}
+                                                    title={`Переместить за ${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии`}
                                                 >
                                                     <MoveIcon className="w-4 h-4 mb-1" />
-                                                    <span>РџРµСЂРµРјРµСЃС‚РёС‚СЊ</span>
+                                                    <span>Переместить</span>
                                                 </button>
                                             )}
 
@@ -18021,10 +18143,10 @@ const App: React.FC = () => {
                                                 <button
                                                     onClick={handleSell}
                                                     className="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                    title="РџСЂРѕРґР°С‚СЊ Р·Р° 50% СЃС‚РѕРёРјРѕСЃС‚Рё"
+                                                    title="Продать за 50% стоимости"
                                                 >
                                                     <SellIcon className="w-4 h-4 mb-1" />
-                                                    <span>РџСЂРѕРґР°С‚СЊ</span>
+                                                    <span>Продать</span>
                                                 </button>
                                             )}
                                         </>
@@ -18035,7 +18157,7 @@ const App: React.FC = () => {
                                             onClick={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
                                             className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed ${!isMyBuilding(selectedBuilding.building) ? 'col-span-3' : ''}`}
                                         >
-                                            <span>Р’Р·РѕСЂРІР°С‚СЊ</span>
+                                            <span>Взорвать</span>
                                         </button>
                                     )}
 
@@ -18044,14 +18166,14 @@ const App: React.FC = () => {
                                             onClick={handleStealProduction}
                                             className="col-span-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mt-2"
                                         >
-                                            <span>РЈРєСЂР°СЃС‚СЊ</span>
+                                            <span>Украсть</span>
                                         </button>
                                     )}
                                 </div>
 
                                 {/* Owner Info */}
                                 <div className="mt-4 pt-3 border-t border-gray-700 text-center">
-                                    <span className="text-gray-400 text-xs uppercase tracking-wider">Р’Р»Р°РґРµР»РµС†</span>
+                                    <span className="text-gray-400 text-xs uppercase tracking-wider">Владелец</span>
                                     <div
                                         className={`mt-1 font-bold ${(selectedBuilding.building.ownerId !== "-1" && selectedBuilding.building.ownerId !== "monster") ? 'text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted underline-offset-4' : 'text-gray-200'} transition-colors`}
                                         onClick={() => {
@@ -18061,12 +18183,12 @@ const App: React.FC = () => {
                                             }
                                         }}
                                     >
-                                        {isMyBuilding(selectedBuilding.building) ? "Р’С‹" :
+                                        {isMyBuilding(selectedBuilding.building) ? "Вы" :
                                             (selectedBuilding.building.ownerId === "-1" || selectedBuilding.building.ownerId === "monster") ?
-                                                (selectedBuilding.info.category === 'РњРѕРЅСЃС‚СЂС‹' ? "РРіСЂР° (РџРµСЂСЃРѕРЅР°Р¶: РЅРµС‚)" : "РџСЂРёСЂРѕРґР°") :
+                                                (selectedBuilding.info.category === 'Монстры' ? "Игра (Персонаж: нет)" : "Природа") :
                                                 (allUsers[selectedBuilding.building.ownerId as string]?.name ||
                                                     selectedBuilding.building.ownerName ||
-                                                    "РќРµРёР·РІРµСЃС‚РЅС‹Р№ РёРіСЂРѕРє")}
+                                                    "Неизвестный игрок")}
                                     </div>
                                 </div>
                             </div>
@@ -18074,9 +18196,9 @@ const App: React.FC = () => {
                             // ... (Explosion menu content) ...
                             <div className="p-4">
                                 <button onClick={() => setShowExplosionMenu(false)} className="mb-4 text-blue-400 hover:text-blue-300 text-sm flex items-center">
-                                    {'< РќР°Р·Р°Рґ'}
+                                    {'< Назад'}
                                 </button>
-                                <h3 className="text-lg font-bold text-white mb-3">Р§РµРј РІР·СЂС‹РІР°РµРј?</h3>
+                                <h3 className="text-lg font-bold text-white mb-3">Чем взрываем?</h3>
                                 <div className="space-y-3 max-h-60 overflow-y-auto">
                                     {selectedBuildingDestructionInfo.length > 0 ? (
                                         selectedBuildingDestructionInfo.map((option, idx) => {
@@ -18105,37 +18227,37 @@ const App: React.FC = () => {
                                                     </div>
                                                     {isSelected && maxQty > 1 && (
                                                         <div className="flex items-center justify-center mb-3 gap-2">
-                                                            <span className="text-xs text-gray-300">РљРѕР»РёС‡РµСЃС‚РІРѕ:</span>
+                                                            <span className="text-xs text-gray-300">Количество:</span>
                                                             <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.max(1, prev - 1)); }} className="w-7 h-7 bg-gray-600 hover:bg-gray-500 text-white rounded font-bold text-lg flex items-center justify-center">-</button>
                                                             <span className="text-white font-bold min-w-[40px] text-center">{explosionQuantity}</span>
                                                             <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.min(maxQty, prev + 1)); }} className="w-7 h-7 bg-gray-600 hover:bg-gray-500 text-white rounded font-bold text-lg flex items-center justify-center">+</button>
-                                                            <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(maxQty); }} className="text-xs bg-gray-600 hover:bg-gray-500 text-yellow-400 rounded px-2 py-1">РњР°РєСЃ</button>
+                                                            <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(maxQty); }} className="text-xs bg-gray-600 hover:bg-gray-500 text-yellow-400 rounded px-2 py-1">Макс</button>
                                                         </div>
                                                     )}
                                                     <div className="text-xs text-gray-300 space-y-1 mb-3">
                                                         <div className="flex justify-between">
-                                                            <span>РЎС‚РѕРёРјРѕСЃС‚СЊ:</span>
+                                                            <span>Стоимость:</span>
                                                             <div className="flex items-center">
                                                                 <span className={hasGold ? 'text-yellow-400' : 'text-red-400'}>{option.goldCost * qty}</span>
                                                                 <img src={coinImageUrl} className="w-3 h-3 ml-1 object-contain" alt="gold" />
                                                             </div>
                                                         </div>
-                                                        <div className="flex justify-between"><span>Р­РЅРµСЂРіРёСЏ:</span> <span className={hasEnergy ? 'text-blue-400' : 'text-red-400'}>{option.energyCost * qty}</span></div>
-                                                        <div className="flex justify-between"><span>Р’СЂРµРјСЏ:</span> <span>{option.timeSeconds * qty} СЃРµРє</span></div>
-                                                        <div className="flex justify-between"><span>РЈСЂРѕРЅ:</span> <span className="text-red-400">{(option.damage || 0) * qty}</span></div>
+                                                        <div className="flex justify-between"><span>Энергия:</span> <span className={hasEnergy ? 'text-blue-400' : 'text-red-400'}>{option.energyCost * qty}</span></div>
+                                                        <div className="flex justify-between"><span>Время:</span> <span>{option.timeSeconds * qty} сек</span></div>
+                                                        <div className="flex justify-between"><span>Урон:</span> <span className="text-red-400">{(option.damage || 0) * qty}</span></div>
                                                     </div>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); if (invCount >= 1) { setSelectedExplosionOption(idx); setExplosionQuantity(1); } }}
                                                         disabled={invCount < 1}
                                                         className={`w-full font-bold py-2 rounded ${isSelected ? 'bg-yellow-600 text-white' : 'bg-gray-600 hover:bg-gray-500 text-white'} disabled:bg-gray-600 disabled:cursor-not-allowed`}
                                                     >
-                                                        {isSelected ? 'Р’С‹Р±СЂР°РЅРѕ' : `Р’С‹Р±СЂР°С‚СЊ`}
+                                                        {isSelected ? 'Выбрано' : `Выбрать`}
                                                     </button>
                                                 </div>
                                             );
                                         })
                                     ) : (
-                                        <p className="text-gray-400 text-center">Р­С‚Рѕ Р·РґР°РЅРёРµ РЅРµР»СЊР·СЏ РІР·РѕСЂРІР°С‚СЊ РёР·РІРµСЃС‚РЅС‹РјРё СЃРїРѕСЃРѕР±Р°РјРё.</p>
+                                        <p className="text-gray-400 text-center">Это здание нельзя взорвать известными способами.</p>
                                     )}
                                 </div>
                                 {/* Detonator checkboxes + Explode button */}
@@ -18156,15 +18278,15 @@ const App: React.FC = () => {
 
                                     const getTimeLabel = () => {
                                         const m = getTimeMultiplier();
-                                        if (m === 0.5) return 'x0.5 (СЃСѓРїРµСЂ РґРµС‚РѕРЅР°С‚РѕСЂ)';
-                                        if (m === 0.75) return 'x0.75 (РґРµС‚РѕРЅР°С‚РѕСЂ)';
-                                        return 'x1 (Р±РµР· РґРµС‚РѕРЅР°С‚РѕСЂР°)';
+                                        if (m === 0.5) return 'x0.5 (супер детонатор)';
+                                        if (m === 0.75) return 'x0.75 (детонатор)';
+                                        return 'x1 (без детонатора)';
                                     };
 
                                     return (
                                         <div className="mt-4 space-y-3">
                                             <div className="bg-gray-700/50 rounded-lg p-3 space-y-2">
-                                                <div className="text-xs text-gray-400 mb-1">Р‘РѕРЅСѓСЃС‹ РґРµС‚РѕРЅР°С‚РѕСЂР° (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ):</div>
+                                                <div className="text-xs text-gray-400 mb-1">Бонусы детонатора (опционально):</div>
                                                 <label className="flex items-center gap-2 cursor-pointer group" onClick={() => setUseRegularDetonator(prev => !prev)}>
                                                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${useRegularDetonator ? 'bg-orange-500 border-orange-500' : 'border-gray-500 bg-gray-800 group-hover:border-orange-400'}`}>
                                                         {useRegularDetonator && (
@@ -18174,7 +18296,7 @@ const App: React.FC = () => {
                                                         )}
                                                     </div>
                                                     <span className="text-sm text-white flex items-center gap-1">
-                                                        рџ’Ј Р”РµС‚РѕРЅР°С‚РѕСЂ
+                                                        💣 Детонатор
                                                         <span className={`text-xs ${detonatorCount > 0 ? 'text-green-400' : 'text-red-400'}`}>({detonatorCount})</span>
                                                     </span>
                                                 </label>
@@ -18187,13 +18309,13 @@ const App: React.FC = () => {
                                                         )}
                                                     </div>
                                                     <span className="text-sm text-white flex items-center gap-1">
-                                                        вљЎ РЎСѓРїРµСЂ РґРµС‚РѕРЅР°С‚РѕСЂ
+                                                        ⚡ Супер детонатор
                                                         <span className={`text-xs ${superDetonatorCount > 0 ? 'text-green-400' : 'text-red-400'}`}>({superDetonatorCount})</span>
                                                     </span>
                                                 </label>
                                                 {selOption && (
                                                     <div className="text-xs text-gray-400 mt-1">
-                                                        Р’СЂРµРјСЏ: {getTimeLabel()}
+                                                        Время: {getTimeLabel()}
                                                     </div>
                                                 )}
                                             </div>
@@ -18202,7 +18324,7 @@ const App: React.FC = () => {
                                                 disabled={!canExplode}
                                                 className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed text-sm"
                                             >
-                                                рџ’Ґ Р’Р·РѕСЂРІР°С‚СЊ
+                                                💥 Взорвать
                                             </button>
                                         </div>
                                     );
@@ -18212,9 +18334,9 @@ const App: React.FC = () => {
                             // ... (Protection menu content) ...
                             <div className="p-4">
                                 <button onClick={() => setShowProtectionMenu(false)} className="mb-4 text-blue-400 hover:text-blue-300 text-sm flex items-center">
-                                    {'< РќР°Р·Р°Рґ'}
+                                    {'< Назад'}
                                 </button>
-                                <h3 className="text-lg font-bold text-white mb-4 text-center">Р—Р°С‰РёС‚РёС‚СЊ Р·РґР°РЅРёРµ</h3>
+                                <h3 className="text-lg font-bold text-white mb-4 text-center">Защитить здание</h3>
 
                                 <div className="flex flex-col space-y-3">
                                     {PROTECTION_OPTIONS.map((option, index) => (
@@ -18232,7 +18354,7 @@ const App: React.FC = () => {
                                         </button>
                                     ))}
                                 </div>
-                                <p className="mt-4 text-xs text-center text-gray-500">Р©РёС‚ РїРѕР»СѓС‡Р°РµС‚ СѓСЂРѕРЅ РїРµСЂРІС‹Рј. РљРѕРіРґР° Р±СЂРѕРЅСЏ С‰РёС‚Р° РїР°РґР°РµС‚ РґРѕ 0, СѓСЂРѕРЅ РЅР°С‡РёРЅР°РµС‚ РїСЂРѕС…РѕРґРёС‚СЊ РІ Р·РґР°РЅРёРµ.</p>
+                                <p className="mt-4 text-xs text-center text-gray-500">Щит получает урон первым. Когда броня щита падает до 0, урон начинает проходить в здание.</p>
                             </div>
                         )}
                     </div>
@@ -18247,7 +18369,7 @@ const App: React.FC = () => {
                         <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700">
                             <h2 className="text-2xl font-bold text-white flex items-center">
                                 <TradeIcon className={`w-8 h-8 mr-3 ${marketType === 'military' ? 'text-red-500' : 'text-green-400'}`} />
-                                {marketType === 'military' ? 'Р’РѕРµРЅРЅС‹Р№ СЂС‹РЅРѕРє' : 'Р С‹РЅРѕРє'}
+                                {marketType === 'military' ? 'Военный рынок' : 'Рынок'}
                             </h2>
                             <button onClick={() => setShowMarketModal(false)} className="text-gray-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-8 h-8" />
@@ -18259,13 +18381,13 @@ const App: React.FC = () => {
                                 onClick={() => setActiveMarketTab('buy')}
                                 className={`px-4 py-2 font-bold rounded-t-lg transition-colors ${activeMarketTab === 'buy' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
                             >
-                                РџРѕРєСѓРїРєР°
+                                Покупка
                             </button>
                             <button
                                 onClick={() => setActiveMarketTab('sell')}
                                 className={`px-4 py-2 font-bold rounded-t-lg transition-colors ${activeMarketTab === 'sell' ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'}`}
                             >
-                                РџСЂРѕРґР°Р¶Р°
+                                Продажа
                             </button>
                         </div>
 
@@ -18346,7 +18468,7 @@ const App: React.FC = () => {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {(marketType === 'general' ? filteredBuyMarketListings : marketListings.filter(l => matchesMarketType(l, marketType))).length === 0 ? (
-                                            <p className="col-span-3 text-center text-gray-500 mt-10">РќР° СЌС‚РѕРј СЂС‹РЅРєРµ РїРѕРєР° РЅРµС‚ РїСЂРµРґР»РѕР¶РµРЅРёР№.</p>
+                                            <p className="col-span-3 text-center text-gray-500 mt-10">На этом рынке пока нет предложений.</p>
                                         ) : (
                                             (marketType === 'general' ? filteredBuyMarketListings : marketListings.filter(l => matchesMarketType(l, marketType)))
                                                 .map(listing => {
@@ -18362,11 +18484,11 @@ const App: React.FC = () => {
                                                                 </div>
                                                                 <div className="overflow-hidden">
                                                                     <p className="font-bold text-white truncate">{item.name}</p>
-                                                                    <p className="text-sm text-gray-400">РџСЂРѕРґР°РІРµС†: <span className="text-blue-300">{listing.sellerName}</span></p>
+                                                                    <p className="text-sm text-gray-400">Продавец: <span className="text-blue-300">{listing.sellerName}</span></p>
                                                                 </div>
                                                             </div>
                                                             <div className="flex justify-between items-center bg-gray-800/50 p-2 rounded mb-3">
-                                                                <span className="text-sm text-gray-300">РљРѕР»-РІРѕ: <span className="text-white font-bold">{listing.amount}</span></span>
+                                                                <span className="text-sm text-gray-300">Кол-во: <span className="text-white font-bold">{listing.amount}</span></span>
                                                                 <div className="flex items-center font-bold">
                                                                     <span className={listing.currency === 'coins' ? 'text-yellow-400' : 'text-pink-400'}>{listing.price.toLocaleString()}</span>
                                                                     {listing.currency === 'coins' ? (
@@ -18382,7 +18504,7 @@ const App: React.FC = () => {
                                                                     className={`w-full font-bold py-2 rounded text-sm ${isMarketProcessing ? 'bg-gray-600 cursor-not-allowed text-gray-400' : 'bg-red-600 hover:bg-red-700 text-white'}`}
                                                                     disabled={isMarketProcessing}
                                                                 >
-                                                                    РЎРЅСЏС‚СЊ СЃ РїСЂРѕРґР°Р¶Рё
+                                                                    Снять с продажи
                                                                 </button>
                                                             ) : (
                                                                 <button
@@ -18393,7 +18515,7 @@ const App: React.FC = () => {
                                                                         }`}
                                                                     disabled={isMarketProcessing || (listing.currency === 'coins' && playerGold < listing.price) || (listing.currency === 'rubies' && playerRubies < listing.price)}
                                                                 >
-                                                                    РљСѓРїРёС‚СЊ
+                                                                    Купить
                                                                 </button>
                                                             )}
                                                         </div>
@@ -18406,7 +18528,7 @@ const App: React.FC = () => {
                             <>
                                 <div className="h-full flex flex-col md:flex-row gap-4 overflow-hidden">
                                     <div className="w-full md:w-1/2 overflow-y-auto bg-gray-900/30 p-2 rounded border border-gray-700">
-                                        <h3 className="text-sm text-gray-400 mb-2 uppercase font-bold">Р’Р°С€ РёРЅРІРµРЅС‚Р°СЂСЊ</h3>
+                                        <h3 className="text-sm text-gray-400 mb-2 uppercase font-bold">Ваш инвентарь</h3>
                                         <div className="grid grid-cols-4 gap-2">
                                             {/* Ruby from balance */}
                                             {playerRubies > 0 && (marketType !== 'military') && (
@@ -18450,12 +18572,12 @@ const App: React.FC = () => {
                                             return matchesMarketType({ id: numericId, sellerName: '', sellerId: '', resourceId: numericId, amount: inventory[numericId] || 0, price: 0, currency: 'coins' }, marketType) && (inventory[numericId] || 0) > 0;
                                         }).length === 0 && (
                                             <p className="text-center text-gray-500 mt-10 text-sm">
-                                                {marketType === 'military' ? 'РќРµС‚ РІРѕРµРЅРЅС‹С… С‚РѕРІР°СЂРѕРІ РґР»СЏ РїСЂРѕРґР°Р¶Рё.' : 'РќРµС‚ С‚РѕРІР°СЂРѕРІ РґР»СЏ РѕР±С‹С‡РЅРѕРіРѕ СЂС‹РЅРєР°.'}
+                                                {marketType === 'military' ? 'Нет военных товаров для продажи.' : 'Нет товаров для обычного рынка.'}
                                             </p>
                                         )}
                                     </div>
                                     <div className="w-full md:w-1/2 bg-gray-700/30 p-4 rounded border border-gray-600 flex flex-col">
-                                        <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-600 pb-2">РџР°СЂР°РјРµС‚СЂС‹ РїСЂРѕРґР°Р¶Рё</h3>
+                                        <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-600 pb-2">Параметры продажи</h3>
 
                                         {sellItemSelection.itemId ? (
                                             <div className="space-y-4">
@@ -18465,12 +18587,12 @@ const App: React.FC = () => {
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-white text-lg">{itemData.find(i => i.id === sellItemSelection.itemId)?.name}</p>
-                                                        <p className="text-sm text-gray-400">Р’ РЅР°Р»РёС‡РёРё: <span className="text-white">{sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId!] || 0)}</span></p>
+                                                        <p className="text-sm text-gray-400">В наличии: <span className="text-white">{sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId!] || 0)}</span></p>
                                                     </div>
                                                 </div>
 
                                                 <div>
-                                                    <label className="block text-sm text-gray-300 mb-1">РљРѕР»РёС‡РµСЃС‚РІРѕ</label>
+                                                    <label className="block text-sm text-gray-300 mb-1">Количество</label>
                                                     <input
                                                         type="number"
                                                         min="1"
@@ -18486,7 +18608,7 @@ const App: React.FC = () => {
 
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div>
-                                                        <label className="block text-sm text-gray-300 mb-1">Р¦РµРЅР°</label>
+                                                        <label className="block text-sm text-gray-300 mb-1">Цена</label>
                                                         <input
                                                             type="number"
                                                             min="1"
@@ -18496,7 +18618,7 @@ const App: React.FC = () => {
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm text-gray-300 mb-1">Р’Р°Р»СЋС‚Р°</label>
+                                                        <label className="block text-sm text-gray-300 mb-1">Валюта</label>
                                                         <div className="flex space-x-2">
                                                             <button
                                                                 onClick={() => setSellItemSelection(prev => ({ ...prev, currency: 'coins' }))}
@@ -18520,14 +18642,14 @@ const App: React.FC = () => {
                                                         className={`w-full font-bold py-3 rounded text-lg shadow-lg ${isMarketProcessing ? 'bg-gray-600 cursor-not-allowed text-gray-400' : 'bg-green-600 hover:bg-green-700 text-white'}`}
                                                         disabled={isMarketProcessing}
                                                     >
-                                                        Р’С‹СЃС‚Р°РІРёС‚СЊ Р·Р° {sellItemSelection.price} {sellItemSelection.currency === 'coins' ? 'РјРѕРЅРµС‚' : 'СЂСѓР±РёРЅРѕРІ'}
+                                                        Выставить за {sellItemSelection.price} {sellItemSelection.currency === 'coins' ? 'монет' : 'рубинов'}
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="flex flex-col items-center justify-center h-full text-gray-500">
                                                 <InventoryIcon className="w-16 h-16 mb-4 opacity-30" />
-                                                <p className="text-center">Р’С‹Р±РµСЂРёС‚Рµ РїСЂРµРґРјРµС‚ РёР· РёРЅРІРµРЅС‚Р°СЂСЏ, С‡С‚РѕР±С‹ РІС‹СЃС‚Р°РІРёС‚СЊ РµРіРѕ РЅР° СЂС‹РЅРѕРє.</p>
+                                                <p className="text-center">Выберите предмет из инвентаря, чтобы выставить его на рынок.</p>
                                             </div>
                                         )}
                                     </div>
@@ -18547,14 +18669,14 @@ const App: React.FC = () => {
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>РњРµРЅСЋ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню строительства</h2>
                             </div>
                             <div className="absolute" style={{ right: '42px', top: '1px', width: '220px' }}>
                                 <input
                                     type="text"
                                     value={buildMenuSearch}
                                     onChange={(e) => setBuildMenuSearch(e.target.value)}
-                                    placeholder="РџРѕРёСЃРє..."
+                                    placeholder="Поиск..."
                                     style={{
                                         width: '100%',
                                         height: '34px',
@@ -18605,54 +18727,54 @@ const App: React.FC = () => {
                             {/* Right content area */}
                             <div className="build-menu-scroll" style={{ flex: 1, paddingLeft: '12px', overflowY: 'auto' }}>
                                 {/* Letter sub-tabs */}
-                                {activeBuildTab === 'Р‘СѓРєРІС‹' && (
+                                {activeBuildTab === 'Буквы' && (
                                     <div className="flex space-x-2 mb-4">
                                         <button
                                             onClick={() => setLetterSubTab('english')}
                                             style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: letterSubTab === 'english' ? 700 : 500, background: letterSubTab === 'english' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'english' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            РђРЅРіР»РёР№СЃРєРёРµ (A-Z)
+                                            Английские (A-Z)
                                         </button>
                                         <button
                                             onClick={() => setLetterSubTab('russian')}
                                             style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: letterSubTab === 'russian' ? 700 : 500, background: letterSubTab === 'russian' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'russian' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            Р СѓСЃСЃРєРёРµ (Рђ-РЇ)
+                                            Русские (А-Я)
                                         </button>
                                         <button
                                             onClick={() => setLetterSubTab('numbers')}
                                             style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: letterSubTab === 'numbers' ? 700 : 500, background: letterSubTab === 'numbers' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: letterSubTab === 'numbers' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            Р¦РёС„СЂС‹ (0-9)
+                                            Цифры (0-9)
                                         </button>
                                     </div>
                                 )}
                                 {/* Gift sub-tabs */}
-                                {activeBuildTab === 'РџРѕРґР°СЂРєРё' && (
+                                {activeBuildTab === 'Подарки' && (
                                     <div className="flex space-x-2 mb-4">
                                         <button
                                             onClick={() => setGiftSubTab('main')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'main' ? 700 : 500, background: giftSubTab === 'main' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'main' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            РћСЃРЅРѕРІРЅС‹Рµ
+                                            Основные
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('castles')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'castles' ? 700 : 500, background: giftSubTab === 'castles' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'castles' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            Р—Р°РјРєРё
+                                            Замки
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('babies')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'babies' ? 700 : 500, background: giftSubTab === 'babies' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'babies' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            РњР°Р»С‹С€Рё
+                                            Малыши
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('march8')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'march8' ? 700 : 500, background: giftSubTab === 'march8' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'march8' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            8 РјР°СЂС‚Р°
+                                            8 марта
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('halloween')}
@@ -18664,30 +18786,30 @@ const App: React.FC = () => {
                                             onClick={() => setGiftSubTab('valentine')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'valentine' ? 700 : 500, background: giftSubTab === 'valentine' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'valentine' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            14 С„РµРІСЂР°Р»СЏ
+                                            14 февраля
                                         </button>
                                         <button
                                             onClick={() => setGiftSubTab('spring')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: giftSubTab === 'spring' ? 700 : 500, background: giftSubTab === 'spring' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: giftSubTab === 'spring' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            Р’РµСЃРµРЅРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ
+                                            Весеннее обновление
                                         </button>
                                     </div>
                                 )}
                                 {/* Decor sub-tabs */}
-                                {activeBuildTab === 'Р”РµРєРѕСЂ' && (
+                                {activeBuildTab === 'Декор' && (
                                     <div className="flex space-x-2 mb-4">
                                         <button
                                             onClick={() => setDecorSubTab('other')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: decorSubTab === 'other' ? 700 : 500, background: decorSubTab === 'other' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: decorSubTab === 'other' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            Р”РµРєРѕСЂ
+                                            Декор
                                         </button>
                                         <button
                                             onClick={() => setDecorSubTab('flags')}
                                             className={`px-3 py-1 rounded-md text-sm font-medium`} style={{ fontFamily: 'Nunito, sans-serif', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: decorSubTab === 'flags' ? 700 : 500, background: decorSubTab === 'flags' ? 'rgba(59,130,246,0.6)' : 'rgba(255,255,255,0.08)', color: decorSubTab === 'flags' ? '#fff' : 'rgba(200,210,220,0.8)' }}
                                         >
-                                            Р¤Р»Р°РіРё
+                                            Флаги
                                         </button>
                                     </div>
                                 )}
@@ -18716,7 +18838,7 @@ const App: React.FC = () => {
                                             </div>
                                         </div>
                                     ))}
-                                    {buildingsInCurrentTab.length === 0 && <p style={{ fontFamily: 'Nunito, sans-serif', color: 'rgba(200,210,220,0.5)', gridColumn: 'span 3', textAlign: 'center', marginTop: '32px', fontSize: '14px' }}>{normalizedBuildMenuSearch ? 'РќРёС‡РµРіРѕ РЅРµ РЅР°Р№РґРµРЅРѕ РїРѕ СЌС‚РѕРјСѓ РЅР°Р·РІР°РЅРёСЋ.' : 'Р—РґР°РЅРёСЏ РґР»СЏ СЌС‚РѕР№ РєР°С‚РµРіРѕСЂРёРё РµС‰Рµ РЅРµ РґРѕР±Р°РІР»РµРЅС‹.'}</p>}
+                                    {buildingsInCurrentTab.length === 0 && <p style={{ fontFamily: 'Nunito, sans-serif', color: 'rgba(200,210,220,0.5)', gridColumn: 'span 3', textAlign: 'center', marginTop: '32px', fontSize: '14px' }}>{normalizedBuildMenuSearch ? 'Ничего не найдено по этому названию.' : 'Здания для этой категории еще не добавлены.'}</p>}
                                 </div>
                             </div>
                         </div>
@@ -18754,25 +18876,25 @@ const App: React.FC = () => {
                             </div>
                             {buildConfirmation.building.type === BuildingType.Storage && (
                                 <p className="text-sm text-gray-300 leading-6 mb-4">
-                                    РҐСЂР°РЅРёР»РёС‰Рµ РЅСѓР¶РЅРѕ, С‡С‚РѕР±С‹ С…СЂР°РЅРёС‚СЊ РЅР°РєРѕРїР»РµРЅРЅС‹Рµ РјРѕРЅРµС‚С‹. Р§РµРј Р±РѕР»СЊС€Рµ Сѓ РІР°СЃ РјРѕРЅРµС‚ С‚РµРј Р±РѕР»СЊС€Рµ РЅСѓР¶РЅРѕ РїРѕСЃС‚СЂРѕРёС‚СЊ С…СЂР°РЅРёР»РёС‰. РџРѕРјРЅРёС‚Рµ С‡С‚Рѕ РїСЂРё РІР·СЂС‹РІРµ РјРѕРЅРµС‚С‹ РєРѕС‚РѕСЂС‹Рµ РЅР°С…РѕРґРёР»РёСЃСЊ РІ С…СЂР°РЅРёР»РёС‰Рµ РїРµСЂРµР№РґСѓС‚ Рє РЅР°РїР°РґР°СЋС‰РµРјСѓ
+                                    Хранилище нужно, чтобы хранить накопленные монеты. Чем больше у вас монет тем больше нужно построить хранилищ. Помните что при взрыве монеты которые находились в хранилище перейдут к нападающему
                                 </p>
                             )}
                             <div className="space-y-2 text-sm">
-                                <div className="flex justify-between"><span className="text-gray-400">РџСЂРѕС‡РЅРѕСЃС‚СЊ:</span> <span className="text-white font-semibold">{buildConfirmation.building.stats.durability}</span></div>
-                                <div className="flex justify-between"><span className="text-gray-400">Р’СЂРµРјСЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°:</span> <span className="text-white font-semibold">{formatBuildDuration(buildConfirmation.building.stats.constructionTimeSeconds)}</span></div>
+                                <div className="flex justify-between"><span className="text-gray-400">Прочность:</span> <span className="text-white font-semibold">{buildConfirmation.building.stats.durability}</span></div>
+                                <div className="flex justify-between"><span className="text-gray-400">Время строительства:</span> <span className="text-white font-semibold">{formatBuildDuration(buildConfirmation.building.stats.constructionTimeSeconds)}</span></div>
                                 {buildConfirmation.building.stats.increasesGoldCapacity && (
                                     <div className="flex justify-between items-center">
-                                        <span className="text-gray-400">РҐСЂР°РЅРёС‚СЃСЏ:</span>
+                                        <span className="text-gray-400">Хранится:</span>
                                         <span className="text-white font-semibold flex items-center">
                                             <img src={coinImageUrl} alt="Gold" className="w-4 h-4 mr-1 object-contain" />
-                                            {buildConfirmation.building.stats.increasesGoldCapacity.toLocaleString()} РјРѕРЅРµС‚
+                                            {buildConfirmation.building.stats.increasesGoldCapacity.toLocaleString()} монет
                                         </span>
                                     </div>
                                 )}
-                                <div className="flex justify-between"><span className="text-gray-400">Р”Р°РµС‚ РЅР°СЃРµР»РµРЅРёСЏ:</span> <span className="text-green-400 font-semibold">+{buildConfirmation.building.stats.populationBonus}</span></div>
+                                <div className="flex justify-between"><span className="text-gray-400">Дает населения:</span> <span className="text-green-400 font-semibold">+{buildConfirmation.building.stats.populationBonus}</span></div>
                                 {buildConfirmation.building.constructionRequirements.resources && buildConfirmation.building.constructionRequirements.resources.length > 0 && (
                                     <div className="mt-2">
-                                        <div className="text-gray-400 mb-1">РўСЂРµР±СѓРµРјС‹Рµ СЂРµСЃСѓСЂСЃС‹:</div>
+                                        <div className="text-gray-400 mb-1">Требуемые ресурсы:</div>
                                         <div className="flex flex-wrap gap-2">
                                             {buildConfirmation.building.constructionRequirements.resources.map(req => (
                                                 <span key={req.id} className={`px-2 py-1 rounded text-xs ${(inventory[req.id] || 0) >= (req.amount || 0) ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
@@ -18798,19 +18920,19 @@ const App: React.FC = () => {
                                 className={`mt-6 w-full text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-all ${isBuildingActionProcessing ? 'bg-green-800/70 cursor-not-allowed opacity-70' : 'bg-green-600 hover:bg-green-700'}`}
                             >
                                 {isBuildingActionProcessing ? (
-                                    'РЎС‚СЂРѕРёРј...'
+                                    'Строим...'
                                 ) : buildConfirmation.building.rubyPrice ? (
                                     <>
                                         <img src={rubyImageUrl} alt="Ruby" className="w-5 h-5 mr-2 object-contain" />
                                         <span>{buildConfirmation.building.rubyPrice}</span>
                                         {buildConfirmation.building.constructionRequirements.population ? (
                                             <>
-                                                <span className="mx-2">вЂў</span>
+                                                <span className="mx-2">•</span>
                                                 <img src={populationImageUrl} alt="Population" className="w-5 h-5 mr-1 object-contain" />
                                                 <span>{buildConfirmation.building.constructionRequirements.population}</span>
                                             </>
                                         ) : null}
-                                        <span className="ml-2">РџРѕСЃС‚СЂРѕРёС‚СЊ</span>
+                                        <span className="ml-2">Построить</span>
                                     </>
                                 ) : (
                                     <>
@@ -18818,12 +18940,12 @@ const App: React.FC = () => {
                                         <span>{buildConfirmation.building.price?.toLocaleString() || 0}</span>
                                         {buildConfirmation.building.constructionRequirements.population ? (
                                             <>
-                                                <span className="mx-2">вЂў</span>
+                                                <span className="mx-2">•</span>
                                                 <img src={populationImageUrl} alt="Population" className="w-5 h-5 mr-1 object-contain" />
                                                 <span>{buildConfirmation.building.constructionRequirements.population}</span>
                                             </>
                                         ) : null}
-                                        <span className="ml-2">РџРѕСЃС‚СЂРѕРёС‚СЊ</span>
+                                        <span className="ml-2">Построить</span>
                                     </>
                                 )}
                             </button>
@@ -18836,7 +18958,7 @@ const App: React.FC = () => {
                                 disabled={isBuildingActionProcessing}
                                 className={`mt-3 w-full text-white font-bold py-2 px-4 rounded-lg transition-all ${isBuildingActionProcessing ? 'bg-gray-700/70 cursor-not-allowed opacity-70' : 'bg-gray-600 hover:bg-gray-700'}`}
                             >
-                                {'< РќР°Р·Р°Рґ Рє РІС‹Р±РѕСЂСѓ'}
+                                {'< Назад к выбору'}
                             </button>
                         </div>
                     </div>
@@ -18850,7 +18972,7 @@ const App: React.FC = () => {
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>РРЅРІРµРЅС‚Р°СЂСЊ</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Инвентарь</h2>
                             </div>
                             <button onClick={() => { setShowInventory(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
@@ -18862,8 +18984,8 @@ const App: React.FC = () => {
                             {Object.keys(inventory).length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                                     <InventoryIcon className="w-16 h-16 mb-4 opacity-50" />
-                                    <p>Р’Р°С€ РёРЅРІРµРЅС‚Р°СЂСЊ РїСѓСЃС‚.</p>
-                                    <p className="text-sm mt-2">РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРѕР±СЂР°С‚СЊ РґРµСЂРµРІРѕ!</p>
+                                    <p>Ваш инвентарь пуст.</p>
+                                    <p className="text-sm mt-2">Попробуйте собрать дерево!</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-4">
@@ -18901,7 +19023,7 @@ const App: React.FC = () => {
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>РњР°РіР°Р·РёРЅ СЂРµСЃСѓСЂСЃРѕРІ</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Магазин ресурсов</h2>
                             </div>
                             <button onClick={() => { setShowShop(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
@@ -18917,10 +19039,10 @@ const App: React.FC = () => {
                                 onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(180deg, rgba(74,222,128,0.95) 0%, rgba(34,197,94,0.88) 100%)'; e.currentTarget.style.borderColor = 'rgba(187,247,208,0.75)'; }}
                                 onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(180deg, rgba(34,197,94,0.88) 0%, rgba(22,163,74,0.82) 100%)'; e.currentTarget.style.borderColor = 'rgba(134,239,172,0.45)'; }}
                             >
-                                <span>в†”</span> РћР±РјРµРЅСЏС‚СЊ
+                                <span>↔</span> Обменять
                             </button>
                             <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '12px', color: '#9ca3af' }}>Р’Р°С€Рё СЂСѓР±РёРЅС‹:</span>
+                                <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '12px', color: '#9ca3af' }}>Ваши рубины:</span>
                                 <img src={rubyImageUrl} alt="Ruby" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
                                 <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: '13px', fontWeight: 800, color: '#e0e8f0' }}>{playerRubies}</span>
                             </div>
@@ -18969,7 +19091,7 @@ const App: React.FC = () => {
                                             <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 700, color: '#d0d8e0', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{item.name}</p>
                                             <div style={{ marginTop: 'auto', width: '100%' }}>
                                                 <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '2px 4px', marginBottom: '4px', textAlign: 'center', fontFamily: 'Nunito, sans-serif', fontSize: '10px', color: '#9ca3af' }}>
-                                                    x{item.rubyPackQuantity} Р·Р° 1 <span style={{ color: '#f472b6' }}>в‚Ѕ</span>
+                                                    x{item.rubyPackQuantity} за 1 <span style={{ color: '#f472b6' }}>₽</span>
                                                 </div>
                                                 <div style={{ marginBottom: '4px' }}>
                                                     <input
@@ -18985,8 +19107,8 @@ const App: React.FC = () => {
                                                     disabled={playerRubies < qty}
                                                     style={{ width: '100%', background: playerRubies < qty ? 'rgba(100,100,100,0.3)' : 'linear-gradient(180deg, rgba(34,197,94,0.9) 0%, rgba(21,128,61,0.85) 100%)', borderRadius: '8px', border: `1px solid ${playerRubies < qty ? 'rgba(100,100,100,0.2)' : 'rgba(134,239,172,0.45)'}`, backdropFilter: 'blur(10px)', padding: '5px 4px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '11px', color: playerRubies < qty ? '#666' : '#f0fdf4', cursor: playerRubies < qty ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'all 0.25s ease', opacity: resourceShopPressedButtons[`shop-buy-${item.id}`] ? 0.4 : 1, boxShadow: playerRubies < qty ? 'none' : '0 6px 18px rgba(22,163,74,0.18), inset 0 1px 0 rgba(255,255,255,0.18)' }}
                                                 >
-                                                    <span>РљСѓРїРёС‚СЊ {totalItems} С€С‚.</span>
-                                                    <span style={{ fontSize: '9px', opacity: 0.7 }}>Р¦РµРЅР°: {qty} в‚Ѕ</span>
+                                                    <span>Купить {totalItems} шт.</span>
+                                                    <span style={{ fontSize: '9px', opacity: 0.7 }}>Цена: {qty} ₽</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -19002,7 +19124,7 @@ const App: React.FC = () => {
                 // ... (Exchange Modal content) ...
                 <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[60] backdrop-blur-md" onClick={() => setShowExchangeModal(false)}>
                     <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-96 border border-gray-600" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-white mb-4 text-center">РћР±РјРµРЅ СЂСѓР±РёРЅРѕРІ</h3>
+                        <h3 className="text-xl font-bold text-white mb-4 text-center">Обмен рубинов</h3>
                         <div className="flex items-center justify-center mb-6 space-x-4">
                             <div className="flex flex-col items-center">
                                 <img src={rubyImageUrl} className="w-12 h-12 mb-2 object-contain" alt="Ruby" />
@@ -19021,10 +19143,10 @@ const App: React.FC = () => {
                                 <span className="text-yellow-400 font-bold text-xl">{(exchangeAmount * 7777).toLocaleString()}</span>
                             </div>
                         </div>
-                        <p className="text-gray-400 text-sm text-center mb-6">РљСѓСЂСЃ: 1 СЂСѓР±РёРЅ = 7 777 РјРѕРЅРµС‚</p>
+                        <p className="text-gray-400 text-sm text-center mb-6">Курс: 1 рубин = 7 777 монет</p>
                         <div className="flex space-x-2">
-                            <button onClick={() => setShowExchangeModal(false)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded">РћС‚РјРµРЅР°</button>
-                            <button onClick={() => { triggerResourceShopButtonPress('shop-exchange-confirm'); handleRubyExchange(); }} className="flex-1 text-white py-2 rounded font-bold transition-all duration-300" style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.95) 0%, rgba(21,128,61,0.9) 100%)', opacity: resourceShopPressedButtons['shop-exchange-confirm'] ? 0.4 : 1, boxShadow: '0 8px 18px rgba(22,163,74,0.22), inset 0 1px 0 rgba(255,255,255,0.18)' }}>РћР±РјРµРЅСЏС‚СЊ</button>
+                            <button onClick={() => setShowExchangeModal(false)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded">Отмена</button>
+                            <button onClick={() => { triggerResourceShopButtonPress('shop-exchange-confirm'); handleRubyExchange(); }} className="flex-1 text-white py-2 rounded font-bold transition-all duration-300" style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.95) 0%, rgba(21,128,61,0.9) 100%)', opacity: resourceShopPressedButtons['shop-exchange-confirm'] ? 0.4 : 1, boxShadow: '0 8px 18px rgba(22,163,74,0.22), inset 0 1px 0 rgba(255,255,255,0.18)' }}>Обменять</button>
                         </div>
                     </div>
                 </div>
@@ -19035,16 +19157,16 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[60] backdrop-blur-md" onClick={() => setShowCasinoModal(false)}>
                     <div className="bg-gradient-to-b from-purple-900 to-gray-900 p-6 rounded-lg shadow-2xl w-96 border-2 border-yellow-500" onClick={e => e.stopPropagation()}>
                         <h3 className="text-2xl font-bold text-yellow-400 mb-4 text-center flex items-center justify-center">
-                            РљР°Р·РёРЅРѕ
+                            Казино
                         </h3>
                         
                         <div className="flex items-center justify-center mb-4 space-x-2">
                             <img src={coinImageUrl} className="w-6 h-6" alt="Coin" />
-                            <span className="text-white">Р’Р°С€Рё РјРѕРЅРµС‚С‹: <span className="text-yellow-400 font-bold">{playerGold.toLocaleString()}</span></span>
+                            <span className="text-white">Ваши монеты: <span className="text-yellow-400 font-bold">{playerGold.toLocaleString()}</span></span>
                         </div>
 
                         <div className="bg-gray-800/50 p-4 rounded-lg mb-4 border border-gray-600">
-                            <label className="text-gray-300 text-sm mb-2 block">РЎСѓРјРјР° СЃС‚Р°РІРєРё:</label>
+                            <label className="text-gray-300 text-sm mb-2 block">Сумма ставки:</label>
                             <div className="flex items-center space-x-2">
                                 <img src={coinImageUrl} className="w-8 h-8" alt="Coin" />
                                 <input
@@ -19067,15 +19189,15 @@ const App: React.FC = () => {
 
                         {casinoBetAmount > 10000 && (
                             <div className="bg-purple-800/50 p-3 rounded-lg mb-4 border border-purple-500 text-center">
-                                <span className="text-purple-300 text-sm">Р•СЃС‚СЊ С€Р°РЅСЃ РІС‹РёРіСЂР°С‚СЊ СЂСѓР±РёРЅ!</span>
+                                <span className="text-purple-300 text-sm">Есть шанс выиграть рубин!</span>
                             </div>
                         )}
 
                         {/* Spin Result Display */}
                         {casinoIsSpinning && (
                             <div className="bg-gray-800/50 p-4 rounded-lg mb-4 text-center">
-                                <div className="text-4xl animate-spin inline-block">рџЋ°</div>
-                                <p className="text-yellow-400 mt-2 animate-pulse">РљСЂСѓС‚РёРј...</p>
+                                <div className="text-4xl animate-spin inline-block">🎰</div>
+                                <p className="text-yellow-400 mt-2 animate-pulse">Крутим...</p>
                             </div>
                         )}
 
@@ -19084,22 +19206,22 @@ const App: React.FC = () => {
                                 {casinoResult.won ? (
                                     casinoResult.isRuby ? (
                                         <div>
-                                            <span className="text-4xl">рџ’Ћ</span>
-                                            <p className="text-purple-300 font-bold text-xl mt-2">Р”Р–Р•РљРџРћРў!</p>
-                                            <p className="text-purple-200">Р’С‹ РІС‹РёРіСЂР°Р»Рё СЂСѓР±РёРЅ!</p>
+                                            <span className="text-4xl">💎</span>
+                                            <p className="text-purple-300 font-bold text-xl mt-2">ДЖЕКПОТ!</p>
+                                            <p className="text-purple-200">Вы выиграли рубин!</p>
                                         </div>
                                     ) : (
                                         <div>
-                                            <span className="text-4xl">рџЏ†</span>
-                                            <p className="text-green-300 font-bold text-xl mt-2">РџРћР‘Р•Р”Рђ!</p>
-                                            <p className="text-green-200">Р’С‹ РІС‹РёРіСЂР°Р»Рё {casinoResult.amount.toLocaleString()} РјРѕРЅРµС‚!</p>
+                                            <span className="text-4xl">🏆</span>
+                                            <p className="text-green-300 font-bold text-xl mt-2">ПОБЕДА!</p>
+                                            <p className="text-green-200">Вы выиграли {casinoResult.amount.toLocaleString()} монет!</p>
                                         </div>
                                     )
                                 ) : (
                                     <div>
-                                        <span className="text-4xl">рџ’Ґ</span>
-                                        <p className="text-red-300 font-bold text-xl mt-2">РџР РћРР“Р Р«РЁ</p>
-                                        <p className="text-red-200">РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰Рµ СЂР°Р·!</p>
+                                        <span className="text-4xl">💥</span>
+                                        <p className="text-red-300 font-bold text-xl mt-2">ПРОИГРЫШ</p>
+                                        <p className="text-red-200">Попробуйте еще раз!</p>
                                     </div>
                                 )}
                             </div>
@@ -19110,19 +19232,19 @@ const App: React.FC = () => {
                                 onClick={() => setShowCasinoModal(false)} 
                                 className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
                             >
-                                Р—Р°РєСЂС‹С‚СЊ
+                                Закрыть
                             </button>
                             <button 
                                 onClick={handleCasinoGamble} 
                                 disabled={casinoIsSpinning || playerGold < casinoBetAmount}
                                 className="flex-1 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black py-2 rounded font-bold disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed"
                             >
-                                {casinoIsSpinning ? 'РљСЂСѓС‚РёРј...' : 'РРіСЂР°С‚СЊ!'}
+                                {casinoIsSpinning ? 'Крутим...' : 'Играть!'}
                             </button>
                         </div>
 
                         <p className="text-gray-500 text-xs text-center mt-4">
-                            РљР°Р·РёРЅРѕ РІСЃРµРіРґР° РІС‹РёРіСЂС‹РІР°РµС‚... РЅРѕ РЅРµ РІСЃРµРіРґР°!
+                            Казино всегда выигрывает... но не всегда!
                         </p>
                     </div>
                 </div>
@@ -19131,25 +19253,25 @@ const App: React.FC = () => {
             {showCasinoBankModal && activeCasinoBuilding && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[61] backdrop-blur-sm" onClick={() => setShowCasinoBankModal(false)}>
                     <div className="bg-gradient-to-b from-emerald-900 to-gray-900 p-6 rounded-lg shadow-2xl w-80 border-2 border-emerald-400" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-emerald-300 text-center mb-4">Р‘Р°РЅРє РєР°Р·РёРЅРѕ</h3>
+                        <h3 className="text-xl font-bold text-emerald-300 text-center mb-4">Банк казино</h3>
                         <div className="text-center mb-5">
-                            <p className="text-gray-300 text-sm mb-2">РќР°РєРѕРїР»РµРЅРЅР°СЏ РїСЂРёР±С‹Р»СЊ:</p>
+                            <p className="text-gray-300 text-sm mb-2">Накопленная прибыль:</p>
                             <div className="text-3xl font-bold text-yellow-300">{(activeCasinoBuilding.bank || 0).toLocaleString()}</div>
-                            <div className="text-gray-400 text-sm mt-1">РјРѕРЅРµС‚</div>
+                            <div className="text-gray-400 text-sm mt-1">монет</div>
                         </div>
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setShowCasinoBankModal(false)}
                                 className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded font-bold"
                             >
-                                Р—Р°РєСЂС‹С‚СЊ
+                                Закрыть
                             </button>
                             <button
                                 onClick={handleWithdrawCasinoBank}
                                 disabled={(activeCasinoBuilding.bank || 0) <= 0}
                                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded font-bold disabled:bg-gray-600 disabled:cursor-not-allowed"
                             >
-                                Р—Р°Р±СЂР°С‚СЊ РїСЂРёР±С‹Р»СЊ
+                                Забрать прибыль
                             </button>
                         </div>
                     </div>
@@ -19165,7 +19287,7 @@ const App: React.FC = () => {
                             {/* Academy Menu Image - Full screen on desktop, responsive on mobile */}
                                 <img 
                                     src="/academymonsters/seEsr.webp" 
-                                    alt="РђРєР°РґРµРјРёСЏ РјРѕРЅСЃС‚СЂРѕРІ" 
+                                    alt="Академия монстров" 
                                     className="w-full h-auto md:max-h-[85vh] md:w-auto object-contain rounded-lg"
                                 />
                             
@@ -19176,7 +19298,7 @@ const App: React.FC = () => {
                                     disabled
                                     className="bg-purple-700/80 hover:bg-purple-600/80 disabled:bg-gray-700/60 disabled:cursor-not-allowed text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg text-xs md:text-sm border-2 border-purple-400/50 backdrop-blur-sm transition-all"
                                 >
-                                    РЎРѕР·РґР°С‚СЊ
+                                    Создать
                                 </button>
                                 
                                 {/* Center capsule button */}
@@ -19184,7 +19306,7 @@ const App: React.FC = () => {
                                     disabled
                                     className="bg-purple-700/80 hover:bg-purple-600/80 disabled:bg-gray-700/60 disabled:cursor-not-allowed text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg text-xs md:text-sm border-2 border-purple-400/50 backdrop-blur-sm transition-all"
                                 >
-                                    РЎРѕР·РґР°С‚СЊ
+                                    Создать
                                 </button>
                                 
                                 {/* Right capsule button */}
@@ -19192,7 +19314,7 @@ const App: React.FC = () => {
                                     disabled
                                     className="bg-purple-700/80 hover:bg-purple-600/80 disabled:bg-gray-700/60 disabled:cursor-not-allowed text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg text-xs md:text-sm border-2 border-purple-400/50 backdrop-blur-sm transition-all"
                                 >
-                                    РЎРѕР·РґР°С‚СЊ
+                                    Создать
                                 </button>
                             </div>
                         </div>
@@ -19207,7 +19329,7 @@ const App: React.FC = () => {
                         
                         {/* Hint text */}
                         <p className="text-gray-400 text-xs md:text-sm mt-4 text-center">
-                            Р’С‹Р±РµСЂРёС‚Рµ РјРѕРЅСЃС‚СЂР° РґР»СЏ СЃРѕР·РґР°РЅРёСЏ
+                            Выберите монстра для создания
                         </p>
                     </div>
                 </div>
@@ -19219,7 +19341,7 @@ const App: React.FC = () => {
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>РљР°СЂС‚Р° РњРёСЂР°</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Карта Мира</h2>
                             </div>
                             <button onClick={() => { setShowMap(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
@@ -19239,7 +19361,7 @@ const App: React.FC = () => {
 
                                     const clanCastle = placedBuildings.find(b => {
                                         const info = buildingData.find(i => i.id === b.buildingId);
-                                        return info && info.category === 'Р В РЎв„ўР В Р’В»Р В Р’В°Р В Р вЂ¦' &&
+                                        return info && info.category === 'Р С™Р В»Р В°Р Р…' &&
                                             Math.floor(b.x / ZONE_SIZE) === col &&
                                             Math.floor(b.y / ZONE_SIZE) === row;
                                     });
@@ -19248,14 +19370,14 @@ const App: React.FC = () => {
                                         <div
                                             key={index}
                                             style={{ width: '96px', height: '96px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', background: clanCastle ? 'rgba(180,40,40,0.25)' : 'rgba(0,0,0,0.25)', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                                            title={`Р—РѕРЅР° ${col + 1}-${row + 1}`}
+                                            title={`Зона ${col + 1}-${row + 1}`}
                                             onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.background = clanCastle ? 'rgba(180,40,40,0.35)' : 'rgba(255,255,255,0.08)'; }}
                                             onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.background = clanCastle ? 'rgba(180,40,40,0.25)' : 'rgba(0,0,0,0.25)'; }}
                                         >
                                             <span style={{ position: 'absolute', top: '3px', left: '4px', fontFamily: 'Nunito, sans-serif', fontSize: '9px', fontWeight: 600, color: 'rgba(255,255,255,0.3)' }}>{col + 1}-{row + 1}</span>
 
                                             {hasTownHall && (
-                                                <span className="animate-pulse" style={{ fontSize: '24px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} title="Р’Р°С€ РіРѕСЂРѕРґ">в­ђ</span>
+                                                <span className="animate-pulse" style={{ fontSize: '24px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} title="Ваш город">⭐</span>
                                             )}
 
                                             {clanCastle && (
@@ -19268,7 +19390,7 @@ const App: React.FC = () => {
                                 })}
                             </div>
                             <div style={{ marginTop: '12px', textAlign: 'center', fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.35)' }}>
-                                Р—РІРµР·РґРѕС‡РєРѕР№ РѕС‚РјРµС‡РµРЅРѕ РІР°С€Рµ РіР»Р°РІРЅРѕРµ Р·РґР°РЅРёРµ. Р—Р°РјРєРё РѕР±РѕР·РЅР°С‡Р°СЋС‚ РІР»Р°РґРµРЅРёСЏ РєР»Р°РЅРѕРІ.
+                                Звездочкой отмечено ваше главное здание. Замки обозначают владения кланов.
                             </div>
                         </div>
                     </div>
@@ -19281,7 +19403,7 @@ const App: React.FC = () => {
                         <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
                             <h2 className="text-2xl font-bold text-white flex items-center">
                                 <img src={guiMenuTopImageUrl} alt="Top" className="w-8 h-8 mr-3" />
-                                РўРѕРї РёРіСЂРѕРєРѕРІ
+                                Топ игроков
                             </h2>
                             <button onClick={() => setShowTopPlayers(false)} className="text-gray-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-8 h-8" />
@@ -19301,19 +19423,19 @@ const App: React.FC = () => {
                             </div>
                             {leaderboardLoading && hasTopPlayersData ? (
                                 <div className="py-2 text-center text-gray-400 font-medium">
-                                    РџРѕРІС‚РѕСЂРЅР°СЏ Р·Р°РіСЂСѓР·РєР°...
+                                    Повторная загрузка...
                                 </div>
                             ) : leaderboardLoading ? (
                                 <div className="py-8 text-center text-gray-300 font-medium">
-                                    Р—Р°РіСЂСѓР·РєР° С‚РѕРїР°...
+                                    Загрузка топа...
                                 </div>
                             ) : leaderboardError && !hasTopPlayersData ? (
                                 <div className="py-8 text-center text-red-300 font-medium">
-                                    РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ С‚РѕРї РёРіСЂРѕРєРѕРІ
+                                    Не удалось загрузить топ игроков
                                 </div>
                             ) : !hasTopPlayersData ? (
                                 <div className="py-8 text-center text-gray-400 font-medium">
-                                    РџРѕРєР° РЅРµС‚ РёРіСЂРѕРєРѕРІ РІ СЂРµР№С‚РёРЅРіРµ
+                                    Пока нет игроков в рейтинге
                                 </div>
                             ) : (
                                 displayedTopPlayersData.map((u: any, index: number) => (
@@ -19354,7 +19476,7 @@ const App: React.FC = () => {
                     <div className="bg-gradient-to-b from-amber-900 to-amber-950 p-4 rounded-lg shadow-2xl w-full max-w-md border-2 border-yellow-600 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-2 pb-2 border-b border-yellow-700">
                             <h2 className="text-xl font-bold text-yellow-200 flex items-center font-serif">
-                                рџ‘‘ РљРѕСЂРѕР»РµРІСЃРєРёРµ РІС‹Р±РѕСЂС‹
+                                👑 Королевские выборы
                             </h2>
                             <button onClick={() => setShowRoyalElections(false)} className="text-yellow-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-7 h-7" />
@@ -19364,20 +19486,20 @@ const App: React.FC = () => {
                         {/* Current King/Queen Display */}
                         {(kingId || queenId) && (
                             <div className="mb-4 bg-gradient-to-r from-yellow-900/50 to-amber-900/50 p-3 rounded-lg border border-yellow-600">
-                                <h3 className="text-yellow-200 font-bold text-center mb-2">РўРµРєСѓС‰РёРµ РїСЂР°РІРёС‚РµР»Рё</h3>
+                                <h3 className="text-yellow-200 font-bold text-center mb-2">Текущие правители</h3>
                                 <div className="flex justify-center gap-4">
                                     {kingId && (
                                         <div className="text-center">
-                                            <div className="text-2xl mb-1">рџ¤ґ</div>
-                                            <div className="text-blue-300 font-bold">{kingName || 'РљРѕСЂРѕР»СЊ'}</div>
-                                            <div className="text-xs text-gray-400">РљРѕСЂРѕР»СЊ</div>
+                                            <div className="text-2xl mb-1">🤴</div>
+                                            <div className="text-blue-300 font-bold">{kingName || 'Король'}</div>
+                                            <div className="text-xs text-gray-400">Король</div>
                                         </div>
                                     )}
                                     {queenId && (
                                         <div className="text-center">
-                                            <div className="text-2xl mb-1">рџ‘ё</div>
-                                            <div className="text-pink-300 font-bold">{queenName || 'РљРѕСЂРѕР»РµРІР°'}</div>
-                                            <div className="text-xs text-gray-400">РљРѕСЂРѕР»РµРІР°</div>
+                                            <div className="text-2xl mb-1">👸</div>
+                                            <div className="text-pink-300 font-bold">{queenName || 'Королева'}</div>
+                                            <div className="text-xs text-gray-400">Королева</div>
                                         </div>
                                     )}
                                 </div>
@@ -19390,13 +19512,13 @@ const App: React.FC = () => {
                                 onClick={() => setRoyalElectionsTab('queen')}
                                 className={`flex-1 py-2 px-4 rounded-t-lg font-bold transition-all ${royalElectionsTab === 'queen' ? 'bg-pink-600 text-white border-b-2 border-pink-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                             >
-                                рџ‘ё РљРѕСЂРѕР»РµРІР°
+                                👸 Королева
                             </button>
                             <button
                                 onClick={() => setRoyalElectionsTab('king')}
                                 className={`flex-1 py-2 px-4 rounded-t-lg font-bold transition-all ${royalElectionsTab === 'king' ? 'bg-blue-600 text-white border-b-2 border-blue-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                             >
-                                рџ¤ґ РљРѕСЂРѕР»СЊ
+                                🤴 Король
                             </button>
                         </div>
 
@@ -19409,7 +19531,7 @@ const App: React.FC = () => {
                             />
                             <div className="flex-1">
                                 <p className="text-yellow-100 font-serif text-lg">
-                                    {royalElectionsTab === 'queen' ? 'РљРѕСЂРѕР»РµРІР°' : 'РљРѕСЂРѕР»СЊ'} РјРёСЂР° РµС‰Рµ РЅРµ РѕР±СЉСЏРІР»РµРЅ{royalElectionsTab === 'queen' ? 'Р°' : ''}
+                                    {royalElectionsTab === 'queen' ? 'Королева' : 'Король'} мира еще не объявлен{royalElectionsTab === 'queen' ? 'а' : ''}
                                 </p>
                                 <p className="text-gray-300 text-sm mt-1">
                                     {(() => {
@@ -19420,15 +19542,15 @@ const App: React.FC = () => {
                                                 const hours = Math.floor((timeLeft % 86400000) / 3600000);
                                                 const minutes = Math.floor((timeLeft % 3600000) / 60000);
                                                 if (days > 0) {
-                                                    return <>Р”Рѕ РєРѕСЂРѕРЅР°С†РёРё РѕСЃС‚Р°Р»РѕСЃСЊ: <span className="text-yellow-400 font-bold">{days}Рґ {hours}С‡</span></>;
+                                                    return <>До коронации осталось: <span className="text-yellow-400 font-bold">{days}д {hours}ч</span></>;
                                                 } else {
-                                                    return <>Р”Рѕ РєРѕСЂРѕРЅР°С†РёРё РѕСЃС‚Р°Р»РѕСЃСЊ: <span className="text-yellow-400 font-bold">{hours}С‡ {minutes}Рј</span></>;
+                                                    return <>До коронации осталось: <span className="text-yellow-400 font-bold">{hours}ч {minutes}м</span></>;
                                                 }
                                             } else {
-                                                return <>Р“РѕР»РѕСЃРѕРІР°РЅРёРµ Р·Р°РІРµСЂС€РµРЅРѕ! <span className="text-yellow-400 font-bold">РРґРµС‚ РїРѕРґСЃС‡РµС‚...</span></>;
+                                                return <>Голосование завершено! <span className="text-yellow-400 font-bold">Идет подсчет...</span></>;
                                             }
                                         }
-                                        return <>РЎР»РµРґСѓСЋС‰РёРµ РІС‹Р±РѕСЂС‹: <span className="text-yellow-400 font-bold">СЃРєРѕСЂРѕ</span></>;
+                                        return <>Следующие выборы: <span className="text-yellow-400 font-bold">скоро</span></>;
                                     })()}
                                 </p>
                             </div>
@@ -19437,18 +19559,18 @@ const App: React.FC = () => {
                         {/* Stats */}
                         <div className="bg-black/30 p-3 rounded-lg mb-4 space-y-2">
                             <div className="flex justify-between">
-                                <span className="text-gray-300">РЎРѕР±СЂР°РЅРѕ:</span>
-                                <span className="text-yellow-400 font-bold">{royalVotesTotal.toLocaleString()} РјРѕРЅРµС‚</span>
+                                <span className="text-gray-300">Собрано:</span>
+                                <span className="text-yellow-400 font-bold">{royalVotesTotal.toLocaleString()} монет</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-300">РњР°РєСЃРёРјР°Р»СЊРЅС‹Р№ Р±Р°РЅРє СЃС‚Р°РІРѕРє:</span>
+                                <span className="text-gray-300">Максимальный банк ставок:</span>
                                 <span className="text-yellow-400 font-bold">1,000,000,000</span>
                             </div>
                         </div>
 
                         {/* Candidates List */}
                         <div className="bg-black/30 p-3 rounded-lg">
-                            <h3 className="text-yellow-200 font-bold mb-2 font-serif">РЎРїРёСЃРѕРє РїСЂРµС‚РµРЅРґРµРЅС‚РѕРІ РЅР° С‚СЂРѕРЅ</h3>
+                            <h3 className="text-yellow-200 font-bold mb-2 font-serif">Список претендентов на трон</h3>
                             <div className="space-y-2 max-h-40 overflow-y-auto">
                                 {(() => {
                                     // Filter candidates by gender based on selected tab
@@ -19469,7 +19591,7 @@ const App: React.FC = () => {
                                         .slice(0, 10);
 
                                     if (filteredCandidates.length === 0) {
-                                        return <p className="text-gray-400 text-sm text-center py-4">РџРѕРєР° РЅРёРєС‚Рѕ РЅРµ РіРѕР»РѕСЃРѕРІР°Р»</p>;
+                                        return <p className="text-gray-400 text-sm text-center py-4">Пока никто не голосовал</p>;
                                     }
                                     
                                     return filteredCandidates.map(([uid, votes], index) => {
@@ -19483,7 +19605,7 @@ const App: React.FC = () => {
                                                     <span className={`font-bold w-6 ${index < 3 ? 'text-yellow-400' : 'text-gray-400'}`}>
                                                         {index + 1}.
                                                     </span>
-                                                    <span className="text-white">{playerInfo?.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№'}</span>
+                                                    <span className="text-white">{playerInfo?.name || 'Неизвестный'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1">
                                                     <img src={coinImageUrl} alt="coin" className="w-4 h-4" />
@@ -19498,22 +19620,22 @@ const App: React.FC = () => {
 
                         {/* Buffs Info */}
                         <div className="mt-4 bg-black/30 p-3 rounded-lg">
-                            <h3 className="text-yellow-200 font-bold mb-2 font-serif">РџСЂРёРІРёР»РµРіРёРё {royalElectionsTab === 'queen' ? 'РєРѕСЂРѕР»РµРІС‹' : 'РєРѕСЂРѕР»СЏ'}:</h3>
+                            <h3 className="text-yellow-200 font-bold mb-2 font-serif">Привилегии {royalElectionsTab === 'queen' ? 'королевы' : 'короля'}:</h3>
                             <ul className="text-sm text-gray-300 space-y-1">
-                                <li>РџРёС€СѓС‚ РєСЂР°СЃРЅС‹Рј С†РІРµС‚РѕРј РІ С‡Р°С‚Рµ</li>
-                                <li>Р‘РµСЃРїР»Р°С‚РЅС‹Рµ РєСЂРёРєРё Рё Р°РЅРѕРЅРёРјРЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ</li>
-                                <li>РЎС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ Рё РїСЂРѕРёР·РІРѕРґСЃС‚РІРѕ РЅР° 1% Р±С‹СЃС‚СЂРµРµ</li>
-                                <li>РќРµ РїР»Р°С‚СЏС‚ РЅР°Р»РѕРіРё</li>
-                                <li>1 РёРјРјСѓРЅРёС‚РµС‚ РѕС‚ СЃР±РёС‚РёСЏ СЃР»Р°РІС‹ РІ РґРµРЅСЊ</li>
-                                <li>1 РїРѕРјРёР»РѕРІР°РЅРёРµ Р±Р°РЅР° РІ РґРµРЅСЊ</li>
-                                <li>Р—Р°С‰РёС‚Р° 1 Р·РґР°РЅРёСЏ РЅР° 2 С‡Р°СЃР° РІ РґРµРЅСЊ</li>
-                                <li>+1,000,000 Рє С…СЂР°РЅРёР»РёС‰Сѓ РјРѕРЅРµС‚</li>
-                                <li>+50 Р¶РёС‚РµР»РµР№</li>
-                                <li>+1% С€Р°РЅСЃ СЃСѓРїРµСЂ СЂРµСЃСѓСЂСЃРѕРІ</li>
+                                <li>Пишут красным цветом в чате</li>
+                                <li>Бесплатные крики и анонимные сообщения</li>
+                                <li>Строительство и производство на 1% быстрее</li>
+                                <li>Не платят налоги</li>
+                                <li>1 иммунитет от сбития славы в день</li>
+                                <li>1 помилование бана в день</li>
+                                <li>Защита 1 здания на 2 часа в день</li>
+                                <li>+1,000,000 к хранилищу монет</li>
+                                <li>+50 жителей</li>
+                                <li>+1% шанс супер ресурсов</li>
                             </ul>
                             {/* Warning for police members */}
                             {(sheriffId === user?.uid || deputies.includes(user?.uid || '')) && (
-                                <p className="text-red-400 text-xs mt-2 font-bold">Р В Р вЂ Р РЋРІвЂћСћР вЂ™Р’В Р В РЎвЂ”Р РЋРІР‚ВР В Р РЏ Р’С‹ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р РЋР С“Р РЋРІР‚С™Р В Р’В°Р РЋРІР‚С™Р РЋР Р‰ Р В РЎвЂќР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В РЎВ/Р В РЎвЂќР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В Р вЂ Р В РЎвЂўР В РІвЂћвЂ“, Р РЋРІР‚С™Р В Р’В°Р В РЎвЂќ Р В РЎвЂќР В Р’В°Р В РЎвЂќ Р В Р вЂ Р РЋРІР‚в„– Р РЋР С“Р В РЎвЂўР РЋР С“Р РЋРІР‚С™Р В РЎвЂўР В РЎвЂР РЋРІР‚С™Р В Р’Вµ Р В Р вЂ  Р В РЎвЂ”Р В РЎвЂўР В Р’В»Р В РЎвЂР РЋРІР‚В Р В РЎвЂР В РЎвЂ!</p>
+                                <p className="text-red-400 text-xs mt-2 font-bold">Р Р†РЎв„ўР’В Р С—РЎвЂР РЏ Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ РЎРѓРЎвЂљР В°РЎвЂљРЎРЉ Р С”Р С•РЎР‚Р С•Р В»Р ВµР С/Р С”Р С•РЎР‚Р С•Р В»Р ВµР Р†Р С•Р в„–, РЎвЂљР В°Р С” Р С”Р В°Р С” Р Р†РЎвЂ№ РЎРѓР С•РЎРѓРЎвЂљР С•Р С‘РЎвЂљР Вµ Р Р† Р С—Р С•Р В»Р С‘РЎвЂ Р С‘Р С‘!</p>
                             )}
                         </div>
                     </div>
@@ -19524,7 +19646,7 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[60] backdrop-blur-sm" onClick={() => setShowRoyalVotingModal(false)}>
                     <div className="bg-gradient-to-b from-amber-900 to-amber-950 p-4 rounded-lg shadow-2xl w-full max-w-sm border-2 border-yellow-600 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-3 pb-2 border-b border-yellow-700">
-                            <h2 className="text-lg font-bold text-yellow-200 font-serif">Р“РѕР»РѕСЃРѕРІР°РЅРёРµ Р·Р° РєРѕСЂРѕР»СЏ</h2>
+                            <h2 className="text-lg font-bold text-yellow-200 font-serif">Голосование за короля</h2>
                             <button onClick={() => setShowRoyalVotingModal(false)} className="text-yellow-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-7 h-7" />
                             </button>
@@ -19537,7 +19659,7 @@ const App: React.FC = () => {
 
                         {/* Player Info */}
                         <div className="bg-black/30 p-3 rounded-lg mb-4 text-center">
-                            <p className="text-gray-300 text-sm mb-2">Р’С‹ РіРѕР»РѕСЃСѓРµС‚Рµ Р·Р°</p>
+                            <p className="text-gray-300 text-sm mb-2">Вы голосуете за</p>
                             <div className="flex items-center justify-center gap-2">
                                 <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden border-2 border-blue-400">
                                     {allUsers[votingForPlayer]?.avatar ? (
@@ -19546,15 +19668,15 @@ const App: React.FC = () => {
                                         <span className="text-lg font-bold text-white">{allUsers[votingForPlayer]?.name?.charAt(0) || '?'}</span>
                                     )}
                                 </div>
-                                <span className="text-white font-bold text-lg">{allUsers[votingForPlayer]?.name || "РРіСЂРѕРє"}</span>
+                                <span className="text-white font-bold text-lg">{allUsers[votingForPlayer]?.name || "Игрок"}</span>
                             </div>
                         </div>
 
                         {/* Vote Count */}
                         <div className="bg-black/30 p-3 rounded-lg mb-4">
                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-gray-300">РљРѕР»РёС‡РµСЃС‚РІРѕ РіРѕР»РѕСЃРѕРІ:</span>
-                                <span className="text-yellow-400 font-bold">{voteCount} <span className="text-gray-400 text-sm">(РјР°РєСЃ 1255)</span></span>
+                                <span className="text-gray-300">Количество голосов:</span>
+                                <span className="text-yellow-400 font-bold">{voteCount} <span className="text-gray-400 text-sm">(макс 1255)</span></span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
@@ -19576,7 +19698,7 @@ const App: React.FC = () => {
                             </div>
                             <div className="flex justify-between text-xs text-gray-500 mt-2">
                                 <span>1</span>
-                                <span className="text-yellow-400">{voteCount} ? 800 = {(voteCount * 800).toLocaleString()} РјРѕРЅРµС‚</span>
+                                <span className="text-yellow-400">{voteCount} ? 800 = {(voteCount * 800).toLocaleString()} монет</span>
                                 <span>1255</span>
                             </div>
                         </div>
@@ -19584,7 +19706,7 @@ const App: React.FC = () => {
                         {/* Info */}
                         <div className="bg-black/30 p-3 rounded-lg mb-4">
                             <p className="text-sm text-gray-300">
-                                Р•СЃР»Рё РѕРЅ РїРѕР±РµРґРёС‚, РІС‹ РїРѕР»СѓС‡РёС‚Рµ РјРѕРЅРµС‚С‹ РЅР°Р·Р°Рґ (80%) Рё Р±РѕРЅСѓСЃ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РІР°С€РµРіРѕ РІРєР»Р°РґР° РІ РїРѕР±РµРґСѓ!
+                                Если он победит, вы получите монеты назад (80%) и бонус в зависимости от вашего вклада в победу!
                             </p>
                         </div>
 
@@ -19596,7 +19718,7 @@ const App: React.FC = () => {
                                 if (playerGold >= totalCost && playerEnergy >= energyCost) {
                                     // Check if voting for police member
                                     if (sheriffId === votingForPlayer || deputies.includes(votingForPlayer || '')) {
-                                        alert('Р’С‹ РЅРµ РјРѕР¶РµС‚Рµ РіРѕР»РѕСЃРѕРІР°С‚СЊ Р·Р° СЌС‚РѕРіРѕ РёРіСЂРѕРєР°, С‚Р°Рє РєР°Рє РѕРЅ СЃРѕСЃС‚РѕРёС‚ РІ РїРѕР»РёС†РёРё!');
+                                        alert('Вы не можете голосовать за этого игрока, так как он состоит в полиции!');
                                         return;
                                     }
                                     // Deduct resources
@@ -19626,7 +19748,7 @@ const App: React.FC = () => {
                                     }).catch((err) => {
                                         console.error('[RoyalVote] Failed to save election data:', err);
                                     });
-                                    alert(`Р’С‹ РїСЂРѕРіРѕР»РѕСЃРѕРІР°Р»Рё Р·Р° ${allUsers[votingForPlayer]?.name} ${voteCount} СЂР°Р·(Р°) РЅР° СЃСѓРјРјСѓ ${totalCost.toLocaleString()} РјРѕРЅРµС‚!`);
+                                    alert(`Вы проголосовали за ${allUsers[votingForPlayer]?.name} ${voteCount} раз(а) на сумму ${totalCost.toLocaleString()} монет!`);
                                     setShowRoyalVotingModal(false);
                                     setVoteCount(1);
                                 }
@@ -19634,9 +19756,9 @@ const App: React.FC = () => {
                             disabled={playerGold < voteCount * 800 || playerEnergy < voteCount * 2}
                             className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                         >
-                            <span className="flex items-center gap-1"><span className="text-yellow-400">вљЎ</span> {voteCount * 2}</span>
+                            <span className="flex items-center gap-1"><span className="text-yellow-400">⚡</span> {voteCount * 2}</span>
                             <span className="flex items-center gap-1"><img src={coinImageUrl} alt="coin" className="w-5 h-5" /> {(voteCount * 800).toLocaleString()}</span>
-                            <span>РЎРґРµР»Р°С‚СЊ СЃС‚Р°РІРєСѓ</span>
+                            <span>Сделать ставку</span>
                         </button>
                     </div>
                 </div>
@@ -19649,7 +19771,7 @@ const App: React.FC = () => {
                         <div className="flex justify-between items-center mb-2 pb-2 border-b border-blue-700">
                             <h2 className="text-xl font-bold text-blue-200 flex items-center gap-2">
                                 <img src={policeBadgeImageUrl} alt="Badge" className="w-6 h-6" />
-                                РџРѕР»РёС†РёСЏ РЅСЂР°РІРѕРІ
+                                Полиция нравов
                             </h2>
                             <button onClick={() => setShowPoliceMorals(false)} className="text-blue-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-7 h-7" />
@@ -19668,8 +19790,8 @@ const App: React.FC = () => {
                                                 alt="Police Badge" 
                                                 className="w-20 h-20 mx-auto mb-4 opacity-50"
                                             />
-                                            <p className="text-gray-300 mb-2">Р”Р»СЏ СѓС‡Р°СЃС‚РёСЏ РІ РІС‹Р±РѕСЂР°С… РїРѕР»РёС†РёРё РїРѕСЃС‚СЂРѕР№С‚Рµ РїРѕР»РёС†РµР№СЃРєРёР№ СѓС‡Р°СЃС‚РѕРє.</p>
-                                            <p className="text-xs text-gray-500">ID Р·РґР°РЅРёСЏ: 308</p>
+                                            <p className="text-gray-300 mb-2">Для участия в выборах полиции постройте полицейский участок.</p>
+                                            <p className="text-xs text-gray-500">ID здания: 308</p>
                                         </div>
                                     </div>
                                 );
@@ -19678,17 +19800,17 @@ const App: React.FC = () => {
                                 <div className="space-y-3">
                                     {/* Current Sheriff */}
                                     <div className="bg-black/30 p-3 rounded-lg">
-                                        <h3 className="text-blue-300 font-bold mb-2">РўРµРєСѓС‰РёР№ С€РµСЂРёС„</h3>
+                                        <h3 className="text-blue-300 font-bold mb-2">Текущий шериф</h3>
                                         {sheriffId ? (
                                             <div className="flex items-center gap-3">
                                                 <img src="/last_appx/polise/16.webp" alt="Sheriff" className="w-12 h-12 rounded border-2 border-blue-500" />
                                                 <div>
-                                                    <p className="text-white font-bold">{sheriffName || "РЁРµСЂРёС„"}</p>
-                                                    <p className="text-xs text-gray-400">Р—Р°С‰РёС‚РЅРёРє РіРѕСЂРѕРґР°</p>
+                                                    <p className="text-white font-bold">{sheriffName || "Шериф"}</p>
+                                                    <p className="text-xs text-gray-400">Защитник города</p>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p className="text-yellow-400 text-sm">Р’ РіРѕСЂРѕРґРµ РµС‰Рµ РЅРµС‚ С€РµСЂРёС„Р°. РџРѕСЃС‚СЂРѕР№С‚Рµ РїРѕР»РёС†РµР№СЃРєРёР№ СѓС‡Р°СЃС‚РѕРє, С‡С‚РѕР±С‹ РІС‹РґРІРёРЅСѓС‚СЊ СЃРІРѕСЋ РєР°РЅРґРёРґР°С‚СѓСЂСѓ РЅР° РїРѕСЃС‚ С€РµСЂРёС„Р°.</p>
+                                            <p className="text-yellow-400 text-sm">В городе еще нет шерифа. Постройте полицейский участок, чтобы выдвинуть свою кандидатуру на пост шерифа.</p>
                                         )}
                                     </div>
 
@@ -19704,9 +19826,9 @@ const App: React.FC = () => {
                                                 
                                                 let timeStr = '';
                                                 if (days > 0) {
-                                                    timeStr = `${days}Рґ ${hours}С‡`;
+                                                    timeStr = `${days}д ${hours}ч`;
                                                 } else {
-                                                    timeStr = `${hours}С‡ ${minutes}Рј ${seconds}СЃ`;
+                                                    timeStr = `${hours}ч ${minutes}м ${seconds}с`;
                                                 }
                                                 
                                                 // Check if election is ongoing (candidates exist)
@@ -19716,7 +19838,7 @@ const App: React.FC = () => {
                                                     return (
                                                         <div className="bg-yellow-900/30 p-3 rounded-lg border border-yellow-500/50">
                                                             <p className="text-yellow-300 text-sm font-bold">
-                                                                Р”Рѕ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹Р±РѕСЂРѕРІ: {timeStr}
+                                                                До окончания выборов: {timeStr}
                                                             </p>
                                                         </div>
                                                     );
@@ -19731,7 +19853,7 @@ const App: React.FC = () => {
                                             return (
                                                 <div className="bg-blue-900/30 p-3 rounded-lg border border-blue-500/50">
                                                     <p className="text-blue-300 text-sm font-bold">
-                                                        Р”Рѕ СЃР»РµРґСѓСЋС‰РёС… РІС‹Р±РѕСЂРѕРІ РЅР° РїРѕСЃС‚ С€РµСЂРёС„Р°: {days}Рґ {hours}С‡
+                                                        До следующих выборов на пост шерифа: {days}д {hours}ч
                                                     </p>
                                                 </div>
                                             );
@@ -19742,14 +19864,14 @@ const App: React.FC = () => {
                                     {/* Deputies */}
                                     {deputies.length > 0 && (
                                         <div className="bg-black/30 p-3 rounded-lg">
-                                            <h3 className="text-blue-300 font-bold mb-2">РџРѕРјРѕС‰РЅРёРєРё С€РµСЂРёС„Р° ({deputies.length}/6)</h3>
+                                            <h3 className="text-blue-300 font-bold mb-2">Помощники шерифа ({deputies.length}/6)</h3>
                                             <div className="flex flex-wrap gap-2">
                                                 {deputies.map(depUid => {
                                                     const depInfo = allUsers[depUid];
                                                     return (
                                                         <div key={depUid} className="bg-blue-800/50 px-2 py-1 rounded text-xs text-white flex items-center gap-1">
                                                             <img src="/last_appx/polise/16.webp" alt="Deputy" className="w-4 h-4" />
-                                                            {depInfo?.name || "Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ"}
+                                                            {depInfo?.name || "Р ВР С–РЎР‚Р С•Р С”"}
                                                         </div>
                                                     );
                                                 })}
@@ -19766,7 +19888,7 @@ const App: React.FC = () => {
                                         }}
                                         className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg"
                                     >
-                                        Р В РЎвЂєР РЋРІР‚С™Р В РЎвЂќР РЋР вЂљР РЋРІР‚в„–Р РЋРІР‚С™Р РЋР Р‰ Р В Р вЂ Р РЋРІР‚в„–Р В Р’В±Р В РЎвЂўР РЋР вЂљР РЋРІР‚в„– Р В Р вЂ  Р В РЎвЂ”Р В РЎвЂўР В Р’В»Р В РЎвЂР РЋРІР‚В Р В РЎвЂР РЋР вЂ№
+                                        Р С›РЎвЂљР С”РЎР‚РЎвЂ№РЎвЂљРЎРЉ Р Р†РЎвЂ№Р В±Р С•РЎР‚РЎвЂ№ Р Р† Р С—Р С•Р В»Р С‘РЎвЂ Р С‘РЎР‹
                                     </button>
                                 </div>
                             );
@@ -19780,7 +19902,7 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[60] backdrop-blur-sm" onClick={() => setShowPoliceVotingModal(false)}>
                     <div className="bg-gradient-to-b from-blue-900 to-blue-950 p-4 rounded-lg shadow-2xl w-full max-w-sm border-2 border-blue-600 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-700">
-                            <h2 className="text-lg font-bold text-blue-200">Р“РѕР»РѕСЃРѕРІР°РЅРёРµ Р·Р° С€РµСЂРёС„Р°</h2>
+                            <h2 className="text-lg font-bold text-blue-200">Голосование за шерифа</h2>
                             <button onClick={() => setShowPoliceVotingModal(false)} className="text-blue-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-7 h-7" />
                             </button>
@@ -19791,8 +19913,8 @@ const App: React.FC = () => {
                         </div>
             
                         <div className="text-center mb-4">
-                            <p className="text-white font-bold">{allUsers[policeVotingForPlayer]?.name || "РРіСЂРѕРє"}</p>
-                            <p className="text-xs text-gray-400">Р“РѕР»РѕСЃР°: {policeCandidates[policeVotingForPlayer]?.votes || 0}</p>
+                            <p className="text-white font-bold">{allUsers[policeVotingForPlayer]?.name || "Игрок"}</p>
+                            <p className="text-xs text-gray-400">Голоса: {policeCandidates[policeVotingForPlayer]?.votes || 0}</p>
                         </div>
             
                         <div className="flex items-center justify-center gap-4 mb-4">
@@ -19808,19 +19930,19 @@ const App: React.FC = () => {
                         </div>
                         <div className="flex justify-between text-xs text-gray-500 mb-2">
                             <span>1</span>
-                            <span className="text-blue-400">{policeVoteCount} РіРѕР»РѕСЃРѕРІ = {(policeVoteCount * 1000).toLocaleString()} РјРѕРЅРµС‚</span>
+                            <span className="text-blue-400">{policeVoteCount} голосов = {(policeVoteCount * 1000).toLocaleString()} монет</span>
                             <span>100</span>
                         </div>
             
                         <div className="bg-black/30 p-3 rounded-lg mb-4 text-sm">
                             <div className="flex justify-between text-gray-300 mb-1">
-                                <span>РњРѕРЅРµС‚С‹:</span>
+                                <span>Монеты:</span>
                                 <span className={playerGold >= policeVoteCount * 1000 ? "text-yellow-400" : "text-red-400"}>
                                     {(policeVoteCount * 1000).toLocaleString()}
                                 </span>
                             </div>
                             <div className="flex justify-between text-gray-300 mb-1">
-                                <span>Р­РЅРµСЂРіРёСЏ:</span>
+                                <span>Энергия:</span>
                                 <span className={playerEnergy >= policeVoteCount * 100 ? "text-blue-400" : "text-red-400"}>
                                     {policeVoteCount * 100}
                                 </span>
@@ -19854,25 +19976,25 @@ const App: React.FC = () => {
                                     };
                                     try {
                                         await setDoc(doc(db, 'elections', 'police'), electionData);
-                                        alert(`Р’С‹ РїСЂРѕРіРѕР»РѕСЃРѕРІР°Р»Рё Р·Р° ${allUsers[policeVotingForPlayer!]?.name} ${policeVoteCount} СЂР°Р·(Р°)!`);
+                                        alert(`Вы проголосовали за ${allUsers[policeVotingForPlayer!]?.name} ${policeVoteCount} раз(а)!`);
                                     } catch (e) {
                                         console.error('Failed to save vote:', e);
-                                        alert('Р В РЎвЂєР РЋРІвЂљВ¬Р В РЎвЂР В Р’В±Р В РЎвЂќР В Р’В° Р В РЎвЂ”Р РЋР вЂљР В РЎвЂ Р РЋР С“Р В РЎвЂўР РЋРІР‚В¦Р РЋР вЂљР В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р В РЎвЂР В РЎвЂ Р В РЎвЂ“Р В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В Р’В°. Р В РЎСџР В РЎвЂўР В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В Р’В±Р РЋРЎвЂњР В РІвЂћвЂ“Р РЋРІР‚С™Р В Р’Вµ Р В Р’ВµР РЋРІР‚В°Р В Р’Вµ Р РЋР вЂљР В Р’В°Р В Р’В·.');
+                                        alert('Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р С—РЎР‚Р С‘ РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р ВµР Р…Р С‘Р С‘ Р С–Р С•Р В»Р С•РЎРѓР В°. Р СџР С•Р С—РЎР‚Р С•Р В±РЎС“Р в„–РЎвЂљР Вµ Р ВµРЎвЂ°Р Вµ РЎР‚Р В°Р В·.');
                                     }
                                     setShowPoliceVotingModal(false);
                                     setPoliceVoteCount(1);
                                 } else {
-                                        alert('РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂРµСЃСѓСЂСЃРѕРІ!');
+                                        alert('Недостаточно ресурсов!');
                                 }
                             }}
                             disabled={playerGold < policeVoteCount * 1000 || playerEnergy < policeVoteCount * 100}
                             className={`w-full py-2 rounded-lg font-bold ${playerGold >= policeVoteCount * 1000 && playerEnergy >= policeVoteCount * 100 ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}
                         >
-                            Р“РѕР»РѕСЃРѕРІР°С‚СЊ
+                            Голосовать
                         </button>
             
                         <p className="text-xs text-gray-400 text-center mt-2">
-                            Р•СЃР»Рё РІР°С€ РєР°РЅРґРёРґР°С‚ РїРѕР±РµРґРёС‚, РІР°Рј РІРµСЂРЅРµС‚СЃСЏ 80% РІР»РѕР¶РµРЅРёР№!
+                            Если ваш кандидат победит, вам вернется 80% вложений!
                         </p>
                     </div>
                 </div>
@@ -19883,7 +20005,7 @@ const App: React.FC = () => {
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowShoutModal(false)}>
                     <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
-                            <h2 className="text-xl font-bold text-white">РћС‚РїСЂР°РІСЊ РІРѕ РІСЃРµ С‡Р°С‚С‹</h2>
+                            <h2 className="text-xl font-bold text-white">Отправь во все чаты</h2>
                             <button onClick={() => setShowShoutModal(false)} className="text-gray-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-7 h-7" />
                             </button>
@@ -19895,12 +20017,12 @@ const App: React.FC = () => {
 
                         <div className="text-sm text-gray-400 mb-4 flex flex-col items-center space-y-1">
                             <div className={`flex items-center space-x-1 ${playerEnergy < SHOUT_COST_ENERGY ? 'text-red-400' : 'text-blue-300'}`}>
-                                <span className="text-yellow-500 font-bold">вљЎ</span>
-                                <span>РЎС‚РѕРёРјРѕСЃС‚СЊ СЌРЅРµСЂРіРёРё: {SHOUT_COST_ENERGY}</span>
+                                <span className="text-yellow-500 font-bold">⚡</span>
+                                <span>Стоимость энергии: {SHOUT_COST_ENERGY}</span>
                             </div>
                             <div className={`flex items-center space-x-1 ${playerGold < SHOUT_COST_GOLD ? 'text-red-400' : 'text-yellow-300'}`}>
                                 <img src={coinImageUrl} className="w-4 h-4 object-contain" alt="coin" />
-                                <span>РЎС‚РѕРёРјРѕСЃС‚СЊ РјРѕРЅРµС‚: {SHOUT_COST_GOLD}</span>
+                                <span>Стоимость монет: {SHOUT_COST_GOLD}</span>
                             </div>
                         </div>
 
@@ -19909,7 +20031,7 @@ const App: React.FC = () => {
                             disabled={playerGold < SHOUT_COST_GOLD || playerEnergy < SHOUT_COST_ENERGY}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex justify-center items-center"
                         >
-                            {SHOUT_COST_ENERGY} СЌРЅРµСЂРіРёРё вЂў {SHOUT_COST_GOLD} РјРѕРЅРµС‚ вЂў РћС‚РїСЂР°РІРёС‚СЊ
+                            {SHOUT_COST_ENERGY} энергии • {SHOUT_COST_GOLD} монет • Отправить
                         </button>
                     </div>
                 </div>
@@ -19933,11 +20055,11 @@ const App: React.FC = () => {
                                 )}
                                 <div className="flex flex-col">
                                     <span className="text-white font-bold text-sm">
-                                        {activePrivateChat === 'anonymous' ? 'Р В РЎвЂ™Р В Р вЂ¦Р В РЎвЂўР В Р вЂ¦Р В РЎвЂР В РЎВ' : (Object.values(allUsers).find(u => u.uid === activePrivateChat)?.name || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“')}
-                                        {activePrivateChatId?.endsWith('_anon') && activePrivateChat !== 'anonymous' && <span className="text-orange-400 ml-1">(Р В РЎвЂ™Р В Р вЂ¦Р В РЎвЂўР В Р вЂ¦Р В РЎвЂР В РЎВР В Р вЂ¦Р В РЎвЂў)</span>}
+                                        {activePrivateChat === 'anonymous' ? 'Р С’Р Р…Р С•Р Р…Р С‘Р С' : (Object.values(allUsers).find(u => u.uid === activePrivateChat)?.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–')}
+                                        {activePrivateChatId?.endsWith('_anon') && activePrivateChat !== 'anonymous' && <span className="text-orange-400 ml-1">(Р С’Р Р…Р С•Р Р…Р С‘Р СР Р…Р С•)</span>}
                                     </span>
                                     {activePrivateChat !== 'anonymous' && (
-                                        <span className="text-gray-400 text-xs">Р В Р в‚¬Р РЋР вЂљР В РЎвЂўР В Р вЂ Р В Р’ВµР В Р вЂ¦Р РЋР Р‰ {Object.values(allUsers).find(u => u.uid === activePrivateChat)?.level || 1}</span>
+                                        <span className="text-gray-400 text-xs">Р Р€РЎР‚Р С•Р Р†Р ВµР Р…РЎРЉ {Object.values(allUsers).find(u => u.uid === activePrivateChat)?.level || 1}</span>
                                     )}
                                 </div>
                             </div>
@@ -19963,7 +20085,7 @@ const App: React.FC = () => {
                                     const displayText = msg.text || (msg as any).message;
                                     // Get avatar - prefer message's senderAvatar, then fall back to allUsers
                                     const senderAvatar = msg.senderAvatar || allUsers[msg.senderId]?.avatar;
-                                    const senderName = msg.senderName || allUsers[msg.senderId]?.name || 'Р В РЎСљР В Р’ВµР В РЎвЂР В Р’В·Р В Р вЂ Р В Р’ВµР РЋР С“Р РЋРІР‚С™Р В Р вЂ¦Р РЋРІР‚в„–Р В РІвЂћвЂ“';
+                                    const senderName = msg.senderName || allUsers[msg.senderId]?.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–';
                                     return (
                                         <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} items-end gap-2`}>
                                             {!isMine && (
@@ -19977,8 +20099,8 @@ const App: React.FC = () => {
                                             )}
                                             <div className={`max-w-[80%] rounded-lg p-2 text-sm ${isMine ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}>
                                                 {!isMine && !isAnonymous && <p className="text-[10px] text-blue-300 mb-1 font-bold">{senderName}</p>}
-                                                {isAnonymous && !isMine && <p className="text-[10px] text-orange-400 mb-1 font-bold">РђРЅРѕРЅРёРјРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ:</p>}
-                                                <p className="break-words font-medium">{displayText || (msg as any).content || `[РћС€РёР±РєР°: РїСѓСЃС‚РѕРµ СЃРѕРѕР±С‰РµРЅРёРµ (${Object.keys(msg).join(', ')})]`}</p>
+                                                {isAnonymous && !isMine && <p className="text-[10px] text-orange-400 mb-1 font-bold">Анонимное сообщение:</p>}
+                                                <p className="break-words font-medium">{displayText || (msg as any).content || `[Ошибка: пустое сообщение (${Object.keys(msg).join(', ')})]`}</p>
                                                 <div className={`text-[10px] mt-1 ${isMine ? 'text-blue-200 text-right' : 'text-gray-400 text-left'}`}>
                                                     {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
@@ -20004,7 +20126,7 @@ const App: React.FC = () => {
                                     value={privateMessageText}
                                     onChange={e => setPrivateMessageText(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleSendPrivateMessage()}
-                                    placeholder="РќР°РїРёСЃР°С‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ..."
+                                    placeholder="Написать сообщение..."
                                     className="flex-1 bg-gray-800 text-white px-3 py-2 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
                                 />
                                 <button
@@ -20012,7 +20134,7 @@ const App: React.FC = () => {
                                     disabled={!privateMessageText.trim()}
                                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded font-bold transition-colors"
                                 >
-                                    РћС‚РїСЂР°РІРёС‚СЊ
+                                    Отправить
                                 </button>
                             </div>
 
@@ -20027,7 +20149,7 @@ const App: React.FC = () => {
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-white flex items-center">
                                 <UserIcon className="w-6 h-6 mr-2 text-blue-400" />
-                                РџСЂРѕС„РёР»СЊ РёРіСЂРѕРєР°
+                                Профиль игрока
                             </h2>
                             <button onClick={() => { setShowPlayerProfile(false); setShowBanMenuInProfile(false); }} className="text-gray-400 hover:text-white transition-colors">
                                 <CloseIcon className="w-7 h-7" />
@@ -20043,23 +20165,23 @@ const App: React.FC = () => {
                                 )}
                             </div>
                             <div>
-                                <div className="text-xl font-bold text-white">{allUsers[selectedPlayerId]?.name || "РќРµРёР·РІРµСЃС‚РЅС‹Р№ РёРіСЂРѕРє"}</div>
-                                <div className="text-sm text-gray-400">РЈСЂРѕРІРµРЅСЊ: {selectedPlayerId === user?.uid ? playerLevel : (allUsers[selectedPlayerId]?.level || 1)}</div>
+                                <div className="text-xl font-bold text-white">{allUsers[selectedPlayerId]?.name || "Неизвестный игрок"}</div>
+                                <div className="text-sm text-gray-400">Уровень: {selectedPlayerId === user?.uid ? playerLevel : (allUsers[selectedPlayerId]?.level || 1)}</div>
                                 <div className="flex flex-col mt-1">
                                     <div className="text-sm text-yellow-400 flex items-center">
-                                        <span className="mr-1">рџЏ†</span>
-                                        РЎР»Р°РІР°: {selectedPlayerId === user?.uid ? playerGlory : (allUsers[selectedPlayerId]?.glory || 0)}
+                                        <span className="mr-1">🏆</span>
+                                        Слава: {selectedPlayerId === user?.uid ? playerGlory : (allUsers[selectedPlayerId]?.glory || 0)}
                                     </div>
                                     <div className="text-sm text-blue-400 flex items-center">
-                                        <span className="mr-1">рџ›ЎпёЏ</span>
-                                        Р РµРїСѓС‚Р°С†РёСЏ: {selectedPlayerId === user?.uid ? playerReputation : (allUsers[selectedPlayerId]?.reputation || 0)}
+                                        <span className="mr-1">🛡️</span>
+                                        Репутация: {selectedPlayerId === user?.uid ? playerReputation : (allUsers[selectedPlayerId]?.reputation || 0)}
                                     </div>
                                     {(() => {
                                         const playerStatusMeta = getPlayerStatusMeta(selectedPlayerId);
                                         return (
                                             <div className={`text-sm flex items-center gap-2 mt-1 ${playerStatusMeta.textClassName}`}>
                                                 <span className={`w-2.5 h-2.5 rounded-full ${playerStatusMeta.dotClassName}`}></span>
-                                                {playerStatusMeta.isOnline ? 'РћРЅР»Р°Р№РЅ' : `Р‘С‹Р» РІ СЃРµС‚Рё: ${playerStatusMeta.label}`}
+                                                {playerStatusMeta.isOnline ? 'Онлайн' : `Был в сети: ${playerStatusMeta.label}`}
                                             </div>
                                         );
                                     })()}
@@ -20069,24 +20191,24 @@ const App: React.FC = () => {
 
                         {!showBanMenuInProfile && !showPunishMenuInProfile && !showCurseMenuInProfile && !showBuildingsMenu ? (
                             <div className="grid grid-cols-2 gap-2 mb-4">
-                                <button onClick={() => handlePraisePlayer(selectedPlayerId)} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded text-xs transition-colors">рџ‘Ќ РџРѕС…РІР°Р»РёС‚СЊ</button>
-                                <button onClick={() => handleComplainPlayer(selectedPlayerId)} className="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 rounded text-xs transition-colors">РџРѕР¶Р°Р»РѕРІР°С‚СЊСЃСЏ</button>
-                                <button onClick={() => { setVotingForPlayer(selectedPlayerId); setShowRoyalVotingModal(true); }} className="bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 rounded text-xs transition-colors">рџ‘‘ Р­С‚Рѕ РјРѕР№ РєРѕСЂРѕР»СЊ!</button>
-                                <button className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded text-xs transition-colors">рџ‘¤ РџРµСЂСЃРѕРЅР°Р¶</button>
-                                <button className="bg-pink-700 hover:bg-pink-600 text-white font-bold py-2 rounded text-xs transition-colors flex justify-center items-center">рџ’Ћ РљСѓРїРёС‚СЊ СЂСѓР±РёРЅС‹</button>
-                                <button onClick={() => setShowBuildingsMenu(true)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded text-xs transition-colors">рџЏ—пёЏ РџРѕСЃС‚СЂРѕР№РєРё</button>
-                                <button className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded text-xs transition-colors">рџЋЃ РџРѕРґР°СЂРёС‚СЊ</button>
-                                <button onClick={() => handleAddFriendByUid(selectedPlayerId)} className="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded text-xs transition-colors">вћ• Р”СЂСѓР·СЊСЏ</button>
+                                <button onClick={() => handlePraisePlayer(selectedPlayerId)} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded text-xs transition-colors">👍 Похвалить</button>
+                                <button onClick={() => handleComplainPlayer(selectedPlayerId)} className="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 rounded text-xs transition-colors">Пожаловаться</button>
+                                <button onClick={() => { setVotingForPlayer(selectedPlayerId); setShowRoyalVotingModal(true); }} className="bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 rounded text-xs transition-colors">👑 Это мой король!</button>
+                                <button className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded text-xs transition-colors">👤 Персонаж</button>
+                                <button className="bg-pink-700 hover:bg-pink-600 text-white font-bold py-2 rounded text-xs transition-colors flex justify-center items-center">💎 Купить рубины</button>
+                                <button onClick={() => setShowBuildingsMenu(true)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded text-xs transition-colors">🏗️ Постройки</button>
+                                <button className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded text-xs transition-colors">🎁 Подарить</button>
+                                <button onClick={() => handleAddFriendByUid(selectedPlayerId)} className="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded text-xs transition-colors">➕ Друзья</button>
                                 <button onClick={() => {
                                     setShowPlayerProfile(false);
                                     setActivePrivateChat(selectedPlayerId);
                                     setActivePrivateChatId([user?.uid, selectedPlayerId].sort().join('_'));
                                     setIsAnonymousMessage(false);
                                     setShowPrivateChatModal(true);
-                                }} className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition-colors">вњ‰пёЏ РЎРѕРѕР±С‰РµРЅРёСЏ</button>
-                                <button onClick={() => setShowPunishMenuInProfile(true)} className="bg-red-900 hover:bg-red-800 text-white font-bold py-2 rounded text-xs transition-colors border border-red-500">РќР°РєР°Р·Р°С‚СЊ</button>
-                                <button onClick={() => setShowCurseMenuInProfile(true)} className="bg-violet-800 hover:bg-violet-700 text-white font-bold py-2 rounded text-xs transition-colors border border-violet-500">Р—Р°РєРѕР»РґРѕРІР°С‚СЊ</button>
-                                <button onClick={() => setShowBanMenuInProfile(true)} className="col-span-2 bg-red-700 hover:bg-red-600 text-white font-bold py-2 rounded text-xs transition-colors">рџљ« Р—Р°Р±Р°РЅРёС‚СЊ</button>
+                                }} className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition-colors">✉️ Сообщения</button>
+                                <button onClick={() => setShowPunishMenuInProfile(true)} className="bg-red-900 hover:bg-red-800 text-white font-bold py-2 rounded text-xs transition-colors border border-red-500">Наказать</button>
+                                <button onClick={() => setShowCurseMenuInProfile(true)} className="bg-violet-800 hover:bg-violet-700 text-white font-bold py-2 rounded text-xs transition-colors border border-violet-500">Заколдовать</button>
+                                <button onClick={() => setShowBanMenuInProfile(true)} className="col-span-2 bg-red-700 hover:bg-red-600 text-white font-bold py-2 rounded text-xs transition-colors">🚫 Забанить</button>
                                 {/* Catch Criminal Button - only for sheriff/deputies when player is an active thief */}
                                 {(sheriffId === user?.uid || deputies.includes(user?.uid || '')) && activeThieves[selectedPlayerId] && (
                                     <button 
@@ -20108,7 +20230,7 @@ const App: React.FC = () => {
                                                     // Notify in police chat
                                                     const catchMsgId = `police-catch-${Date.now()}`;
                                                     const catchNotification = {
-                                                        sender: '[Р В РЎСџР В РЎвЂєР В РІР‚С”Р В Р’ВР В Р’В¦Р В Р’ВР В Р вЂЎ]',
+                                                        sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
                                                         senderId: 'system',
                                                         text: `CRIMINAL CAUGHT! Player ${allUsers[selectedPlayerId]?.name || 'Unknown'} was caught by ${playerName}. Justice served!`,
                                                         type: 'system',
@@ -20130,16 +20252,16 @@ const App: React.FC = () => {
                                         }}
                                         className="col-span-2 bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded text-xs transition-colors border-2 border-yellow-400 animate-pulse"
                                     >
-                                        ?? Р В РЎСџР В РЎвЂўР В РІвЂћвЂ“Р В РЎВР В Р’В°Р РЋРІР‚С™Р РЋР Р‰ Р В РЎвЂ”Р РЋР вЂљР В Р’ВµР РЋР С“Р РЋРІР‚С™Р РЋРЎвЂњР В РЎвЂ”Р В Р вЂ¦Р В РЎвЂР В РЎвЂќР В Р’В°!
+                                        ?? Р СџР С•Р в„–Р СР В°РЎвЂљРЎРЉ Р С—РЎР‚Р ВµРЎРѓРЎвЂљРЎС“Р С—Р Р…Р С‘Р С”Р В°!
                                     </button>
                                 )}
                             </div>
                         ) : showBuildingsMenu ? (
                             <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-blue-900/30 flex flex-col flex-1 min-h-0">
                                 <div className="flex justify-between items-center mb-3">
-                                    <span className="text-white font-bold text-sm">РџРѕСЃС‚СЂРѕР№РєРё РёРіСЂРѕРєР°</span>
+                                    <span className="text-white font-bold text-sm">Постройки игрока</span>
                                     <button onClick={() => setShowBuildingsMenu(false)} className="text-xs text-blue-400 font-bold hover:text-blue-300 transition-colors flex items-center">
-                                        {'< РќР°Р·Р°Рґ'}
+                                        {'< Назад'}
                                     </button>
                                 </div>
                                 <div className="overflow-y-auto space-y-2 pr-1 custom-scrollbar">
@@ -20153,7 +20275,7 @@ const App: React.FC = () => {
                                                             {info && <img src={info.imageUrl} alt={info.name} className="max-w-full max-h-full object-contain" />}
                                                         </div>
                                                         <div className="overflow-hidden">
-                                                            <div className="text-xs font-bold text-white truncate w-32 group-hover:text-blue-300">{info?.name || "Р В РІР‚вЂќР В РўвЂР В Р’В°Р В Р вЂ¦Р В РЎвЂР В Р’Вµ"}</div>
+                                                            <div className="text-xs font-bold text-white truncate w-32 group-hover:text-blue-300">{info?.name || "Р вЂ”Р Т‘Р В°Р Р…Р С‘Р Вµ"}</div>
                                                             <div className="text-[10px] text-gray-500">[{b.x}, {b.y}]</div>
                                                         </div>
                                                     </div>
@@ -20164,7 +20286,7 @@ const App: React.FC = () => {
                                                             setShowBuildingsMenu(false);
                                                         }}
                                                         className="p-2 bg-indigo-600 hover:bg-indigo-500 rounded-full text-white transition-colors"
-                                                        title="РўРµР»РµРїРѕСЂС‚РёСЂРѕРІР°С‚СЊСЃСЏ Рє Р·РґР°РЅРёСЋ"
+                                                        title="Телепортироваться к зданию"
                                                     >
                                                         <CompassIcon className="w-5 h-5" />
                                                     </button>
@@ -20172,15 +20294,15 @@ const App: React.FC = () => {
                                             );
                                         })
                                     ) : (
-                                        <div className="text-center py-6 text-gray-500 text-xs italic">РџРѕСЃС‚СЂРѕРµРє РїРѕРєР° РЅРµ РЅР°Р№РґРµРЅРѕ</div>
+                                        <div className="text-center py-6 text-gray-500 text-xs italic">Построек пока не найдено</div>
                                     )}
                                 </div>
                             </div>
                         ) : showBanMenuInProfile ? (
                             <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-red-900/30">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-white font-bold text-sm">РЎСЂРѕРє Р±Р°РЅР°</span>
-                                    <button onClick={() => setShowBanMenuInProfile(false)} className="text-xs text-blue-400">{'< РќР°Р·Р°Рґ'}</button>
+                                    <span className="text-white font-bold text-sm">Срок бана</span>
+                                    <button onClick={() => setShowBanMenuInProfile(false)} className="text-xs text-blue-400">{'< Назад'}</button>
                                 </div>
                                 <div className="space-y-1">
                                     {BAN_OPTIONS.map((option, idx) => {
@@ -20195,7 +20317,7 @@ const App: React.FC = () => {
                                                 className="w-full bg-red-900/40 hover:bg-red-900/60 disabled:bg-gray-800 text-white py-1.5 px-3 rounded text-xs flex justify-between items-center transition-colors border border-red-900/20"
                                             >
                                                 <span>{option.label}</span>
-                                                <span className="text-yellow-400 font-bold">{dynamicCost.toLocaleString()} РјРѕРЅРµС‚</span>
+                                                <span className="text-yellow-400 font-bold">{dynamicCost.toLocaleString()} монет</span>
                                             </button>
                                         );
                                     })}
@@ -20204,8 +20326,8 @@ const App: React.FC = () => {
                         ) : showPunishMenuInProfile ? (
                             <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-red-900/30">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-white font-bold text-sm">РќР°РєР°Р·Р°РЅРёРµ</span>
-                                    <button onClick={() => setShowPunishMenuInProfile(false)} className="text-xs text-blue-400">{'< РќР°Р·Р°Рґ'}</button>
+                                    <span className="text-white font-bold text-sm">Наказание</span>
+                                    <button onClick={() => setShowPunishMenuInProfile(false)} className="text-xs text-blue-400">{'< Назад'}</button>
                                 </div>
                                 <div className="space-y-1">
                                     {PUNISHMENT_OPTIONS.map((option, idx) => (
@@ -20216,7 +20338,7 @@ const App: React.FC = () => {
                                             className="w-full bg-red-900/40 hover:bg-red-900/60 disabled:bg-gray-800 text-white py-1.5 px-3 rounded text-xs flex justify-between items-center transition-colors border border-red-900/20"
                                         >
                                             <span>{option.label}</span>
-                                            <span className="text-pink-400 font-bold">{option.cost} в‚Ѕ</span>
+                                            <span className="text-pink-400 font-bold">{option.cost} ₽</span>
                                         </button>
                                     ))}
                                 </div>
@@ -20224,8 +20346,8 @@ const App: React.FC = () => {
                         ) : (
                             <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-violet-900/30">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-white font-bold text-sm">Р—Р°РєРѕР»РґРѕРІР°С‚СЊ</span>
-                                    <button onClick={() => setShowCurseMenuInProfile(false)} className="text-xs text-blue-400">{'< РќР°Р·Р°Рґ'}</button>
+                                    <span className="text-white font-bold text-sm">Заколдовать</span>
+                                    <button onClick={() => setShowCurseMenuInProfile(false)} className="text-xs text-blue-400">{'< Назад'}</button>
                                 </div>
                                 <div className="space-y-1">
                                     {CURSE_OPTIONS.map((option, idx) => (
@@ -20236,7 +20358,7 @@ const App: React.FC = () => {
                                             className="w-full bg-violet-900/40 hover:bg-violet-900/60 disabled:bg-gray-800 text-white py-1.5 px-3 rounded text-xs flex justify-between items-center transition-colors border border-violet-900/20"
                                         >
                                             <span>{option.label}</span>
-                                            <span className="text-yellow-400 font-bold">{option.cost.toLocaleString()} РјРѕРЅРµС‚</span>
+                                            <span className="text-yellow-400 font-bold">{option.cost.toLocaleString()} монет</span>
                                         </button>
                                     ))}
                                 </div>
@@ -20253,7 +20375,7 @@ const App: React.FC = () => {
                         {/* Title centered + close button */}
                         <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Р›РёС‡РЅС‹Р№ РєР°Р±РёРЅРµС‚</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Личный кабинет</h2>
                             </div>
                             <button onClick={() => { setShowProfileModal(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                               onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
@@ -20265,14 +20387,14 @@ const App: React.FC = () => {
                         {/* Navigation Tabs */}
                         <div className="flex space-x-1 mb-4 overflow-x-auto pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                             {[
-                                { id: 'info', label: 'РРЅС„РѕСЂРјР°С†РёСЏ' },
-                                { id: 'clan', label: 'РљР»Р°РЅ' },
-                                { id: 'history', label: 'РСЃС‚РѕСЂРёСЏ' },
-                                { id: 'friends', label: 'Р”СЂСѓР·СЊСЏ' },
-                                { id: 'mail', label: 'РџРёСЃСЊРјР°' },
-                                { id: 'private', label: 'РџСЂРёРІР°С‚РЅС‹Рµ' },
-                                { id: 'settings', label: 'РќР°СЃС‚СЂРѕР№РєРё' },
-                                { id: 'police_elections', label: 'Р’С‹Р±РѕСЂС‹ РІ РїРѕР»РёС†РёРё' }
+                                { id: 'info', label: 'Информация' },
+                                { id: 'clan', label: 'Клан' },
+                                { id: 'history', label: 'История' },
+                                { id: 'friends', label: 'Друзья' },
+                                { id: 'mail', label: 'Письма' },
+                                { id: 'private', label: 'Приватные' },
+                                { id: 'settings', label: 'Настройки' },
+                                { id: 'police_elections', label: 'Выборы в полиции' }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
@@ -20310,14 +20432,14 @@ const App: React.FC = () => {
                                                     )}
                                                 </div>
                                                 <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <span className="text-white text-xs font-bold">РЎРјРµРЅРёС‚СЊ</span>
+                                                    <span className="text-white text-xs font-bold">Сменить</span>
                                                 </div>
                                             </label>
                                         </div>
                                     </div>
 
                                     <div className="mb-6 w-full">
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">РЎРјРµРЅРёС‚СЊ РёРјСЏ (СЃС‚РѕРёРјРѕСЃС‚СЊ: 500 Р·РѕР»РѕС‚Р°)</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Сменить имя (стоимость: 500 золота)</label>
                                         <div className="flex space-x-2">
                                             <input
                                                 type="text"
@@ -20326,35 +20448,35 @@ const App: React.FC = () => {
                                                 className="flex-grow bg-gray-900 border border-gray-700 rounded-md py-2 px-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                             <button onClick={handleNameChange} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed">
-                                                РЎРјРµРЅРёС‚СЊ
+                                                Сменить
                                             </button>
                                         </div>
                                     </div>
 
                                     <div className="mb-6 w-full">
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">РџРѕР»</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Пол</label>
                                         {kingId === user?.uid || queenId === user?.uid ? (
-                                            <p className="text-yellow-400 text-sm">Р’С‹ РЅРµ РјРѕР¶РµС‚Рµ РёР·РјРµРЅРёС‚СЊ РїРѕР», РїРѕРєР° СЏРІР»СЏРµС‚РµСЃСЊ РєРѕСЂРѕР»РµРј РёР»Рё РєРѕСЂРѕР»РµРІРѕР№!</p>
+                                            <p className="text-yellow-400 text-sm">Вы не можете изменить пол, пока являетесь королем или королевой!</p>
                                         ) : (
                                             <div className="flex space-x-4">
                                                 <button
                                                     onClick={() => handleGenderSelect('male')}
                                                     className={`flex-1 py-2 px-4 rounded-md font-semibold transition-all flex items-center justify-center space-x-2 ${playerGender === 'male' ? 'bg-blue-600 text-white ring-2 ring-blue-300' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                                                 >
-                                                    <span>РџР°СЂРµРЅСЊ</span>
+                                                    <span>Парень</span>
                                                 </button>
                                                 <button
                                                     onClick={() => handleGenderSelect('female')}
                                                     className={`flex-1 py-2 px-4 rounded-md font-semibold transition-all flex items-center justify-center space-x-2 ${playerGender === 'female' ? 'bg-pink-600 text-white ring-2 ring-pink-300' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
                                                 >
-                                                    <span>Р”РµРІСѓС€РєР°</span>
+                                                    <span>Девушка</span>
                                                 </button>
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="text-center text-gray-400 bg-gray-900/50 p-3 rounded-lg w-full">
-                                        <p className="font-bold text-lg">Р›РёРјРёС‚ Р·РґР°РЅРёР№</p>
+                                        <p className="font-bold text-lg">Лимит зданий</p>
                                         <p className="text-2xl">{playerBuildingsCount} / {maxBuildings}</p>
                                         <p className="text-xs text-gray-400 mt-1">base: {baseBuildingPermits} + bonus: {extraBuildingPermits} = {maxBuildings}</p>
                                     </div>
@@ -20368,7 +20490,7 @@ const App: React.FC = () => {
                                                         className="w-full py-3 mt-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center justify-center space-x-2 transition-all shadow-lg shadow-red-900/20"
                                                     >
                                                         <RefreshCw className="w-5 h-5" />
-                                                        <span>РЎР±СЂРѕСЃРёС‚СЊ РєР°СЂС‚Сѓ</span>
+                                                        <span>Сбросить карту</span>
                                                     </button>
                                                 )}
                                             </>
@@ -20405,17 +20527,17 @@ const App: React.FC = () => {
                                                             
                                                             return (
                                                                 <>
-                                                                    <h2 className="text-2xl font-bold text-yellow-400 mb-2">РљР»Р°РЅ {clan?.name}</h2>
+                                                                    <h2 className="text-2xl font-bold text-yellow-400 mb-2">Клан {clan?.name}</h2>
                                                                     <p className="text-sm text-gray-300">
-                                                                        Р’ РєР»Р°РЅРµ {clan?.membersCount} С‡РµР»РѕРІРµРє, {clan?.membersCount * 100 || 0} СЃР»Р°РІС‹
+                                                                        В клане {clan?.membersCount} человек, {clan?.membersCount * 100 || 0} славы
                                                                     </p>
                                                                     <p className="text-sm text-gray-300 mt-1">
-                                                                        Р›РёРґРµСЂ: <span className="text-white font-bold">{clan?.leaderName}</span>
+                                                                        Лидер: <span className="text-white font-bold">{clan?.leaderName}</span>
                                                                     </p>
                                                                     <p className="text-sm text-gray-300 mt-1">
-                                                                        Р—Р°СЂР°Р±РѕС‚Р°РЅРѕ <span className="text-yellow-400 font-bold">{clanBank.toLocaleString()}</span> РјРѕРЅРµС‚
+                                                                        Заработано <span className="text-yellow-400 font-bold">{clanBank.toLocaleString()}</span> монет
                                                                     </p>
-                                                                    <button className="mt-2 text-sm text-blue-400 hover:text-blue-300">Р”РѕР±Р°РІРёС‚СЊ РјРµСЃС‚Рѕ РІ Р±Р°РЅРґРµ</button>
+                                                                    <button className="mt-2 text-sm text-blue-400 hover:text-blue-300">Добавить место в банде</button>
                                                                 </>
                                                             );
                                                         })()}
@@ -20440,23 +20562,23 @@ const App: React.FC = () => {
                                                                 }
                                                             });
                                                             setShowClanSettings(true);
-                                                        }} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded">Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ</button>
+                                                        }} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded">Редактировать</button>
                                                     )}
-                                                    <button onClick={() => setShowLeaveClanConfirmation(true)} className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded">РџРѕРєРёРЅСѓС‚СЊ Р±Р°РЅРґСѓ</button>
+                                                    <button onClick={() => setShowLeaveClanConfirmation(true)} className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded">Покинуть банду</button>
                                                 </div>
                                             </div>
 
                                             {/* Clan description */}
                                             <div className="text-center text-gray-400 italic mb-4 py-2 border-t border-b border-gray-700">
-                                                "{currentClan?.description || 'Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ РєРѕРјР°РЅРґСѓ!'}"
+                                                "{currentClan?.description || 'Добро пожаловать в команду!'}"
                                             </div>
 
                                             {/* Members table header */}
                                             <div className="grid grid-cols-4 gap-4 px-4 py-2 bg-gray-800/50 rounded-t-lg text-sm font-bold text-gray-300">
-                                                <div>РРіСЂРѕРє</div>
-                                                <div className="text-center">РњРѕРЅРµС‚С‹</div>
-                                                <div className="text-center">РћРїС‹С‚</div>
-                                                <div className="text-right">Р Р°РЅРі</div>
+                                                <div>Игрок</div>
+                                                <div className="text-center">Монеты</div>
+                                                <div className="text-center">Опыт</div>
+                                                <div className="text-right">Ранг</div>
                                             </div>
 
                                             {/* Members list */}
@@ -20478,7 +20600,7 @@ const App: React.FC = () => {
 
                                                         {/* Coins */}
                                                         <div className="flex items-center justify-center gap-1">
-                                                            <span className="text-yellow-400">рџ’°</span>
+                                                            <span className="text-yellow-400">💰</span>
                                                             <span className="text-yellow-400 font-bold">+{(member.coinsEarned || 0).toLocaleString()}</span>
                                                         </div>
 
@@ -20520,7 +20642,7 @@ const App: React.FC = () => {
                                                                             }
                                                                         }}
                                                                     >
-                                                                        в…
+                                                                        ★
                                                                     </span>
                                                                 );
                                                             })}
@@ -20536,7 +20658,7 @@ const App: React.FC = () => {
                                                             <span className="text-white font-bold">{currentClan?.leaderName}</span>
                                                         </div>
                                                         <div className="flex items-center justify-center gap-1">
-                                                            <span className="text-yellow-400">рџ’°</span>
+                                                            <span className="text-yellow-400">💰</span>
                                                             <span className="text-yellow-400 font-bold">+0</span>
                                                         </div>
                                                         <div className="flex items-center justify-center gap-1">
@@ -20545,7 +20667,7 @@ const App: React.FC = () => {
                                                         </div>
                                                         <div className="flex justify-end gap-0.5">
                                                             {[1, 2, 3, 4, 5].map(star => (
-                                                                <span key={star} className="text-lg text-yellow-400">в…</span>
+                                                                <span key={star} className="text-lg text-yellow-400">★</span>
                                                             ))}
                                                         </div>
                                                     </div>
@@ -20555,10 +20677,10 @@ const App: React.FC = () => {
                                             {/* Leave clan confirmation */}
                                             {showLeaveClanConfirmation && (
                                                 <div className="mt-4 bg-red-900/30 border border-red-500/50 rounded-lg p-4">
-                                                    <p className="text-red-400 font-bold mb-3">Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ РїРѕРєРёРЅСѓС‚СЊ Р±Р°РЅРґСѓ?</p>
+                                                    <p className="text-red-400 font-bold mb-3">Вы уверены, что хотите покинуть банду?</p>
                                                     <div className="flex gap-2">
-                                                        <button onClick={handleConfirmLeaveClan} className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded text-sm">Р”Р°, РІС‹Р№С‚Рё</button>
-                                                        <button onClick={() => setShowLeaveClanConfirmation(false)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded text-sm">РћС‚РјРµРЅР°</button>
+                                                        <button onClick={handleConfirmLeaveClan} className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded text-sm">Да, выйти</button>
+                                                        <button onClick={() => setShowLeaveClanConfirmation(false)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded text-sm">Отмена</button>
                                                     </div>
                                                 </div>
                                             )}
@@ -20568,11 +20690,11 @@ const App: React.FC = () => {
                                                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                                                     <div className="bg-gray-800 rounded-lg border-2 border-green-500 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                                                         <div className="p-6">
-                                                            <h2 className="text-2xl font-bold text-green-400 mb-6">РќР°СЃС‚СЂРѕР№РєРё РєР»Р°РЅР°</h2>
+                                                            <h2 className="text-2xl font-bold text-green-400 mb-6">Настройки клана</h2>
 
                                                             {/* Clan Avatar */}
                                                             <div className="mb-6">
-                                                                <label className="block text-sm font-bold text-gray-300 mb-2">РР·РѕР±СЂР°Р¶РµРЅРёРµ РєР»Р°РЅР°</label>
+                                                                <label className="block text-sm font-bold text-gray-300 mb-2">Изображение клана</label>
                                                                 <div className="flex items-center gap-4">
                                                                     {newClanAvatar || currentClan?.avatarUrl ? (
                                                                         <img src={newClanAvatar || currentClan!.avatarUrl!} className="w-24 h-24 rounded-lg border-2 border-yellow-500 object-cover" />
@@ -20583,14 +20705,14 @@ const App: React.FC = () => {
                                                                     )}
                                                                     <div>
                                                                         <input type="file" id="clanAvatarSettings" className="hidden" accept="image/*" onChange={handleClanAvatarChange} />
-                                                                        <label htmlFor="clanAvatarSettings" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-sm">Р—Р°РіСЂСѓР·РёС‚СЊ РЅРѕРІРѕРµ</label>
+                                                                        <label htmlFor="clanAvatarSettings" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-sm">Загрузить новое</label>
                                                                     </div>
                                                                 </div>
                                                             </div>
 
                                                             {/* Clan Description */}
                                                             <div className="mb-6">
-                                                                <label className="block text-sm font-bold text-gray-300 mb-2">РћРїРёСЃР°РЅРёРµ РєР»Р°РЅР°</label>
+                                                                <label className="block text-sm font-bold text-gray-300 mb-2">Описание клана</label>
                                                                 <textarea
                                                                     value={currentClan?.description || ''}
                                                                     onChange={(e) => {
@@ -20608,48 +20730,48 @@ const App: React.FC = () => {
 
                                                             {/* Clan Access */}
                                                             <div className="mb-6 space-y-4">
-                                        <h3 className="text-lg font-bold text-yellow-400">Р”РѕСЃС‚СѓРї Рє РєР»Р°РЅСѓ</h3>
+                                        <h3 className="text-lg font-bold text-yellow-400">Доступ к клану</h3>
                                                                 
                                                                 <div className="flex items-center justify-between bg-gray-900/50 p-3 rounded">
                                                                     <div>
-                                                                        <p className="text-white font-bold">{clanSettings.isPublic ? 'РљР»Р°РЅ РѕС‚РєСЂС‹С‚' : 'РљР»Р°РЅ Р·Р°РєСЂС‹С‚'}</p>
-                                                                        <p className="text-xs text-gray-400">{clanSettings.isPublic ? 'Р›СЋР±РѕР№ РёРіСЂРѕРє РјРѕР¶РµС‚ РІСЃС‚СѓРїРёС‚СЊ' : 'Р’СЃС‚СѓРїР»РµРЅРёРµ Р·Р°РїСЂРµС‰РµРЅРѕ'}</p>
+                                                                        <p className="text-white font-bold">{clanSettings.isPublic ? 'Клан открыт' : 'Клан закрыт'}</p>
+                                                                        <p className="text-xs text-gray-400">{clanSettings.isPublic ? 'Любой игрок может вступить' : 'Вступление запрещено'}</p>
                                                                     </div>
                                                                     <button
                                                                         onClick={() => setClanSettings(prev => ({ ...prev, isPublic: !prev.isPublic }))}
                                                                         className={`px-4 py-2 rounded font-bold text-sm ${clanSettings.isPublic ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'} text-white`}
                                                                     >
-                                                                        {clanSettings.isPublic ? 'Р—Р°РєСЂС‹С‚СЊ' : 'РћС‚РєСЂС‹С‚СЊ'}
+                                                                        {clanSettings.isPublic ? 'Закрыть' : 'Открыть'}
                                                                     </button>
                                                                 </div>
                                                             </div>
 
                                                             {/* Permissions */}
                                                             <div className="mb-6 space-y-4">
-                                                                <h3 className="text-lg font-bold text-yellow-400">РџСЂР°РІР° СѓС‡Р°СЃС‚РЅРёРєРѕРІ</h3>
+                                                                <h3 className="text-lg font-bold text-yellow-400">Права участников</h3>
                                                                 
                                                                 <div className="bg-gray-900/50 p-3 rounded">
-                                                                    <label className="block text-sm text-gray-300 mb-2">РЈСЂРѕРІРµРЅСЊ РґР»СЏ РїСЂРёРіР»Р°С€РµРЅРёСЏ РІ РєР»Р°РЅ</label>
+                                                                    <label className="block text-sm text-gray-300 mb-2">Уровень для приглашения в клан</label>
                                                                     <select
                                                                         value={clanSettings.invitePermissionLevel}
                                                                         onChange={(e) => setClanSettings(prev => ({ ...prev, invitePermissionLevel: Number(e.target.value) }))}
                                                                         className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"
                                                                     >
                                                                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
-                                                                            <option key={level} value={level}>{level} СѓСЂРѕРІРµРЅСЊ</option>
+                                                                            <option key={level} value={level}>{level} уровень</option>
                                                                         ))}
                                                                     </select>
                                                                 </div>
 
                                                                 <div className="bg-gray-900/50 p-3 rounded">
-                                                                    <label className="block text-sm text-gray-300 mb-2">РЈСЂРѕРІРµРЅСЊ РґР»СЏ РІС‹РґР°С‡Рё Р·РІРµР·Рґ</label>
+                                                                    <label className="block text-sm text-gray-300 mb-2">Уровень для выдачи звезд</label>
                                                                     <select
                                                                         value={clanSettings.starGrantPermissionLevel}
                                                                         onChange={(e) => setClanSettings(prev => ({ ...prev, starGrantPermissionLevel: Number(e.target.value) }))}
                                                                         className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"
                                                                     >
                                                                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
-                                                                            <option key={level} value={level}>{level} СѓСЂРѕРІРµРЅСЊ</option>
+                                                                            <option key={level} value={level}>{level} уровень</option>
                                                                         ))}
                                                                     </select>
                                                                 </div>
@@ -20657,8 +20779,8 @@ const App: React.FC = () => {
 
                                                             {/* Action Buttons */}
                                                             <div className="flex gap-3 mt-6">
-                                                                <button onClick={handleSaveClanSettings} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
-                                                                <button onClick={() => { setShowClanSettings(false); setNewClanAvatar(null); }} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded">РћС‚РјРµРЅР°</button>
+                                                                <button onClick={handleSaveClanSettings} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded">Сохранить</button>
+                                                                <button onClick={() => { setShowClanSettings(false); setNewClanAvatar(null); }} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded">Отмена</button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -20667,8 +20789,8 @@ const App: React.FC = () => {
                                         </div>
                                     ) : showCreateClanMode ? (
                                         <div className="max-w-md mx-auto h-full flex flex-col">
-                                            <button onClick={() => setShowCreateClanMode(false)} className="text-sm text-blue-400 hover:text-blue-300 mb-4 text-left">РќР°Р·Р°Рґ Рє РїРѕРёСЃРєСѓ</button>
-                                            <h3 className="text-xl font-bold text-white mb-4 text-center">РЎРѕР·РґР°РЅРёРµ РєР»Р°РЅР°</h3>
+                                            <button onClick={() => setShowCreateClanMode(false)} className="text-sm text-blue-400 hover:text-blue-300 mb-4 text-left">Назад к поиску</button>
+                                            <h3 className="text-xl font-bold text-white mb-4 text-center">Создание клана</h3>
 
                                             <div className="flex flex-col items-center mb-4">
                                                 <div className="relative">
@@ -20678,7 +20800,7 @@ const App: React.FC = () => {
                                                             {newClanAvatar ? (
                                                                 <img src={newClanAvatar} alt="Clan Logo" className="w-full h-full object-cover" />
                                                             ) : (
-                                                                <span className="text-xs text-gray-400 text-center px-2">Р—Р°РіСЂСѓР·РёС‚СЊ Р»РѕРіРѕ</span>
+                                                                <span className="text-xs text-gray-400 text-center px-2">Загрузить лого</span>
                                                             )}
                                                         </div>
                                                     </label>
@@ -20687,27 +20809,27 @@ const App: React.FC = () => {
 
                                             <div className="space-y-4">
                                                 <div>
-                                                    <label className="block text-sm text-gray-300 mb-1">РќР°Р·РІР°РЅРёРµ РєР»Р°РЅР°</label>
+                                                    <label className="block text-sm text-gray-300 mb-1">Название клана</label>
                                                     <input
                                                         type="text"
                                                         value={newClanName}
                                                         onChange={(e) => setNewClanName(e.target.value)}
                                                         className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white"
-                                                        placeholder="РќР°РїСЂРёРјРµСЂ: РќРµСѓРґРµСЂР¶РёРјС‹Рµ"
+                                                        placeholder="Например: Неудержимые"
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm text-gray-300 mb-1">РћРїРёСЃР°РЅРёРµ (РјР°РєСЃ 500 СЃРёРјРІРѕР»РѕРІ)</label>
+                                                    <label className="block text-sm text-gray-300 mb-1">Описание (макс 500 символов)</label>
                                                     <textarea
                                                         value={newClanDesc}
                                                         onChange={(e) => setNewClanDesc(e.target.value.slice(0, 500))}
                                                         className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white h-24 resize-none"
-                                                        placeholder="Р Р°СЃСЃРєР°Р¶РёС‚Рµ Рѕ СЃРІРѕРµРј РєР»Р°РЅРµ..."
+                                                        placeholder="Расскажите о своем клане..."
                                                     />
                                                     <div className="text-right text-xs text-gray-500">{newClanDesc.length}/500</div>
                                                 </div>
                                                 <button onClick={handleCreateClan} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded">
-                                                    РЎРѕР·РґР°С‚СЊ РєР»Р°РЅ
+                                                    Создать клан
                                                 </button>
                                             </div>
                                         </div>
@@ -20715,13 +20837,13 @@ const App: React.FC = () => {
                                         <div className="flex flex-col h-full">
                                             <div className="flex mb-6 space-x-4 items-end">
                                                 <div className="flex-grow">
-                                                    <label className="block text-sm font-medium text-gray-300 mb-1">РџРѕРёСЃРє РєР»Р°РЅР°</label>
+                                                    <label className="block text-sm font-medium text-gray-300 mb-1">Поиск клана</label>
                                                     <div className="relative">
                                                         <input
                                                             type="text"
                                                             value={clanSearchTerm}
                                                             onChange={(e) => setClanSearchTerm(e.target.value)}
-                                                            placeholder="РќР°Р·РІР°РЅРёРµ РєР»Р°РЅР°..."
+                                                            placeholder="Название клана..."
                                                             className="w-full bg-gray-900 border border-gray-700 rounded-md py-2 pl-10 pr-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                         />
                                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -20736,13 +20858,13 @@ const App: React.FC = () => {
                                                     onClick={() => setShowCreateClanMode(true)}
                                                     className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 rounded mb-6 flex items-center justify-center"
                                                 >
-                                                    <span className="mr-2">+</span> РЎРѕР·РґР°С‚СЊ СЃРІРѕР№ РєР»Р°РЅ
+                                                    <span className="mr-2">+</span> Создать свой клан
                                                 </button>
                                             )}
 
                                             {!clanSearchTerm.trim() && recommendedClans.length > 0 && (
                                                 <div className="mb-6">
-                                                    <h3 className="text-lg font-bold text-gray-300 mb-2">Р РµРєРѕРјРµРЅРґСѓРµРјС‹Рµ РєР»Р°РЅС‹</h3>
+                                                    <h3 className="text-lg font-bold text-gray-300 mb-2">Рекомендуемые кланы</h3>
                                                     <div className="space-y-2">
                                                         {recommendedClans.map(clan => (
                                                             <div key={`recommended-${clan.id}`} className="bg-blue-900/20 p-3 rounded flex items-center justify-between border border-blue-700/40">
@@ -20752,11 +20874,11 @@ const App: React.FC = () => {
                                                                     </div>
                                                                     <div>
                                                                         <p className="font-bold text-white">{clan.name}</p>
-                                                                        <p className="text-xs text-gray-300">Р›РёРґРµСЂ: {clan.leaderName} | Р›СЋРґРµР№: {(clan as any).membersCount || 0}</p>
+                                                                        <p className="text-xs text-gray-300">Лидер: {clan.leaderName} | Людей: {(clan as any).membersCount || 0}</p>
                                                                     </div>
                                                                 </div>
                                                                 <button onClick={() => handleJoinClan(Number(clan.id))} className="bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-1 px-3 rounded">
-                                                                    Р’СЃС‚СѓРїРёС‚СЊ
+                                                                    Вступить
                                                                 </button>
                                                             </div>
                                                         ))}
@@ -20765,11 +20887,11 @@ const App: React.FC = () => {
                                             )}
 
                                             <h3 className="text-lg font-bold text-gray-300 mb-2">
-                                                {clanSearchTerm.trim() ? 'Р РµР·СѓР»СЊС‚Р°С‚С‹ РїРѕРёСЃРєР°' : 'РћС‚РєСЂС‹С‚С‹Рµ РєР»Р°РЅС‹'}
+                                                {clanSearchTerm.trim() ? 'Результаты поиска' : 'Открытые кланы'}
                                             </h3>
                                             <div className="flex-grow overflow-y-auto space-y-2 pr-1">
                                                 {isClanDirectoryLoading ? (
-                                                    <p className="text-gray-400 text-center mt-4">Р—Р°РіСЂСѓР·РєР° РєР»Р°РЅРѕРІ...</p>
+                                                    <p className="text-gray-400 text-center mt-4">Загрузка кланов...</p>
                                                 ) : (clanSearchTerm.trim() ? visibleOpenClans : browseOpenClans).length > 0 ? (
                                                     (clanSearchTerm.trim() ? visibleOpenClans : browseOpenClans).map(clan => (
                                                         <div key={clan.id} className="bg-gray-700/50 p-3 rounded flex items-center justify-between border border-gray-600">
@@ -20779,17 +20901,17 @@ const App: React.FC = () => {
                                                                 </div>
                                                                 <div>
                                                                     <p className="font-bold text-white">{clan.name}</p>
-                                                                    <p className="text-xs text-gray-400">Р›РёРґРµСЂ: {clan.leaderName} | Р›СЋРґРµР№: {(clan as any).membersCount || 0}</p>
+                                                                    <p className="text-xs text-gray-400">Лидер: {clan.leaderName} | Людей: {(clan as any).membersCount || 0}</p>
                                                                 </div>
                                                             </div>
                                                             <button onClick={() => handleJoinClan(Number(clan.id))} className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-1 px-3 rounded">
-                                                                Р’СЃС‚СѓРїРёС‚СЊ
+                                                                Вступить
                                                             </button>
                                                         </div>
                                                     ))
                                                 ) : (
                                                     <p className="text-gray-500 text-center mt-4">
-                                                        {clanSearchTerm.trim() ? 'РљР»Р°РЅС‹ РЅРµ РЅР°Р№РґРµРЅС‹.' : 'РџРѕРєР° РЅРµС‚ РѕС‚РєСЂС‹С‚С‹С… РєР»Р°РЅРѕРІ.'}
+                                                        {clanSearchTerm.trim() ? 'Кланы не найдены.' : 'Пока нет открытых кланов.'}
                                                     </p>
                                                 )}
                                             </div>
@@ -20807,7 +20929,7 @@ const App: React.FC = () => {
                                                     onClick={() => setPlayerHistory([])}
                                                     className="bg-red-600/80 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors"
                                                 >
-                                                    РћС‡РёСЃС‚РёС‚СЊ РёСЃС‚РѕСЂРёСЋ
+                                                    Очистить историю
                                                 </button>
                                             </div>
                                             <div className="space-y-3 pr-2">
@@ -20820,10 +20942,10 @@ const App: React.FC = () => {
                                                                         entry.type === 'economy' ? 'bg-yellow-900/50 text-yellow-300' :
                                                                             'bg-gray-600/50 text-gray-300'
                                                             }`}>
-                                                            {entry.type === 'build' ? 'РЎС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ' :
-                                                                entry.type === 'move' ? 'РџРµСЂРµРјРµС‰РµРЅРёРµ' :
-                                                                    entry.type === 'destroy' ? 'Р Р°Р·СЂСѓС€РµРЅРёРµ' :
-                                                                        entry.type === 'economy' ? 'Р­РєРѕРЅРѕРјРёРєР°' : 'Р”РµР№СЃС‚РІРёРµ'}
+                                                            {entry.type === 'build' ? 'Строительство' :
+                                                                entry.type === 'move' ? 'Перемещение' :
+                                                                    entry.type === 'destroy' ? 'Разрушение' :
+                                                                        entry.type === 'economy' ? 'Экономика' : 'Действие'}
                                                         </span>
                                                         <span className="text-gray-500 text-xs">{new Date(entry.timestamp).toLocaleString("ru-RU")}</span>
                                                     </div>
@@ -20834,7 +20956,7 @@ const App: React.FC = () => {
                                         </>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                            <p>РСЃС‚РѕСЂРёСЏ РґРµР№СЃС‚РІРёР№ РїСѓСЃС‚Р°.</p>
+                                            <p>История действий пуста.</p>
                                         </div>
                                     )}
                                 </div>
@@ -20867,7 +20989,7 @@ const App: React.FC = () => {
                                                             >
                                                                 <p className="font-bold text-white group-hover:underline">{friend.name}</p>
                                                                 <p className={`text-xs ${isOnline ? 'text-green-400' : 'text-gray-500'}`}>
-                                                                    {isOnline ? 'Р’ СЃРµС‚Рё' : 'Р‘С‹Р»(Р°) РЅРµРґР°РІРЅРѕ'}
+                                                                    {isOnline ? 'В сети' : 'Был(а) недавно'}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -20876,12 +20998,12 @@ const App: React.FC = () => {
                                                                 className="text-sm text-yellow-500 mr-4 font-medium cursor-pointer hover:underline"
                                                                 onClick={(e) => { handleChatUserClick(friend.name, friend.uid, e); setShowProfileModal(false); }}
                                                             >
-                                                                РЈСЂРѕРІРµРЅСЊ {getUserLevel(friend.name)} ({getUserGlory(friend.name)} СЃР»Р°РІС‹)
+                                                                Уровень {getUserLevel(friend.name)} ({getUserGlory(friend.name)} славы)
                                                             </span>
                                                             <button
                                                                 onClick={() => handleRemoveFriend(friend.name)}
                                                                 className="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700/50 rounded transition-colors"
-                                                                title="РЈРґР°Р»РёС‚СЊ РёР· РґСЂСѓР·РµР№"
+                                                                title="Удалить из друзей"
                                                             >
                                                                 <CloseIcon className="w-5 h-5" />
                                                             </button>
@@ -20893,7 +21015,7 @@ const App: React.FC = () => {
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full text-gray-400">
                                             <UserIcon className="w-16 h-16 mb-4 opacity-30" />
-                                            <p>РЈ РІР°СЃ РїРѕРєР° РЅРµС‚ РґСЂСѓР·РµР№.</p>
+                                            <p>У вас пока нет друзей.</p>
                                         </div>
                                     )}
                                 </div>
@@ -20906,12 +21028,12 @@ const App: React.FC = () => {
                                         boxShadow: "inset 0 0 50px rgba(0,0,0,0.5), 0 10px 15px rgba(0,0,0,0.5)"
                                     }}
                                 >
-                                    <h2 className="text-2xl font-bold mb-4 font-serif text-[#5c3a21] border-b border-[#a88a6d] pb-2 uppercase tracking-wider pl-2 w-3/4">РљРѕСЂРѕР»РµРІСЃРєР°СЏ РїРѕС‡С‚Р°</h2>
+                                    <h2 className="text-2xl font-bold mb-4 font-serif text-[#5c3a21] border-b border-[#a88a6d] pb-2 uppercase tracking-wider pl-2 w-3/4">Королевская почта</h2>
 
                                     {privateChats.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-full text-[#8b6a4b]">
                                             <LettersIcon className="w-16 h-16 mb-4 opacity-50" />
-                                            <p className="font-serif italic font-bold">Р’Р°С€ РїРѕС‡С‚РѕРІС‹Р№ СЏС‰РёРє РїСѓСЃС‚.</p>
+                                            <p className="font-serif italic font-bold">Ваш почтовый ящик пуст.</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-4 pt-2 px-2 pb-10">
@@ -20954,8 +21076,8 @@ const App: React.FC = () => {
                                                             )}
                                                             
                                                             {chat.otherUserId !== 'anonymous' && (
-                                                                <div className="mt-1 flex items-center bg-[#5c3a21] px-1 rounded text-white text-[10px] font-bold shadow-inner" aria-label={`РЈСЂРѕРІРµРЅСЊ ${otherUser?.level || 1}`}>
-                                                                    <span>РЈСЂ. {otherUser?.level || 1}</span>
+                                                                <div className="mt-1 flex items-center bg-[#5c3a21] px-1 rounded text-white text-[10px] font-bold shadow-inner" aria-label={`Уровень ${otherUser?.level || 1}`}>
+                                                                    <span>Ур. {otherUser?.level || 1}</span>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -20973,30 +21095,30 @@ const App: React.FC = () => {
                                                                         }
                                                                     }}
                                                                 >
-                                                                    {chat.otherUserId === 'anonymous' ? 'РђРЅРѕРЅРёРј' : (otherUser?.name || 'РќРµРёР·РІРµСЃС‚РЅС‹Р№')}
+                                                                    {chat.otherUserId === 'anonymous' ? 'Аноним' : (otherUser?.name || 'Неизвестный')}
                                                                 </span>
 
                                                                 {/* Optional Stats */}
                                                                 {chat.otherUserId !== 'anonymous' && otherUser && (
                                                                     <div className="flex text-[11px] space-x-3 text-[#7a5938] font-bold bg-[#e8d5a5] px-2 rounded-full border border-[#d4bc8b]">
-                                                                        <span title="РЎР»Р°РІР°">рџЏ† {otherUser.glory || 0}</span>
-                                                                        <span title="Р РµРїСѓС‚Р°С†РёСЏ">в­ђ {otherUser.reputation || 0}</span>
+                                                                        <span title="Слава">🏆 {otherUser.glory || 0}</span>
+                                                                        <span title="Репутация">⭐ {otherUser.reputation || 0}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             
                                                             <div className="bg-[#e8d5a5] p-2 rounded border border-[#d4bc8b] text-[#3a200e] text-sm overflow-hidden text-ellipsis shadow-inner whitespace-nowrap italic font-serif">
-                                                                <span className="font-bold text-[#8b5a2b]">{chat.lastMessage.senderId === user?.uid ? 'Р’С‹: ' : ''}</span>
+                                                                <span className="font-bold text-[#8b5a2b]">{chat.lastMessage.senderId === user?.uid ? 'Вы: ' : ''}</span>
                                                                 {chat.lastMessage.text || (chat.lastMessage as any).message}
                                                             </div>
                                                             <div className="flex justify-between items-center mt-1">
-                                                                <span className="text-[10px] text-[#8b6a4b] font-bold italic pl-1">РЎРІРёС‚РѕРє РїРѕР»СѓС‡РµРЅ...</span>
+                                                                <span className="text-[10px] text-[#8b6a4b] font-bold italic pl-1">Свиток получен...</span>
                                                                 <span className="text-[10px] text-[#8b6a4b] font-bold px-1">{new Date(chat.lastMessage.timestamp).toLocaleString()}</span>
                                                             </div>
                                                         </div>
                                                         {chat.unreadCount > 0 && (
                                                             <div className="absolute top-[-8px] right-2 bg-red-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-md border border-white z-20">
-                                                                {chat.unreadCount} РЅРѕРІС‹С…
+                                                                {chat.unreadCount} новых
                                                             </div>
                                                         )}
                                                     </div>
@@ -21014,12 +21136,12 @@ const App: React.FC = () => {
                                         boxShadow: "inset 0 0 50px rgba(0,0,0,0.5), 0 10px 15px rgba(0,0,0,0.5)"
                                     }}
                                 >
-                                    <h2 className="text-2xl font-bold mb-4 font-serif text-[#5c3a21] border-b border-[#a88a6d] pb-2 uppercase tracking-wider pl-2 w-3/4">РџСЂРёРІР°С‚РЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ</h2>
+                                    <h2 className="text-2xl font-bold mb-4 font-serif text-[#5c3a21] border-b border-[#a88a6d] pb-2 uppercase tracking-wider pl-2 w-3/4">Приватные сообщения</h2>
 
                                     {privateChats.filter(chat => !chat.lastMessage.isAnonymous).length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-full text-[#8b6a4b]">
                                             <LettersIcon className="w-16 h-16 mb-4 opacity-50" />
-                                            <p className="font-serif italic font-bold">РќРµС‚ РїСЂРёРІР°С‚РЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№.</p>
+                                            <p className="font-serif italic font-bold">Нет приватных сообщений.</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-4 pt-2 px-2 pb-10">
@@ -21083,13 +21205,13 @@ const App: React.FC = () => {
                             {activeProfileTab === 'settings' && (
                                 <div className="flex flex-col h-full space-y-4">
                                     <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', padding: '8px 16px' }}>
-                                        <h3 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '15px', color: '#e0e8f0', margin: 0 }}>РќР°СЃС‚СЂРѕР№РєРё</h3>
+                                        <h3 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '15px', color: '#e0e8f0', margin: 0 }}>Настройки</h3>
                                     </div>
 
                                     <div style={{ background: 'rgba(0,0,0,0.25)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                        <h4 className="text-md font-medium text-gray-200 mb-3">РњСѓР·С‹РєР°</h4>
+                                        <h4 className="text-md font-medium text-gray-200 mb-3">Музыка</h4>
                                         <div className="flex items-center justify-between mb-4">
-                                            <span className="text-sm text-gray-300">Р’РєР»СЋС‡РёС‚СЊ С„РѕРЅРѕРІСѓСЋ РјСѓР·С‹РєСѓ</span>
+                                            <span className="text-sm text-gray-300">Включить фоновую музыку</span>
                                             <label className="relative inline-flex items-center cursor-pointer">
                                                 <input type="checkbox" className="sr-only peer" checked={musicEnabled} onChange={(e) => setMusicEnabled(e.target.checked)} />
                                                 <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -21097,7 +21219,7 @@ const App: React.FC = () => {
                                         </div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm text-gray-300">
-                                                <span>Р“СЂРѕРјРєРѕСЃС‚СЊ</span>
+                                                <span>Громкость</span>
                                                 <span>{Math.round(musicVolume * 100)}%</span>
                                             </div>
                                             <input
@@ -21136,16 +21258,16 @@ const App: React.FC = () => {
                                                 </button>
                                             </div>
                                             <div className="text-xs text-gray-400 mt-3">
-                                                РўСЂРµРє {currentTrackIndex + 1} РёР· {MUSIC_TRACKS.length}
+                                                Трек {currentTrackIndex + 1} из {MUSIC_TRACKS.length}
                                             </div>
                                         </div>
                                     </div>
 
                                     <div style={{ background: 'rgba(0,0,0,0.25)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                        <h4 className="text-md font-medium text-gray-200 mb-3">Р—РІСѓРєРё РёРіСЂС‹</h4>
+                                        <h4 className="text-md font-medium text-gray-200 mb-3">Звуки игры</h4>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm text-gray-300">
-                                                <span>Р“СЂРѕРјРєРѕСЃС‚СЊ</span>
+                                                <span>Громкость</span>
                                                 <span>{Math.round(gameSoundsVolume * 100)}%</span>
                                             </div>
                                             <input
@@ -21173,12 +21295,12 @@ const App: React.FC = () => {
                                                         <p className="text-xs" style={{ color: 'rgba(200,210,220,0.6)', fontFamily: 'Nunito, sans-serif' }}>{user.email}</p>
                                                     </div>
                                                 </div>
-                                                <button onClick={handleLogout} className="transition-colors" style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }} title="Р’С‹Р№С‚Рё"
+                                                <button onClick={handleLogout} className="transition-colors" style={{ padding: '8px 16px', borderRadius: '8px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }} title="Выйти"
                                                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.3)'; e.currentTarget.style.color = '#fca5a5'; }}
                                                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#f87171'; }}
                                                 >
                                                     <LogOut className="w-4 h-4" />
-                                                    <span>Р’С‹Р№С‚Рё</span>
+                                                    <span>Выйти</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -21191,22 +21313,22 @@ const App: React.FC = () => {
                                 <div className="flex flex-col h-full space-y-4 overflow-y-auto">
                                     <h3 className="text-lg font-semibold text-white border-b border-gray-700 pb-2 flex items-center gap-2">
                                         <img src={policeBadgeImageUrl} alt="Badge" className="w-6 h-6" />
-                                        Р’С‹Р±РѕСЂС‹ РІ РїРѕР»РёС†РёРё
+                                        Выборы в полиции
                                     </h3>
 
                                     {/* Current Sheriff Info */}
                                     <div className="bg-blue-900/30 p-3 rounded-lg border border-blue-500/50">
-                                        <h4 className="text-blue-300 font-medium mb-2">РўРµРєСѓС‰РёР№ С€РµСЂРёС„</h4>
+                                        <h4 className="text-blue-300 font-medium mb-2">Текущий шериф</h4>
                                         {sheriffId ? (
                                             <div className="flex items-center gap-2">
                                                 <img src="/last_appx/polise/16.webp" alt="Sheriff" className="w-10 h-10 rounded" />
                                                 <div>
-                                                    <p className="text-white font-bold">{sheriffName || "РЁРµСЂРёС„"}</p>
-                                                    <p className="text-xs text-gray-400">РџРѕРјРѕС‰РЅРёРєРё: {deputies.length}/6</p>
+                                                    <p className="text-white font-bold">{sheriffName || "Шериф"}</p>
+                                                    <p className="text-xs text-gray-400">Помощники: {deputies.length}/6</p>
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p className="text-gray-400 text-sm">Р’ РіРѕСЂРѕРґРµ РµС‰Рµ РЅРµС‚ С€РµСЂРёС„Р°. РџРѕСЃС‚СЂРѕР№С‚Рµ РїРѕР»РёС†РµР№СЃРєРёР№ СѓС‡Р°СЃС‚РѕРє, С‡С‚РѕР±С‹ РІС‹РґРІРёРЅСѓС‚СЊ СЃРІРѕСЋ РєР°РЅРґРёРґР°С‚СѓСЂСѓ.</p>
+                                            <p className="text-gray-400 text-sm">В городе еще нет шерифа. Постройте полицейский участок, чтобы выдвинуть свою кандидатуру.</p>
                                         )}
                                     </div>
 
@@ -21222,9 +21344,9 @@ const App: React.FC = () => {
                                                 
                                                 let timeStr = '';
                                                 if (days > 0) {
-                                                    timeStr = `${days}Рґ ${hours}С‡`;
+                                                    timeStr = `${days}д ${hours}ч`;
                                                 } else {
-                                                    timeStr = `${hours}С‡ ${minutes}Рј ${seconds}СЃ`;
+                                                    timeStr = `${hours}ч ${minutes}м ${seconds}с`;
                                                 }
                                                 
                                                 // Check if election is ongoing (candidates exist)
@@ -21234,7 +21356,7 @@ const App: React.FC = () => {
                                                     return (
                                                         <div className="bg-yellow-900/30 p-3 rounded-lg border border-yellow-500/50">
                                                             <p className="text-yellow-300 text-sm font-bold">
-                                                                Р”Рѕ РѕРєРѕРЅС‡Р°РЅРёСЏ РІС‹Р±РѕСЂРѕРІ: {timeStr}
+                                                                До окончания выборов: {timeStr}
                                                             </p>
                                                         </div>
                                                     );
@@ -21249,7 +21371,7 @@ const App: React.FC = () => {
                                             return (
                                                 <div className="bg-blue-900/30 p-3 rounded-lg border border-blue-500/50">
                                                     <p className="text-blue-300 text-sm font-bold">
-                                                        Р”Рѕ СЃР»РµРґСѓСЋС‰РёС… РІС‹Р±РѕСЂРѕРІ РЅР° РїРѕСЃС‚ С€РµСЂРёС„Р°: {days}Рґ {hours}С‡
+                                                        До следующих выборов на пост шерифа: {days}д {hours}ч
                                                     </p>
                                                 </div>
                                             );
@@ -21259,9 +21381,9 @@ const App: React.FC = () => {
 
                                     {/* Candidates List */}
                                     <div className="bg-gray-700/50 p-3 rounded-lg border border-gray-600">
-                                        <h4 className="text-gray-200 font-medium mb-3">РџСЂРµС‚РµРЅРґРµРЅС‚С‹ РЅР° РїРѕСЃС‚ С€РµСЂРёС„Р°</h4>
+                                        <h4 className="text-gray-200 font-medium mb-3">Претенденты на пост шерифа</h4>
                                         {Object.keys(policeCandidates).length === 0 ? (
-                                            <p className="text-gray-400 text-sm text-center py-4">РџРѕРєР° РЅРµС‚ РєР°РЅРґРёРґР°С‚РѕРІ</p>
+                                            <p className="text-gray-400 text-sm text-center py-4">Пока нет кандидатов</p>
                                         ) : (
                                             <div className="space-y-2 max-h-40 overflow-y-auto">
                                                 {Object.entries(policeCandidates)
@@ -21275,9 +21397,9 @@ const App: React.FC = () => {
                                                                 className={`flex items-center justify-between p-2 rounded ${uid === user?.uid ? 'bg-blue-900/50 border border-blue-500' : 'bg-gray-800/50'}`}
                                                             >
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-gray-300 text-sm">{playerInfo?.name || 'РРіСЂРѕРє'}</span>
-                                                                    <span className="text-xs text-gray-500">Р“РѕР»РѕСЃР°: {data.votes}</span>
-                                                                    <span className="text-xs text-yellow-500">Р‘Р°РЅРє: {data.bank.toLocaleString()}</span>
+                                                                    <span className="text-gray-300 text-sm">{playerInfo?.name || 'Игрок'}</span>
+                                                                    <span className="text-xs text-gray-500">Голоса: {data.votes}</span>
+                                                                    <span className="text-xs text-yellow-500">Банк: {data.bank.toLocaleString()}</span>
                                                                 </div>
                                                                 <div className="flex items-center gap-1">
                                                                     {/* Vote button */}
@@ -21287,14 +21409,14 @@ const App: React.FC = () => {
                                                                             setShowPoliceVotingModal(true);
                                                                         }}
                                                                         className="p-1 bg-green-600 hover:bg-green-500 rounded text-white text-sm"
-                                                                        title="Р В РІР‚СљР В РЎвЂўР В Р’В»Р В РЎвЂўР РЋР С“Р В РЎвЂўР В Р вЂ Р В Р’В°Р РЋРІР‚С™Р РЋР Р‰ (1000 Р В РЎВР В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™, 100 Р РЋР РЉР В Р вЂ¦Р В Р’ВµР РЋР вЂљР В РЎвЂ“Р В РЎвЂР В РЎвЂ)"
+                                                                        title="Р вЂњР С•Р В»Р С•РЎРѓР С•Р Р†Р В°РЎвЂљРЎРЉ (1000 Р СР С•Р Р…Р ВµРЎвЂљ, 100 РЎРЊР Р…Р ВµРЎР‚Р С–Р С‘Р С‘)"
                                                                     >
                                                                         V
                                                                     </button>
                                                                     {/* Reject button (just visual, no action) */}
                                                                     <button
                                                                         className="p-1 bg-red-600 hover:bg-red-500 rounded text-white text-sm opacity-50 cursor-not-allowed"
-                                                                        title="Р В РЎСџР РЋР вЂљР В РЎвЂўР РЋРІР‚С™Р В РЎвЂР В Р вЂ  (Р В Р вЂ¦Р В Р’Вµ Р РЋР вЂљР В Р’ВµР В Р’В°Р В Р’В»Р В РЎвЂР В Р’В·Р В РЎвЂўР В Р вЂ Р В Р’В°Р В Р вЂ¦Р В РЎвЂў)"
+                                                                        title="Р СџРЎР‚Р С•РЎвЂљР С‘Р Р† (Р Р…Р Вµ РЎР‚Р ВµР В°Р В»Р С‘Р В·Р С•Р Р†Р В°Р Р…Р С•)"
                                                                     >
                                                                         X
                                                                     </button>
@@ -21312,8 +21434,8 @@ const App: React.FC = () => {
                                         const isAlreadyCandidate = policeCandidates[user?.uid || ''] !== undefined;
                                         const isKingOrQueen = kingId === user?.uid || queenId === user?.uid;
                                         if (!hasPoliceStation) return null;
-                                        if (isKingOrQueen) return <p className="text-red-400 text-center">Р’С‹ Р В Р вЂ¦Р В Р’Вµ Р В РЎВР В РЎвЂўР В Р’В¶Р В Р’ВµР РЋРІР‚С™Р В Р’Вµ Р В Р’В±Р РЋРІР‚в„–Р РЋРІР‚С™Р РЋР Р‰ Р В РЎвЂќР В Р’В°Р В Р вЂ¦Р В РўвЂР В РЎвЂР В РўвЂР В Р’В°Р РЋРІР‚С™Р В РЎвЂўР В РЎВ Р В Р вЂ  Р РЋРІвЂљВ¬Р В Р’ВµР РЋР вЂљР В РЎвЂР РЋРІР‚С›Р РЋРІР‚в„–, Р РЋРІР‚С™Р В Р’В°Р В РЎвЂќ Р В РЎвЂќР В Р’В°Р В РЎвЂќ Р В Р вЂ Р РЋРІР‚в„– Р В РЎвЂќР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р РЋР Р‰ Р В РЎвЂР В Р’В»Р В РЎвЂ Р В РЎвЂќР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В Р вЂ Р В Р’В°!</p>;
-                                        if (isAlreadyCandidate) return <p className="text-green-400 text-center">Р’С‹ Р РЋРЎвЂњР В Р’В¶Р В Р’Вµ Р В РЎвЂќР В Р’В°Р В Р вЂ¦Р В РўвЂР В РЎвЂР В РўвЂР В Р’В°Р РЋРІР‚С™!</p>;
+                                        if (isKingOrQueen) return <p className="text-red-400 text-center">Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р В±РЎвЂ№РЎвЂљРЎРЉ Р С”Р В°Р Р…Р Т‘Р С‘Р Т‘Р В°РЎвЂљР С•Р С Р Р† РЎв‚¬Р ВµРЎР‚Р С‘РЎвЂћРЎвЂ№, РЎвЂљР В°Р С” Р С”Р В°Р С” Р Р†РЎвЂ№ Р С”Р С•РЎР‚Р С•Р В»РЎРЉ Р С‘Р В»Р С‘ Р С”Р С•РЎР‚Р С•Р В»Р ВµР Р†Р В°!</p>;
+                                        if (isAlreadyCandidate) return <p className="text-green-400 text-center">Вы РЎС“Р В¶Р Вµ Р С”Р В°Р Р…Р Т‘Р С‘Р Т‘Р В°РЎвЂљ!</p>;
                                         return (
                                             <button
                                                 onClick={async () => {
@@ -21350,18 +21472,18 @@ const App: React.FC = () => {
                                                         
                                                         try {
                                                             await setDoc(doc(db, 'elections', 'police'), electionData);
-                                                            alert('Р’С‹ Р В Р вЂ Р РЋРІР‚в„–Р В РўвЂР В Р вЂ Р В РЎвЂР В Р вЂ¦Р РЋРЎвЂњР В Р’В»Р В РЎвЂ Р РЋР С“Р В Р вЂ Р В РЎвЂўР РЋР вЂ№ Р В РЎвЂќР В Р’В°Р В Р вЂ¦Р В РўвЂР В РЎвЂР В РўвЂР В Р’В°Р РЋРІР‚С™Р РЋРЎвЂњР РЋР вЂљР РЋРЎвЂњ Р В Р’В·Р В Р’В° 10,000 Р В РЎВР В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™!');
+                                                            alert('Вы Р Р†РЎвЂ№Р Т‘Р Р†Р С‘Р Р…РЎС“Р В»Р С‘ РЎРѓР Р†Р С•РЎР‹ Р С”Р В°Р Р…Р Т‘Р С‘Р Т‘Р В°РЎвЂљРЎС“РЎР‚РЎС“ Р В·Р В° 10,000 Р СР С•Р Р…Р ВµРЎвЂљ!');
                                                         } catch (e) {
                                                             console.error('Failed to save candidacy:', e);
-                                                            alert('Р В РЎвЂєР РЋРІвЂљВ¬Р В РЎвЂР В Р’В±Р В РЎвЂќР В Р’В° Р В РЎвЂ”Р РЋР вЂљР В РЎвЂ Р РЋР С“Р В РЎвЂўР РЋРІР‚В¦Р РЋР вЂљР В Р’В°Р В Р вЂ¦Р В Р’ВµР В Р вЂ¦Р В РЎвЂР В РЎвЂ. Р В РЎСџР В РЎвЂўР В РЎвЂ”Р РЋР вЂљР В РЎвЂўР В Р’В±Р РЋРЎвЂњР В РІвЂћвЂ“Р РЋРІР‚С™Р В Р’Вµ Р В Р’ВµР РЋРІР‚В°Р В Р’Вµ Р РЋР вЂљР В Р’В°Р В Р’В·.');
+                                                            alert('Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р С—РЎР‚Р С‘ РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р ВµР Р…Р С‘Р С‘. Р СџР С•Р С—РЎР‚Р С•Р В±РЎС“Р в„–РЎвЂљР Вµ Р ВµРЎвЂ°Р Вµ РЎР‚Р В°Р В·.');
                                                         }
                                                     } else {
-                                                        alert('РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РјРѕРЅРµС‚! РќСѓР¶РЅРѕ 10,000.');
+                                                        alert('Недостаточно монет! Нужно 10,000.');
                                                     }
                                                 }}
                                                 className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg"
                                             >
-                                                Р’С‹Р В РўвЂР В Р вЂ Р В РЎвЂР В Р вЂ¦Р РЋРЎвЂњР РЋРІР‚С™Р РЋР Р‰ Р В РЎвЂќР В Р’В°Р В Р вЂ¦Р В РўвЂР В РЎвЂР В РўвЂР В Р’В°Р РЋРІР‚С™Р РЋРЎвЂњР РЋР вЂљР РЋРЎвЂњ (10,000 Р В РЎВР В РЎвЂўР В Р вЂ¦Р В Р’ВµР РЋРІР‚С™)
+                                                ВыР Т‘Р Р†Р С‘Р Р…РЎС“РЎвЂљРЎРЉ Р С”Р В°Р Р…Р Т‘Р С‘Р Т‘Р В°РЎвЂљРЎС“РЎР‚РЎС“ (10,000 Р СР С•Р Р…Р ВµРЎвЂљ)
                                             </button>
                                         );
                                     })()}
@@ -21369,13 +21491,13 @@ const App: React.FC = () => {
                                     {/* Sheriff: Manage Deputies */}
                                     {sheriffId === user?.uid && (
                                         <div className="bg-green-900/30 p-3 rounded-lg border border-green-500/50">
-                                            <h4 className="text-green-300 font-medium mb-3">Р В Р в‚¬Р В РЎвЂ”Р РЋР вЂљР В Р’В°Р В Р вЂ Р В Р’В»Р В Р’ВµР В Р вЂ¦Р В РЎвЂР В Р’Вµ Р В РЎвЂ”Р В РЎвЂўР В РЎВР В РЎвЂўР РЋРІР‚В°Р В Р вЂ¦Р В РЎвЂР В РЎвЂќР В Р’В°Р В РЎВР В РЎвЂ ({deputies.length}/6)</h4>
+                                            <h4 className="text-green-300 font-medium mb-3">Р Р€Р С—РЎР‚Р В°Р Р†Р В»Р ВµР Р…Р С‘Р Вµ Р С—Р С•Р СР С•РЎвЂ°Р Р…Р С‘Р С”Р В°Р СР С‘ ({deputies.length}/6)</h4>
                                             
                                             {/* Search for players */}
                                             <div className="flex gap-2 mb-3">
                                                 <input
                                                     type="text"
-                                                    placeholder="РџРѕРёСЃРє РёРіСЂРѕРєР°..."
+                                                    placeholder="Поиск игрока..."
                                                     value={policeSearchTerm}
                                                     onChange={(e) => setPoliceSearchTerm(e.target.value)}
                                                     className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm text-white"
@@ -21399,7 +21521,7 @@ const App: React.FC = () => {
                                                                     onClick={() => {
                                                                         if (deputies.length < 6) {
                                                                             setDeputies(prev => [...prev, uid]);
-                                                                            alert(`${player.name} С‚РµРїРµСЂСЊ РїРѕРјРѕС‰РЅРёРє С€РµСЂРёС„Р°!`);
+                                                                            alert(`${player.name} теперь помощник шерифа!`);
                                                                         }
                                                                     }}
                                                                     disabled={deputies.length >= 6}
@@ -21415,17 +21537,17 @@ const App: React.FC = () => {
                                             {/* Current deputies */}
                                             {deputies.length > 0 && (
                                                 <div className="mt-3 space-y-1">
-                                                    <p className="text-xs text-gray-400">Р В РЎС›Р В Р’ВµР В РЎвЂќР РЋРЎвЂњР РЋРІР‚В°Р В РЎвЂР В Р’Вµ Р В РЎвЂ”Р В РЎвЂўР В РЎВР В РЎвЂўР РЋРІР‚В°Р В Р вЂ¦Р В РЎвЂР В РЎвЂќР В РЎвЂ:</p>
+                                                    <p className="text-xs text-gray-400">Р СћР ВµР С”РЎС“РЎвЂ°Р С‘Р Вµ Р С—Р С•Р СР С•РЎвЂ°Р Р…Р С‘Р С”Р С‘:</p>
                                                     {deputies.map(depUid => {
                                                         const depInfo = allUsers[depUid];
                                                         return (
                                                             <div key={depUid} className="flex items-center justify-between bg-gray-800/50 p-2 rounded">
-                                                                <span className="text-sm text-gray-300">{depInfo?.name || 'Р В Р’ВР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќ'}</span>
+                                                                <span className="text-sm text-gray-300">{depInfo?.name || 'Р ВР С–РЎР‚Р С•Р С”'}</span>
                                                                 <button
                                                                     onClick={() => setDeputies(prev => prev.filter(d => d !== depUid))}
                                                                     className="p-1 bg-red-600 hover:bg-red-500 rounded text-white text-xs"
                                                                 >
-                                                                    Р В Р Р‹Р В Р вЂ¦Р РЋР РЏР РЋРІР‚С™Р РЋР Р‰
+                                                                    Р РЋР Р…РЎРЏРЎвЂљРЎРЉ
                                                                 </button>
                                                             </div>
                                                         );
@@ -21461,7 +21583,7 @@ const App: React.FC = () => {
             />
 
 
-            {/* Р В РЎСљР В РЎвЂР В РЎвЂќР В Р вЂ¦Р В Р’ВµР В РІвЂћвЂ“Р В РЎВР РЋРІР‚в„– Р В РЎвЂР В РЎвЂ“Р РЋР вЂљР В РЎвЂўР В РЎвЂќР В РЎвЂўР В Р вЂ  Р В Р вЂ¦Р В Р’В° Р В РЎвЂќР В Р’В°Р РЋР вЂљР РЋРІР‚С™Р В Р’Вµ */}
+            {/* Р СњР С‘Р С”Р Р…Р ВµР в„–Р СРЎвЂ№ Р С‘Р С–РЎР‚Р С•Р С”Р С•Р Р† Р Р…Р В° Р С”Р В°РЎР‚РЎвЂљР Вµ */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 {onlinePlayersData.map(player => {
                     if (typeof player.x !== 'number' || typeof player.y !== 'number') return null;
@@ -21537,7 +21659,7 @@ const App: React.FC = () => {
                     className="relative group"
                 >
                     <div className="w-[60px] h-[60px] sm:w-[80px] sm:h-[80px] md:w-[110px] md:h-[110px] lg:w-[150px] lg:h-[150px] rounded-full overflow-hidden shadow-lg cursor-pointer hover:scale-105 transition-all relative">
-                        <img src="/Gui/Front/Р·РЅР°С‡РµРє Р»РёС‡РЅРѕРіРѕ РєР°Р±РёРЅРµС‚Р° РІС…РѕРґ РІ Р»РёС‡РЅС‹Р№ РєР°Р±РёРЅРµС‚/Image-3.webp" alt="Profile Menu" className="w-full h-full object-cover" style={{ transform: 'scale(0.88)' }} />
+                        <img src="/Gui/Front/значек личного кабинета вход в личный кабинет/Image-3.webp" alt="Profile Menu" className="w-full h-full object-cover" style={{ transform: 'scale(0.88)' }} />
                         {/* Level Icon Badge */}
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center shadow-md" style={{ marginLeft: '1px', transform: 'translateX(-50%) translateY(-4px)' }}>
                             <img src={getLevelIcon(playerLevel)} alt="Level" className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 object-contain" />
@@ -21589,11 +21711,11 @@ const App: React.FC = () => {
                                     textShadow: '0 1px 0 rgba(255,255,255,0.35)'
                                 }}
                             >
-                                {`РѕРїС‹С‚: ${safePlayerGlory}/${gloryToNextLevel}`}
+                                {`опыт: ${safePlayerGlory}/${gloryToNextLevel}`}
                             </div>
                         </div>
                         <div className="absolute hidden group-hover/bar:block bg-gray-900 text-white text-sm px-3 py-2 rounded shadow-lg -top-10 left-0 whitespace-nowrap z-50">
-                            РћРїС‹С‚: {safePlayerGlory} / {gloryToNextLevel}
+                            Опыт: {safePlayerGlory} / {gloryToNextLevel}
                         </div>
                     </div>
 
@@ -21630,11 +21752,11 @@ const App: React.FC = () => {
                                     textShadow: '0 1px 0 rgba(255,255,255,0.35)'
                                 }}
                             >
-                                {`Р РµРїСѓС‚Р°С†РёСЏ ${playerReputation}/${MAX_REPUTATION}`}
+                                {`Репутация ${playerReputation}/${MAX_REPUTATION}`}
                             </div>
                         </div>
                         <div className="absolute hidden group-hover/bar:block bg-gray-900 text-white text-sm px-3 py-2 rounded shadow-lg -top-10 left-0 whitespace-nowrap z-50">
-                            Р РµРїСѓС‚Р°С†РёСЏ: {playerReputation} / {MAX_REPUTATION}
+                            Репутация: {playerReputation} / {MAX_REPUTATION}
                         </div>
                     </div>
 
@@ -21644,8 +21766,8 @@ const App: React.FC = () => {
                             type="button"
                             onClick={openEnergyShopModal}
                             className="block cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-yellow-300/80"
-                            title="РљСѓРїРёС‚СЊ СЌРЅРµСЂРіРёСЋ"
-                            aria-label="РљСѓРїРёС‚СЊ СЌРЅРµСЂРіРёСЋ"
+                            title="Купить энергию"
+                            aria-label="Купить энергию"
                         >
                         <div 
                             className="w-28 sm:w-32 md:w-36 h-5 sm:h-6 rounded-full overflow-hidden stat-bars"
@@ -21678,12 +21800,12 @@ const App: React.FC = () => {
                                     textShadow: '0 1px 0 rgba(255,255,255,0.4)'
                                 }}
                             >
-                                {`Р­РЅРµСЂРіРёСЏ ${playerEnergy}/${displayedEnergyCapacity}`}
+                                {`Энергия ${playerEnergy}/${displayedEnergyCapacity}`}
                             </div>
                         </div>
                         </button>
                         <div className="absolute hidden group-hover/bar:block bg-gray-900 text-white text-sm px-3 py-2 rounded shadow-lg -top-10 left-0 whitespace-nowrap z-50">
-                            Р­РЅРµСЂРіРёСЏ: {playerEnergy} / {displayedEnergyCapacity}
+                            Энергия: {playerEnergy} / {displayedEnergyCapacity}
                         </div>
                     </div>
                 </div>
@@ -21697,10 +21819,10 @@ const App: React.FC = () => {
                     <button
                         onClick={handleZoomOut}
                         className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-3"
-                        title="РћС‚РґР°Р»РёС‚СЊ"
+                        title="Отдалить"
                         style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
                     >
-                        <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, transform: 'translateY(-1px)' }}>в€’</span>
+                        <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, transform: 'translateY(-1px)' }}>−</span>
                     </button>
                     </div>
 
@@ -21709,7 +21831,7 @@ const App: React.FC = () => {
                     <button
                         onClick={handleZoomIn}
                         className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-2"
-                        title="РџСЂРёР±Р»РёР·РёС‚СЊ"
+                        title="Приблизить"
                         style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.35)', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.35)' }}
                     >
                         <span style={{ color: '#e8f0ff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, transform: 'translateY(-1px)' }}>+</span>
@@ -21730,10 +21852,10 @@ const App: React.FC = () => {
                             }
                         }}
                         className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-1"
-                        title="Р В РЎСљР В Р’В°Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљР В РЎвЂўР В РІвЂћвЂ“Р В РЎвЂќР В РЎвЂ"
+                        title="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘"
                         style={{ width: '36px', height: '36px' }}
                     >
-                        <img src="/Gui/Front/Р·РЅР°С‡РµРє РЅР°СЃС‚СЂРѕРµРє/Qw5jz.webp" alt="Р В РЎСљР В Р’В°Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљР В РЎвЂўР В РІвЂћвЂ“Р В РЎвЂќР В РЎвЂ" className="w-[36px] h-[36px] object-contain" />
+                        <img src="/Gui/Front/значек настроек/Qw5jz.webp" alt="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘" className="w-[36px] h-[36px] object-contain" />
                     </button>
                     </div>
                 </div>
@@ -21747,9 +21869,9 @@ const App: React.FC = () => {
                         playOpenSound();
                     }}
                     className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button"
-                        title="РџР»Р°РЅС€РµС‚ (РѕСЃРЅРѕРІРЅРѕРµ РјРµРЅСЋ)"
+                        title="Планшет (основное меню)"
                 >
-                    <img src="/Gui/Front/РїР»Р°РЅС€РµС‚ (РѕСЃРЅРѕРІРЅРѕРµ РјРµРЅСЋ)/tablet_button.webp" alt="Tablet Menu" className="w-[140px] h-[140px] object-contain" />
+                    <img src="/Gui/Front/планшет (основное меню)/tablet_button.webp" alt="Tablet Menu" className="w-[140px] h-[140px] object-contain" />
                 </button>
             </div>
 
@@ -21781,7 +21903,7 @@ const App: React.FC = () => {
                                             </div>
                                         ) : activeTabletTutorial === 'firecrackerWarning' ? (
                                             <div className="flex items-center justify-center gap-4" style={{ width: '380px', height: '205px' }}>
-                                                <img src={firecrackerTutorialImageUrl} alt="РџРµС‚Р°СЂРґС‹" style={{ width: '140px', height: '160px', objectFit: 'contain' }} />
+                                                <img src={firecrackerTutorialImageUrl} alt="Петарды" style={{ width: '140px', height: '160px', objectFit: 'contain' }} />
                                                 <img src={tutorialEndImageUrl} alt="Tutorial end" style={{ width: '190px', height: '185px', objectFit: 'contain' }} />
                                             </div>
                                         ) : (
@@ -21822,95 +21944,95 @@ const App: React.FC = () => {
                                     {activeTabletTutorial === 'intro' ? (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '28px', lineHeight: 1.2, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РќР°Р№РґРё СЃРІРѕР±РѕРґРЅРѕРµ РјРµСЃС‚Рѕ, Рё РєР»РёРєРЅРё РїРѕ<br />РЅРµРјСѓ С‡С‚РѕР±С‹ РїРѕСЃС‚СЂРѕРёС‚СЊ РґРѕРј!
+                                                Найди свободное место, и кликни по<br />нему чтобы построить дом!
                                             </p>
                                             <p style={{ marginTop: '14px', marginBottom: '20px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '18px', lineHeight: 1.25, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                Р•С‰Рµ С‚С‹ РјРѕР¶РµС€СЊ РёСЃРєР°С‚СЊ РєР»Р°РґС‹, РіСЂР°Р±РёС‚СЊ, РІР·СЂС‹РІР°С‚СЊ РґРѕРјР°<br />РєРѕРЅРєСѓСЂРµРЅС‚РѕРІ, С‚РѕСЂРіРѕРІР°С‚СЊ РЅР° СЂС‹РЅРєРµ Рё РґР°Р¶Рµ РІСЃС‚СѓРїР°С‚СЊ РІ РєР»Р°РЅ
+                                                Еще ты можешь искать клады, грабить, взрывать дома<br />конкурентов, торговать на рынке и даже вступать в клан
                                             </p>
                                         </>
                                     ) : activeTabletTutorial === 'townHallBuilt' ? (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '30px', lineHeight: 1.18, textTransform: 'uppercase', textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                В«Р“Р»Р°РІРЅРѕРµ Р·РґР°РЅРёРµВ» РїРѕСЃС‚СЂРѕРµРЅРѕ!
+                                                «Главное здание» построено!
                                             </p>
                                             <p style={{ marginTop: '14px', marginBottom: '20px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '20px', lineHeight: 1.35, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                В«Р“Р»Р°РІРЅРѕРµ Р·РґР°РЅРёРµВ» РЅСѓР¶РЅРѕ РІР°Рј РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ РіРѕСЂРѕРґРѕРј
+                                                «Главное здание» нужно вам для управления городом
                                                 <br />
-                                                С‡РµРј РІС‹С€Рµ РµРіРѕ СѓСЂРѕРІРµРЅСЊ, С‚РµРј Р±РѕР»СЊС€Рµ РґРѕРјРѕРІ РІС‹ СЃРјРѕР¶РµС‚Рµ РїРѕСЃС‚СЂРѕРёС‚СЊ
+                                                чем выше его уровень, тем больше домов вы сможете построить
                                             </p>
                                         </>
                                     ) : activeTabletTutorial === 'housePrompt' ? (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '30px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РџРѕСЃС‚СЂРѕР№ РґРѕРј!
+                                                Построй дом!
                                             </p>
                                             <p style={{ marginTop: '14px', marginBottom: '14px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '20px', lineHeight: 1.35, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                Р©РµР»РєРЅРё РїРѕ РїСѓСЃС‚РѕРјСѓ РјРµСЃС‚Сѓ СЂСЏРґРѕРј СЃ В«Р“Р»Р°РІРЅС‹Рј Р·РґР°РЅРёРµРјВ», С‡С‚РѕР±С‹ РїРѕСЃС‚СЂРѕРёС‚СЊ РґРѕРј.
+                                                Щелкни по пустому месту рядом с «Главным зданием», чтобы построить дом.
                                                 <br />
-                                                Р’РµРґСЊ СЂР°Р±РѕС‡РёРј РЅСѓР¶РЅРѕ РіРґРµ-С‚Рѕ Р¶РёС‚СЊ!
+                                                Ведь рабочим нужно где-то жить!
                                             </p>
                                         </>
                                     ) : activeTabletTutorial === 'houseBuilt' ? (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '30px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РћС‚Р»РёС‡РЅРѕ! Р”РѕРј РїРѕСЃС‚СЂРѕРµРЅ!
+                                                Отлично! Дом построен!
                                             </p>
                                             <p style={{ marginTop: '14px', marginBottom: '14px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '19px', lineHeight: 1.35, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РљРѕР»РёС‡РµСЃС‚РІРѕ СЂР°Р±РѕС‡РёС… РІ РІР°С€РµРј РіРѕСЂРѕРґРµ Р·Р°РІРёСЃРёС‚ РѕС‚ РєРѕР»РёС‡РµСЃС‚РІР° В«РґРѕРјРѕРІВ».
+                                                Количество рабочих в вашем городе зависит от количества «домов».
                                                 <br />
-                                                Р Р°Р±РѕС‡РёРµ РЅСѓР¶РЅС‹ РІР°Рј РґР»СЏ СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР° РґРѕРјРѕРІ Рё СЂР°Р±РѕС‚С‹ РЅР° С„Р°Р±СЂРёРєР°С…
+                                                Рабочие нужны вам для строительства домов и работы на фабриках
                                             </p>
                                         </>
                                     ) : activeTabletTutorial === 'pondPrompt' ? (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '29px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РЈСЂР°! РњС‹ РјРѕР¶РµРј РЅР°С‡Р°С‚СЊ
+                                                Ура! Мы можем начать
                                                 <br />
-                                                Р·Р°СЂР°Р±Р°С‚С‹РІР°С‚СЊ РјРѕРЅРµС‚С‹!
+                                                зарабатывать монеты!
                                             </p>
                                             <p style={{ marginTop: '14px', marginBottom: '14px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '18px', lineHeight: 1.32, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РќР°Р¶РјРёС‚Рµ РЅР° СЃРІРѕР±РѕРґРЅРѕРµ РјРµСЃС‚Рѕ СЂСЏРґРѕРј СЃ В«Р“Р»Р°РІРЅС‹Рј Р·РґР°РЅРёРµРјВ»
+                                                Нажмите на свободное место рядом с «Главным зданием»
                                                 <br />
-                                                Р§С‚РѕР±С‹ РїРѕСЃС‚СЂРѕРёС‚СЊ В«РџСЂСѓРґ СЃ Р»РёР»РёСЏРјРёВ»
+                                                Чтобы построить «Пруд с лилиями»
                                             </p>
                                         </>
                                     ) : activeTabletTutorial === 'monsterWarning' ? (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                Р­Р№ Р”СЂСѓРі! РҐРѕС‡Сѓ С‚РµР±СЏ РїСЂРµРґСѓРїСЂРµРґРёС‚СЊ!
+                                                Эй Друг! Хочу тебя предупредить!
                                             </p>
                                             <p style={{ marginTop: '12px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '18px', lineHeight: 1.3, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                Р’РѕРєСЂСѓРі С‚РІРѕРµРіРѕ РіРѕСЂРѕРґР° Р±СЂРѕРґРёС‚ РјРЅРѕР¶РµСЃС‚РІРѕ В«РјРѕРЅСЃС‚СЂРѕРІВ», РѕРЅРё РЅРµРЅР°РІРёРґСЏС‚ РіРЅРѕРјРѕРІ Рё С‡Р°СЃС‚Рѕ РЅР°РїР°РґР°СЋС‚ РЅР° РіРѕСЂРѕРґР°. Р‘СѓРґСЊ РѕСЃС‚РѕСЂРѕР¶РµРЅ!
+                                                Вокруг твоего города бродит множество «монстров», они ненавидят гномов и часто нападают на города. Будь осторожен!
                                             </p>
                                         </>
                                     ) : activeTabletTutorial === 'firecrackerWarning' ? (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РџРѕРјРЅРё Сѓ С‚РµР±СЏ РµСЃС‚СЊ РїРµС‚Р°СЂРґС‹
+                                                Помни у тебя есть петарды
                                             </p>
                                             <p style={{ marginTop: '12px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '17px', lineHeight: 1.28, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РЎ РёС… РїРѕРјРѕС‰СЊСЋ РјРѕР¶РЅРѕ РІР·СЂС‹РІР°С‚СЊ РјРѕРЅСЃС‚СЂРѕРІ Рё РІР·СЂС‹РІР°С‚СЊ РїРѕСЃС‚СЂРѕР№РєРё РєР°Рє СЃРІРѕРё С‚Р°Рє Рё РёРіСЂРѕРєРѕРІ РЅР° РєР°СЂС‚Рµ. РњС‹ РґР°Р»Рё С‚РµР±Рµ РЅР° РїРµСЂРІРѕРµ РІСЂРµРјСЏ РЅРµСЃРєРѕР»СЊРєРѕ С€С‚СѓРє РїРµС‚Р°СЂРґ
+                                                С их помощью можно взрывать монстров и взрывать постройки как свои так и игроков на карте. Мы дали тебе на первое время несколько штук петард
                                                 <br />
-                                                РўР°Рє С‚С‹ РїСЂРѕРґРµСЂР¶РёС€СЊСЃСЏ РїРµСЂРІРѕРµ РІСЂРµРјСЏ.
+                                                Так ты продержишься первое время.
                                                 <br />
-                                                Рђ РєР°Рє РїРѕРґРєРѕРїРёС€СЊ РјРѕРЅРµС‚, СЃСЂР°Р·Сѓ СЃС‚СЂРѕР№ В«РџРµС‚Р°СЂРґРЅС‹Р№ Р·Р°РІРѕРґВ»
+                                                А как подкопишь монет, сразу строй «Петардный завод»
                                             </p>
                                         </>
                                     ) : (
                                         <>
                                             <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РџСЂРµРєСЂР°СЃРЅРѕ! РџРѕСЃС‚СЂРѕРµРЅ
+                                                Прекрасно! Построен
                                                 <br />
-                                                РџСЂСѓРґ СЃ Р»РёР»РёСЏРјРё
+                                                Пруд с лилиями
                                             </p>
                                             <p style={{ marginTop: '12px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '17px', lineHeight: 1.28, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                                РўРµРїРµСЂСЊ РґР»СЏ СЂР°Р±РѕС‡РёС… РµСЃС‚СЊ СЂР°Р±РѕС‚Р°! РљР»РёРєР°СЏ РїРѕ РїРѕСЃС‚СЂРѕР№РєРµ
+                                                Теперь для рабочих есть работа! Кликая по постройке
                                                 <br />
-                                                РјРѕР¶РЅРѕ РѕС‚РїСЂР°РІР»СЏС‚СЊ РёС… РЅР° СЂР°Р±РѕС‚Сѓ, Рё РїРѕР»СѓС‡Р°С‚СЊ Р·Р° СЌС‚Рѕ РјРѕРЅРµС‚С‹.
+                                                можно отправлять их на работу, и получать за это монеты.
                                                 <br />
-                                                Р•СЃР»Рё РїРѕРІРµР·РµС‚, С‚Рѕ СЂР°Р±РѕС‡РёРµ СЃРјРѕРіСѓС‚ РІС‹СЂР°СЃС‚РёС‚СЊ РґР»СЏ С‚РµР±СЏ В«РЎСѓРїРµСЂ
+                                                Если повезет, то рабочие смогут вырастить для тебя «Супер
                                                 <br />
-                                                Р»РёР»РёСЋВ». Р•Рµ РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РїСЂРѕРґР°С‚СЊ РЅР° В«СЂС‹РЅРєРµВ» РёР»Рё РїРµСЂРµСЂР°Р±РѕС‚Р°С‚СЊ РЅР° В«Р·Р°РІРѕРґРµВ»
+                                                лилию». Ее можно будет продать на «рынке» или переработать на «заводе»
                                             </p>
                                         </>
                                     )}
@@ -21920,28 +22042,28 @@ const App: React.FC = () => {
                                         className="hover:scale-105 transition-transform"
                                     >
                                         {activeTabletTutorial === 'intro'
-                                            ? 'РќР°С‡Р°С‚СЊ РёРіСЂР°С‚СЊ!'
+                                            ? 'Начать играть!'
                                             : activeTabletTutorial === 'pondPrompt'
-                                                ? 'РќР°С‡Р°С‚СЊ РёРіСЂСѓ'
+                                                ? 'Начать игру'
                                             : activeTabletTutorial === 'monsterWarning'
-                                                ? 'Р”Р°Р»СЊС€Рµ'
+                                                ? 'Дальше'
                                             : activeTabletTutorial === 'firecrackerWarning'
-                                                ? 'РРіСЂР°С‚СЊ'
+                                                ? 'Играть'
                                             : activeTabletTutorial === 'pondBuilt'
-                                                ? 'Р”Р°Р»СЊС€Рµ'
-                                            : 'РџСЂРѕРґРѕР»Р¶РёС‚СЊ'}
+                                                ? 'Дальше'
+                                            : 'Продолжить'}
                                     </button>
                                 </div>
                             ) : (
                             <>
                             {/* Title */}
                             <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)', marginBottom: '18px' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '20px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>РњРµРЅСЋ (РћСЃРЅРѕРІРЅРѕРµ)</h2>
+                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '20px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню (Основное)</h2>
                             </div>
 
-                            {/* Row 1: Р В РЎСџР В РЎвЂўР В Р’В»Р В РЎвЂР РЋРІР‚В Р В РЎвЂР РЋР РЏ Р В Р вЂ¦Р РЋР вЂљР В Р’В°Р В Р вЂ Р В РЎвЂўР В Р вЂ , Р В РЎС›Р В РЎвЂўР В РЎвЂ”, Р В РЎв„ўР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В Р вЂ Р РЋР С“Р В РЎвЂќР В РЎвЂР В Р’Вµ Р В Р вЂ Р РЋРІР‚в„–Р В Р’В±Р В РЎвЂўР РЋР вЂљР РЋРІР‚в„– */}
+                            {/* Row 1: Р СџР С•Р В»Р С‘РЎвЂ Р С‘РЎРЏ Р Р…РЎР‚Р В°Р Р†Р С•Р Р†, Р СћР С•Р С—, Р С™Р С•РЎР‚Р С•Р В»Р ВµР Р†РЎРѓР С”Р С‘Р Вµ Р Р†РЎвЂ№Р В±Р С•РЎР‚РЎвЂ№ */}
                             <div className="flex justify-center gap-5 mb-3">
-                                {/* Р В РЎСџР В РЎвЂўР В Р’В»Р В РЎвЂР РЋРІР‚В Р В РЎвЂР РЋР РЏ Р В Р вЂ¦Р РЋР вЂљР В Р’В°Р В Р вЂ Р В РЎвЂўР В Р вЂ  */}
+                                {/* Р СџР С•Р В»Р С‘РЎвЂ Р С‘РЎРЏ Р Р…РЎР‚Р В°Р Р†Р С•Р Р† */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowPoliceMorals(true); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
@@ -21950,10 +22072,10 @@ const App: React.FC = () => {
                                     <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                                         <img src={guiMenuPoliceMoralsImageUrl} alt="Police Morals" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>РџРѕР»РёС†РёСЏ РЅСЂР°РІРѕРІ</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Полиция нравов</span>
                                 </button>
 
-                                {/* Р В РЎС›Р В РЎвЂўР В РЎвЂ” */}
+                                {/* Р СћР С•Р С— */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowTopPlayers(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
@@ -21962,10 +22084,10 @@ const App: React.FC = () => {
                                     <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                                         <img src={guiMenuTopImageUrl} alt="Top Players" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>РўРѕРї</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Топ</span>
                                 </button>
 
-                                {/* Р В РЎв„ўР В РЎвЂўР РЋР вЂљР В РЎвЂўР В Р’В»Р В Р’ВµР В Р вЂ Р РЋР С“Р В РЎвЂќР В РЎвЂР В Р’Вµ Р В Р вЂ Р РЋРІР‚в„–Р В Р’В±Р В РЎвЂўР РЋР вЂљР РЋРІР‚в„– */}
+                                {/* Р С™Р С•РЎР‚Р С•Р В»Р ВµР Р†РЎРѓР С”Р С‘Р Вµ Р Р†РЎвЂ№Р В±Р С•РЎР‚РЎвЂ№ */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowRoyalElections(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
@@ -21974,13 +22096,13 @@ const App: React.FC = () => {
                                     <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                                         <img src={guiMenuRoyalElectionsImageUrl} alt="Royal Elections" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>РљРѕСЂРѕР»РµРІСЃРєРёРµ РІС‹Р±РѕСЂС‹</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Королевские выборы</span>
                                 </button>
                             </div>
 
-                            {/* Row 2: Р В РЎС™Р В Р’В°Р В РЎвЂ“Р В Р’В°Р В Р’В·Р В РЎвЂР В Р вЂ¦, Р В РЎв„ўР В Р’В°Р РЋР вЂљР РЋРІР‚С™Р В Р’В°, Р В РІР‚СљР В РЎвЂўР РЋР вЂљР В РЎвЂўР В РўвЂ */}
+                            {/* Row 2: Р СљР В°Р С–Р В°Р В·Р С‘Р Р…, Р С™Р В°РЎР‚РЎвЂљР В°, Р вЂњР С•РЎР‚Р С•Р Т‘ */}
                             <div className="flex justify-center gap-5 mb-3">
-                                {/* Р В РЎС™Р В Р’В°Р В РЎвЂ“Р В Р’В°Р В Р’В·Р В РЎвЂР В Р вЂ¦ */}
+                                {/* Р СљР В°Р С–Р В°Р В·Р С‘Р Р… */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowShop(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
@@ -21989,10 +22111,10 @@ const App: React.FC = () => {
                                     <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                                         <img src={guiMenuShopImageUrl} alt="Shop" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>РњР°РіР°Р·РёРЅ</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Магазин</span>
                                 </button>
 
-                                {/* Р В РЎв„ўР В Р’В°Р РЋР вЂљР РЋРІР‚С™Р В Р’В° */}
+                                {/* Р С™Р В°РЎР‚РЎвЂљР В° */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowMap(true); playOpenSound(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
@@ -22001,10 +22123,10 @@ const App: React.FC = () => {
                                     <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                                         <img src={guiMenuMapImageUrl} alt="Map" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>РљР°СЂС‚Р°</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Карта</span>
                                 </button>
 
-                                {/* Р В РІР‚СљР В РЎвЂўР РЋР вЂљР В РЎвЂўР В РўвЂ */}
+                                {/* Р вЂњР С•РЎР‚Р С•Р Т‘ */}
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); handleTeleportToTownHall(); }}
                                     className="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
@@ -22013,11 +22135,11 @@ const App: React.FC = () => {
                                     <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
                                         <img src={guiMenuTownImageUrl} alt="My City" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Р“РѕСЂРѕРґ</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center' }}>Город</span>
                                 </button>
                             </div>
 
-                            {/* Row 3: Р В Р’ВР В Р вЂ¦Р В Р вЂ Р В Р’ВµР В Р вЂ¦Р РЋРІР‚С™Р В Р’В°Р РЋР вЂљР РЋР Р‰ (centered) */}
+                            {/* Row 3: Р ВР Р…Р Р†Р ВµР Р…РЎвЂљР В°РЎР‚РЎРЉ (centered) */}
                             <div className="flex justify-center">
                                 <button
                                     onClick={() => { setShowMainTabletMenu(false); setShowInventory(true); playOpenSound(); }}
@@ -22027,7 +22149,7 @@ const App: React.FC = () => {
                                     <div style={{ width: '88px', height: '88px', background: 'rgba(0,0,0,0.3)', borderRadius: '16px', border: '2px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <img src={guiMenuInventoryImageUrl} alt="Inventory" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                                     </div>
-                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center', lineHeight: 1 }}>РРЅРІРµРЅС‚Р°СЂСЊ</span>
+                                    <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', color: '#d0d8e0', textShadow: '0 1px 4px rgba(0,0,0,0.5)', textAlign: 'center', lineHeight: 1 }}>Инвентарь</span>
                                 </button>
                             </div>
                             </>
@@ -22051,7 +22173,7 @@ const App: React.FC = () => {
                 <button
                     onClick={() => setChatCollapseState('tabs')}
                     className="fixed bottom-2 left-2 w-10 h-10 bg-black/70 backdrop-blur-sm border border-white/10 shadow-2xl rounded-xl flex items-center justify-center hover:bg-white/20 transition-all duration-300 z-50"
-                    title={uiText("РћС‚РєСЂС‹С‚СЊ С‡Р°С‚")}
+                    title={uiText("Открыть чат")}
                 >
                     <ChatBubbleIcon className="w-5 h-5 text-gray-300" />
                 </button>
@@ -22062,7 +22184,7 @@ const App: React.FC = () => {
                     <button
                         onClick={() => setChatCollapseState(chatCollapseState === 'open' ? 'tabs' : chatCollapseState === 'tabs' ? 'button' : 'open')}
                         className="h-full px-3 flex items-center justify-center hover:bg-white/10 transition-colors border-r border-white/10"
-                        title={chatCollapseState === 'open' ? uiText('РЎРІРµСЂРЅСѓС‚СЊ РґРѕ РІРєР»Р°РґРѕРє') : uiText('Р Р°Р·РІРµСЂРЅСѓС‚СЊ С‡Р°С‚')}
+                        title={chatCollapseState === 'open' ? uiText('Свернуть до вкладок') : uiText('Развернуть чат')}
                     >
                         {chatCollapseState === 'open' ? <ChevronDownIcon className="w-4 h-4 text-gray-300" /> : <ChevronDownIcon className="w-4 h-4 text-gray-300" />}
                     </button>
@@ -22071,7 +22193,7 @@ const App: React.FC = () => {
                         onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('banya'); }}
                         className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'banya' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
                     >
-                        {uiText('Р‘Р°РЅСЏ')} {isBanned() && <span className="ml-1 text-red-400">({Math.ceil((banEndTime - Date.now()) / 60000)} {uiText('РјРёРЅ')})</span>}
+                        {uiText('Баня')} {isBanned() && <span className="ml-1 text-red-400">({Math.ceil((banEndTime - Date.now()) / 60000)} {uiText('мин')})</span>}
                     </button>
 
                     {!isBanned() && (
@@ -22080,19 +22202,19 @@ const App: React.FC = () => {
                                 onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('general'); }}
                                 className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'general' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
                             >
-                                {uiText('РћР±С‰РёР№')}
+                                {uiText('Общий')}
                             </button>
                             <button
                                 onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('loot'); }}
                                 className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'loot' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
                             >
-                                {uiText('РќР°С…РѕРґРєРё')}
+                                {uiText('Находки')}
                             </button>
                             <button
                                 onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('clan'); }}
                                 className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'clan' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
                             >
-                                {uiText('РљР»Р°РЅ')}
+                                {uiText('Клан')}
                             </button>
                             {/* Police chat tab - only for sheriff and deputies */}
                             {(sheriffId === user?.uid || deputies.includes(user?.uid || '')) && (
@@ -22100,7 +22222,7 @@ const App: React.FC = () => {
                                     onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('police'); }}
                                     className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'police' ? 'bg-blue-600/80 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
                                 >
-                                    {uiText('РџРѕР»РёС†РёСЏ')}
+                                    {uiText('Полиция')}
                                 </button>
                             )}
                         </>
@@ -22111,7 +22233,7 @@ const App: React.FC = () => {
                     <>
                         {activeChatTab === 'clan' && !isInClan ? (
                             <div className="flex-grow flex items-center justify-center bg-transparent text-gray-400 p-4 text-center select-none">
-                                <p>{uiText('Р’С‹ РµС‰Рµ РЅРµ СЃРѕР·РґР°Р»Рё РёР»Рё РЅРµ РІСЃС‚СѓРїРёР»Рё РІ РєР»Р°РЅ.')}</p>
+                                <p>{uiText('Вы еще не создали или не вступили в клан.')}</p>
                             </div>
                         ) : (
                             <>
@@ -22119,9 +22241,9 @@ const App: React.FC = () => {
                                     <div className="w-3/4 flex flex-col chat-messages-container">
                                         <div ref={chatMessagesRef} className="flex-grow overflow-y-auto p-2 space-y-1.5 bg-transparent chat-messages" onScroll={handleChatScroll}>
                                             {orderedChatMessages.map((msg) => {
-                                                const senderText = msg.type === 'system' ? 'РЎРёСЃС‚РµРјР°' : uiText(msg.sender);
+                                                const senderText = msg.type === 'system' ? 'Система' : uiText(msg.sender);
                                                 const senderLower = senderText.toLowerCase();
-                                                const isSystemMessage = msg.type === 'system' || senderLower.includes('СЃРёСЃС‚РµРјР°');
+                                                const isSystemMessage = msg.type === 'system' || senderLower.includes('система');
                                                 return (
                                                 <div key={msg.id} className="text-sm break-words">
                                                     <span className="text-gray-500 text-xs mr-2">[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>
@@ -22141,22 +22263,22 @@ const App: React.FC = () => {
                                                         <span
                                                             onClick={() => handleSectorTeleport(msg.teleportCoordinates!.x, msg.teleportCoordinates!.y)}
                                                             className="ml-2 text-green-400 font-bold cursor-pointer hover:text-green-300 hover:underline inline-flex items-center"
-                                                            title={uiText("РўРµР»РµРїРѕСЂС‚РёСЂРѕРІР°С‚СЊСЃСЏ РІ СЃРµРєС‚РѕСЂ")}
+                                                            title={uiText("Телепортироваться в сектор")}
                                                         >
                                                             <CompassIcon className="w-3 h-3 mr-1" />
-                                                            {uiText('РўРЈРў')}
+                                                            {uiText('ТУТ')}
                                                         </span>
                                                     )}
                                                 </div>
                                             )})}
                                             {orderedChatMessages.length === 0 && (
-                                                <div className="text-gray-500 text-center italic pt-4 text-sm">{uiText('РЎРѕРѕР±С‰РµРЅРёР№ РїРѕРєР° РЅРµС‚...')}</div>
+                                                <div className="text-gray-500 text-center italic pt-4 text-sm">{uiText('Сообщений пока нет...')}</div>
                                             )}
                                         </div>
                                     </div>
 
                                     <div className="w-1/4 border-l border-white/10 bg-black/30 flex flex-col chat-players-sidebar">
-                                        <div className="p-1 text-xs font-bold text-gray-300 text-center border-b border-white/10">{uiText('РРіСЂРѕРєРё')}</div>
+                                        <div className="p-1 text-xs font-bold text-gray-300 text-center border-b border-white/10">{uiText('Игроки')}</div>
                                         <div className="overflow-y-auto flex-grow p-2 space-y-1">
                                             {onlineUsers[activeChatTab].map((u, idx) => (
                                                 <div key={idx} className={`text-sm truncate flex items-center ${u.name === playerName ? 'text-green-400 font-bold' : 'text-gray-300'}`}>
@@ -22190,19 +22312,19 @@ const App: React.FC = () => {
                                         onChange={(e) => setChatInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage('normal')}
                                         className="flex-grow bg-black/40 text-white text-sm rounded px-3 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 border border-white/20 placeholder-gray-400"
-                                        placeholder={uiText("РќР°РїРёС€РёС‚Рµ СЃРѕРѕР±С‰РµРЅРёРµ...")}
+                                        placeholder={uiText("Напишите сообщение...")}
                                     />
                                     <button
                                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                                         className="bg-black/40 hover:bg-white/20 text-yellow-400 px-2 py-1 rounded transition-colors border border-white/20 flex items-center justify-center"
-                                        title={uiText("РЎРјР°Р№Р»РёРєРё")}
+                                        title={uiText("Смайлики")}
                                     >
                                         <SmileyIcon className="w-5 h-5" />
                                     </button>
                                     <button
                                         onClick={handleSendLocation}
                                         className={`bg-black/40 hover:bg-white/20 text-white px-3 py-1 rounded transition-colors border border-white/20 flex items-center justify-center ${isLocationCooldown ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        title={isLocationCooldown ? uiText("РџРѕРґРѕР¶РґРёС‚Рµ...") : uiText("РћС‚РїСЂР°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РјРµСЃС‚РѕРїРѕР»РѕР¶РµРЅРёРµ")}
+                                        title={isLocationCooldown ? uiText("Подождите...") : uiText("Отправить текущее местоположение")}
                                     >
                                         <CompassIcon className="w-5 h-5" />
                                     </button>
@@ -22210,13 +22332,13 @@ const App: React.FC = () => {
                                         onClick={() => handleSendMessage('normal')}
                                         className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded transition-colors"
                                     >
-                                        {uiText('РћС‚РїСЂР°РІРёС‚СЊ')}
+                                        {uiText('Отправить')}
                                     </button>
                                     <button
                                         onClick={() => handleSendMessage('shout')}
                                         className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold px-3 py-1 rounded transition-colors"
                                     >
-                                        РљСЂРёРє
+                                        Крик
                                     </button>
                                 </div>
                             </>
@@ -22250,35 +22372,35 @@ const App: React.FC = () => {
                         <button
                             onClick={closeEnergyModal}
                             className="absolute z-10"
-                            aria-label="Р—Р°РєСЂС‹С‚СЊ РѕРєРЅРѕ СЌРЅРµСЂРіРёРё"
+                            aria-label="Закрыть окно энергии"
                             style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                         />
                         <div className="relative z-[1] flex flex-col items-center text-center" style={{ width: '620px', padding: '46px 52px 36px' }}>
                             <div style={{ border: '3px solid #d2b168', borderRadius: '12px', boxShadow: '0 0 0 2px rgba(255,215,0,0.16), 0 8px 22px rgba(0,0,0,0.30)', overflow: 'hidden', width: '138px', minWidth: '138px', height: '138px', background: 'linear-gradient(180deg, #f8f1df 0%, #eadbbd 100%)', padding: '6px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <img src={energyBatteryImageUrl} alt="Р­РЅРµСЂРіРёСЏ" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                <img src={energyBatteryImageUrl} alt="Энергия" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             </div>
 
                             {energyModalState.mode === 'warning' ? (
                                 <>
                                     <h3 style={{ margin: 0, color: '#c95d2d', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.08 }}>
-                                        РЈ РІР°СЃ РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЌРЅРµСЂРіРёРё!
+                                        У вас недостаточно энергии!
                                     </h3>
                                     <p style={{ margin: '16px 0 24px', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '19px', lineHeight: 1.45, whiteSpace: 'pre-line' }}>
-                                        {`Р’С‹ РјРѕР¶РµС‚Рµ РЅРµРјРЅРѕРіРѕ РїРѕРґРѕР¶РґР°С‚СЊ.\nР­РЅРµСЂРіРёСЏ РїРѕРїРѕР»РЅСЏРµС‚СЃСЏ РїРѕ 10 РІ РјРёРЅСѓС‚Сѓ\nРёР»Рё РєСѓРїРёС‚СЊ РµРµ Р·Р° СЂСѓР±РёРЅС‹${energyModalState.requiredEnergy ? `\n\nРўСЂРµР±СѓРµС‚СЃСЏ: ${energyModalState.requiredEnergy} СЌРЅРµСЂРіРёРё` : ''}`}
+                                        {`Вы можете немного подождать.\nЭнергия пополняется по 10 в минуту\nили купить ее за рубины${energyModalState.requiredEnergy ? `\n\nТребуется: ${energyModalState.requiredEnergy} энергии` : ''}`}
                                     </p>
                                     <button
                                         onClick={() => setEnergyModalState({ mode: 'shop' })}
                                         style={{ minWidth: '270px', borderRadius: '18px', border: '1px solid #2d6811', background: 'linear-gradient(180deg, #92cd58 0%, #4f9d27 46%, #387e16 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, padding: '14px 26px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.62), inset 0 -2px 0 rgba(28,73,8,0.38), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.30)' }}
                                     >
-                                        РљСѓРїРёС‚СЊ СЌРЅРµСЂРіРёСЋ
+                                        Купить энергию
                                     </button>
                                 </>
                             ) : (
                                 <>
                                     <h3 style={{ margin: 0, color: '#4f87b4', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.08 }}>
-                                        РљСѓРїРёС‚СЊ СЌРЅРµСЂРіРёСЋ!
+                                        Купить энергию!
                                     </h3>
                                     <div style={{ width: '100%', maxWidth: '370px', marginTop: '22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         {ENERGY_PURCHASE_OPTIONS.map((option) => (
@@ -22293,7 +22415,7 @@ const App: React.FC = () => {
                                                     <img src={energyBatteryImageUrl} alt="" aria-hidden="true" style={{ width: '24px', height: '24px', objectFit: 'contain', borderRadius: '5px', flexShrink: 0 }} />
                                                     <span>+{option.amount}</span>
                                                 </span>
-                                                <span>Р—Р° {option.rubies} {option.rubies > 1 ? 'СЂСѓР±РёРЅР°' : 'СЂСѓР±РёРЅ'}</span>
+                                                <span>За {option.rubies} {option.rubies > 1 ? 'рубина' : 'рубин'}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -22311,38 +22433,38 @@ const App: React.FC = () => {
                         <button
                             onClick={closeRubyModal}
                             className="absolute z-10"
-                            aria-label="Р—Р°РєСЂС‹С‚СЊ РѕРєРЅРѕ СЂСѓР±РёРЅРѕРІ"
+                            aria-label="Закрыть окно рубинов"
                             style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                         />
                         <div className="relative z-[1] flex flex-col items-center text-center" style={{ width: '620px', padding: '46px 52px 36px' }}>
                             <div style={{ border: '3px solid #d2b168', borderRadius: '12px', boxShadow: '0 0 0 2px rgba(255,105,180,0.16), 0 8px 22px rgba(0,0,0,0.30)', overflow: 'hidden', width: '138px', minWidth: '138px', height: '138px', background: 'linear-gradient(180deg, #f8f1df 0%, #eadbbd 100%)', padding: '10px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <img src={rubyImageUrl} alt="Р СѓР±РёРЅС‹" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                <img src={rubyImageUrl} alt="Рубины" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             </div>
 
                             {rubyModalState.mode === 'warning' ? (
                                 <>
                                     <h3 style={{ margin: 0, color: '#c95d2d', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.08 }}>
-                                        РњСЌСЂ Сѓ РІР°СЃ РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂСѓР±РёРЅРѕРІ!
+                                        Мэр у вас недостаточно рубинов!
                                     </h3>
                                     <p style={{ margin: '16px 0 24px', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '19px', lineHeight: 1.45, whiteSpace: 'pre-line' }}>
-                                        {`Р’С‹ РјРѕР¶РµС‚Рµ РєСѓРїРёС‚СЊ СЂСѓР±РёРЅС‹ С‚СѓС‚.${rubyModalState.requiredRubies ? `\n\nРўСЂРµР±СѓРµС‚СЃСЏ: ${rubyModalState.requiredRubies} СЂСѓР±РёРЅРѕРІ` : ''}`}
+                                        {`Вы можете купить рубины тут.${rubyModalState.requiredRubies ? `\n\nТребуется: ${rubyModalState.requiredRubies} рубинов` : ''}`}
                                     </p>
                                     <button
                                         onClick={() => setRubyModalState({ mode: 'shop' })}
                                         style={{ minWidth: '270px', borderRadius: '18px', border: '1px solid #2d6811', background: 'linear-gradient(180deg, #92cd58 0%, #4f9d27 46%, #387e16 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, padding: '14px 26px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.62), inset 0 -2px 0 rgba(28,73,8,0.38), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.30)' }}
                                     >
-                                        РљСѓРїРёС‚СЊ Р СѓР±РёРЅС‹!
+                                        Купить Рубины!
                                     </button>
                                 </>
                             ) : (
                                 <>
                                     <h3 style={{ margin: 0, color: '#4f87b4', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.08 }}>
-                                        РљСѓРїРёС‚СЊ СЂСѓР±РёРЅС‹!
+                                        Купить рубины!
                                     </h3>
                                     <p style={{ margin: '20px 0 24px', color: '#60a5fa', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '20px', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
-                                        {'РџРѕРєР°С‡С‚Рѕ СЂСѓР±РёРЅС‹ РјРѕР¶РЅРѕ РєСѓРїРёС‚СЊ С‡РµСЂРµР· Р»РёС‡РєСѓ РІ С‚РµР»РµРіСЂР°РјРјРµ РІРѕС‚ РјРѕР№ Р»РёРЅРє\n@BTCtokenbanker РЅР°РїРёС€Рё РјРЅРµ РїРѕ РїРѕРІРѕРґСѓ РїРѕРєСѓРїРєРё СЂСѓР±РёРЅРѕРІ'}
+                                        {'Покачто рубины можно купить через личку в телеграмме вот мой линк\n@BTCtokenbanker напиши мне по поводу покупки рубинов'}
                                     </p>
                                     <div style={{ width: '100%', maxWidth: '390px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                         <button
@@ -22350,7 +22472,7 @@ const App: React.FC = () => {
                                             disabled
                                             style={{ width: '100%', borderRadius: '16px', border: '1px solid #5a5a5a', background: 'linear-gradient(180deg, #7f7f7f 0%, #5b5b5b 100%)', color: 'rgba(255,255,255,0.75)', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '20px', lineHeight: 1.2, padding: '14px 18px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.18)', cursor: 'not-allowed' }}
                                         >
-                                            РџРѕСЃРјРѕС‚СЂРё СЂРµРєР»Р°РјСѓ Рё РїРѕР»СѓС‡Рё СЂСѓР±РёРЅ
+                                            Посмотри рекламу и получи рубин
                                         </button>
                                     </div>
                                 </>
@@ -22367,7 +22489,7 @@ const App: React.FC = () => {
                         <button
                             onClick={closeBuildingLimitModal}
                             className="absolute z-10"
-                            aria-label="Р—Р°РєСЂС‹С‚СЊ РѕРєРЅРѕ Р»РёРјРёС‚Р° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІР°"
+                            aria-label="Закрыть окно лимита строительства"
                             style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                             onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                             onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
@@ -22377,12 +22499,12 @@ const App: React.FC = () => {
                                 <img src={permitGuideImageUrl} alt="Permit Guide" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center top', background: '#f6f0dc' }} />
                             </div>
                             <h3 style={{ margin: 0, color: '#d7291f', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.08 }}>
-                                РўСЂРµР±СѓРµС‚СЊСЃСЏ СЂР°Р·СЂРµС€РµРЅРёРµ
+                                Требуеться разрешение
                                 <br />
-                                РЅР° СЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ Р·РґР°РЅРёСЏ
+                                на строительство здания
                             </h3>
                             <p style={{ margin: '16px 0 24px', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '19px', lineHeight: 1.45, whiteSpace: 'pre-line' }}>
-                                {`РќР°С€ РіРѕСЂРѕРґ РЅРµ СЂРµР·РёРЅРѕРІС‹Р№ Рё РјСЌСЂ РІС‹РЅСѓР¶РґРµРЅ РѕРіСЂР°РЅРёС‡РёС‚СЊ\nСЃС‚СЂРѕРёС‚РµР»СЊСЃС‚РІРѕ РЈ РІР°СЃ СЃРµР№С‡Р°СЃ РµСЃС‚СЊ СЂР°Р·СЂРµС€РµРЅРёРµ РЅР° РїРѕСЃС‚СЂРѕР№РєСѓ С‚РѕР»СЊРєРѕ ${buildingLimitModalData.currentLimit} Р·РґР°РЅРёСЏ`}
+                                {`Наш город не резиновый и мэр вынужден ограничить\nстроительство У вас сейчас есть разрешение на постройку только ${buildingLimitModalData.currentLimit} здания`}
                             </p>
                             <button
                                 onClick={() => {
@@ -22396,7 +22518,7 @@ const App: React.FC = () => {
                                 style={{ minWidth: '360px', borderRadius: '18px', border: '1px solid #2f6b12', background: 'linear-gradient(180deg, #8fd94e 0%, #4ea91d 45%, #2f7a10 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1, padding: '14px 26px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.7), inset 0 -2px 0 rgba(28,73,8,0.45), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.34)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                             >
                                 <img src={rubyImageUrl} alt="Ruby" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                                <span>{`1 РљСѓРїРёС‚СЊ СЂР°Р·СЂРµС€РµРЅРёРµ РЅР° ${buildingLimitModalData.nextLimit} Р·РґР°РЅРёСЏ`}</span>
+                                <span>{`1 Купить разрешение на ${buildingLimitModalData.nextLimit} здания`}</span>
                             </button>
                         </div>
                     </div>
