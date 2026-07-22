@@ -16,35 +16,77 @@ const BRONEKUR_BOSS_HP = 250000;
  */
 
 /**
- * Executes one spawn cycle: finds missing regular monsters per zone,
- * finds missing Bronekur boss, and invokes create callbacks.
+ * Executes regular monster spawn for a single zone. Finds missing types
+ * and invokes create callbacks.
  *
  * @param {{
- *   buildings: BuildingRecord[],
+ *   zoneId: string,
+ *   zoneX: number,
+ *   zoneY: number,
+ *   buildings: Array<{ id?: string|number; buildingId: number; ownerId?: string|number; zoneId?: string; hp?: number; x: number; y: number }>,
  *   buildingData: Array<{ id: number; stats?: any }>,
- *   isOccupied: (x: number, y: number) => boolean,
+ *   findFreeSpot: (zoneX: number, zoneY: number) => { x: number, y: number } | null,
  *   onRegularSpawn: (params: {
  *     monsterId: string, x: number, y: number, zoneId: string,
  *     typeId: number, typeName: string, durability: number, slot: number,
  *   }) => void,
- *   onBronekurSpawn: (params: {
- *     monsterId: string, x: number, y: number, zoneId: string,
- *   }) => void,
+ * }} params
+ * @returns {{ regularSpawned: number }}
+ */
+export function executeRegularMonsterSpawn({ zoneId, zoneX, zoneY, buildings, buildingData, findFreeSpot, onRegularSpawn }) {
+    let regularSpawned = 0;
+
+    for (const cfg of REGULAR_MONSTER_SPAWN_CONFIG) {
+        const existing = buildings.filter(b =>
+            Number(b.buildingId) === cfg.typeId &&
+            (b.ownerId === '-1' || b.ownerId === 'monster') &&
+            b.zoneId === zoneId &&
+            (b.hp === undefined || b.hp > 0)
+        );
+
+        if (existing.length >= cfg.count) continue;
+
+        for (let i = 0; i < cfg.count - existing.length; i++) {
+            const slot = existing.length + i + 1;
+            const monsterId = getRegularMonsterId(cfg.typeId, slot, zoneId);
+            if (buildings.some(b => b.id === monsterId)) continue;
+
+            const pos = findFreeSpot(zoneX, zoneY);
+            if (!pos) break;
+
+            const monsterInfo = buildingData.find(b => b.id === cfg.typeId);
+            if (!monsterInfo) continue;
+
+            onRegularSpawn({
+                monsterId,
+                x: pos.x, y: pos.y, zoneId,
+                typeId: cfg.typeId, typeName: cfg.name,
+                durability: monsterInfo.stats.durability,
+                slot,
+            });
+            regularSpawned++;
+        }
+    }
+
+    return { regularSpawned };
+}
+
+/**
+ * Executes Bronekur boss management: normalizes HP, removes duplicates,
+ * creates missing boss.
+ *
+ * @param {{
+ *   buildings: Array<{ id?: string|number; buildingId: number; ownerId?: string|number; hp?: number; maxHp?: number }>,
+ *   findFreeSpot: (zoneX: number, zoneY: number) => { x: number, y: number } | null,
+ *   onBronekurSpawn: (params: { monsterId: string, x: number, y: number, zoneId: string }) => void,
  *   onBronekurHpNormalize: (params: { monsterId: string, currentHp: number }) => void,
  *   onInvalidBronekur: (monsterId: string) => void,
- *   findFreeSpot: (zoneX: number, zoneY: number) => { x: number, y: number } | null,
  * }} params
- * @returns {{ regularSpawned: number, bronekurSpawned: number }}
+ * @returns {{ bronekurSpawned: number }}
  */
-export function executeMonsterSpawnCycle({
-    buildings, buildingData, isOccupied,
-    onRegularSpawn, onBronekurSpawn, onBronekurHpNormalize,
-    onInvalidBronekur, findFreeSpot,
-}) {
-    let regularSpawned = 0;
+export function executeBronekurSpawn({ buildings, findFreeSpot, onBronekurSpawn, onBronekurHpNormalize, onInvalidBronekur }) {
     let bronekurSpawned = 0;
 
-    // Bronekur boss management
     const existingBronekurs = buildings.filter(b =>
         Number(b.buildingId) === BRONEKUR_ID &&
         (b.ownerId === '-1' || b.ownerId === 'monster' || b.ownerId === '0') &&
@@ -72,44 +114,5 @@ export function executeMonsterSpawnCycle({
         }
     }
 
-    // Regular monsters: check each zone for missing types
-    for (let zX = 0; zX < ZONES_X; zX++) {
-        for (let zY = 0; zY < ZONES_Y; zY++) {
-            const zoneId = `${zX}_${zY}`;
-
-            for (const cfg of REGULAR_MONSTER_SPAWN_CONFIG) {
-                const existing = buildings.filter(b =>
-                    Number(b.buildingId) === cfg.typeId &&
-                    (b.ownerId === '-1' || b.ownerId === 'monster') &&
-                    b.zoneId === zoneId &&
-                    (b.hp === undefined || b.hp > 0)
-                );
-
-                if (existing.length >= cfg.count) continue;
-
-                for (let i = 0; i < cfg.count - existing.length; i++) {
-                    const slot = existing.length + i + 1;
-                    const monsterId = getRegularMonsterId(cfg.typeId, slot, zoneId);
-                    if (buildings.some(b => b.id === monsterId)) continue;
-
-                    const pos = findFreeSpot(zX, zY);
-                    if (!pos) break;
-
-                    const monsterInfo = buildingData.find(b => b.id === cfg.typeId);
-                    if (!monsterInfo) continue;
-
-                    onRegularSpawn({
-                        monsterId,
-                        x: pos.x, y: pos.y, zoneId,
-                        typeId: cfg.typeId, typeName: cfg.name,
-                        durability: monsterInfo.stats.durability,
-                        slot,
-                    });
-                    regularSpawned++;
-                }
-            }
-        }
-    }
-
-    return { regularSpawned, bronekurSpawned };
+    return { bronekurSpawned };
 }

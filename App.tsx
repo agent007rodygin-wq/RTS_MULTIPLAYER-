@@ -237,6 +237,7 @@ import {
 import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeSnapshot.js';
 import { executeMonsterMovementBatch } from './src/game/monsters/monsterMovementRuntime.js';
 import { executeMonsterAttackBatch } from './src/game/monsters/monsterAttackRuntime.js';
+import { executeBronekurSpawn } from './src/game/monsters/monsterSpawnRuntime.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -12751,62 +12752,72 @@ const App: React.FC = () => {
                     }
                 }
 
-                const activeBronekurs = allBuildings
-                    .filter(b =>
-                        Number(b.buildingId) === BRONEKUR_ID &&
-                        (b.ownerId === "-1" || b.ownerId === "monster") &&
-                        (b.hp === undefined || b.hp > 0)
-                    )
-                    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
-
-                for (const extraBoss of activeBronekurs.slice(1)) {
-                    const localId = String(extraBoss.id);
-                    const source = 'duplicate_bronekur';
-                    try {
-                        if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
-                            console.log("[MONSTER DELETE SKIPPED]", {
-                                localId,
-                                source,
-                                reason: "already_deleting_or_tombstoned",
+                executeBronekurSpawn({
+                    buildings: allBuildings as any,
+                    findFreeSpot: (zX: number, zY: number) => findFreeSpot(zX, zY),
+                    onBronekurSpawn: async ({ monsterId, x, y, zoneId }) => {
+                        try {
+                            await setDoc(doc(db, 'buildings', monsterId), {
+                                id: monsterId, x, y, zoneId,
+                                buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
+                                isConstructing: false, constructionEndTime: 0,
+                                type: BuildingType.Default, workState: 'idle',
+                                hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP,
+                                lastMoveTime: Date.now(), isActive: true,
+                                monsterType: 'Р В±РЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚', monsterSlot: 1, isBoss: true
+                            });
+                            occupied.add(`${x},${y}`);
+                            spawned++;
+                            try {
+                                await setDoc(doc(db, 'chat_messages', `bronekur-${Date.now()}`), {
+                                    sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°', senderId: 'system',
+                                    text: `?? Р вЂ™Р СњР ВР СљР С’Р СњР ВР вЂў! Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${x}.${y} Р С—Р С•РЎРЏР Р†Р С‘Р В»РЎРѓРЎРЏ Р вЂРЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚!`,
+                                    type: 'system', timestamp: Date.now(), tab: 'general'
+                                });
+                            } catch { /* ignore */ }
+                        } catch (err) {
+                            console.error('[MonsterSpawn] Failed boss:', err);
+                        }
+                    },
+                    onBronekurHpNormalize: async ({ monsterId }) => {
+                        try {
+                            await updateDoc(doc(db, 'buildings', monsterId), {
+                                hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP
+                            });
+                        } catch (err) {
+                            console.error('[MonsterSpawn] Failed to normalize Bronekur HP:', err);
+                        }
+                    },
+                    onInvalidBronekur: async (monsterId) => {
+                        const localId = String(monsterId);
+                        const source = 'duplicate_bronekur';
+                        try {
+                            if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
+                                console.log("[MONSTER DELETE SKIPPED]", {
+                                    localId, source,
+                                    reason: "already_deleting_or_tombstoned",
+                                    timestamp: Date.now(),
+                                });
+                                return;
+                            }
+                            console.log("[MONSTER DELETE REQUEST]", {
+                                localId, source,
+                                buildingId: BRONEKUR_ID,
+                                currentUserId: userRef.current?.uid,
                                 timestamp: Date.now(),
                             });
-                            continue;
+                            removeBuildingFromSnapshotCaches(localId);
+                            await deleteDoc(doc(db, 'buildings', localId));
+                            console.log("[MONSTER DELETE COMPLETED]", {
+                                localId, source,
+                                timestamp: Date.now(),
+                            });
+                            deletedDuplicates++;
+                        } catch (err) {
+                            console.error('[MonsterSpawn] Failed to delete duplicate Bronekur:', err);
                         }
-                        console.log("[MONSTER DELETE REQUEST]", {
-                            localId,
-                            source,
-                            buildingId: extraBoss.buildingId,
-                            zoneId: extraBoss.zoneId,
-                            x: extraBoss.x,
-                            y: extraBoss.y,
-                            currentUserId: userRef.current?.uid,
-                            timestamp: Date.now(),
-                        });
-                        removeBuildingFromSnapshotCaches(localId);
-                        await deleteDoc(doc(db, 'buildings', localId));
-                        console.log("[MONSTER DELETE COMPLETED]", {
-                            localId,
-                            source,
-                            timestamp: Date.now(),
-                        });
-                        occupied.delete(`${extraBoss.x},${extraBoss.y}`);
-                        deletedDuplicates++;
-                    } catch (err) {
-                        console.error('[MonsterSpawn] Failed to delete duplicate Bronekur:', err);
-                    }
-                }
-
-                const primaryBronekur = activeBronekurs[0];
-                if (primaryBronekur && (primaryBronekur.hp !== BRONEKUR_BOSS_HP || primaryBronekur.maxHp !== BRONEKUR_BOSS_HP)) {
-                    try {
-                        await updateDoc(doc(db, 'buildings', String(primaryBronekur.id)), {
-                            hp: BRONEKUR_BOSS_HP,
-                            maxHp: BRONEKUR_BOSS_HP
-                        });
-                    } catch (err) {
-                        console.error('[MonsterSpawn] Failed to normalize Bronekur HP:', err);
-                    }
-                }
+                    },
+                });
 
                 const zoneSpawnRanking: Array<{ zoneId: string; score: number }> = [];
                 const bonusZoneCount = Math.max(0, TARGET_WILD_MONSTERS_TOTAL - (ZONES_X * ZONES_Y * BASE_WILD_MONSTERS_PER_ZONE));
@@ -12975,42 +12986,6 @@ const App: React.FC = () => {
                                 }
                             }
                         }
-                }
-
-                if (activeBronekurs.length === 0) {
-                    const bossZoneId = getBronekurHomeZoneId();
-                    const [bzX, bzY] = bossZoneId.split('_').map(Number);
-                    const pos = findFreeSpot(bzX, bzY);
-                    if (pos) {
-                        const bossMonsterId = getBronekurMonsterId();
-                        const monsterInfo = buildingData.find(b => b.id === BRONEKUR_ID);
-                        if (monsterInfo) {
-                            try {
-                                await setDoc(doc(db, 'buildings', bossMonsterId), {
-                                    id: bossMonsterId, x: pos.x, y: pos.y, zoneId: bossZoneId,
-                                    buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Р В РЎС™Р В РЎвЂўР В Р вЂ¦Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљ",
-                                    isConstructing: false, constructionEndTime: 0,
-                                    type: BuildingType.Default, workState: 'idle',
-                                    hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP,
-                                    lastMoveTime: Date.now(), isActive: true,
-                                    monsterType: 'Р В Р’В±Р РЋР вЂљР В РЎвЂўР В Р вЂ¦Р В Р’ВµР В РЎвЂќР РЋРЎвЂњР РЋР вЂљ', monsterSlot: 1, isBoss: true
-                                });
-                                occupied.add(`${pos.x},${pos.y}`);
-                                spawned++;
-                                try {
-                                    await setDoc(doc(db, 'chat_messages', `bronekur-${Date.now()}`), {
-                                        sender: 'Р В Р Р‹Р В РЎвЂР РЋР С“Р РЋРІР‚С™Р В Р’ВµР В РЎВР В Р’В°', senderId: 'system',
-                                        text: `?? Р В РІР‚в„ўР В РЎСљР В Р’ВР В РЎС™Р В РЎвЂ™Р В РЎСљР В Р’ВР В РІР‚Сћ! Р В РІР‚в„ў Р РЋР С“Р В Р’ВµР В РЎвЂќР РЋРІР‚С™Р В РЎвЂўР РЋР вЂљР В Р’Вµ ${bzX}.${bzY} Р В РЎвЂ”Р В РЎвЂўР РЋР РЏР В Р вЂ Р В РЎвЂР В Р’В»Р РЋР С“Р РЋР РЏ Р В РІР‚ВР РЋР вЂљР В РЎвЂўР В Р вЂ¦Р В Р’ВµР В РЎвЂќР РЋРЎвЂњР РЋР вЂљ!`,
-                                        type: 'system', timestamp: Date.now(), tab: 'general'
-                                    });
-                                } catch {
-                                    // ignore chat notification errors
-                                }
-                            } catch (err) {
-                                console.error('[MonsterSpawn] Failed boss:', err);
-                            }
-                        }
-                    }
                 }
 
                 if (spawned > 0 || returnedToHomeSector > 0 || deletedDuplicates > 0 || trimmedExcess > 0) {

@@ -54,7 +54,7 @@ has(
 // Ensure the world spawn sweep still iterates all sectors and handles no free tile safely.
 has(
   'Empty sector: initial monster spawn iterates all sectors safely',
-  /for \(let zX = 0; zX < ZONES_X; zX\+\+\) \{[\s\S]*?for \(let zY = 0; zY < ZONES_Y; zY\+\+\) \{[\s\S]*?const pos = findFreeSpot\(zX, zY\);[\s\S]*?if \(!pos\) break;/
+  /for \(const zoneId of managedZoneIds\) \{[\s\S]*?const pos = findFreeSpot\(zX, zY\);[\s\S]*?if \(!pos\) break;/
 );
 has(
   'Empty sector: background sweep walks managed zones incrementally',
