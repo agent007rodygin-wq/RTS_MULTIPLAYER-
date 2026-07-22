@@ -235,7 +235,6 @@ import {
     KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID,
 } from './src/game/monsters/monsterIds.js';
 import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeSnapshot.js';
-import { executeMonsterMovementBatch } from './src/game/monsters/monsterMovementRuntime.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -11652,62 +11651,165 @@ const App: React.FC = () => {
                 const actingMonsters = snapshot.actingMonsters as PlacedBuilding[];
                 if (canMoveMonsters && actingMonsters.length > 0) {
                     lastGlobalMonsterMoveRef.current = now;
-                    executeMonsterMovementBatch({
-                        now,
-                        actingMonsters,
-                        buildings: currentBuildings,
-                        buildingData,
-                        isWorldWrapped,
-                        pendingDestroyedIds,
-                        blockedTargetIds: blockedTargetIds as any,
-                        occupiedPositions,
-                        blockedResourcePositions,
-                        monsterZoneCounts,
-                        isZoneReadyFn: (x, y) => isAuthReadyRef.current && userRef.current && isZoneReadyForPlacement(getZoneId(x, y)),
-                        runtimeState: {
-                            prevPos: monsterPrevPosRef.current as any,
-                            recentPositions: monsterRecentPositionsRef.current as any,
-                            direction: monsterDirectionRef.current as any,
-                            targetLock: monsterTargetLockRef.current as any,
-                            lastAction: monsterLastActionRef.current as any,
-                            attackTime: monsterAttackTimeRef.current as any,
-                            attackCancelTime: monsterAttackCancelTimeRef.current as any,
-                            turnState: monsterTurnStateRef.current as any,
-                        },
-                        hostId: userRef.current?.uid || null,
-                        isNeutralMonster: (ownerId) => ownerId === "monster" || ownerId === "0" || ownerId === "-1" || (isAuthReadyRef.current && userRef.current && ownerId === userRef.current.uid),
-                        persistMonsterMove: (monsterId, update) => {
-                            const docId = String(monsterId);
-                            updateBuildingDocSafe(docId, { ...update, hostId: update.hostId }, { throttleMonster: true });
-                        },
-                        persistMonsterStuck: (monsterId, update) => {
-                            const docId = String(monsterId);
-                            updateBuildingDocSafe(docId, { lastMoveTime: update.lastMoveTime, hostId: update.hostId }, { throttleMonster: true });
-                        },
-                        onMoveApplied: (monsterId, result) => {
-                            if (result.moved) {
-                                const monster = currentBuildings.find(b => String(b.id) === monsterId);
-                                if (monster) {
-                                    const newZoneId = getZoneId(result.chosenX!, result.chosenY!);
-                                    const newMonsterState = { ...monster, x: result.chosenX!, y: result.chosenY!, zoneId: newZoneId, lastMoveTime: now, hostId: userRef.current?.uid || null };
-                                    monsterUpdates.set(monsterId, newMonsterState);
-                                    monster.lastMoveTime = now;
-                                }
+                }
+
+                actingMonsters.forEach(monster => {
+                    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+                    const monsterId = monster.id || '';
+                    const recentPositions = monsterRecentPositionsRef.current.get(monsterId) || [];
+                    
+                    // Get last direction or initialize
+                    let lastDir = monsterDirectionRef.current.get(monsterId);
+                    if (!lastDir) {
+                        // Random initial direction: right, left, down, up
+                        const dirs = [{dx: 1, dy: 0}, {dx: -1, dy: 0}, {dx: 0, dy: 1}, {dx: 0, dy: -1}];
+                        lastDir = dirs[Math.floor(Math.random() * dirs.length)];
+                        monsterDirectionRef.current.set(monsterId, lastDir);
+                    }
+                    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, isWorldWrapped);
+                    const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
+                    const target = getMonsterAdjacentAttackTarget(monster, currentBuildings, buildingData, {
+                        preferredTargetId,
+                        isWrappedWorld: isWorldWrapped
+                    });
+                        if (target) {
+                            monsterTargetLockRef.current.set(monsterId, String(target.id));
+                        } else {
+                            monsterTargetLockRef.current.delete(monsterId);
+                        }
+
+                    const lastAttackTime = Math.max(
+                        monster.lastAttackTime || 0,
+                        monsterAttackTimeRef.current.get(monsterId) || 0
+                    );
+                    const canAttackNow = lastAttackTime <= now && (now - lastAttackTime) >= MONSTER_ATTACK_INTERVAL_MS;
+                    // If a target is adjacent, keep pressure on it instead of wandering away.
+                    // Actual damage is still applied only when canAttackNow in the attack pass.
+                    const shouldHoldPositionForAttack = Boolean(target);
+
+                    if (shouldHoldPositionForAttack && target) {
+                        const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
+                        monsterDirectionRef.current.set(monsterId, attackDir);
+                        logMonsterDiag(monster, 'attack_instead_of_move', `targetId=${String(target.id || 'unknown')} targetPos=(${target.x},${target.y})`);
+                    } else {
+                        // MOVEMENT: Try to move toward nearby buildings, fallback to wandering
+                        const validMoves = neighbors.filter(move =>
+                            !isMonsterTileBlocked(
+                                move.x,
+                                move.y,
+                                occupiedPositions,
+                                blockedResourcePositions,
+                                (x, y) => isAuthReadyRef.current && userRef.current && !isZoneReadyForPlacement(getZoneId(x, y)),
+                                isWorldWrapped
+                            )
+                        );
+                        const recentKeys = new Set(recentPositions.map(pos => `${pos.x},${pos.y}`));
+                        const preferredMoves = validMoves.filter(move => !recentKeys.has(`${move.x},${move.y}`));
+                        const candidateMoves = preferredMoves.length > 0 ? preferredMoves : validMoves;
+
+                        if (candidateMoves.length > 0) {
+                            const chaseTarget = getMonsterChaseTarget(monster, currentBuildings, buildingData, {
+                                blockedTargetIds,
+                                pendingDestroyedIds,
+                                isWrappedWorld: isWorldWrapped,
+                            });
+
+                            let chosenMove: { x: number; y: number; dx: number; dy: number } | null = null;
+                            if (chaseTarget) {
+                                chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWorldWrapped);
                             } else {
-                                const monster = currentBuildings.find(b => String(b.id) === monsterId);
-                                if (monster) {
-                                    const newMonsterState = { ...monster, lastMoveTime: now, hostId: userRef.current?.uid || null };
-                                    monsterUpdates.set(monsterId, newMonsterState);
-                                    monster.lastMoveTime = now;
+                                const crowdingMove = getCrowdingEscapeMove(monster, candidateMoves, monsterZoneCounts, isWorldWrapped);
+                                if (crowdingMove) {
+                                    chosenMove = crowdingMove;
+                                } else {
+                                    // No nearby target - zigzag patrol pattern
+                                    // Never repeat the same direction: alternate between forward and turning
+                                    // Get perpendicular directions (left/right turns relative to current facing)
+                                    const lastTurnWasLeft = monsterTurnStateRef.current.get(monsterId) || false;
+                                    const patrolMove = chooseMonsterPatrolMove(
+                                        candidateMoves,
+                                        lastDir!,
+                                        !lastTurnWasLeft,
+                                        monsterId,
+                                        monster.buildingId,
+                                        0,
+                                        monsterPrevPosRef.current.get(monsterId)
+                                    );
+                                    if (patrolMove.chosenMove) {
+                                        if (patrolMove.selectedTurn === 'preferred') {
+                                            monsterTurnStateRef.current.set(monsterId, !lastTurnWasLeft);
+                                        }
+                                        chosenMove = patrolMove.chosenMove;
+                                    }
                                 }
                             }
-                        },
-                        izbushkaWalkLeftFrames,
-                        izbushkaWalkRightFrames,
-                        izbushkaWalkDownFrames,
-                        izbushkaWalkUpFrames,
-                    });
-                }
+
+                            if (chosenMove) {
+                                // Save previous position for anti-bounce
+                                const prevPos = monsterPrevPosRef.current.get(monsterId);
+                                if (prevPos && chosenMove.x === prevPos.x && chosenMove.y === prevPos.y && candidateMoves.length > 1) {
+                                    const altMove = candidateMoves.find(m => m.x !== prevPos.x || m.y !== prevPos.y);
+                                    if (altMove) {
+                                        chosenMove = altMove;
+                                    }
+                                }
+                                monsterPrevPosRef.current.set(monsterId, {x: monster.x, y: monster.y});
+                                const nextRecentPositions = [...recentPositions, { x: monster.x, y: monster.y }].slice(-MONSTER_RECENT_POSITIONS_LIMIT);
+                                monsterRecentPositionsRef.current.set(monsterId, nextRecentPositions);
+                                // Save new direction
+                                monsterDirectionRef.current.set(monsterId, {dx: chosenMove.dx, dy: chosenMove.dy});
+                                
+                                // Izbushka: schedule attack cancel animation after walk finishes (no target nearby)
+                                if (monster.buildingId === KILLING_HUT_ID) {
+                                    // Calculate walk duration based on direction to schedule cancel anim after walk ends
+                                    let walkFrameCount = 75; // default
+                                    const absDx = Math.abs(chosenMove.dx);
+                                    const absDy = Math.abs(chosenMove.dy);
+                                    if (absDx === 0 && absDy === 0) walkFrameCount = izbushkaWalkLeftFrames.length;
+                                    else if (absDx >= absDy) walkFrameCount = chosenMove.dx > 0 ? izbushkaWalkRightFrames.length : izbushkaWalkLeftFrames.length;
+                                    else walkFrameCount = chosenMove.dy > 0 ? izbushkaWalkDownFrames.length : izbushkaWalkUpFrames.length;
+                                    const walkDuration = getPlaybackDurationMs(walkFrameCount, 30, MONSTER_WALK_DURATION_MULTIPLIER);
+                                    monsterAttackCancelTimeRef.current.set(monsterId, now + walkDuration);
+                                }
+                                
+                                occupiedPositions.add(`${chosenMove.x},${chosenMove.y}`);
+                                occupiedPositions.delete(`${monster.x},${monster.y}`);
+
+                                const newMoveZoneId = getZoneId(chosenMove.x, chosenMove.y);
+                                const newMonsterState = { ...monster, x: chosenMove.x, y: chosenMove.y, zoneId: newMoveZoneId, lastMoveTime: now, hostId: userRef.current?.uid || null };
+                                monsterUpdates.set(String(monster.id), newMonsterState);
+                                monster.lastMoveTime = now;
+                                monsterLastActionRef.current.set(monsterId, now);
+
+                                if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
+                                    const docId = String(monster.id);
+                                    updateBuildingDocSafe(docId, {
+                                        x: chosenMove.x,
+                                        y: chosenMove.y,
+                                        zoneId: newMoveZoneId,
+                                        lastMoveTime: now,
+                                        hostId: userRef.current?.uid || null
+                                    }, { throttleMonster: true });
+                                }
+                            } else {
+                                // Stuck - no valid moves, just update timestamp
+                                const blockedNeighbors = neighbors
+                                    .map(n => `${n.x},${n.y}`)
+                                    .filter(pos => occupiedPositions.has(pos))
+                                    .join('|');
+                                logMonsterDiag(monster, 'stuck_no_valid_moves', `neighborsBlocked=${blockedNeighbors || 'none'}`);
+                                const newMonsterState = { ...monster, lastMoveTime: now, hostId: userRef.current?.uid || null };
+                                monsterUpdates.set(String(monster.id), newMonsterState);
+                                monster.lastMoveTime = now;
+                                monsterLastActionRef.current.set(monsterId, now);
+                                if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
+                                    const docId = String(monster.id);
+                                    updateBuildingDocSafe(docId, { lastMoveTime: now, hostId: userRef.current?.uid || null }, { throttleMonster: true });
+                                }
+                            }
+                        }
+                    }
+                });
 
                 // Process cannons - attack nearby monsters within defense radius
                 const monsters = currentBuildings.filter(b => {

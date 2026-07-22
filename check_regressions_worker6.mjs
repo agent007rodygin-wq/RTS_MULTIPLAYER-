@@ -3,13 +3,11 @@ import fs from 'fs';
 const appPath = 'App.tsx';
 const targetPath = 'src/game/monsters/monsterTargetSelection.js';
 const movePath = 'src/game/monsters/monsterMovement.js';
-const moveRuntimePath = 'src/game/monsters/monsterMovementRuntime.js';
 const source = fs.readFileSync(appPath, 'utf8');
 const targetSource = fs.readFileSync(targetPath, 'utf8');
 const moveSource = fs.readFileSync(movePath, 'utf8');
-const moveRuntimeSource = fs.existsSync(moveRuntimePath) ? fs.readFileSync(moveRuntimePath, 'utf8') : '';
 
-const allSource = source + '\n' + targetSource + '\n' + moveSource + '\n' + moveRuntimeSource;
+const allSource = source + '\n' + targetSource + '\n' + moveSource;
 
 const checks = [];
 
@@ -45,7 +43,7 @@ has(
 );
 has(
   'AI target: cooldown gates damage, not movement hold',
-  /const lastAttackTime = Math\.max\([\s\S]*?const shouldHoldPositionForAttack = Boolean\(target\);/
+  /const canAttackNow = lastAttackTime <= now && \(now - lastAttackTime\) >= MONSTER_ATTACK_INTERVAL_MS;[\s\S]*?const shouldHoldPositionForAttack = Boolean\(target\);/
 );
 
 // 3) Empty monster sectors:
