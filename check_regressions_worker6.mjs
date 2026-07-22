@@ -11,8 +11,7 @@ const moveSource = fs.readFileSync(movePath, 'utf8');
 const moveRuntimeSource = fs.existsSync(moveRuntimePath) ? fs.readFileSync(moveRuntimePath, 'utf8') : '';
 const attackRuntimeSource = fs.existsSync(attackRuntimePath) ? fs.readFileSync(attackRuntimePath, 'utf8') : '';
 
-const spawnRuntimePath = 'src/game/monsters/monsterSpawnRuntime.js';
-const allSource = source + '\n' + targetSource + '\n' + moveSource + '\n' + moveRuntimeSource + '\n' + attackRuntimeSource + '\n' + (fs.existsSync(spawnRuntimePath) ? fs.readFileSync(spawnRuntimePath, 'utf8') : '');
+const allSource = source + '\n' + targetSource + '\n' + moveSource + '\n' + moveRuntimeSource + '\n' + attackRuntimeSource;
 
 const checks = [];
 
@@ -25,15 +24,15 @@ const has = (name, pattern) => {
 // Ensure deterministic monster IDs are rebuilt when missing and zone metadata is healed to the actual sector when displaced.
 has(
   'Respawn: deterministic regular monster IDs are generated per zone',
-  /getRegularMonsterId\(cfg\.typeId, slot, zoneId\)/
+  /const monsterId = getRegularMonsterId\(cfg\.typeId, slot, zoneId\);/
 );
 has(
   'Respawn: missing regular monster is recreated with setDoc',
-  /onCreateMissing|if \(!pos\) break/
+  /if \(!pos\) break;[\s\S]*?await setDoc\(doc\(db, 'buildings', monsterId\),/
 );
 has(
   'Respawn: displaced monster zoneId is healed to its actual sector',
-  /onHealDisplaced|actualZoneId[\s\S]*?zoneId/
+  /const actualZoneId = existingById\.zoneId \|\| getZoneId\(existingById\.x, existingById\.y\);[\s\S]*?await updateDoc\(doc\(db, 'buildings', monsterId\), \{[\s\S]*?zoneId: actualZoneId[\s\S]*?\}\);/
 );
 
 // 2) Baba Yaga target handling (shared monster chase/attack logic):
@@ -55,7 +54,7 @@ has(
 // Ensure the world spawn sweep still iterates all sectors and handles no free tile safely.
 has(
   'Empty sector: initial monster spawn iterates all sectors safely',
-  /reconcileRegularMonstersForZone|for \(const zoneId of managedZoneIds\)/
+  /for \(const zoneId of managedZoneIds\) \{[\s\S]*?const pos = findFreeSpot\(zX, zY\);[\s\S]*?if \(!pos\) break;/
 );
 has(
   'Empty sector: background sweep walks managed zones incrementally',
@@ -63,7 +62,7 @@ has(
 );
 has(
   'Empty sector: full sector is handled gracefully without crash',
-  /reconcileRegularMonstersForZone|findFreeSpot[\s\S]*?onCreateMissing/
+  /const pos = findFreeSpot\(zX, zY\);[\s\S]*?if \(!pos\) break;/
 );
 
 const failed = checks.filter(c => !c.ok);

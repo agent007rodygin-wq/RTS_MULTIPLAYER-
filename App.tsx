@@ -237,7 +237,7 @@ import {
 import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeSnapshot.js';
 import { executeMonsterMovementBatch } from './src/game/monsters/monsterMovementRuntime.js';
 import { executeMonsterAttackBatch } from './src/game/monsters/monsterAttackRuntime.js';
-import { executeBronekurSpawn, reconcileRegularMonstersForZone } from './src/game/monsters/monsterSpawnRuntime.js';
+import { executeBronekurSpawn } from './src/game/monsters/monsterSpawnRuntime.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -12851,58 +12851,140 @@ const App: React.FC = () => {
                             desiredTypeCounts.set(duplicateTypeId, 2);
                         }
 
-                        const { deletedCount: zoneDeleted, healedCount: zoneHealed, createdCount: zoneCreated } = reconcileRegularMonstersForZone({
-                            zoneId, zoneX: zX, zoneY: zY,
-                            desiredTypeCounts,
-                            zoneTargetCount,
-                            buildings: allBuildings as any,
-                            buildingData: buildingData as any,
-                            findFreeSpot: (x, y) => findFreeSpot(x, y),
-                            onDeleteExcess: async (monsterId, monster) => {
-                                const localId = String(monsterId);
-                                const source = 'excess_trim';
-                                try {
-                                    if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
-                                        console.log("[MONSTER DELETE SKIPPED]", { localId, source, reason: "already_deleting_or_tombstoned", timestamp: Date.now() });
-                                        return;
-                                    }
-                                    console.log("[MONSTER DELETE REQUEST]", { localId, source, buildingId: monster.buildingId, zoneId, x: monster.x, y: monster.y, currentUserId: userRef.current?.uid, timestamp: Date.now() });
-                                    removeBuildingFromSnapshotCaches(localId);
-                                    await deleteDoc(doc(db, 'buildings', localId));
-                                    console.log("[MONSTER DELETE COMPLETED]", { localId, source, timestamp: Date.now() });
-                                    occupied.delete(`${monster.x},${monster.y}`);
-                                    trimmedExcess++;
-                                } catch (err) {
-                                    console.error(`[MonsterSpawn] Failed to trim extra monster ${monster.id} in ${zoneId}:`, err);
-                                }
-                            },
-                            onHealDisplaced: async (monsterId, patch) => {
-                                try {
-                                    await updateDoc(doc(db, 'buildings', monsterId), patch);
-                                } catch (err) {
-                                    console.error(`[MonsterSpawn] Failed to heal zoneId for ${monsterId}:`, err);
-                                }
-                            },
-                            onCreateMissing: async (spec) => {
-                                try {
-                                    await setDoc(doc(db, 'buildings', spec.monsterId), {
-                                        id: spec.monsterId, x: spec.x, y: spec.y, zoneId: spec.zoneId,
-                                        buildingId: spec.typeId, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
-                                        isConstructing: false, constructionEndTime: 0,
-                                        type: BuildingType.Default, workState: 'idle',
-                                        hp: spec.durability, maxHp: spec.durability,
-                                        lastMoveTime: Date.now() - Math.floor(Math.random() * 10000), isActive: true,
-                                        monsterType: spec.typeName, monsterSlot: spec.slot
+                        const zoneRegularMonsters = allBuildings
+                            .filter(b =>
+                                Number(b.buildingId) !== BRONEKUR_ID &&
+                                REGULAR_MONSTER_SPAWN_CONFIG.some(cfg => cfg.typeId === Number(b.buildingId)) &&
+                                (b.ownerId === "-1" || b.ownerId === "monster") &&
+                                (b.hp === undefined || b.hp > 0) &&
+                                (b.zoneId || getZoneId(b.x, b.y)) === zoneId
+                            )
+                            .sort((a, b) =>
+                                (a.lastMoveTime || 0) - (b.lastMoveTime || 0) ||
+                                String(a.id).localeCompare(String(b.id))
+                            );
+
+                        const monstersToDelete: PlacedBuilding[] = [];
+                        const typeSeen = new Map<number, number>();
+                        for (const monster of zoneRegularMonsters) {
+                            const typeId = Number(monster.buildingId);
+                            const desiredCount = desiredTypeCounts.get(typeId) || 0;
+                            const seenCount = typeSeen.get(typeId) || 0;
+                            if (seenCount < desiredCount) {
+                                typeSeen.set(typeId, seenCount + 1);
+                            } else {
+                                monstersToDelete.push(monster);
+                            }
+                        }
+
+                        const excessCount = Math.max(0, zoneRegularMonsters.length - zoneTargetCount);
+                        const monstersMarkedForDeletion = monstersToDelete.slice(0, excessCount);
+                        for (const monster of monstersMarkedForDeletion) {
+                            const localId = String(monster.id);
+                            const source = 'excess_trim';
+                            try {
+                                if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
+                                    console.log("[MONSTER DELETE SKIPPED]", {
+                                        localId,
+                                        source,
+                                        reason: "already_deleting_or_tombstoned",
+                                        timestamp: Date.now(),
                                     });
-                                    occupied.add(`${spec.x},${spec.y}`);
-                                    spawned++;
-                                } catch (err) {
-                                    console.error(`[MonsterSpawn] Failed ${spec.monsterId}:`, err);
+                                    continue;
                                 }
-                            },
+                                console.log("[MONSTER DELETE REQUEST]", {
+                                    localId,
+                                    source,
+                                    buildingId: monster.buildingId,
+                                    zoneId,
+                                    x: monster.x,
+                                    y: monster.y,
+                                    currentUserId: userRef.current?.uid,
+                                    timestamp: Date.now(),
+                                });
+                                removeBuildingFromSnapshotCaches(localId);
+                                await deleteDoc(doc(db, 'buildings', localId));
+                                console.log("[MONSTER DELETE COMPLETED]", {
+                                    localId,
+                                    source,
+                                    timestamp: Date.now(),
+                                });
+                                occupied.delete(`${monster.x},${monster.y}`);
+                                trimmedExcess++;
+                            } catch (err) {
+                                console.error(`[MonsterSpawn] Failed to trim extra monster ${monster.id} in ${zoneId}:`, err);
+                            }
+                        }
+
+                        const keptMonsterIds = new Set(monstersMarkedForDeletion.map(monster => String(monster.id)));
+                        const remainingMonsters = zoneRegularMonsters.filter(monster => !keptMonsterIds.has(String(monster.id)));
+                        const remainingTypeCounts = new Map<number, number>();
+                        remainingMonsters.forEach(monster => {
+                            const typeId = Number(monster.buildingId);
+                            remainingTypeCounts.set(typeId, (remainingTypeCounts.get(typeId) || 0) + 1);
                         });
-                        if (zoneDeleted > 0 || zoneHealed > 0 || zoneCreated > 0) {
-                            // reconciliation occurred
+
+                        for (const cfg of zoneTypeOrder) {
+                            const desiredCount = desiredTypeCounts.get(cfg.typeId) || 1;
+                            const existingCount = remainingTypeCounts.get(cfg.typeId) || 0;
+                            if (existingCount >= desiredCount) continue;
+
+                            for (let slot = existingCount + 1; slot <= desiredCount; slot++) {
+                                const monsterId = getRegularMonsterId(cfg.typeId, slot, zoneId);
+                                const existingById = allBuildings.find(b =>
+                                    String(b.id) === monsterId &&
+                                    Number(b.buildingId) === cfg.typeId &&
+                                    (b.ownerId === "-1" || b.ownerId === "monster") &&
+                                    (b.hp === undefined || b.hp > 0)
+                                );
+
+                                if (existingById) {
+                                    const actualZoneId = existingById.zoneId || getZoneId(existingById.x, existingById.y);
+                                    if (existingById.zoneId !== actualZoneId) {
+                                        try {
+                                            await updateDoc(doc(db, 'buildings', monsterId), {
+                                                zoneId: actualZoneId
+                                            });
+                                        } catch (err) {
+                                            console.error(`[MonsterSpawn] Failed to heal zoneId for ${monsterId}:`, err);
+                                        }
+                                    }
+                                    continue;
+                                }
+
+                                const pos = findFreeSpot(zX, zY);
+                                if (!pos) break;
+
+                                const monsterInfo = buildingData.find(b => b.id === cfg.typeId);
+                                if (!monsterInfo) continue;
+
+                                try {
+                                    await setDoc(doc(db, 'buildings', monsterId), {
+                                        id: monsterId,
+                                        x: pos.x,
+                                        y: pos.y,
+                                        zoneId,
+                                        buildingId: cfg.typeId,
+                                        ownerId: "monster",
+                                        ownerName: "Р В РЎС™Р В РЎвЂўР В Р вЂ¦Р РЋР С“Р РЋРІР‚С™Р РЋР вЂљ",
+                                        isConstructing: false,
+                                        constructionEndTime: 0,
+                                        type: BuildingType.Default,
+                                        workState: 'idle',
+                                        hp: monsterInfo.stats.durability,
+                                        maxHp: monsterInfo.stats.durability,
+                                        lastMoveTime: Date.now() - Math.floor(Math.random() * 10000),
+                                        isActive: true,
+                                        monsterType: cfg.name,
+                                        monsterSlot: slot
+                                    });
+                                    occupied.add(`${pos.x},${pos.y}`);
+                                    spawned++;
+                                    remainingTypeCounts.set(cfg.typeId, (remainingTypeCounts.get(cfg.typeId) || 0) + 1);
+                                } catch (err) {
+                                    console.error(`[MonsterSpawn] Failed ${monsterId}:`, err);
+                                }
+                            }
                         }
                 }
 
