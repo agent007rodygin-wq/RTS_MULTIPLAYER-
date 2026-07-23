@@ -17112,7 +17112,11 @@ const App: React.FC = () => {
         return () => clearInterval(interval);
     }, [activeProfileTab, fetchClans, isAuthReady, user]);
 
-    // Dedicated clan member hydration — independent of allUsers / leaderboard.
+    // TEMPORARY — migration compatibility layer.
+    // Clan membership is scattered across users.clanId (NUMBER) and
+    // leaderboard_profiles.clanId (STRING). This union resolver merges
+    // both sources so the UI is not blocked by incomplete data.
+    // TODO: migrate to clans/{id}/members/{uid} subcollection as single source of truth.
     useEffect(() => {
         if (activeProfileTab !== 'clan' || !isAuthReady || !user) return;
 
@@ -17131,27 +17135,10 @@ const App: React.FC = () => {
         const fetchMembers = async () => {
             let profiles: any[] = [];
             try {
-                const seen = new Set<string>();
-                profiles = [];
-
-                // Helper: add a profile if not already seen.
-                const addProfile = (uid: string, data: any) => {
-                    if (seen.has(uid)) return;
-                    seen.add(uid);
-                    const avatar = resolveUserAvatar(data);
-                    profiles.push({
-                        uid,
-                        name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
-                        level: Number(data?.level || 1) || 1,
-                        coinsEarned: Number(data?.coinsEarned || 0) || 0,
-                        xpEarned: Number(data?.xpEarned || 0) || 0,
-                        rank: currentClan?.leaderUid === uid ? 5 : (data?.rank ?? 0),
-                        avatar,
-                        clanPermissions: currentClan?.leaderUid === uid
-                            ? { canInvite: true, canGrantStars: true }
-                            : (data?.clanPermissions || { canInvite: false, canGrantStars: false }),
-                    });
-                };
+                // Collect raw data from all sources before building profiles,
+                // so merge priority is explicit rather than determined by
+                // whichever query completes first.
+                const sourceData = new Map<string, { users?: any; lb?: any }>();
 
                 // Source A: users collection (clanId is NUMBER).
                 const usersQ = query(
@@ -17160,7 +17147,10 @@ const App: React.FC = () => {
                 );
                 const usersSnap = await getDocs(usersQ);
                 usersSnap.forEach((docSnap) => {
-                    addProfile(String(docSnap.id), docSnap.data() as any);
+                    const uid = String(docSnap.id);
+                    const entry = sourceData.get(uid) || {};
+                    entry.users = docSnap.data() as any;
+                    sourceData.set(uid, entry);
                 });
 
                 // Source B: leaderboard_profiles (clanId is STRING).
@@ -17173,21 +17163,73 @@ const App: React.FC = () => {
                 lbSnap.forEach((docSnap) => {
                     const data = docSnap.data() as any;
                     const uid = String(data?.userId || docSnap.id);
-                    addProfile(uid, data);
+                    const entry = sourceData.get(uid) || {};
+                    entry.lb = data;
+                    sourceData.set(uid, entry);
                 });
 
-                // Ensure leader is included.
+                // Build deduplicated profiles with explicit merge priority:
+                // - users is authoritative for clan-specific fields (rank, permissions)
+                // - leaderboard is used for frequently-updated fields (level) when higher
+                // - name/avatar: prefer whichever source has the value present
+                const seen = new Set<string>();
+                for (const [uid, sources] of sourceData) {
+                    if (seen.has(uid)) continue;
+                    seen.add(uid);
+
+                    const u = sources.users;
+                    const lb = sources.lb;
+                    const isLeader = currentClan?.leaderUid === uid;
+
+                    profiles.push({
+                        uid,
+                        name: repairMojibakeCp1251Utf8(String(
+                            u?.name || lb?.name || 'Неизвестный'
+                        )),
+                        level: Math.max(
+                            Number(u?.level || 1) || 1,
+                            Number(lb?.level || 1) || 1
+                        ),
+                        coinsEarned: Number(u?.coinsEarned || lb?.coinsEarned || 0) || 0,
+                        xpEarned: Number(u?.xpEarned || lb?.xpEarned || 0) || 0,
+                        rank: isLeader ? 5 : (u?.rank ?? lb?.rank ?? 0),
+                        avatar: resolveUserAvatar(u) || resolveUserAvatar(lb) || null,
+                        clanPermissions: isLeader
+                            ? { canInvite: true, canGrantStars: true }
+                            : (u?.clanPermissions || { canInvite: false, canGrantStars: false }),
+                    });
+                }
+
+                // Ensure leader is present (separate fetch in case uid differs across collections).
                 if (currentClan?.leaderUid && !seen.has(currentClan.leaderUid)) {
+                    seen.add(currentClan.leaderUid);
+                    const leaderUid = currentClan.leaderUid;
                     try {
-                        const leaderSnap = await getDoc(doc(db, 'users', currentClan.leaderUid));
+                        const leaderSnap = await getDoc(doc(db, 'users', leaderUid));
                         if (leaderSnap.exists()) {
-                            addProfile(currentClan.leaderUid, leaderSnap.data() as any);
+                            const d = leaderSnap.data() as any;
+                            profiles.push({
+                                uid: leaderUid,
+                                name: repairMojibakeCp1251Utf8(String(d?.name || currentClan.leaderName || 'Неизвестный')),
+                                level: Number(d?.level || 1) || 1,
+                                coinsEarned: Number(d?.coinsEarned || 0) || 0,
+                                xpEarned: Number(d?.xpEarned || 0) || 0,
+                                rank: 5,
+                                avatar: resolveUserAvatar(d),
+                                clanPermissions: { canInvite: true, canGrantStars: true },
+                            });
                         }
                     } catch (_) { /* leader fetch is best-effort */ }
-                    if (!seen.has(currentClan.leaderUid)) {
-                        addProfile(currentClan.leaderUid, {
+                    if (!profiles.some(p => p.uid === leaderUid)) {
+                        profiles.push({
+                            uid: leaderUid,
                             name: currentClan.leaderName || 'Неизвестный',
                             level: 1,
+                            coinsEarned: 0,
+                            xpEarned: 0,
+                            rank: 5,
+                            avatar: null,
+                            clanPermissions: { canInvite: true, canGrantStars: true },
                         });
                     }
                 }
