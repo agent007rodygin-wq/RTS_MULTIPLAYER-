@@ -19413,7 +19413,7 @@ const App: React.FC = () => {
                                         <div className="flex flex-wrap gap-2">
                                             {buildConfirmation.building.constructionRequirements.resources.map(req => (
                                                 <span key={req.id} className={`px-2 py-1 rounded text-xs ${(inventory[req.id] || 0) >= (req.amount || 0) ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
-                                                    {getCanonicalItemName(req.id, req.name, buildConfirmation.building.id)}: {req.amount}
+                                                     {getCanonicalItemName(req.id, req.name, buildConfirmation.building.id)}: {inventory[req.id] || 0} / {req.amount}
                                                 </span>
                                             ))}
                                         </div>
