@@ -17134,19 +17134,10 @@ const App: React.FC = () => {
                 const seen = new Set<string>();
                 profiles = [];
 
-                // Query the canonical users collection by clanId.
-                const membersQuery = query(
-                    collection(db, 'users'),
-                    where('clanId', '==', activeClanId)
-                );
-                const snapshot = await getDocs(membersQuery);
-
-                snapshot.forEach((docSnap) => {
-                    const data = docSnap.data() as any;
-                    const uid = String(docSnap.id);
+                // Helper: add a profile if not already seen.
+                const addProfile = (uid: string, data: any) => {
                     if (seen.has(uid)) return;
                     seen.add(uid);
-
                     const avatar = resolveUserAvatar(data);
                     profiles.push({
                         uid,
@@ -17160,37 +17151,45 @@ const App: React.FC = () => {
                             ? { canInvite: true, canGrantStars: true }
                             : (data?.clanPermissions || { canInvite: false, canGrantStars: false }),
                     });
+                };
+
+                // Source A: users collection (clanId is NUMBER).
+                const usersQ = query(
+                    collection(db, 'users'),
+                    where('clanId', '==', activeClanId)
+                );
+                const usersSnap = await getDocs(usersQ);
+                usersSnap.forEach((docSnap) => {
+                    addProfile(String(docSnap.id), docSnap.data() as any);
                 });
 
-                // Ensure leader is included even if not returned by the query.
+                // Source B: leaderboard_profiles (clanId is STRING).
+                const clanIdStr = String(activeClanId);
+                const lbQ = query(
+                    collection(db, LEADERBOARD_PROFILES_COLLECTION),
+                    where('clanId', '==', clanIdStr)
+                );
+                const lbSnap = await getDocs(lbQ);
+                lbSnap.forEach((docSnap) => {
+                    const data = docSnap.data() as any;
+                    const uid = String(data?.userId || docSnap.id);
+                    addProfile(uid, data);
+                });
+
+                // Ensure leader is included.
                 if (currentClan?.leaderUid && !seen.has(currentClan.leaderUid)) {
-                    const leaderSnap = await getDoc(doc(db, 'users', currentClan.leaderUid));
-                    if (leaderSnap.exists()) {
-                        const data = leaderSnap.data() as any;
-                        const avatar = resolveUserAvatar(data);
-                        profiles.push({
-                            uid: currentClan.leaderUid,
-                            name: repairMojibakeCp1251Utf8(String(data?.name || currentClan.leaderName || 'Неизвестный')),
-                            level: Number(data?.level || 1) || 1,
-                            coinsEarned: Number(data?.coinsEarned || 0) || 0,
-                            xpEarned: Number(data?.xpEarned || 0) || 0,
-                            rank: 5,
-                            avatar,
-                            clanPermissions: { canInvite: true, canGrantStars: true },
-                        });
-                    } else {
-                        profiles.push({
-                            uid: currentClan.leaderUid,
+                    try {
+                        const leaderSnap = await getDoc(doc(db, 'users', currentClan.leaderUid));
+                        if (leaderSnap.exists()) {
+                            addProfile(currentClan.leaderUid, leaderSnap.data() as any);
+                        }
+                    } catch (_) { /* leader fetch is best-effort */ }
+                    if (!seen.has(currentClan.leaderUid)) {
+                        addProfile(currentClan.leaderUid, {
                             name: currentClan.leaderName || 'Неизвестный',
                             level: 1,
-                            coinsEarned: 0,
-                            xpEarned: 0,
-                            rank: 5,
-                            avatar: null,
-                            clanPermissions: { canInvite: true, canGrantStars: true },
                         });
                     }
-                    seen.add(currentClan.leaderUid);
                 }
 
                 // Sort: leader first, then by name.
