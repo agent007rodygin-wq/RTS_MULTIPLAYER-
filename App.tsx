@@ -3073,7 +3073,7 @@ const App: React.FC = () => {
     const monsterSpawnInitialTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const monsterWorldSweepCursorRef = useRef(0);
     const currentZonesRef = useRef<string[]>([]);
-    const placeBuildingAtTileRef = useRef<((building: Building, x: number, y: number, traceId?: string) => Promise<PlacedBuilding | null>) | null>(null);
+    const placeBuildingAtTileRef = useRef<((building: Building, x: number, y: number, traceId?: string, options?: { resumedAfterPermitPurchase?: boolean }) => Promise<PlacedBuilding | null>) | null>(null);
     const updatePlayerResourcesRef = useRef<((goldDelta: number, rubiesDelta: number, inventoryDeltas: Record<number, number>) => void) | null>(null);
     const addHistoryLogRef = useRef<((message: string, type: HistoryEntry['type']) => void) | null>(null);
     const lastServerSyncRef = useRef<Map<string, number>>(new Map()); // Track when each building was last seen from server
@@ -5702,7 +5702,13 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const placeBuildingAtTile = useCallback(async (building: Building, x: number, y: number, traceId?: string): Promise<PlacedBuilding | null> => {
+    const placeBuildingAtTile = useCallback(async (
+        building: Building,
+        x: number,
+        y: number,
+        traceId?: string,
+        options?: { resumedAfterPermitPurchase?: boolean }
+    ): Promise<PlacedBuilding | null> => {
         if (traceId) {
             recordRuntimeTraceStage('build', traceId, 'placeBuildingAtTile entered', {
                 buildingId: building.id,
@@ -5796,26 +5802,31 @@ const App: React.FC = () => {
             }
         }
 
-        if (effectiveBuildingCount >= maxBuildings && !isTownHallBuild) {
+        // When resumed after permit purchase, use the ref-backed permit count
+        // because React state may not have re-rendered with the new value yet.
+        const effectiveLimit = options?.resumedAfterPermitPurchase
+            ? baseBuildingPermits + Math.max(0, extraBuildingPermitsRef.current)
+            : maxBuildings;
+
+        if (effectiveBuildingCount >= effectiveLimit && !isTownHallBuild) {
             if (traceId) {
                 recordRuntimeTraceStage('build', traceId, 'building limit decision', {
                     allowed: false,
-                    currentLimit: maxBuildings,
-                    nextLimit: Math.max(1, maxBuildings + 1),
+                    currentLimit: effectiveLimit,
+                    nextLimit: Math.max(1, effectiveLimit + 1),
                     effectiveBuildingCount,
                 });
                 recordRuntimeTraceStage('build', traceId, 'building permit modal opened', {
-                    currentLimit: Math.max(0, maxBuildings),
-                    nextLimit: Math.max(1, maxBuildings + 1),
+                    currentLimit: Math.max(0, effectiveLimit),
+                    nextLimit: Math.max(1, effectiveLimit + 1),
                 });
             }
-            // Save the intent so we can resume after permit purchase.
-            // If this placement was already resumed from a previous permit purchase
-            // and the limit is still reached, do NOT re-open the modal to avoid a loop.
-            const isRetry = pendingConstructionIntentRef.current?.building?.id === building.id;
-            if (isRetry) {
-                console.warn(`[PermitFlow] placement still blocked after permit purchase — giving up`);
-                setPendingConstructionIntent(null);
+
+            // If already resumed from a permit purchase, show a sync error
+            // instead of reopening the purchase modal.
+            if (options?.resumedAfterPermitPurchase) {
+                console.warn(`[PermitFlow] placement still blocked after permit purchase: count=${effectiveBuildingCount} limit=${effectiveLimit}`);
+                alert('Разрешение куплено, но новый лимит ещё не подтверждён. Попробуйте снова.');
                 return null;
             }
             console.warn(`[PermitFlow] pending intent saved building=${building.id} x=${x} y=${y}`);
@@ -18093,16 +18104,15 @@ const App: React.FC = () => {
             if (intent) {
                 console.warn(`[PermitFlow] resuming placement building=${intent.building.id} x=${intent.x} y=${intent.y}`);
                 setPendingConstructionIntent(null);
-                // Prevent infinite loop: mark as retried so the limit gate
-                // does not re-open the permit modal on a second failure.
                 const resumeTraceId = `permit-resume-${Date.now()}-${intent.building.id}-${intent.x}-${intent.y}`;
                 const result = await placeBuildingAtTileRef.current(
-                    { ...intent.building }, intent.x, intent.y, resumeTraceId
+                    { ...intent.building }, intent.x, intent.y, resumeTraceId,
+                    { resumedAfterPermitPurchase: true }
                 );
                 if (result) {
                     console.warn(`[PermitFlow] placement succeeded`);
                 } else {
-                    console.warn(`[PermitFlow] placement rejected — limit may still be reached or validation failed`);
+                    console.warn(`[PermitFlow] placement rejected — validation failed after permit purchase`);
                 }
             }
         } catch (e: any) {
