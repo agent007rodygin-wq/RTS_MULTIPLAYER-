@@ -2543,6 +2543,7 @@ const App: React.FC = () => {
     const [clanMemberProfiles, setClanMemberProfiles] = useState<any[]>([]);
     const [clanMembersLoading, setClanMembersLoading] = useState(false);
     const [clanMembersError, setClanMembersError] = useState<string | null>(null);
+    const [clanMembersRefreshToken, setClanMembersRefreshToken] = useState(0);
     const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
     const [playerReputation, setPlayerReputation] = useState(0);
     const [playerLeaderboardStats, setPlayerLeaderboardStats] = useState(() => getUserStatCounters(null));
@@ -16921,6 +16922,9 @@ const App: React.FC = () => {
                 return updated;
             });
 
+            // 5. Trigger a clan member list refresh so the UI updates without reload.
+            setClanMembersRefreshToken(t => t + 1);
+
             addHistoryLog(`Вступление в клан "${clan.name}".`, 'social');
             alert('Вы вступили в клан!');
         } catch (e) {
@@ -16961,10 +16965,11 @@ const App: React.FC = () => {
                 }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `clans/${playerClanId}`));
             }
 
-            // 3. Switch local membership state.
+            // 3. Switch local membership state and refresh display.
             setPlayerClanId(null);
             setLocalClanOverride(null);
             setShowLeaveClanConfirmation(false);
+            setClanMembersRefreshToken(t => t + 1);
             addHistoryLog("Выход из клана.", 'social');
             alert("Вы покинули клан.");
         } catch (e) {
@@ -17165,6 +17170,8 @@ const App: React.FC = () => {
         setClanMembersLoading(true);
         setClanMembersError(null);
 
+        console.warn(`[ClanResolver] effect triggered: activeProfileTab=${activeProfileTab} playerClanId=${playerClanId} refreshToken=${clanMembersRefreshToken}`);
+
         const fetchMembers = async () => {
             let profiles: any[] = [];
             try {
@@ -17354,7 +17361,7 @@ const App: React.FC = () => {
     }, [
         activeProfileTab, isAuthReady, user,
         currentClan?.id, currentClan?.leaderUid, currentClan?.leaderName,
-        currentClan?.membersCount, playerClanId,
+        currentClan?.membersCount, playerClanId, clanMembersRefreshToken,
     ]);
 
     useEffect(() => {
