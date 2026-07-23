@@ -10658,7 +10658,7 @@ const App: React.FC = () => {
             // the static idle asset. The higher walk scale compensates so the visible
             // character body stays at a consistent size across states.
             const SANTA_IDLE_SCALE = 0.90;
-            const SANTA_WALK_SCALE = 1.17;
+            const SANTA_WALK_SCALE = 1.43;
             const SANTA_ATTACK_SCALE = 1.06;
             const santaScale = santaAnimState === 'attack'
                 ? SANTA_ATTACK_SCALE
