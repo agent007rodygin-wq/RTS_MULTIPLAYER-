@@ -16898,8 +16898,10 @@ const App: React.FC = () => {
         setPlayerClanId(clanId);
         if (user) {
             const userDocRef = doc(db, 'users', user.uid);
-            console.log(`[ClanResolver] join: writing clanId=${clanId} to users/${user.uid}`);
-            updateDoc(userDocRef, { clanId }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+            console.warn(`[ClanResolver] join: writing clanId=${clanId} to users/${user.uid} at t=${Date.now()}`);
+            updateDoc(userDocRef, { clanId })
+                .then(() => console.warn(`[ClanResolver] join: users write complete at t=${Date.now()}`))
+                .catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
             
             // Update allUsers state immediately so user appears in clan members list
             setAllUsers(prev => {
@@ -17136,7 +17138,7 @@ const App: React.FC = () => {
         const fetchMembers = async () => {
             let profiles: any[] = [];
             try {
-                console.log(`[ClanResolver] fetch start: activeClanId=${activeClanId} user=${user?.uid} (${playerName}) playerClanId=${playerClanId}`);
+                console.warn(`[ClanResolver] fetch start: activeClanId=${activeClanId} user=${user?.uid} (${playerName}) playerClanId=${playerClanId} t=${Date.now()}`);
                 // Collect raw data from all sources before building profiles,
                 // so merge priority is explicit rather than determined by
                 // whichever query completes first.
@@ -17151,7 +17153,7 @@ const App: React.FC = () => {
                 usersSnap.forEach((docSnap) => {
                     const uid = String(docSnap.id);
                     const data = docSnap.data() as any;
-                    console.log(`[ClanResolver] users: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
+                    console.warn(`[ClanResolver] users: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
                     const entry = sourceData.get(uid) || {};
                     entry.users = data;
                     sourceData.set(uid, entry);
@@ -17167,7 +17169,7 @@ const App: React.FC = () => {
                 lbSnap.forEach((docSnap) => {
                     const data = docSnap.data() as any;
                     const uid = String(data?.userId || docSnap.id);
-                    console.log(`[ClanResolver] lb: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
+                    console.warn(`[ClanResolver] lb: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
                     const entry = sourceData.get(uid) || {};
                     entry.lb = data;
                     sourceData.set(uid, entry);
@@ -17204,14 +17206,35 @@ const App: React.FC = () => {
                             : (u?.clanPermissions || { canInvite: false, canGrantStars: false }),
                     });
 
-                    console.log(`[ClanResolver] union: uid=${uid} name=${profiles[profiles.length - 1].name} sources=${[u ? 'users' : '', lb ? 'lb' : ''].filter(Boolean).join('+') || 'leader-fallback'}`);
+                    console.warn(`[ClanResolver] union: uid=${uid} name=${profiles[profiles.length - 1].name} sources=${[u ? 'users' : '', lb ? 'lb' : ''].filter(Boolean).join('+') || 'leader-fallback'}`);
                 }
 
-                console.log(`[ClanResolver] summary: activeClanId=${activeClanId} leaderUid=${currentClan?.leaderUid} usersHits=${usersSnap.size} lbHits=${lbSnap.size} unionSize=${profiles.length}`);
+                console.warn(`[ClanResolver] summary: activeClanId=${activeClanId} leaderUid=${currentClan?.leaderUid} usersHits=${usersSnap.size} lbHits=${lbSnap.size} unionSize=${profiles.length}`);
+
+                // Structured audit object with full membership matrix.
+                console.warn('[ClanResolverAudit]', {
+                    activeClanId,
+                    leaderUid: currentClan?.leaderUid,
+                    storedMembersCount: currentClan?.membersCount,
+                    currentUser: user?.uid ? { uid: user.uid, name: playerName } : null,
+                    playerClanId,
+                    usersMatches: Array.from(sourceData.entries())
+                        .filter(([, s]) => s.users)
+                        .map(([uid, s]) => ({ uid, name: s.users?.name, rawClanId: s.users?.clanId, type: typeof s.users?.clanId })),
+                    leaderboardMatches: Array.from(sourceData.entries())
+                        .filter(([, s]) => s.lb)
+                        .map(([uid, s]) => ({ uid, name: s.lb?.name, rawClanId: s.lb?.clanId, type: typeof s.lb?.clanId })),
+                    unionMembers: profiles.map(p => ({
+                        uid: p.uid,
+                        name: p.name,
+                        source: (sourceData.get(p.uid)?.users ? 'users' : '') + (sourceData.get(p.uid)?.lb ? '+lb' : '') || 'leader-fallback',
+                    })),
+                    unionSize: profiles.length,
+                });
 
                 // Ensure leader is present (separate fetch in case uid differs across collections).
                 if (currentClan?.leaderUid && !seen.has(currentClan.leaderUid)) {
-                    console.log(`[ClanResolver] leader ${currentClan.leaderUid} not found in queries, fetching separately`);
+                    console.warn(`[ClanResolver] leader ${currentClan.leaderUid} not found in queries, fetching separately`);
                     seen.add(currentClan.leaderUid);
                     const leaderUid = currentClan.leaderUid;
                     try {
