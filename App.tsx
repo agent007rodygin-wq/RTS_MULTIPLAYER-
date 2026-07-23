@@ -10654,28 +10654,35 @@ const App: React.FC = () => {
             const isWildQuarryBuilding = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === WILD_QUARRY_ID;
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
-            // Santa's walk frames contain significantly more transparent padding than
-            // the static idle asset. Instead of inflating scale, use the idle sprite's
-            // native aspect ratio for walk frames so the rendered body size stays identical.
+            // Santa walk frames contain significant transparent padding around
+            // the visible character. Crop to the opaque source region so the rendered
+            // body matches idle proportions. Crop bounds are estimated from idle
+            // sprite dimensions (156x181) within the padded walk frame canvas
+            // (426x311). Tune per direction if assets differ.
             const SANTA_IDLE_SCALE = 0.90;
             const SANTA_WALK_SCALE = 0.90;
             const SANTA_ATTACK_SCALE = 1.06;
-            const SANTA_IDLE_ASPECT = 181 / 156; // idle sprite native proportions
+            const SANTA_WALK_CROP = {
+                x: 128, // strip left transparent padding
+                y: 58,  // strip top transparent padding
+                w: 170, // visible body width
+                h: 195, // visible body height (aspect 195/170 ≈ 1.147 ≈ idle 1.160)
+            };
             const santaScale = santaAnimState === 'attack'
                 ? SANTA_ATTACK_SCALE
                 : santaAnimState === 'walk'
                     ? SANTA_WALK_SCALE
                     : SANTA_IDLE_SCALE;
-            // Override aspect ratio for animated Santa frames so transparent
-            // padding does not distort the rendered body proportions.
-            const santaAspectRatio = santaAnimState === 'walk' || santaAnimState === 'attack'
-                ? SANTA_IDLE_ASPECT
-                : aspectRatio;
+            const isSantaWalk = isSantaMonster && santaAnimState === 'walk';
+            const santaWalkCropAspect = SANTA_WALK_CROP.h / SANTA_WALK_CROP.w;
             const specialScale = 1;
             const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? 1.4 : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : isSantaMonster ? santaScale : 1;
             const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * specialScale;
-            const effectiveAspectRatio = isSantaMonster ? santaAspectRatio : aspectRatio;
-            const imageScaledHeight = imageScaledWidth * effectiveAspectRatio;
+            const imageScaledHeight = imageScaledWidth * aspectRatio;
+
+            // Santa walk: use cropped source region; destination uses crop aspect ratio
+            const santaWalkDestWidth = imageScaledWidth;
+            const santaWalkDestHeight = imageScaledWidth * santaWalkCropAspect;
 
             let drawX = screenX - imageScaledWidth / 2;
             let drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight;
@@ -10765,7 +10772,14 @@ const App: React.FC = () => {
             } else {
                 if (img) {
                     context.globalAlpha = ('isConstructing' in entity && entity.isConstructing) ? 0.6 : 1.0;
-                    context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
+                    if (isSantaWalk) {
+                        const santaWalkDrawY = screenY + (scaledTileHeight / 2) - santaWalkDestHeight;
+                        context.drawImage(img,
+                            SANTA_WALK_CROP.x, SANTA_WALK_CROP.y, SANTA_WALK_CROP.w, SANTA_WALK_CROP.h,
+                            drawX, santaWalkDrawY, santaWalkDestWidth, santaWalkDestHeight);
+                    } else {
+                        context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
+                    }
                     context.globalAlpha = 1.0;
 
                     if (overlayImg && isWildQuarryBuilding) {
