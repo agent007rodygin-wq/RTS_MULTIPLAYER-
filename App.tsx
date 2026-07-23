@@ -15758,16 +15758,39 @@ const App: React.FC = () => {
         }
         const currentAmount = inventory[destructionOption.resourceId] || 0;
         if (currentAmount < totalItems) {
-            alert(`Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• Р С—РЎР‚Р ВµР Т‘Р СР ВµРЎвЂљР В° "${destructionOption.weaponName}"! Р СњРЎС“Р В¶Р Р…Р С• ${totalItems}, РЎС“ Р Р†Р В°РЎРѓ ${currentAmount}.`);
+            alert(`Недостаточно предмета "${destructionOption.weaponName}"! Нужно ${totalItems}, у вас ${currentAmount}.`);
             return;
+        }
+
+        // Detonator consumption: validate and decrement the booster item.
+        const DETONATOR_ID = 10017;
+        const SUPER_DETONATOR_ID = 10045;
+        let detonatorToConsume: number | null = null;
+        if (timeMultiplier !== 1) {
+            if (useSuperDetonator && (inventory[SUPER_DETONATOR_ID] || 0) > 0) {
+                detonatorToConsume = SUPER_DETONATOR_ID;
+            } else if (useRegularDetonator && (inventory[DETONATOR_ID] || 0) > 0) {
+                detonatorToConsume = DETONATOR_ID;
+            }
+            if (!detonatorToConsume) {
+                alert('Детонатор недоступен. Снимите отметку или пополните запас.');
+                return;
+            }
         }
 
         setPlayerGold(prev => prev - totalGold);
         setPlayerEnergy(prev => prev - totalEnergy);
-        setInventory(prev => ({
-            ...prev,
-            [destructionOption.resourceId]: (prev[destructionOption.resourceId] || 0) - totalItems
-        }));
+        setInventory(prev => {
+            const next = {
+                ...prev,
+                [destructionOption.resourceId]: (prev[destructionOption.resourceId] || 0) - totalItems
+            };
+            if (detonatorToConsume) {
+                console.warn(`[SuperDetonator] consuming item id=${detonatorToConsume} current=${prev[detonatorToConsume] || 0} newCount=${(prev[detonatorToConsume] || 0) - 1}`);
+                next[detonatorToConsume] = (prev[detonatorToConsume] || 0) - 1;
+            }
+            return next;
+        });
 
         if (isAuthReady && user) {
             const userUpdates: any = {
@@ -15775,8 +15798,15 @@ const App: React.FC = () => {
                 energy: increment(-totalEnergy),
                 [`inventory.${destructionOption.resourceId}`]: increment(-totalItems)
             };
+            if (detonatorToConsume) {
+                userUpdates[`inventory.${detonatorToConsume}`] = increment(-1);
+            }
             updateDoc(doc(db, 'users', user.uid), userUpdates).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
         }
+
+        // Reset detonator toggle after successful use.
+        if (useSuperDetonator) setUseSuperDetonator(false);
+        if (useRegularDetonator) setUseRegularDetonator(false);
 
         addHistoryLog(`Взорвано здание "${selectedBuilding.info.name}" в [${selectedBuilding.building.x}, ${selectedBuilding.building.y}] оружием "${destructionOption.weaponName}" x${quantity}. Расход: ${totalGold} золота, ${totalEnergy} энергии.`, 'destroy');
 
