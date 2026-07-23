@@ -16898,6 +16898,7 @@ const App: React.FC = () => {
         setPlayerClanId(clanId);
         if (user) {
             const userDocRef = doc(db, 'users', user.uid);
+            console.log(`[ClanResolver] join: writing clanId=${clanId} to users/${user.uid}`);
             updateDoc(userDocRef, { clanId }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
             
             // Update allUsers state immediately so user appears in clan members list
@@ -17135,6 +17136,7 @@ const App: React.FC = () => {
         const fetchMembers = async () => {
             let profiles: any[] = [];
             try {
+                console.log(`[ClanResolver] fetch start: activeClanId=${activeClanId} user=${user?.uid} (${playerName}) playerClanId=${playerClanId}`);
                 // Collect raw data from all sources before building profiles,
                 // so merge priority is explicit rather than determined by
                 // whichever query completes first.
@@ -17148,8 +17150,10 @@ const App: React.FC = () => {
                 const usersSnap = await getDocs(usersQ);
                 usersSnap.forEach((docSnap) => {
                     const uid = String(docSnap.id);
+                    const data = docSnap.data() as any;
+                    console.log(`[ClanResolver] users: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
                     const entry = sourceData.get(uid) || {};
-                    entry.users = docSnap.data() as any;
+                    entry.users = data;
                     sourceData.set(uid, entry);
                 });
 
@@ -17163,6 +17167,7 @@ const App: React.FC = () => {
                 lbSnap.forEach((docSnap) => {
                     const data = docSnap.data() as any;
                     const uid = String(data?.userId || docSnap.id);
+                    console.log(`[ClanResolver] lb: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
                     const entry = sourceData.get(uid) || {};
                     entry.lb = data;
                     sourceData.set(uid, entry);
@@ -17198,10 +17203,15 @@ const App: React.FC = () => {
                             ? { canInvite: true, canGrantStars: true }
                             : (u?.clanPermissions || { canInvite: false, canGrantStars: false }),
                     });
+
+                    console.log(`[ClanResolver] union: uid=${uid} name=${profiles[profiles.length - 1].name} sources=${[u ? 'users' : '', lb ? 'lb' : ''].filter(Boolean).join('+') || 'leader-fallback'}`);
                 }
+
+                console.log(`[ClanResolver] summary: activeClanId=${activeClanId} leaderUid=${currentClan?.leaderUid} usersHits=${usersSnap.size} lbHits=${lbSnap.size} unionSize=${profiles.length}`);
 
                 // Ensure leader is present (separate fetch in case uid differs across collections).
                 if (currentClan?.leaderUid && !seen.has(currentClan.leaderUid)) {
+                    console.log(`[ClanResolver] leader ${currentClan.leaderUid} not found in queries, fetching separately`);
                     seen.add(currentClan.leaderUid);
                     const leaderUid = currentClan.leaderUid;
                     try {
