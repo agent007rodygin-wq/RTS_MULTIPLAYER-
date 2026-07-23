@@ -17125,6 +17125,12 @@ const App: React.FC = () => {
         return openClanCatalog.filter(clan => !recommendedIds.has(Number(clan.id)));
     }, [openClanCatalog, recommendedClans]);
 
+    // Derived HUD visibility rules — Personal Cabinet and Construction Menu
+    // have different requirements for which HUD elements to hide.
+    const shouldHideResourceBar = showProfileModal;
+    const shouldHideWorldControls = showProfileModal || buildMenu.visible;
+    const shouldHideTabletButton = showProfileModal || buildMenu.visible;
+
     useEffect(() => {
         if (selectedBuilding?.info.id === WATCHTOWER_ID) {
             setTaxRateDraft(selectedBuilding.building.taxRate || 0);
@@ -22159,7 +22165,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Resources - Top Center (glass panel) — hidden when Personal Cabinet is open */}
-            {!showProfileModal && (
+            {shouldHideResourceBar ? null : (
             <ResourceBar
                 coinImageUrl={coinImageUrl}
                 populationImageUrl={populationImageUrl}
@@ -22333,8 +22339,8 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Zoom Controls & Settings - Top Right, responsive layout — hidden when Personal Cabinet is open */}
-            {!showProfileModal && (
+            {/* Zoom Controls & Settings - Top Right, responsive layout — hidden when Personal Cabinet or Construction Menu is open */}
+            {shouldHideWorldControls ? null : (
             <div className="fixed top-4 right-4 z-50 zoom-controls">
                 <div className="flex items-center gap-2 max-md:flex-col max-md:items-end max-md:gap-1">
                     {/* Zoom Out (-) - order last on mobile */}
@@ -22407,8 +22413,8 @@ const App: React.FC = () => {
             </div>
             )}
 
-            {/* Tablet Menu Button - Bottom Right — hidden when Personal Cabinet is open */}
-            {!showProfileModal && (
+            {/* Tablet Menu Button - Bottom Right — hidden when Personal Cabinet or Construction Menu is open */}
+            {shouldHideTabletButton ? null : (
             <div className="fixed bottom-4 right-4 flex flex-col items-end gap-3 z-50 game-buttons-right">
                 <button
                     onClick={() => {
