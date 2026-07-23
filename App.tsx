@@ -92,6 +92,7 @@ import {
     babaYagaAttackBottomFrames,
     babaYagaAttackRightFrames,
 } from './src/game/monsters/monsterAnimationConfig';
+import { SANTA_WALK_FRAME_META, SANTA_WALK_CROP_WINDOW } from './src/game/monsters/santaWalkCropMetadata';
 import {
     LEVEL_ICON_URLS,
     PLAYER_AVATAR_URLS
@@ -10654,35 +10655,30 @@ const App: React.FC = () => {
             const isWildQuarryBuilding = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === WILD_QUARRY_ID;
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
-            // Santa walk frames contain significant transparent padding around
-            // the visible character. Crop to the opaque source region so the rendered
-            // body matches idle proportions. Crop bounds are estimated from idle
-            // sprite dimensions (156x181) within the padded walk frame canvas
-            // (426x311). Tune per direction if assets differ.
+            // Santa walk frames: per-frame crop based on measured opaque bounds.
+            // Crop window aspect matches idle (181/156) so destination size
+            // is identical to idle at the same scale. Crop bottom aligns to
+            // feet; feet map to destination bottom = tile base.
             const SANTA_IDLE_SCALE = 0.90;
             const SANTA_WALK_SCALE = 0.90;
             const SANTA_ATTACK_SCALE = 1.06;
-            const SANTA_WALK_CROP = {
-                x: 128, // strip left transparent padding
-                y: 58,  // strip top transparent padding
-                w: 170, // visible body width
-                h: 195, // visible body height (aspect 195/170 ≈ 1.147 ≈ idle 1.160)
-            };
             const santaScale = santaAnimState === 'attack'
                 ? SANTA_ATTACK_SCALE
                 : santaAnimState === 'walk'
                     ? SANTA_WALK_SCALE
                     : SANTA_IDLE_SCALE;
             const isSantaWalk = isSantaMonster && santaAnimState === 'walk';
-            const santaWalkCropAspect = SANTA_WALK_CROP.h / SANTA_WALK_CROP.w;
+            const santaWalkMeta = isSantaWalk && img ? SANTA_WALK_FRAME_META[img.src] : undefined;
+            const CROP_W = SANTA_WALK_CROP_WINDOW.w;
+            const CROP_H = SANTA_WALK_CROP_WINDOW.h;
             const specialScale = 1;
             const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? 1.4 : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : isSantaMonster ? santaScale : 1;
             const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * specialScale;
             const imageScaledHeight = imageScaledWidth * aspectRatio;
 
-            // Santa walk: use cropped source region; destination uses crop aspect ratio
+            // Santa walk: per-frame source crop, destination matches idle proportions
             const santaWalkDestWidth = imageScaledWidth;
-            const santaWalkDestHeight = imageScaledWidth * santaWalkCropAspect;
+            const santaWalkDestHeight = imageScaledWidth * (CROP_H / CROP_W);
 
             let drawX = screenX - imageScaledWidth / 2;
             let drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight;
@@ -10772,10 +10768,12 @@ const App: React.FC = () => {
             } else {
                 if (img) {
                     context.globalAlpha = ('isConstructing' in entity && entity.isConstructing) ? 0.6 : 1.0;
-                    if (isSantaWalk) {
+                    if (isSantaWalk && santaWalkMeta) {
+                        const sx = santaWalkMeta.cx - CROP_W / 2;
+                        const sy = santaWalkMeta.feetY - CROP_H;
                         const santaWalkDrawY = screenY + (scaledTileHeight / 2) - santaWalkDestHeight;
                         context.drawImage(img,
-                            SANTA_WALK_CROP.x, SANTA_WALK_CROP.y, SANTA_WALK_CROP.w, SANTA_WALK_CROP.h,
+                            sx, sy, CROP_W, CROP_H,
                             drawX, santaWalkDrawY, santaWalkDestWidth, santaWalkDestHeight);
                     } else {
                         context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
