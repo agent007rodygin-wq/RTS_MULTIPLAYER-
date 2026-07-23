@@ -17310,15 +17310,15 @@ const App: React.FC = () => {
                 setClanMemberProfiles(profiles);
                 setClanMembersLoading(false);
 
-                // One-time repair: fix drifted membersCount to match resolved union.
+                // Diagnostic: report drift between stored count and resolved union.
+                // The actual repair should be done manually/admin, not automatically,
+                // to avoid corrupting the count from a transient query glitch.
                 if (currentClan?.membersCount !== undefined && currentClan.membersCount !== profiles.length) {
                     const stored = currentClan.membersCount;
                     const resolved = profiles.length;
-                    console.warn(`[ClanRepair] membersCount ${stored} -> ${resolved} for clanId=${activeClanId}`);
-                    try {
-                        const clanDocRef = doc(db, 'clans', String(activeClanId));
-                        await updateDoc(clanDocRef, { membersCount: resolved });
-                    } catch { /* repair is best-effort */ }
+                    console.warn(
+                        `[ClanRepairNeeded] clanId=${activeClanId} stored=${stored} resolved=${resolved} — manual repair required`
+                    );
                 }
 
                 // Merge into allUsers as cache optimization (not source of truth).
