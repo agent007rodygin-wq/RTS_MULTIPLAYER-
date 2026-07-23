@@ -10654,11 +10654,11 @@ const App: React.FC = () => {
             const isWildQuarryBuilding = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === WILD_QUARRY_ID;
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
-            // Santa's sprite set has more empty padding than the other monsters, so its
-            // idle/walk/attack states need their own tuned baselines.
-            // Keep idle a touch smaller, but make walk slightly larger so motion reads at the same visual weight.
+            // Santa's walk frames contain significantly more transparent padding than
+            // the static idle asset. The higher walk scale compensates so the visible
+            // character body stays at a consistent size across states.
             const SANTA_IDLE_SCALE = 0.90;
-            const SANTA_WALK_SCALE = 0.98;
+            const SANTA_WALK_SCALE = 1.17;
             const SANTA_ATTACK_SCALE = 1.06;
             const santaScale = santaAnimState === 'attack'
                 ? SANTA_ATTACK_SCALE
