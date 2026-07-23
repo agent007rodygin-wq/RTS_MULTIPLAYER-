@@ -17182,11 +17182,11 @@ const App: React.FC = () => {
         return openClanCatalog.filter(clan => !recommendedIds.has(Number(clan.id)));
     }, [openClanCatalog, recommendedClans]);
 
-    // Derived HUD visibility rules — Personal Cabinet and Construction Menu
-    // have different requirements for which HUD elements to hide.
-    const shouldHideResourceBar = showProfileModal;
-    const shouldHideWorldControls = showProfileModal || buildMenu.visible;
-    const shouldHideTabletButton = showProfileModal || buildMenu.visible;
+    // Derived HUD visibility rules — Personal Cabinet, Construction Menu,
+    // and Building Details modal have different requirements.
+    const shouldHideResourceBar = showProfileModal || !!selectedBuilding;
+    const shouldHideWorldControls = showProfileModal || buildMenu.visible || !!selectedBuilding;
+    const shouldHideTabletButton = showProfileModal || buildMenu.visible || !!selectedBuilding;
 
     useEffect(() => {
         if (selectedBuilding?.info.id === WATCHTOWER_ID) {
