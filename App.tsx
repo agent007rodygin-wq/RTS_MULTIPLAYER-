@@ -2562,6 +2562,9 @@ const App: React.FC = () => {
     const [currentTime, setCurrentTime] = useState(Date.now());
     const [gameAlertMessage, setGameAlertMessage] = useState<string | null>(null);
     const [buildingLimitModalData, setBuildingLimitModalData] = useState<{ currentLimit: number; nextLimit: number } | null>(null);
+    const [pendingConstructionIntent, setPendingConstructionIntent] = useState<{ building: Building; x: number; y: number; retried?: boolean } | null>(null);
+    const pendingConstructionIntentRef = useRef(pendingConstructionIntent);
+    useEffect(() => { pendingConstructionIntentRef.current = pendingConstructionIntent; }, [pendingConstructionIntent]);
     const [energyModalState, setEnergyModalState] = useState<{ mode: 'warning' | 'shop'; requiredEnergy?: number } | null>(null);
     const [rubyModalState, setRubyModalState] = useState<{ mode: 'warning' | 'shop'; requiredRubies?: number } | null>(null);
     const gameAlertQueueRef = useRef<string[]>([]);
@@ -5806,6 +5809,17 @@ const App: React.FC = () => {
                     nextLimit: Math.max(1, maxBuildings + 1),
                 });
             }
+            // Save the intent so we can resume after permit purchase.
+            // If this placement was already resumed from a previous permit purchase
+            // and the limit is still reached, do NOT re-open the modal to avoid a loop.
+            const isRetry = pendingConstructionIntentRef.current?.building?.id === building.id;
+            if (isRetry) {
+                console.warn(`[PermitFlow] placement still blocked after permit purchase — giving up`);
+                setPendingConstructionIntent(null);
+                return null;
+            }
+            console.warn(`[PermitFlow] pending intent saved building=${building.id} x=${x} y=${y}`);
+            setPendingConstructionIntent({ building, x, y });
             setBuildingLimitModalData({
                 currentLimit: Math.max(0, maxBuildings),
                 nextLimit: Math.max(1, maxBuildings + 1)
@@ -16635,6 +16649,8 @@ const App: React.FC = () => {
 
     const closeBuildingLimitModal = useCallback(() => {
         setBuildingLimitModalData(null);
+        setPendingConstructionIntent(null);
+        console.warn('[PermitFlow] pending intent cleared (modal closed)');
         playCloseSound();
     }, []);
 
@@ -18071,6 +18087,24 @@ const App: React.FC = () => {
                 permitPurchaseToastTimerRef.current = null;
             }, 1800);
             addHistoryLog('Куплено дополнительное разрешение на строительство за 1 рубин.', 'economy');
+
+            // Resume pending construction intent if one exists.
+            const intent = pendingConstructionIntentRef.current;
+            if (intent) {
+                console.warn(`[PermitFlow] resuming placement building=${intent.building.id} x=${intent.x} y=${intent.y}`);
+                setPendingConstructionIntent(null);
+                // Prevent infinite loop: mark as retried so the limit gate
+                // does not re-open the permit modal on a second failure.
+                const resumeTraceId = `permit-resume-${Date.now()}-${intent.building.id}-${intent.x}-${intent.y}`;
+                const result = await placeBuildingAtTileRef.current(
+                    { ...intent.building }, intent.x, intent.y, resumeTraceId
+                );
+                if (result) {
+                    console.warn(`[PermitFlow] placement succeeded`);
+                } else {
+                    console.warn(`[PermitFlow] placement rejected — limit may still be reached or validation failed`);
+                }
+            }
         } catch (e: any) {
             if (e?.message === 'Insufficient rubies') {
                 openRubyWarningModal(permitPriceRubies);
