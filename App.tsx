@@ -56,6 +56,7 @@ import {
     izbushkaCancelLeftFrames,
     izbushkaCancelBottomFrames,
     izbushkaCancelRightFrames,
+    santaIdleFrames,
     santaWalkLeftFrames,
     santaWalkDownFrames,
     santaWalkRightFrames,
@@ -1935,6 +1936,7 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
 
     if (building.buildingId === KIND_SANTA_ID) {
         return [
+            ...santaIdleFrames,
             ...santaWalkLeftFrames,
             ...santaWalkDownFrames,
             ...santaWalkRightFrames,
@@ -10185,7 +10187,7 @@ const App: React.FC = () => {
                         const lastMoveTime = Math.max(entity.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
                         const lastAttackTime = Math.max(entity.lastAttackTime || 0, monsterAttackTimeRef.current.get(monsterId) || 0);
                         
-                        let frames: string[] = santaWalkLeftFrames; // default pose
+                        let frames: string[] = santaIdleFrames;
                         let playOnce = false;
                         let animStartTime = lastMoveTime;
                         let playbackMultiplier = 1;
@@ -10249,13 +10251,16 @@ const App: React.FC = () => {
                             const elapsed = now - animStartTime;
                             frameIndex = getPlaybackFrameIndex(elapsed, frames.length, SANTA_FPS, playbackMultiplier);
                             const frameUrl = frames[frameIndex];
-                            img = images[frameUrl] || images[santaWalkLeftFrames[0]] || images[buildingInfo.imageUrl];
+                            img = images[frameUrl] || images[santaIdleFrames[0]] || images[santaWalkLeftFrames[0]];
+                            // Track frame URL for per-frame crop metadata lookup in renderer
+                            (entity as any).__santaFrameUrl = frameUrl;
                             // Store flag so we can apply animation scale later
                             (entity as any).__santaAnimating = true;
                             (entity as any).__santaAnimState = santaAnimState;
                         } else {
-                            // Idle: use default static image
-                            img = images[buildingInfo.imageUrl];
+                            // Idle: use Evil Santa idle frame (same character set as walk/attack)
+                            img = images[santaIdleFrames[0]];
+                            (entity as any).__santaFrameUrl = santaIdleFrames[0];
                             (entity as any).__santaAnimating = false;
                             (entity as any).__santaAnimState = 'idle';
                         }
@@ -10655,10 +10660,9 @@ const App: React.FC = () => {
             const isWildQuarryBuilding = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === WILD_QUARRY_ID;
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
-            // Santa walk frames: per-frame crop based on measured opaque bounds.
-            // Crop window aspect matches idle (181/156) so destination size
-            // is identical to idle at the same scale. Crop bottom aligns to
-            // feet; feet map to destination bottom = tile base.
+            // Evil Santa: idle and walk frames share the same 426x311 canvas with
+            // transparent padding. Apply per-frame crop metadata for both states
+            // so the rendered body matches the idle scale consistently.
             const SANTA_IDLE_SCALE = 0.90;
             const SANTA_WALK_SCALE = 0.90;
             const SANTA_ATTACK_SCALE = 1.06;
@@ -10667,8 +10671,9 @@ const App: React.FC = () => {
                 : santaAnimState === 'walk'
                     ? SANTA_WALK_SCALE
                     : SANTA_IDLE_SCALE;
-            const isSantaWalk = isSantaMonster && santaAnimState === 'walk';
-            const santaWalkMeta = isSantaWalk && img ? SANTA_WALK_FRAME_META[img.src] : undefined;
+            const isSantaCropped = isSantaMonster && (santaAnimState === 'walk' || santaAnimState === 'idle');
+            const santaFrameUrl = (entity as any).__santaFrameUrl as string | undefined;
+            const santaCropMeta = isSantaCropped && santaFrameUrl ? SANTA_WALK_FRAME_META[santaFrameUrl] : undefined;
             const CROP_W = SANTA_WALK_CROP_WINDOW.w;
             const CROP_H = SANTA_WALK_CROP_WINDOW.h;
             const specialScale = 1;
@@ -10768,9 +10773,9 @@ const App: React.FC = () => {
             } else {
                 if (img) {
                     context.globalAlpha = ('isConstructing' in entity && entity.isConstructing) ? 0.6 : 1.0;
-                    if (isSantaWalk && santaWalkMeta) {
-                        const sx = santaWalkMeta.cx - CROP_W / 2;
-                        const sy = santaWalkMeta.feetY - CROP_H;
+                    if (isSantaCropped && santaCropMeta) {
+                        const sx = santaCropMeta.cx - CROP_W / 2;
+                        const sy = santaCropMeta.feetY - CROP_H;
                         const santaWalkDrawY = screenY + (scaledTileHeight / 2) - santaWalkDestHeight;
                         context.drawImage(img,
                             sx, sy, CROP_W, CROP_H,

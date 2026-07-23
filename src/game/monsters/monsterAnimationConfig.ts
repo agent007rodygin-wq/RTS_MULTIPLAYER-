@@ -56,6 +56,9 @@ export const santaAttackLeftFrames: string[] = Array.from({ length: 37 }, (_, i)
 export const santaAttackBottomFrames: string[] = Array.from({ length: 37 }, (_, i) => `${SANTA_BASE}/атака/выстрел в низ/${1 + i}.webp`);
 export const santaAttackRightFrames: string[] = Array.from({ length: 42 }, (_, i) => `${SANTA_BASE}/атака/выстрел в право/${74 + i}.webp`);
 export const santaAttackTopFrames: string[] = Array.from({ length: 40 }, (_, i) => `${SANTA_BASE}/атака/выстрел вверх/${115 + i}.webp`);
+// Santa idle uses the last right-walk frame (267) — a centered standing pose
+// from the Evil Santa animation set matching walk/attack character style.
+export const santaIdleFrames: string[] = [`${SANTA_BASE}/идет в право/267.webp`];
 
 export const gorynychWalkUpFrames: string[] = Array.from({ length: 113 }, (_, i) => `${GORYNYCH_BASE}/анимация ходьбы по клеткам/идет в верх/${568 + i}.webp`);
 export const gorynychWalkDownFrames: string[] = Array.from({ length: 58 }, (_, i) => `${GORYNYCH_BASE}/анимация ходьбы по клеткам/идет в низ/${338 + i}.webp`);
