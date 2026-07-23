@@ -16868,7 +16868,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleJoinClan = (clanId: number) => {
+    const handleJoinClan = async (clanId: number) => {
         if (!user) return;
 
         if (playerClanId === clanId) {
@@ -16876,73 +16876,103 @@ const App: React.FC = () => {
             return;
         }
 
-        // If already in a clan, leave it first (decrement count)
-        if (playerClanId) {
-            const oldClan = clans.find(c => c.id === playerClanId);
-            if (oldClan) {
-                const oldClanDocRef = doc(db, 'clans', String(playerClanId));
-                updateDoc(oldClanDocRef, {
-                    membersCount: Math.max(0, (oldClan.membersCount || 0) - 1)
-                }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `clans/${playerClanId}`));
-            }
-        }
-
         const clan = clans.find(c => c.id === clanId);
         if (!clan) return;
 
-        const clanDocRef = doc(db, 'clans', String(clanId));
-        updateDoc(clanDocRef, {
-            membersCount: (clan.membersCount || 0) + 1
-        }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `clans/${clanId}`));
+        setIsBuildingActionProcessing(true);
+        try {
+            // 1. Leave old clan if any.
+            if (playerClanId) {
+                const oldClan = clans.find(c => c.id === playerClanId);
+                if (oldClan) {
+                    const oldClanDocRef = doc(db, 'clans', String(playerClanId));
+                    updateDoc(oldClanDocRef, {
+                        membersCount: Math.max(0, (oldClan.membersCount || 0) - 1)
+                    }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `clans/${playerClanId}`));
+                }
+            }
 
-        setPlayerClanId(clanId);
-        if (user) {
+            // 2. Write clanId to both profile sources BEFORE switching UI.
             const userDocRef = doc(db, 'users', user.uid);
-            console.warn(`[ClanResolver] join: writing clanId=${clanId} to users/${user.uid} at t=${Date.now()}`);
-            updateDoc(userDocRef, { clanId })
-                .then(() => console.warn(`[ClanResolver] join: users write complete at t=${Date.now()}`))
-                .catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
-            
-            // Update allUsers state immediately so user appears in clan members list
+            const lbDocRef = doc(db, LEADERBOARD_PROFILES_COLLECTION, user.uid);
+            const clanIdStr = String(clanId);
+
+            const writes = [
+                updateDoc(userDocRef, { clanId }),
+                updateDoc(lbDocRef, { clanId: clanIdStr }),
+            ];
+            console.warn(`[ClanResolver] join: writing clanId=${clanId} to users and leaderboard_profiles at t=${Date.now()}`);
+            await Promise.all(writes);
+            console.warn(`[ClanResolver] join: both writes complete at t=${Date.now()}`);
+
+            // 3. Increment clan membersCount (best-effort, not source of truth).
+            const clanDocRef = doc(db, 'clans', String(clanId));
+            updateDoc(clanDocRef, {
+                membersCount: (clan.membersCount || 0) + 1
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `clans/${clanId}`));
+
+            // 4. Switch local membership state.
+            setPlayerClanId(clanId);
             setAllUsers(prev => {
                 const updated = { ...prev };
                 if (updated[user.uid]) {
-                    updated[user.uid] = {
-                        ...updated[user.uid],
-                        clanId: clanId
-                    };
+                    updated[user.uid] = { ...updated[user.uid], clanId };
                 }
                 return updated;
             });
+
+            addHistoryLog(`Вступление в клан "${clan.name}".`, 'social');
+            alert('Вы вступили в клан!');
+        } catch (e) {
+            handleFirestoreError(e, OperationType.UPDATE, `users_or_lb/${user.uid}`);
+            alert('Не удалось вступить в клан. Попробуйте ещё раз.');
+        } finally {
+            setIsBuildingActionProcessing(false);
         }
-        addHistoryLog(`Вступление в клан "${clan.name}".`, 'social');
-        alert('Вы вступили в клан!');
     };
 
     const handleLeaveClan = () => {
         setShowLeaveClanConfirmation(true);
     };
 
-    const handleConfirmLeaveClan = () => {
+    const handleConfirmLeaveClan = async () => {
         if (!user || !playerClanId) return;
 
-        const clan = clans.find(c => c.id === playerClanId);
-        if (clan) {
-            const clanDocRef = doc(db, 'clans', String(playerClanId));
-            updateDoc(clanDocRef, {
-                membersCount: Math.max(0, (clan.membersCount || 0) - 1)
-            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `clans/${playerClanId}`));
-        }
-
-        setPlayerClanId(null);
-        setLocalClanOverride(null);
-        if (user) {
+        setIsBuildingActionProcessing(true);
+        try {
+            // 1. Clear clanId from both profile sources.
             const userDocRef = doc(db, 'users', user.uid);
-            updateDoc(userDocRef, { clanId: null }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+            const lbDocRef = doc(db, LEADERBOARD_PROFILES_COLLECTION, user.uid);
+
+            const writes = [
+                updateDoc(userDocRef, { clanId: null }),
+                updateDoc(lbDocRef, { clanId: '' }),
+            ];
+            console.warn(`[ClanResolver] leave: clearing clanId at t=${Date.now()}`);
+            await Promise.all(writes);
+            console.warn(`[ClanResolver] leave: both clears complete at t=${Date.now()}`);
+
+            // 2. Decrement clan membersCount (best-effort).
+            const clan = clans.find(c => c.id === playerClanId);
+            if (clan) {
+                const clanDocRef = doc(db, 'clans', String(playerClanId));
+                updateDoc(clanDocRef, {
+                    membersCount: Math.max(0, (clan.membersCount || 0) - 1)
+                }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `clans/${playerClanId}`));
+            }
+
+            // 3. Switch local membership state.
+            setPlayerClanId(null);
+            setLocalClanOverride(null);
+            setShowLeaveClanConfirmation(false);
+            addHistoryLog("Выход из клана.", 'social');
+            alert("Вы покинули клан.");
+        } catch (e) {
+            handleFirestoreError(e, OperationType.UPDATE, `users_or_lb/${user.uid}`);
+            alert('Не удалось покинуть клан. Попробуйте ещё раз.');
+        } finally {
+            setIsBuildingActionProcessing(false);
         }
-        setShowLeaveClanConfirmation(false);
-        addHistoryLog("Выход из клана.", 'social');
-        alert("Вы покинули клан.");
     };
 
     const handleSaveClanSettings = async () => {
@@ -17142,7 +17172,7 @@ const App: React.FC = () => {
                 // Collect raw data from all sources before building profiles,
                 // so merge priority is explicit rather than determined by
                 // whichever query completes first.
-                const sourceData = new Map<string, { users?: any; lb?: any }>();
+                const sourceData = new Map<string, { users?: any; lb?: any; usersDocId?: string; lbDocId?: string }>();
 
                 // Source A: users collection (clanId is NUMBER).
                 const usersQ = query(
@@ -17153,9 +17183,10 @@ const App: React.FC = () => {
                 usersSnap.forEach((docSnap) => {
                     const uid = String(docSnap.id);
                     const data = docSnap.data() as any;
-                    console.warn(`[ClanResolver] users: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
+                    console.warn(`[ClanResolver] users: docId=${docSnap.id} uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
                     const entry = sourceData.get(uid) || {};
                     entry.users = data;
+                    entry.usersDocId = docSnap.id;
                     sourceData.set(uid, entry);
                 });
 
@@ -17169,9 +17200,10 @@ const App: React.FC = () => {
                 lbSnap.forEach((docSnap) => {
                     const data = docSnap.data() as any;
                     const uid = String(data?.userId || docSnap.id);
-                    console.warn(`[ClanResolver] lb: uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
+                    console.warn(`[ClanResolver] lb: docId=${docSnap.id} uid=${uid} name=${data?.name} clanId=${data?.clanId} (type=${typeof data?.clanId})`);
                     const entry = sourceData.get(uid) || {};
                     entry.lb = data;
+                    entry.lbDocId = docSnap.id;
                     sourceData.set(uid, entry);
                 });
 
@@ -17220,10 +17252,10 @@ const App: React.FC = () => {
                     playerClanId,
                     usersMatches: Array.from(sourceData.entries())
                         .filter(([, s]) => s.users)
-                        .map(([uid, s]) => ({ uid, name: s.users?.name, rawClanId: s.users?.clanId, type: typeof s.users?.clanId })),
+                        .map(([uid, s]) => ({ docId: s.usersDocId, uid, name: s.users?.name, rawClanId: s.users?.clanId, type: typeof s.users?.clanId })),
                     leaderboardMatches: Array.from(sourceData.entries())
                         .filter(([, s]) => s.lb)
-                        .map(([uid, s]) => ({ uid, name: s.lb?.name, rawClanId: s.lb?.clanId, type: typeof s.lb?.clanId })),
+                        .map(([uid, s]) => ({ docId: s.lbDocId, uid, name: s.lb?.name, rawClanId: s.lb?.clanId, type: typeof s.lb?.clanId })),
                     unionMembers: profiles.map(p => ({
                         uid: p.uid,
                         name: p.name,
@@ -17278,6 +17310,17 @@ const App: React.FC = () => {
                 setClanMemberProfiles(profiles);
                 setClanMembersLoading(false);
 
+                // One-time repair: fix drifted membersCount to match resolved union.
+                if (currentClan?.membersCount !== undefined && currentClan.membersCount !== profiles.length) {
+                    const stored = currentClan.membersCount;
+                    const resolved = profiles.length;
+                    console.warn(`[ClanRepair] membersCount ${stored} -> ${resolved} for clanId=${activeClanId}`);
+                    try {
+                        const clanDocRef = doc(db, 'clans', String(activeClanId));
+                        await updateDoc(clanDocRef, { membersCount: resolved });
+                    } catch { /* repair is best-effort */ }
+                }
+
                 // Merge into allUsers as cache optimization (not source of truth).
                 setAllUsers(prev => {
                     const updated = { ...prev };
@@ -17302,17 +17345,6 @@ const App: React.FC = () => {
                 setClanMembersError(e instanceof Error ? e.message : String(e));
                 setClanMembersLoading(false);
                 handleFirestoreError(e, OperationType.GET, 'clan_members_fetch');
-            }
-
-            // Count drift diagnostic
-            if (!cancelled && currentClan?.membersCount !== undefined) {
-                const stored = currentClan.membersCount;
-                const resolved = profiles.length;
-                if (stored !== resolved) {
-                    console.warn(
-                        `[ClanMembers] count drift detected: clanId=${activeClanId} stored=${stored} resolved=${resolved}`
-                    );
-                }
             }
         };
 
