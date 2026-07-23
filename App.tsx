@@ -10655,20 +10655,27 @@ const App: React.FC = () => {
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
             // Santa's walk frames contain significantly more transparent padding than
-            // the static idle asset. The higher walk scale compensates so the visible
-            // character body stays at a consistent size across states.
+            // the static idle asset. Instead of inflating scale, use the idle sprite's
+            // native aspect ratio for walk frames so the rendered body size stays identical.
             const SANTA_IDLE_SCALE = 0.90;
-            const SANTA_WALK_SCALE = 1.43;
+            const SANTA_WALK_SCALE = 0.90;
             const SANTA_ATTACK_SCALE = 1.06;
+            const SANTA_IDLE_ASPECT = 181 / 156; // idle sprite native proportions
             const santaScale = santaAnimState === 'attack'
                 ? SANTA_ATTACK_SCALE
                 : santaAnimState === 'walk'
                     ? SANTA_WALK_SCALE
                     : SANTA_IDLE_SCALE;
+            // Override aspect ratio for animated Santa frames so transparent
+            // padding does not distort the rendered body proportions.
+            const santaAspectRatio = santaAnimState === 'walk' || santaAnimState === 'attack'
+                ? SANTA_IDLE_ASPECT
+                : aspectRatio;
             const specialScale = 1;
             const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? 1.4 : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : isSantaMonster ? santaScale : 1;
             const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * specialScale;
-            const imageScaledHeight = imageScaledWidth * aspectRatio;
+            const effectiveAspectRatio = isSantaMonster ? santaAspectRatio : aspectRatio;
+            const imageScaledHeight = imageScaledWidth * effectiveAspectRatio;
 
             let drawX = screenX - imageScaledWidth / 2;
             let drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight;
