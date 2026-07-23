@@ -2540,6 +2540,9 @@ const App: React.FC = () => {
     const isWorldWrapped = playerLevel < 8;
     const [playerGlory, setPlayerGlory] = useState(0);
     const [playerClanId, setPlayerClanId] = useState<number | null>(null);
+    const [clanMemberProfiles, setClanMemberProfiles] = useState<any[]>([]);
+    const [clanMembersLoading, setClanMembersLoading] = useState(false);
+    const [clanMembersError, setClanMembersError] = useState<string | null>(null);
     const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
     const [playerReputation, setPlayerReputation] = useState(0);
     const [playerLeaderboardStats, setPlayerLeaderboardStats] = useState(() => getUserStatCounters(null));
@@ -17051,68 +17054,11 @@ const App: React.FC = () => {
         .length;
 
     // Get clan members from users in the same clan
+    // Clan member profiles are resolved by a dedicated fetch (not derived from allUsers).
+    // The fetch runs when the Clan tab opens and the activeClanId is known.
     const clanMembers = useMemo(() => {
-        const activeClanId = currentClan?.id ?? playerClanId;
-        if (!activeClanId) return [];
-        const membersByUid = new Map<string, any>();
-
-        Object.values(allUsers).forEach((u: any) => {
-            const memberUid = String(u.uid || u.id || '');
-            if (!memberUid) return;
-            if (normalizeClanIdValue(u.clanId) !== Number(activeClanId)) return;
-            membersByUid.set(memberUid, {
-                uid: memberUid,
-                name: u.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
-                level: u.level || 1,
-                coinsEarned: u.coinsEarned || 0,
-                xpEarned: u.xpEarned || 0,
-                rank: currentClan && memberUid === currentClan.leaderUid ? 5 : (u.rank ?? 0),
-                avatar: u.avatar || null,
-                clanPermissions: currentClan && memberUid === currentClan.leaderUid
-                    ? { canInvite: true, canGrantStars: true }
-                    : (u.clanPermissions || { canInvite: false, canGrantStars: false })
-            });
-        });
-
-        if (currentClan?.leaderUid && !membersByUid.has(currentClan.leaderUid)) {
-            const leaderData = allUsers[currentClan.leaderUid] || {};
-            membersByUid.set(currentClan.leaderUid, {
-                uid: currentClan.leaderUid,
-                name: leaderData.name || currentClan.leaderName || 'Неизвестный',
-                level: leaderData.level || 1,
-                coinsEarned: leaderData.coinsEarned || 0,
-                xpEarned: leaderData.xpEarned || 0,
-                rank: 5,
-                avatar: leaderData.avatar || null,
-                clanPermissions: { canInvite: true, canGrantStars: true }
-            });
-        }
-
-        if (
-            user &&
-            normalizeClanIdValue(playerClanId) === Number(activeClanId) &&
-            !membersByUid.has(user.uid)
-        ) {
-            const selfData = allUsers[user.uid] || {};
-            membersByUid.set(user.uid, {
-                uid: user.uid,
-                name: selfData.name || playerName || 'Неизвестный',
-                level: selfData.level || playerLevel || 1,
-                coinsEarned: selfData.coinsEarned || 0,
-                xpEarned: selfData.xpEarned || 0,
-                rank: currentClan?.leaderUid === user.uid ? 5 : (selfData.rank ?? 0),
-                avatar: selfData.avatar || playerAvatar || null,
-                clanPermissions: currentClan?.leaderUid === user.uid
-                    ? { canInvite: true, canGrantStars: true }
-                    : (selfData.clanPermissions || { canInvite: false, canGrantStars: false })
-            });
-        }
-
-        return Array.from(membersByUid.values()).sort((a, b) => {
-            if (b.rank !== a.rank) return b.rank - a.rank;
-            return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
-        });
-    }, [allUsers, currentClan, playerAvatar, playerClanId, playerLevel, playerName, user]);
+        return clanMemberProfiles;
+    }, [clanMemberProfiles]);
 
     const openClanCatalog = useMemo(() => {
         return clans
@@ -17165,6 +17111,145 @@ const App: React.FC = () => {
 
         return () => clearInterval(interval);
     }, [activeProfileTab, fetchClans, isAuthReady, user]);
+
+    // Dedicated clan member hydration — independent of allUsers / leaderboard.
+    useEffect(() => {
+        if (activeProfileTab !== 'clan' || !isAuthReady || !user) return;
+
+        const activeClanId = currentClan?.id ?? playerClanId;
+        if (!activeClanId) {
+            setClanMemberProfiles([]);
+            setClanMembersLoading(false);
+            setClanMembersError(null);
+            return;
+        }
+
+        let cancelled = false;
+        setClanMembersLoading(true);
+        setClanMembersError(null);
+
+        const fetchMembers = async () => {
+            let profiles: any[] = [];
+            try {
+                const seen = new Set<string>();
+                profiles = [];
+
+                // Query the canonical users collection by clanId.
+                const membersQuery = query(
+                    collection(db, 'users'),
+                    where('clanId', '==', activeClanId)
+                );
+                const snapshot = await getDocs(membersQuery);
+
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data() as any;
+                    const uid = String(docSnap.id);
+                    if (seen.has(uid)) return;
+                    seen.add(uid);
+
+                    const avatar = resolveUserAvatar(data);
+                    profiles.push({
+                        uid,
+                        name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
+                        level: Number(data?.level || 1) || 1,
+                        coinsEarned: Number(data?.coinsEarned || 0) || 0,
+                        xpEarned: Number(data?.xpEarned || 0) || 0,
+                        rank: currentClan?.leaderUid === uid ? 5 : (data?.rank ?? 0),
+                        avatar,
+                        clanPermissions: currentClan?.leaderUid === uid
+                            ? { canInvite: true, canGrantStars: true }
+                            : (data?.clanPermissions || { canInvite: false, canGrantStars: false }),
+                    });
+                });
+
+                // Ensure leader is included even if not returned by the query.
+                if (currentClan?.leaderUid && !seen.has(currentClan.leaderUid)) {
+                    const leaderSnap = await getDoc(doc(db, 'users', currentClan.leaderUid));
+                    if (leaderSnap.exists()) {
+                        const data = leaderSnap.data() as any;
+                        const avatar = resolveUserAvatar(data);
+                        profiles.push({
+                            uid: currentClan.leaderUid,
+                            name: repairMojibakeCp1251Utf8(String(data?.name || currentClan.leaderName || 'Неизвестный')),
+                            level: Number(data?.level || 1) || 1,
+                            coinsEarned: Number(data?.coinsEarned || 0) || 0,
+                            xpEarned: Number(data?.xpEarned || 0) || 0,
+                            rank: 5,
+                            avatar,
+                            clanPermissions: { canInvite: true, canGrantStars: true },
+                        });
+                    } else {
+                        profiles.push({
+                            uid: currentClan.leaderUid,
+                            name: currentClan.leaderName || 'Неизвестный',
+                            level: 1,
+                            coinsEarned: 0,
+                            xpEarned: 0,
+                            rank: 5,
+                            avatar: null,
+                            clanPermissions: { canInvite: true, canGrantStars: true },
+                        });
+                    }
+                    seen.add(currentClan.leaderUid);
+                }
+
+                // Sort: leader first, then by name.
+                profiles.sort((a, b) => {
+                    if (b.rank !== a.rank) return b.rank - a.rank;
+                    return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+                });
+
+                if (cancelled) return;
+
+                setClanMemberProfiles(profiles);
+                setClanMembersLoading(false);
+
+                // Merge into allUsers as cache optimization (not source of truth).
+                setAllUsers(prev => {
+                    const updated = { ...prev };
+                    for (const p of profiles) {
+                        updated[p.uid] = {
+                            ...updated[p.uid],
+                            uid: p.uid,
+                            name: p.name,
+                            level: p.level,
+                            clanId: activeClanId,
+                            rank: p.rank,
+                            avatar: p.avatar,
+                            clanPermissions: p.clanPermissions,
+                            coinsEarned: Math.max(Number(updated[p.uid]?.coinsEarned || 0) || 0, p.coinsEarned),
+                            xpEarned: Math.max(Number(updated[p.uid]?.xpEarned || 0) || 0, p.xpEarned),
+                        };
+                    }
+                    return updated;
+                });
+            } catch (e) {
+                if (cancelled) return;
+                setClanMembersError(e instanceof Error ? e.message : String(e));
+                setClanMembersLoading(false);
+                handleFirestoreError(e, OperationType.GET, 'clan_members_fetch');
+            }
+
+            // Count drift diagnostic
+            if (!cancelled && currentClan?.membersCount !== undefined) {
+                const stored = currentClan.membersCount;
+                const resolved = profiles.length;
+                if (stored !== resolved) {
+                    console.warn(
+                        `[ClanMembers] count drift detected: clanId=${activeClanId} stored=${stored} resolved=${resolved}`
+                    );
+                }
+            }
+        };
+
+        fetchMembers();
+
+        return () => { cancelled = true; };
+    }, [
+        activeProfileTab, isAuthReady, user,
+        currentClan?.id, currentClan?.leaderUid, currentClan?.leaderName,
+        currentClan?.membersCount, playerClanId,
+    ]);
 
     useEffect(() => {
         if (!isAuthReady || !user || activeProfileTab !== 'clan') return;
@@ -20840,7 +20925,7 @@ const App: React.FC = () => {
                                                                 <>
                                                                     <h2 className="text-2xl font-bold text-yellow-400 mb-2">Клан {clan?.name}</h2>
                                                                     <p className="text-sm text-gray-300">
-                                                                        В клане {clan?.membersCount} человек, {clan?.membersCount * 100 || 0} славы
+                                                                         В клане {clanMembers.length} человек, {clanMembers.length * 100 || 0} славы
                                                                     </p>
                                                                     <p className="text-sm text-gray-300 mt-1">
                                                                         Лидер: <span className="text-white font-bold">{clan?.leaderName}</span>
