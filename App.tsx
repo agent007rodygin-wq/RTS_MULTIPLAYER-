@@ -22158,7 +22158,8 @@ const App: React.FC = () => {
                 })}
             </div>
 
-            {/* Resources - Top Center (glass panel) */}
+            {/* Resources - Top Center (glass panel) — hidden when Personal Cabinet is open */}
+            {!showProfileModal && (
             <ResourceBar
                 coinImageUrl={coinImageUrl}
                 populationImageUrl={populationImageUrl}
@@ -22170,6 +22171,7 @@ const App: React.FC = () => {
                 rubies={playerRubies}
                 onBuyRubies={openRubyShopModal}
             />
+            )}
 
             {/* Player Info - Compact Style (moved to top-left where resources were) */}
             <div className="absolute top-2 left-2 flex items-center space-x-2 player-info">
@@ -22331,7 +22333,8 @@ const App: React.FC = () => {
                 </div>
             </div>
 
-            {/* Zoom Controls & Settings - Top Right, responsive layout */}
+            {/* Zoom Controls & Settings - Top Right, responsive layout — hidden when Personal Cabinet is open */}
+            {!showProfileModal && (
             <div className="fixed top-4 right-4 z-50 zoom-controls">
                 <div className="flex items-center gap-2 max-md:flex-col max-md:items-end max-md:gap-1">
                     {/* Zoom Out (-) - order last on mobile */}
@@ -22402,8 +22405,10 @@ const App: React.FC = () => {
                     </div>
                 </div>
             </div>
+            )}
 
-            {/* Tablet Menu Button - Bottom Right */}
+            {/* Tablet Menu Button - Bottom Right — hidden when Personal Cabinet is open */}
+            {!showProfileModal && (
             <div className="fixed bottom-4 right-4 flex flex-col items-end gap-3 z-50 game-buttons-right">
                 <button
                     onClick={() => {
@@ -22416,6 +22421,7 @@ const App: React.FC = () => {
                     <img src="/Gui/Front/планшет (основное меню)/tablet_button.webp" alt="Tablet Menu" className="w-[140px] h-[140px] object-contain" />
                 </button>
             </div>
+            )}
 
             {/* Tablet Menu Modal */}
             {(showMainTabletMenu || !!activeTabletTutorial) && (
