@@ -2684,6 +2684,8 @@ const App: React.FC = () => {
     const [userGloryAdjustments, setUserGloryAdjustments] = useState<Record<string, number>>({});
     const [friends, setFriends] = useState<Friend[]>([]);
     const [playerHistory, setPlayerHistory] = useState<HistoryEntry[]>([]);
+    const [historyLoadState, setHistoryLoadState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
+    const [historyClearing, setHistoryClearing] = useState(false);
     const [onlineUsers, setOnlineUsers] = useState<Record<ChatTab, { name: string, uid: string }[]>>({
         general: [], banya: [], loot: [], clan: [], police: []
     });
@@ -8826,14 +8828,95 @@ const App: React.FC = () => {
         ]);
     }, []);
 
+    const PLAYER_HISTORY_LIMIT = 100;
+
     const addHistoryLog = (message: string, type: HistoryEntry['type']) => {
-        setPlayerHistory(prev => [{
-            id: Date.now(),
+        const id = crypto.randomUUID();
+        const entry: HistoryEntry = {
+            id,
             message: repairMojibakeCp1251Utf8(message),
             timestamp: Date.now(),
-            type
-        }, ...prev]);
+            type,
+        };
+
+        // Optimistic local append, capped.
+        setPlayerHistory(prev => [entry, ...prev].slice(0, PLAYER_HISTORY_LIMIT));
+        if (historyLoadState === 'empty') setHistoryLoadState('ready');
+
+        if (!isAuthReady || !user) return;
+
+        const docRef = doc(db, 'history', id);
+        setDoc(docRef, {
+            version: 1,
+            userId: user.uid,
+            message: entry.message,
+            type: entry.type,
+            timestamp: entry.timestamp,
+        }).catch(e => {
+            // Remove optimistic entry on failure so UI doesn't show false history.
+            setPlayerHistory(prev => prev.filter(p => p.id !== id));
+            console.warn('[History] save failed', { id, error: String(e?.message || e) });
+        });
     };
+
+    // Load persisted history on auth/user change.
+    useEffect(() => {
+        if (!isAuthReady) return;
+
+        if (!user) {
+            setPlayerHistory([]);
+            setHistoryLoadState('empty');
+            return;
+        }
+
+        let cancelled = false;
+        const capturedUid = user.uid;
+        setHistoryLoadState('loading');
+
+        const load = async () => {
+            try {
+                const snap = await getDocs(query(
+                    collection(db, 'history'),
+                    where('userId', '==', capturedUid),
+                    orderBy('timestamp', 'desc'),
+                    limit(PLAYER_HISTORY_LIMIT)
+                ));
+
+                if (cancelled || user?.uid !== capturedUid) return;
+
+                const loaded = snap.docs.map(docSnap => {
+                    const data = docSnap.data();
+                    return {
+                        id: docSnap.id,
+                        message: data.message || '',
+                        type: (data.type as HistoryEntry['type']) || 'system',
+                        timestamp: Number(data.timestamp) || 0,
+                    };
+                });
+
+                setPlayerHistory(current => {
+                    const merged = new Map<string, HistoryEntry>();
+                    for (const e of current) merged.set(e.id, e);
+                    for (const e of loaded) {
+                        if (!merged.has(e.id)) merged.set(e.id, e);
+                    }
+                    return [...merged.values()]
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .slice(0, PLAYER_HISTORY_LIMIT);
+                });
+
+                const total = loaded.length + (playerHistory.length > 0 ? 1 : 0);
+                setHistoryLoadState(total > 0 ? 'ready' : 'empty');
+            } catch (e) {
+                if (cancelled) return;
+                console.warn('[History] load failed', String(e?.message || e));
+                setHistoryLoadState(playerHistory.length > 0 ? 'ready' : 'error');
+            }
+        };
+
+        load();
+        return () => { cancelled = true; };
+    }, [isAuthReady, user?.uid]);
 
     const getUserLevel = useCallback((name: string, uid?: string) => {
         // For current user, always use authoritative local state
@@ -9051,6 +9134,28 @@ const App: React.FC = () => {
         setSelectedChatUser(null);
     };
     addHistoryLogRef.current = addHistoryLog;
+
+    const handleClearHistory = async () => {
+        if (!user || historyClearing) return;
+        setHistoryClearing(true);
+        try {
+            const col = collection(db, 'history');
+            const q = query(col, where('userId', '==', user.uid), limit(450));
+            while (true) {
+                const snap = await getDocs(q);
+                if (snap.empty) break;
+                const batch = writeBatch(db);
+                snap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
+            setPlayerHistory([]);
+            setHistoryLoadState('empty');
+        } catch (e) {
+            console.warn('[History] clear failed', String(e?.message || e));
+        } finally {
+            setHistoryClearing(false);
+        }
+    };
     const handleBanPlayerByUid = async (targetUid: string, cost: number, durationMinutes: number) => {
         if (playerGold < cost || !user) {
             alert(`Недостаточно золота! Требуется ${cost.toLocaleString()} монет.`);
@@ -21511,14 +21616,23 @@ const App: React.FC = () => {
 
                             {activeProfileTab === 'history' && (
                                 <div className="flex flex-col h-full">
-                                    {playerHistory.length > 0 ? (
+                                    {historyLoadState === 'loading' ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                            <p>Загрузка истории...</p>
+                                        </div>
+                                    ) : historyLoadState === 'error' ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                            <p>Не удалось загрузить историю.</p>
+                                        </div>
+                                    ) : playerHistory.length > 0 ? (
                                         <>
                                             <div className="flex justify-end mb-2">
                                                 <button
-                                                    onClick={() => setPlayerHistory([])}
-                                                    className="bg-red-600/80 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors"
+                                                    onClick={handleClearHistory}
+                                                    disabled={historyClearing}
+                                                    className="bg-red-600/80 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    Очистить историю
+                                                    {historyClearing ? 'Удаление...' : 'Очистить историю'}
                                                 </button>
                                             </div>
                                             <div className="space-y-3 pr-2">
@@ -21527,14 +21641,14 @@ const App: React.FC = () => {
                                                     <div className="flex justify-between items-center mb-1">
                                                         <span className={`text-xs uppercase font-bold px-2 py-0.5 rounded ${entry.type === 'build' ? 'bg-green-900/50 text-green-300' :
                                                                 entry.type === 'move' ? 'bg-purple-900/50 text-purple-300' :
-                                                                    entry.type === 'destroy' ? 'bg-red-900/50 text-red-300' :
-                                                                        entry.type === 'economy' ? 'bg-yellow-900/50 text-yellow-300' :
-                                                                            'bg-gray-600/50 text-gray-300'
+                                                                entry.type === 'destroy' ? 'bg-red-900/50 text-red-300' :
+                                                                entry.type === 'economy' ? 'bg-yellow-900/50 text-yellow-300' :
+                                                                'bg-gray-600/50 text-gray-300'
                                                             }`}>
                                                             {entry.type === 'build' ? 'Строительство' :
                                                                 entry.type === 'move' ? 'Перемещение' :
-                                                                    entry.type === 'destroy' ? 'Разрушение' :
-                                                                        entry.type === 'economy' ? 'Экономика' : 'Действие'}
+                                                                entry.type === 'destroy' ? 'Разрушение' :
+                                                                entry.type === 'economy' ? 'Экономика' : 'Действие'}
                                                         </span>
                                                         <span className="text-gray-500 text-xs">{new Date(entry.timestamp).toLocaleString("ru-RU")}</span>
                                                     </div>

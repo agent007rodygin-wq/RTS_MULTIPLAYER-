@@ -201,7 +201,7 @@ export interface Clan {
 }
 
 export interface HistoryEntry {
-  id: number;
+  id: string;
   message: string;
   timestamp: number;
   type: 'build' | 'move' | 'destroy' | 'economy' | 'social' | 'combat' | 'system';
