@@ -2571,6 +2571,7 @@ const App: React.FC = () => {
     const gameAlertOkRef = useRef<HTMLButtonElement | null>(null);
 
     // Build-info banner — only shown when explicitly enabled, never for normal production users.
+    // Reads /version.json directly via fetch(). No helper layer, no dynamic import, no extra chunk.
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const shouldShowBuildInfo =
@@ -2581,23 +2582,29 @@ const App: React.FC = () => {
         let cancelled = false;
         (async () => {
             try {
-                const { getBuildInfo } = await import('./src/buildInfo');
-                const BUILD_INFO = await getBuildInfo();
+                const res = await fetch('/version.json', { cache: 'no-cache' });
+                if (!res.ok) {
+                    console.warn(`[Application Version] /version.json responded ${res.status}`);
+                    return;
+                }
+                const info = await res.json();
                 if (cancelled) return;
                 console.log(
                     '[Application Version]',
                     {
-                        version: BUILD_INFO.version,
-                        commit: BUILD_INFO.commit,
-                        shortCommit: BUILD_INFO.shortCommit,
-                        branch: BUILD_INFO.branch,
-                        buildDate: BUILD_INFO.buildDate,
-                        buildId: BUILD_INFO.buildId,
-                        dirty: BUILD_INFO.dirty,
+                        schemaVersion: info.schemaVersion,
+                        version: info.version,
+                        commit: info.commit,
+                        shortCommit: info.shortCommit,
+                        branch: info.branch,
+                        buildDate: info.buildDate,
+                        buildId: info.buildId,
+                        deploymentMode: info.deploymentMode,
+                        dirty: info.dirty,
                     }
                 );
             } catch (e) {
-                console.warn('[Application Version] failed to load build info', e);
+                console.warn('[Application Version] failed to load /version.json', e);
             }
         })();
         return () => { cancelled = true; };

@@ -9,22 +9,31 @@ const os = require('os');
 // ─── Frozen version.json schema (v1) ─────────────────────────────────────────
 // This is the canonical field set and ordering for dist/version.json.
 // Field names MUST NOT be renamed, removed, or repurposed without bumping
-// the schema version and updating consumers (src/buildInfo.ts, docs).
+// VERSION_JSON_SCHEMA_VERSION and updating consumers (App.tsx banner, docs).
 // Add-only changes (new optional fields) are permitted; existing fields
 // keep their name and type.
-const VERSION_JSON_SCHEMA = [
-  { name: 'version',        type: 'string',  source: 'package.json#version (fallback "0.0.0")' },
-  { name: 'commit',         type: 'string',  source: 'git rev-parse HEAD (fallback "unknown")' },
-  { name: 'shortCommit',    type: 'string',  source: 'first 7 chars of commit (fallback "unknown")' },
-  { name: 'branch',         type: 'string',  source: 'git rev-parse --abbrev-ref HEAD (fallback "unknown")' },
-  { name: 'buildDate',      type: 'string',  source: 'new Date().toISOString()' },
-  { name: 'buildId',        type: 'string',  source: 'derived: <commit12>-<compactISOBuildDate>' },
-  { name: 'dirty',          type: 'boolean', source: 'git status --porcelain has any non-empty line' },
-  { name: 'buildMachine',   type: 'string',  source: 'COMPUTERNAME || HOSTNAME || os.hostname() (fallback "unknown")' },
-  { name: 'nodeVersion',    type: 'string',  source: 'process.versions.node prefixed with "v" (fallback "unknown")' },
-  { name: 'viteVersion',    type: 'string',  source: 'node_modules/vite/package.json#version (fallback "unknown")' },
-];
+//
+// schemaVersion (v1) is written as the FIRST field of every version.json.
+// It lets future parsers detect schema drift before reading other fields.
+// `dirty` (boolean) is retained for machine consumers; `deploymentMode`
+// (string "clean" | "dirty") is the human-readable form of the same fact.
+// Both are written together so today's existing readers keep working and
+// tomorrow's logs stay easy to read.
 const VERSION_JSON_SCHEMA_VERSION = 1;
+const VERSION_JSON_SCHEMA = [
+  { name: 'schemaVersion',   type: 'number',  source: `VERSION_JSON_SCHEMA_VERSION constant (currently ${VERSION_JSON_SCHEMA_VERSION})` },
+  { name: 'version',         type: 'string',  source: 'package.json#version (fallback "0.0.0")' },
+  { name: 'commit',          type: 'string',  source: 'git rev-parse HEAD (fallback "unknown")' },
+  { name: 'shortCommit',     type: 'string',  source: 'first 7 chars of commit (fallback "unknown")' },
+  { name: 'branch',          type: 'string',  source: 'git rev-parse --abbrev-ref HEAD (fallback "unknown")' },
+  { name: 'buildDate',       type: 'string',  source: 'new Date().toISOString()' },
+  { name: 'buildId',         type: 'string',  source: 'derived: <commit12>-<compactISOBuildDate>' },
+  { name: 'deploymentMode',  type: 'string',  source: '"dirty" if git status --porcelain has any non-empty line, else "clean"' },
+  { name: 'dirty',           type: 'boolean', source: 'true iff git status --porcelain has any non-empty line (machine-readable form of deploymentMode)' },
+  { name: 'buildMachine',    type: 'string',  source: 'COMPUTERNAME || HOSTNAME || os.hostname() (fallback "unknown")' },
+  { name: 'nodeVersion',     type: 'string',  source: 'process.versions.node prefixed with "v" (fallback "unknown")' },
+  { name: 'viteVersion',     type: 'string',  source: 'node_modules/vite/package.json#version (fallback "unknown")' },
+];
 
 function tryGit(args, cwd) {
   try {
@@ -109,12 +118,14 @@ function getBuildInfo(options) {
   const buildId = makeBuildId({ commit, buildDate });
   // Build the object in the exact frozen-schema order.
   const info = {
+    schemaVersion: VERSION_JSON_SCHEMA_VERSION,
     version,
     commit,
     shortCommit: shortHash(commit),
     branch,
     buildDate,
     buildId,
+    deploymentMode: dirty ? 'dirty' : 'clean',
     dirty,
     buildMachine,
     nodeVersion,

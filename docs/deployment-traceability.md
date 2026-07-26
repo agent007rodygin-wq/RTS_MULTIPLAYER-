@@ -38,29 +38,33 @@ renaming, removing, or repurposing any existing field. Add-only changes
 
 The exact field set, in the order it appears in `version.json`:
 
-| Field          | Type    | Source                                                              |
-| -------------- | ------- | ------------------------------------------------------------------ |
-| `version`      | string  | `package.json#version` (fallback `"0.0.0"`)                         |
-| `commit`       | string  | `git rev-parse HEAD` (fallback `"unknown"`)                        |
-| `shortCommit`  | string  | First 7 chars of `commit` (fallback `"unknown"`)                   |
-| `branch`       | string  | `git rev-parse --abbrev-ref HEAD` (fallback `"unknown"`)           |
-| `buildDate`    | string  | `new Date().toISOString()` (UTC ISO-8601)                          |
-| `buildId`      | string  | Derived: `<commit12>-<compactBuildDate>` (see §3)                 |
-| `dirty`        | boolean | `true` if `git status --porcelain` prints any non-empty line       |
-| `buildMachine` | string  | `COMPUTERNAME` \|\| `HOSTNAME` \|\| `os.hostname()` (fallback `unknown`) |
-| `nodeVersion`  | string  | `process.versions.node` prefixed with `v` (fallback `"unknown"`)  |
-| `viteVersion`  | string  | `node_modules/vite/package.json#version` (fallback `"unknown"`)   |
+| Field            | Type    | Source                                                              |
+| ---------------- | ------- | ------------------------------------------------------------------ |
+| `schemaVersion`  | number  | `VERSION_JSON_SCHEMA_VERSION` constant (currently `1`). First field, lets parsers detect schema drift before reading the rest. |
+| `version`        | string  | `package.json#version` (fallback `"0.0.0"`)                         |
+| `commit`         | string  | `git rev-parse HEAD` (fallback `"unknown"`)                        |
+| `shortCommit`    | string  | First 7 chars of `commit` (fallback `"unknown"`)                   |
+| `branch`         | string  | `git rev-parse --abbrev-ref HEAD` (fallback `"unknown"`)           |
+| `buildDate`      | string  | `new Date().toISOString()` (UTC ISO-8601)                          |
+| `buildId`        | string  | Derived: `<commit12>-<compactBuildDate>` (see §3)                 |
+| `deploymentMode` | string  | `"dirty"` if `git status --porcelain` has any non-empty line, else `"clean"`. Human-readable form of `dirty`. |
+| `dirty`          | boolean | `true` iff `git status --porcelain` has any non-empty line. Machine-readable form of `deploymentMode` (kept for backwards compatibility with existing consumers). |
+| `buildMachine`   | string  | `COMPUTERNAME` \|\| `HOSTNAME` \|\| `os.hostname()` (fallback `unknown`) |
+| `nodeVersion`    | string  | `process.versions.node` prefixed with `v` (fallback `"unknown"`)  |
+| `viteVersion`    | string  | `node_modules/vite/package.json#version` (fallback `"unknown"`)   |
 
 Example:
 
 ```json
 {
+  "schemaVersion": 1,
   "version": "0.0.0",
-  "commit": "b3c0f8fc607cc9ffe1e0e4ae32f3519d9fb0acaf",
-  "shortCommit": "b3c0f8f",
+  "commit": "4eee8792c635f1770f001b3337dcec144cc4a78e",
+  "shortCommit": "4eee879",
   "branch": "main",
-  "buildDate": "2026-07-26T14:44:57.832Z",
-  "buildId": "b3c0f8fc607c-20260726T144457",
+  "buildDate": "2026-07-26T16:15:47.938Z",
+  "buildId": "4eee8792c635-20260726T161547",
+  "deploymentMode": "clean",
   "dirty": false,
   "buildMachine": "URO",
   "nodeVersion": "v24.18.0",
@@ -68,10 +72,13 @@ Example:
 }
 ```
 
-A `dirty:true` value in version.json is a red flag — it means the deploy was
-forced past the dirty-tree guard via `--allow-dirty` (see §5) and the deployed
-build does NOT match any committed revision. Investigate before treating the
-deployed code as canonical.
+A `deploymentMode: "dirty"` (or `dirty: true`) value in version.json is a red
+flag — it means the deploy was forced past the dirty-tree guard via
+`--allow-dirty` (see §5) and the deployed build does NOT match any committed
+revision. Investigate before treating the deployed code as canonical.
+`deploymentMode` is the recommended human-readable field; `dirty` is kept for
+machine consumers (logs scrapers, dashboards) that already depend on a
+boolean.
 
 ---
 
@@ -128,9 +135,9 @@ https://<game-host>/?debugBuild=1
 The application will print a one-time line to the DevTools console:
 
 ```
-[Application Version] { version: "0.0.0", commit: "b3c0f8f…",
+[Application Version] { schemaVersion: 1, version: "0.0.0", commit: "b3c0f8f…",
   shortCommit: "b3c0f8f", branch: "main", buildDate: "…",
-  buildId: "b3c0f8fc607c-20260726T144457", dirty: false }
+  buildId: "b3c0f8fc607c-20260726T144457", deploymentMode: "clean", dirty: false }
 ```
 
 This banner is the *only* side effect of `?debugBuild=1`. It does not change
@@ -155,9 +162,11 @@ The banner is gated by **all three of these conditions being false**:
 3. `?debugBuild=1` in the URL (must be added deliberately).
 
 In a normal production visit all three are false, the `useEffect` returns
-early before importing the build-info chunk, the lazy chunk
-`dist/assets/buildInfo-*.js` is never fetched over the network, and no log
-line is emitted. Console noise for end users is exactly zero.
+early before issuing any `fetch`. No request to `/version.json` is made, no
+log line is emitted, and no extra JS chunk is loaded (the banner reads
+`/version.json` inline via `fetch`, with no helper module and no dynamic
+import — the chain is `App.tsx` `useEffect` → `fetch('/version.json')` →
+`console.log`). Console noise for end users is exactly zero.
 
 ---
 
@@ -197,14 +206,16 @@ $env:DEPLOY_ALLOW_DIRTY = "1"; node deploy.cjs
 When `--allow-dirty` is used:
 - The deploy proceeds.
 - `version.json` is still written and still reaches production.
-- `version.json.dirty` is set to `true`, and `deploy.log` records
-  `dirty=true`.
+- `version.json.deploymentMode` is set to `"dirty"` and `dirty` is set to
+  `true`. `deploy.log` records `dirty=true`.
 - A warning is printed at the start of the deploy.
 
 The operator is therefore free to ship a hotfix from a dirty tree without
-losing traceability — the `dirty:true` flag is the audit trail that this
-deploy did not come from a clean commit, and it is visible in production
-via `curl /version.json`.
+losing traceability — the `deploymentMode: "dirty"` flag is the audit trail
+that this deploy did not come from a clean commit, and it is visible in
+production via `curl /version.json`. Either `deploymentMode` or `dirty` is
+enough to detect dirty deploys programmatically; humans typically scan the
+string field, scripts typically check the boolean.
 
 ---
 
@@ -283,8 +294,7 @@ back to. That audit trail is exactly the gap this feature closes.
 | ----------------------------- | ------------------------------------------------------------------- |
 | `scripts/build-version.cjs`  | Reads git+package state, produces build-info object, optionally writes `dist/version.json`. Exports `getBuildInfo`, `VERSION_JSON_SCHEMA`, `VERSION_JSON_SCHEMA_VERSION`. |
 | `deploy.cjs`                  | Imports the generator. Blocks on dirty tree unless `--allow-dirty`. Writes `dist/version.json` after `runBuild()`. Appends to `deploy.log`. Prints version metadata to deployer terminal. Echoes `cat version.json` on the VPS after upload. |
-| `src/buildInfo.ts`            | Runtime helper for the in-app banner. Fetches `/version.json` lazily, caches result, returns typed `BuildInfo`. Falls back to `unknown` constants if the file is absent. |
-| `App.tsx`                    | Adds one top-level `useEffect` inside the `App` component that prints the `[Application Version] {...}` banner only when `import.meta.env.DEV` OR `window.__SHOW_BUILD_INFO__` OR `?debugBuild=1`. No module-scope logging. No hook reordering. |
+| `App.tsx`                    | Adds one top-level `useEffect` inside the `App` component that, when explicitly enabled (`import.meta.env.DEV` OR `window.__SHOW_BUILD_INFO__` OR `?debugBuild=1`), issues a direct `fetch('/version.json')` and prints the `[Application Version] {...}` banner to the console. No helper module, no dynamic `import()`, no extra JS chunk. No module-scope logging. No hook reordering. |
 | `docs/deployment-traceability.md` | This document. |
 
 No other files in this repository are touched by the traceability feature.
