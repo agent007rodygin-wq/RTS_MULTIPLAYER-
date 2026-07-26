@@ -2570,6 +2570,39 @@ const App: React.FC = () => {
     const gameAlertQueueRef = useRef<string[]>([]);
     const gameAlertOkRef = useRef<HTMLButtonElement | null>(null);
 
+    // Build-info banner — only shown when explicitly enabled, never for normal production users.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const shouldShowBuildInfo =
+            (import.meta as any).env?.DEV === true ||
+            (window as any).__SHOW_BUILD_INFO__ === true ||
+            new URLSearchParams(window.location.search).get('debugBuild') === '1';
+        if (!shouldShowBuildInfo) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const { getBuildInfo } = await import('./src/buildInfo');
+                const BUILD_INFO = await getBuildInfo();
+                if (cancelled) return;
+                console.log(
+                    '[Application Version]',
+                    {
+                        version: BUILD_INFO.version,
+                        commit: BUILD_INFO.commit,
+                        shortCommit: BUILD_INFO.shortCommit,
+                        branch: BUILD_INFO.branch,
+                        buildDate: BUILD_INFO.buildDate,
+                        buildId: BUILD_INFO.buildId,
+                        dirty: BUILD_INFO.dirty,
+                    }
+                );
+            } catch (e) {
+                console.warn('[Application Version] failed to load build info', e);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
     useEffect(() => {
         const localStorageAvailable = (() => {
             try {
