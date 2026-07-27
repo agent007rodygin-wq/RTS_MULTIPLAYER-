@@ -1,0 +1,255 @@
+/* ═══════════════════════════════════════════
+   ResourceBar — compact game-style resource panel
+   Low-profile, semi-transparent, mobile-strategy aesthetic.
+   ═══════════════════════════════════════════ */
+
+/* ── panel ── */
+
+.bar {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  width: fit-content;
+  max-width: calc(100vw - 16px);
+  white-space: nowrap;
+
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+
+  background:
+    rgba(18, 42, 14, 0.52),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.02)
+    );
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+
+  transition:
+    gap 0.25s ease,
+    padding 0.25s ease,
+    background-color 0.25s ease;
+}
+
+/* fallback when backdrop-filter is unsupported */
+@supports not (backdrop-filter: blur(1px)) {
+  .bar {
+    background: rgba(18, 42, 14, 0.68);
+  }
+}
+
+/* ── resource group ── */
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── icon ── */
+
+.icon {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.iconRuby {
+  composes: icon;
+}
+
+/* ── text ── */
+
+.text {
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  font-size: 14px;
+  white-space: nowrap;
+  text-shadow:
+    2px 2px 0 #000,
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+}
+
+.textGold  { color: #ffe484; }
+.textPop   { color: #c7d2fe; }
+.textRuby  { color: #f9a8d4; }
+
+/* ── ruby button ── */
+
+.rubyBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 4px;
+}
+
+.rubyBtn:focus-visible {
+  outline: 2px solid rgba(249, 168, 212, 0.7);
+  outline-offset: 2px;
+}
+
+/* ── separator ── */
+
+.separator {
+  width: 1px;
+  align-self: stretch;
+  min-height: 22px;
+  flex-shrink: 0;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+}
+
+/* ── ruby tooltip (unchanged) ── */
+
+.rubyGroup {
+  composes: group;
+  position: relative;
+}
+
+.tooltip {
+  display: none;
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.rubyGroup:hover .tooltip {
+  display: block;
+}
+
+.tooltipInner {
+  min-width: 320px;
+  border-radius: 16px;
+  padding: 16px 18px;
+  background: linear-gradient(180deg, rgba(14, 22, 40, 0.96) 0%, rgba(8, 12, 24, 0.96) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.38);
+}
+
+.tooltipText {
+  margin: 0;
+  color: #60a5fa;
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.tooltipActions {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tooltipBtnBuy {
+  border-radius: 14px;
+  border: 1px solid #2d6811;
+  background: linear-gradient(180deg, #92cd58 0%, #4f9d27 46%, #387e16 100%);
+  color: #ffffff;
+  font-family: "Nunito", sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  line-height: 1;
+  padding: 12px 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(235, 255, 220, 0.62),
+    inset 0 -2px 0 rgba(28, 73, 8, 0.38),
+    0 3px 0 #2d6912,
+    0 7px 12px rgba(0, 0, 0, 0.30);
+  cursor: pointer;
+}
+
+.tooltipBtnAd {
+  border-radius: 14px;
+  border: 1px solid #5a5a5a;
+  background: linear-gradient(180deg, #7f7f7f 0%, #5b5b5b 100%);
+  color: rgba(255, 255, 255, 0.75);
+  font-family: "Nunito", sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  line-height: 1;
+  padding: 12px 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 4px 10px rgba(0, 0, 0, 0.18);
+  cursor: not-allowed;
+}
+
+/* ── responsive ── */
+
+@media (max-width: 768px) {
+  .bar {
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 8px;
+  }
+
+  .group {
+    gap: 3px;
+  }
+
+  .icon,
+  .iconRuby {
+    width: 24px;
+    height: 24px;
+  }
+
+  .text {
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .bar {
+    gap: 3px;
+    padding: 2px 6px;
+  }
+
+  .group {
+    gap: 2px;
+  }
+
+  .icon,
+  .iconRuby {
+    width: 18px;
+    height: 18px;
+  }
+
+  .text {
+    font-size: 0.55rem;
+  }
+
+  .separator {
+    display: none;
+  }
+}
