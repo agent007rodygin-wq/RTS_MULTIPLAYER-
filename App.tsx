@@ -10,6 +10,7 @@ import {
     handleFirestoreError, OperationType, testConnection, deleteField, increment, runTransaction, writeBatch, deleteAll, sanitizePbId,
     clearUserCache, forceClearAuth, requestTreeHit, setRuntimeAuditContext
 } from './src/pocketbase';
+import { useMapForceReload } from './src/game/realtime/mapRealtime';
 import {
     LogIn,
     LogOut,
@@ -4244,34 +4245,7 @@ const App: React.FC = () => {
         return { newBuildings, newResources };
     };
     // Global Force Reload Listener (Ctrl+F5 for everyone)
-    useEffect(() => {
-        if (!isAuthReady || !user) return;
-
-        console.log("?? [SYSTEM] Global reload listener active. Version: 3.1.3");
-        const mapStateRef = doc(db, 'map_state', 'status');
-        let isInitialSnapshot = true;
-
-        const unsubscribe = onSnapshot(mapStateRef, (docSnap) => {
-            const data = docSnap.exists() ? docSnap.data() : null;
-            const serverReloadTime = data?.forceReloadAt || 0;
-
-            if (isInitialSnapshot) {
-                console.log("?? [RELOAD] Initial sync. Current server reload time:", serverReloadTime);
-                lastForceReloadAt.current = serverReloadTime;
-                isInitialSnapshot = false;
-                return;
-            }
-
-            // If we already had an initial sync, and now the time changed (or appeared from 0)
-            if (serverReloadTime > lastForceReloadAt.current) {
-                console.log(`?? [RELOAD] Signal detected: ${lastForceReloadAt.current} -> ${serverReloadTime}. Refreshing!`);
-                lastForceReloadAt.current = serverReloadTime;
-                window.location.reload();
-            }
-        });
-
-        return () => unsubscribe();
-    }, [isAuthReady, user]);
+    useMapForceReload({ isAuthReady, user, lastForceReloadAt });
 
     // Map Generation Sync
     useEffect(() => {
