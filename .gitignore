@@ -27,6 +27,7 @@ dist-ssr
 *.tar
 *.zip
 *.mp4
+!4ad7fd6bdd364b3ea7df7491510ab3fa.mp4
 *.swf
 
 # Exclude heavy assets
