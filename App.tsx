@@ -8845,7 +8845,7 @@ const App: React.FC = () => {
     const PLAYER_HISTORY_LIMIT = 100;
 
     const addHistoryLog = (message: string, type: HistoryEntry['type']) => {
-        const id = crypto.randomUUID();
+        const id = `hist-${makePlacedEntityId(user?.uid)}`;
         const entry: HistoryEntry = {
             id,
             message: repairMojibakeCp1251Utf8(message),
