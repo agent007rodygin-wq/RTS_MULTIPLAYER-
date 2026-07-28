@@ -1424,6 +1424,8 @@ const getBronekurHomeZoneId = () => `${Math.floor(ZONES_X / 2)}_${Math.floor(ZON
 const getBronekurMonsterId = () => `m${BRONEKUR_ID}s1z${getBronekurHomeZoneId()}`;
 const makePlacedEntityId = (uid?: string | null) =>
     sanitizePbId(`${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${uid ?? 'guest'}`);
+const makeHistoryEntryId = (uid?: string | null) =>
+    sanitizePbId(`hist_${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${uid ?? 'guest'}`);
 
 // Detonator Factory (ID 601) animation frames
 const DETONATOR_FACTORY_ID = 601;
@@ -8845,7 +8847,7 @@ const App: React.FC = () => {
     const PLAYER_HISTORY_LIMIT = 100;
 
     const addHistoryLog = (message: string, type: HistoryEntry['type']) => {
-        const id = `hist-${makePlacedEntityId(user?.uid)}`;
+        const id = makeHistoryEntryId(user?.uid);
         const entry: HistoryEntry = {
             id,
             message: repairMojibakeCp1251Utf8(message),

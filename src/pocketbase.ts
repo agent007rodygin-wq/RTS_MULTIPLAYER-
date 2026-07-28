@@ -398,6 +398,7 @@ const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
   map_resources: ['type', 'x', 'y', 'zoneId', 'data', 'gameId'],
   dropped_items: ['itemId', 'zoneId', 'data', 'gameId'],
   map_state: ['data', 'gameId'],
+  history: ['userId', 'message', 'type', 'timestamp'],
   private_messages: ['senderId', 'receiverId', 'participants', 'text', 'timestamp', 'senderName', 'gameId', 'data'],
   chat_messages: ['sender', 'text', 'type', 'timestamp', 'tab', 'senderId', 'channel', 'gameId', 'data'],
   presence: ['uid', 'lastSeen', 'isOnline', 'gameId', 'data'],
@@ -417,6 +418,7 @@ const DATA_FIELDS_BY_COLLECTION: Record<string, string[]> = {
 // For these, we must strip `payload.data` and `gameId` from every write
 // to avoid a 400 Bad Request caused by an unknown field.
 const NO_DATA_FIELD_COLLECTIONS = new Set<string>([
+  'history',
   'leaderboard_profiles',
 ]);
 
@@ -756,6 +758,7 @@ function buildIdLookupFilter(collectionName: string, pbId: string, logicalId: st
   // In PocketBase, unknown fields in filter expressions return 400.
   // Some auth `users` collections may not have `gameId`, so keep users as id-only.
   if (collectionName === 'users') return idFilter;
+  if (collectionName === 'history') return idFilter;
   // leaderboard_profiles has no `gameId` field — use `userId` as the logical-id fallback.
   if (collectionName === 'leaderboard_profiles') {
     return `${idFilter} || userId = "${pbFilterString(logicalId)}"`;
