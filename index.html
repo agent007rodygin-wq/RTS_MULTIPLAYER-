@@ -12,6 +12,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+      /*
+       * Shared modal sizing tokens (build menu, build confirmation, etc.).
+       * These custom properties are consumed in App.tsx via
+       *   width:  min(var(--ui-modal-width),  calc(100vw - 32px))
+       *   height: min(var(--ui-modal-height), calc(100vh - 32px))
+       *   padding: var(--ui-modal-padding-top) ... var(--ui-modal-padding-left)
+       * They were referenced but never defined after a refactor, which made the
+       * min()/padding declarations invalid so the modals collapsed to `auto`
+       * width (the narrow "Меню строительства" bug). Restoring the original
+       * 960x700 base size + 28/70/52/52 padding keeps the intended proportions
+       * while the min() clamps still make it responsive on small screens.
+       */
+      :root {
+        --ui-modal-width: 960px;
+        --ui-modal-height: 700px;
+        --ui-modal-padding-top: 28px;
+        --ui-modal-padding-right: 70px;
+        --ui-modal-padding-bottom: 52px;
+        --ui-modal-padding-left: 52px;
+      }
+
+      /* Scale the modal tokens down on smaller / shorter viewports so the
+         building menu keeps sensible proportions instead of always being
+         clamped hard against the viewport edges. */
+      @media (max-width: 1024px) {
+        :root {
+          --ui-modal-width: calc(100vw - 32px);
+        }
+      }
+      @media (max-height: 760px) {
+        :root {
+          --ui-modal-height: calc(100vh - 32px);
+          --ui-modal-padding-top: 20px;
+          --ui-modal-padding-bottom: 36px;
+        }
+      }
+
       /* Mobile optimizations - Rise of Kingdoms style */
       @media (max-width: 768px) {
         html, body {
