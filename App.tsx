@@ -2447,7 +2447,6 @@ const App: React.FC = () => {
     const [showProtectionMenu, setShowProtectionMenu] = useState(false);
     const [buildConfirmation, setBuildConfirmation] = useState<{ visible: boolean, building: Building | null, x: number, y: number }>({ visible: false, building: null, x: 0, y: 0 });
     const [visualEffects, setVisualEffects] = useState<VisualEffect[]>([]);
-    const [images, setImages] = useState<Record<string, HTMLImageElement>>({});
     const loadedImageElementsRef = useRef<Record<string, HTMLImageElement>>({});
     const requestedImageUrlsRef = useRef<Set<string>>(new Set());
     const lastRenderableImageByEntityRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -2493,14 +2492,6 @@ const App: React.FC = () => {
             }
 
             let completed = 0;
-            let pendingBatch: Record<string, HTMLImageElement> = {};
-
-            const flushBatch = () => {
-                if (Object.keys(pendingBatch).length === 0) return;
-                const batch = pendingBatch;
-                pendingBatch = {};
-                setImages(prev => ({ ...prev, ...batch }));
-            };
 
             urlsToLoad.forEach(url => {
                 const normalizedUrl = normalizeAssetUrl(url);
@@ -2515,9 +2506,6 @@ const App: React.FC = () => {
                     if (finished) return;
                     finished = true;
                     completed++;
-                    if (completed % batchSize === 0 || completed === urlsToLoad.length) {
-                        flushBatch();
-                    }
                     if (completed === urlsToLoad.length) {
                         options?.onComplete?.();
                     }
@@ -2529,8 +2517,6 @@ const App: React.FC = () => {
                     img.onload = () => {
                         loadedImageElementsRef.current[url] = img;
                         loadedImageElementsRef.current[normalizedUrl] = img;
-                        pendingBatch[url] = img;
-                        pendingBatch[normalizedUrl] = img;
                         finish();
                     };
                     img.onerror = () => {
@@ -7051,11 +7037,11 @@ const App: React.FC = () => {
             
             // Load clan avatar images
             clansData.forEach(clan => {
-                if (clan.avatarUrl && !images[clan.avatarUrl]) {
+                if (clan.avatarUrl && !loadedImageElementsRef.current[clan.avatarUrl]) {
                     const img = new Image();
                     img.src = clan.avatarUrl;
                     img.onload = () => {
-                        setImages(prev => ({ ...prev, [clan.avatarUrl!]: img }));
+                        loadedImageElementsRef.current[clan.avatarUrl!] = img;
                     };
                 }
             });
@@ -9608,6 +9594,8 @@ const App: React.FC = () => {
         context.save();
         context.translate(cameraOffset.x, cameraOffset.y);
 
+        const images = loadedImageElementsRef.current;
+
         // Draw ground tiles
         const groundImg = images[groundTileImageUrl];
         
@@ -11284,7 +11272,7 @@ const App: React.FC = () => {
         }
 
         context.restore();
-    }, [cameraOffset, memoizedDrawableEntities, hoveredTile, hoveredOutOfBounds, hasTownHall, images, visualEffects, zoomIndex, worldToScreen, moveMode.active, clans, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
+    }, [cameraOffset, memoizedDrawableEntities, hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, clans, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
 
     const drawRef = useRef(draw);
     const lastDrawAtRef = useRef(0);
