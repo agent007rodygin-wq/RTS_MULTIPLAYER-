@@ -63,6 +63,8 @@ import { ExchangeModal } from './src/components/game/ExchangeModal';
 import { ResourceShopModal } from './src/components/game/ResourceShopModal';
 import { BuildMenuModal } from './src/components/game/BuildMenuModal';
 import { BuildConfirmationModal } from './src/components/game/BuildConfirmationModal';
+import { RoyalElectionsModal, RoyalVotingModal } from './src/components/game/RoyalElectionsModal';
+import { PoliceMoralsModal, PoliceVotingModal } from './src/components/game/PoliceMoralsModal';
 import {
     LogIn,
     LogOut,
@@ -2420,10 +2422,8 @@ const App: React.FC = () => {
     const [leaderboardLoading, setLeaderboardLoading] = useState(false);
     const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
     const [showRoyalElections, setShowRoyalElections] = useState(false);
-    const [royalElectionsTab, setRoyalElectionsTab] = useState<'queen' | 'king'>('queen');
     const [showRoyalVotingModal, setShowRoyalVotingModal] = useState(false);
     const [votingForPlayer, setVotingForPlayer] = useState<string | null>(null);
-    const [voteCount, setVoteCount] = useState(1);
     const [royalVotesTotal, setRoyalVotesTotal] = useState(0);
     const [royalCandidates, setRoyalCandidates] = useState<Record<string, number>>({});
     const [kingId, setKingId] = useState<string | null>(null);
@@ -2578,7 +2578,6 @@ const App: React.FC = () => {
     const lastRecoveredBuildingsUidRef = useRef<string | null>(null);
     const [showPoliceVotingModal, setShowPoliceVotingModal] = useState(false);
     const [policeVotingForPlayer, setPoliceVotingForPlayer] = useState<string | null>(null);
-    const [policeVoteCount, setPoliceVoteCount] = useState(1);
     const [policeCandidates, setPoliceCandidates] = useState<Record<string, { votes: number, bank: number }>>({});
     const [sheriffId, setSheriffId] = useState<string | null>(null);
     const [sheriffName, setSheriffName] = useState<string | null>(null);
@@ -2633,6 +2632,10 @@ const App: React.FC = () => {
     const closeInventoryModal = useCallback(() => setShowInventory(false), []);
     const closeExchangeModal = useCallback(() => setShowExchangeModal(false), []);
     const closeShopModal = useCallback(() => setShowShop(false), []);
+    const closeRoyalElectionsModal = useCallback(() => setShowRoyalElections(false), []);
+    const closeRoyalVotingModal = useCallback(() => setShowRoyalVotingModal(false), []);
+    const closePoliceMoralsModal = useCallback(() => setShowPoliceMorals(false), []);
+    const closePoliceVotingModal = useCallback(() => setShowPoliceVotingModal(false), []);
     const [isClanDirectoryLoading, setIsClanDirectoryLoading] = useState(false);
 
     // Audio/Time
@@ -2800,6 +2803,88 @@ const App: React.FC = () => {
     const lastTouchEndRef = useRef(0); // Track last touch end time to prevent ghost clicks
     const [allUsers, setAllUsers] = useState<Record<string, any>>({});
     const allUsersRef = useRef<Record<string, any>>({});
+
+    const handleOpenPoliceElectionsTab = useCallback(() => {
+        setShowPoliceMorals(false);
+        setActiveProfileTab('police_elections');
+        setShowProfileModal(true);
+    }, []);
+
+    const handleRoyalVoteAction = useCallback((candidateUid: string, voteCount: number) => {
+        const totalCost = voteCount * 800;
+        const energyCost = voteCount * 2;
+        if (playerGold >= totalCost && playerEnergy >= energyCost) {
+            if (sheriffId === candidateUid || deputies.includes(candidateUid)) {
+                alert('Вы не можете голосовать за этого игрока, так как он состоит в полиции!');
+                return;
+            }
+            setPlayerGold(prev => prev - totalCost);
+            setPlayerEnergy(prev => prev - energyCost);
+            const newCandidates = {
+                ...royalCandidates,
+                [candidateUid]: (royalCandidates[candidateUid] || 0) + totalCost
+            };
+            setRoyalCandidates(newCandidates);
+            setRoyalVotesTotal(prev => prev + totalCost);
+            const electionData = {
+                candidates: newCandidates,
+                votesTotal: (royalVotesTotal || 0) + totalCost,
+                electionEndTime: royalElectionEndTime,
+                kingId: kingId,
+                kingName: kingName,
+                queenId: queenId,
+                queenName: queenName
+            };
+            console.log('[RoyalVote] Saving election data:', electionData);
+            setDoc(doc(db, 'elections', 'royal'), electionData).then(() => {
+                console.log('[RoyalVote] Election data saved successfully');
+            }).catch((err) => {
+                console.error('[RoyalVote] Failed to save election data:', err);
+            });
+            alert(`Вы проголосовали за ${allUsers[candidateUid]?.name || 'Игрок'} ${voteCount} раз(а) на сумму ${totalCost.toLocaleString()} монет!`);
+            setShowRoyalVotingModal(false);
+        }
+    }, [allUsers, deputies, kingId, kingName, playerEnergy, playerGold, queenId, queenName, royalCandidates, royalElectionEndTime, royalVotesTotal, sheriffId]);
+
+    const handlePoliceVoteAction = useCallback(async (candidateUid: string, policeVoteCount: number) => {
+        const totalCost = policeVoteCount * 1000;
+        const energyCost = policeVoteCount * 100;
+        if (playerGold >= totalCost && playerEnergy >= energyCost) {
+            setPlayerGold(prev => prev - totalCost);
+            setPlayerEnergy(prev => prev - energyCost);
+            const newCandidates = {
+                ...policeCandidates,
+                [candidateUid]: {
+                    votes: (policeCandidates[candidateUid]?.votes || 0) + policeVoteCount,
+                    bank: (policeCandidates[candidateUid]?.bank || 0) + totalCost
+                }
+            };
+            setPoliceCandidates(newCandidates);
+            
+            const electionData = {
+                candidates: newCandidates,
+                electionEndTime: policeElectionEndTime,
+                sheriffId: sheriffId,
+                sheriffName: sheriffName,
+                deputies: deputies,
+                firstElectionCompleted: firstElectionCompleted
+            };
+            try {
+                await setDoc(doc(db, 'elections', 'police'), electionData);
+                alert(`Вы проголосовали за ${allUsers[candidateUid]?.name || 'Игрок'} ${policeVoteCount} раз(а)!`);
+            } catch (e) {
+                console.error('Failed to save vote:', e);
+                alert('Ошибка при сохранении голоса. Попробуйте еще раз.');
+            }
+            setShowPoliceVotingModal(false);
+        } else {
+            alert('Недостаточно ресурсов!');
+        }
+    }, [allUsers, deputies, firstElectionCompleted, playerEnergy, playerGold, policeCandidates, policeElectionEndTime, sheriffId, sheriffName]);
+
+    const hasPoliceStation = useMemo(() => {
+        return placedBuildings.some(b => b.buildingId === 308 && b.ownerId === user?.uid && !b.isConstructing);
+    }, [placedBuildings, user?.uid]);
     const audioRef = useRef<HTMLAudioElement>(null);
     const [zoneSyncRetryNonce, setZoneSyncRetryNonce] = useState(0);
     const [zoneGateDebug, setZoneGateDebug] = useState<ZoneGateDebugSnapshot | null>(null);
@@ -18941,535 +19026,63 @@ const App: React.FC = () => {
                 guiMenuTopImageUrl={guiMenuTopImageUrl}
             />
 
-            {showRoyalElections && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowRoyalElections(false)}>
-                    <div className="bg-gradient-to-b from-amber-900 to-amber-950 p-4 rounded-lg shadow-2xl w-full max-w-md border-2 border-yellow-600 relative" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-yellow-700">
-                            <h2 className="text-xl font-bold text-yellow-200 flex items-center font-serif">
-                                👑 Королевские выборы
-                            </h2>
-                            <button onClick={() => setShowRoyalElections(false)} className="text-yellow-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
+            <RoyalElectionsModal
+                isOpen={showRoyalElections}
+                onClose={closeRoyalElectionsModal}
+                kingId={kingId}
+                kingName={kingName}
+                queenId={queenId}
+                queenName={queenName}
+                royalElectionEndTime={royalElectionEndTime}
+                royalVotesTotal={royalVotesTotal}
+                royalCandidates={royalCandidates}
+                allUsers={allUsers}
+                user={user}
+                coinImageUrl={coinImageUrl}
+                royalQueenCrownImageUrl={royalQueenCrownImageUrl}
+                royalKingCrownImageUrl={royalKingCrownImageUrl}
+                sheriffId={sheriffId}
+                deputies={deputies}
+            />
 
-                        {/* Current King/Queen Display */}
-                        {(kingId || queenId) && (
-                            <div className="mb-4 bg-gradient-to-r from-yellow-900/50 to-amber-900/50 p-3 rounded-lg border border-yellow-600">
-                                <h3 className="text-yellow-200 font-bold text-center mb-2">Текущие правители</h3>
-                                <div className="flex justify-center gap-4">
-                                    {kingId && (
-                                        <div className="text-center">
-                                            <div className="text-2xl mb-1">🤴</div>
-                                            <div className="text-blue-300 font-bold">{kingName || 'Король'}</div>
-                                            <div className="text-xs text-gray-400">Король</div>
-                                        </div>
-                                    )}
-                                    {queenId && (
-                                        <div className="text-center">
-                                            <div className="text-2xl mb-1">👸</div>
-                                            <div className="text-pink-300 font-bold">{queenName || 'Королева'}</div>
-                                            <div className="text-xs text-gray-400">Королева</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+            <RoyalVotingModal
+                isOpen={showRoyalVotingModal && !!votingForPlayer}
+                votingForPlayer={votingForPlayer}
+                onClose={closeRoyalVotingModal}
+                playerGold={playerGold}
+                playerEnergy={playerEnergy}
+                allUsers={allUsers}
+                coinImageUrl={coinImageUrl}
+                royalKingCrownImageUrl={royalKingCrownImageUrl}
+                sheriffId={sheriffId}
+                deputies={deputies}
+                onVote={handleRoyalVoteAction}
+            />
 
-                        {/* Tabs */}
-                        <div className="flex mb-4 gap-2">
-                            <button
-                                onClick={() => setRoyalElectionsTab('queen')}
-                                className={`flex-1 py-2 px-4 rounded-t-lg font-bold transition-all ${royalElectionsTab === 'queen' ? 'bg-pink-600 text-white border-b-2 border-pink-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-                            >
-                                👸 Королева
-                            </button>
-                            <button
-                                onClick={() => setRoyalElectionsTab('king')}
-                                className={`flex-1 py-2 px-4 rounded-t-lg font-bold transition-all ${royalElectionsTab === 'king' ? 'bg-blue-600 text-white border-b-2 border-blue-400' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-                            >
-                                🤴 Король
-                            </button>
-                        </div>
+            <PoliceMoralsModal
+                isOpen={showPoliceMorals}
+                onClose={closePoliceMoralsModal}
+                hasPoliceStation={hasPoliceStation}
+                policeBadgeImageUrl={policeBadgeImageUrl}
+                sheriffId={sheriffId}
+                sheriffName={sheriffName}
+                policeElectionEndTime={policeElectionEndTime}
+                policeCandidates={policeCandidates}
+                allUsers={allUsers}
+                deputies={deputies}
+                firstElectionCompleted={firstElectionCompleted}
+                onOpenPoliceElectionsTab={handleOpenPoliceElectionsTab}
+            />
 
-                        {/* Crown and Title */}
-                        <div className="flex items-center gap-4 mb-4 bg-black/30 p-3 rounded-lg">
-                            <img
-                                src={royalElectionsTab === 'queen' ? royalQueenCrownImageUrl : royalKingCrownImageUrl}
-                                alt="Crown"
-                                className="w-16 h-16 object-contain"
-                            />
-                            <div className="flex-1">
-                                <p className="text-yellow-100 font-serif text-lg">
-                                    {royalElectionsTab === 'queen' ? 'Королева' : 'Король'} мира еще не объявлен{royalElectionsTab === 'queen' ? 'а' : ''}
-                                </p>
-                                <p className="text-gray-300 text-sm mt-1">
-                                    {(() => {
-                                        if (royalElectionEndTime > 0) {
-                                            const timeLeft = Math.max(0, royalElectionEndTime - Date.now());
-                                            if (timeLeft > 0) {
-                                                const days = Math.floor(timeLeft / 86400000);
-                                                const hours = Math.floor((timeLeft % 86400000) / 3600000);
-                                                const minutes = Math.floor((timeLeft % 3600000) / 60000);
-                                                if (days > 0) {
-                                                    return <>До коронации осталось: <span className="text-yellow-400 font-bold">{days}д {hours}ч</span></>;
-                                                } else {
-                                                    return <>До коронации осталось: <span className="text-yellow-400 font-bold">{hours}ч {minutes}м</span></>;
-                                                }
-                                            } else {
-                                                return <>Голосование завершено! <span className="text-yellow-400 font-bold">Идет подсчет...</span></>;
-                                            }
-                                        }
-                                        return <>Следующие выборы: <span className="text-yellow-400 font-bold">скоро</span></>;
-                                    })()}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Stats */}
-                        <div className="bg-black/30 p-3 rounded-lg mb-4 space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-gray-300">Собрано:</span>
-                                <span className="text-yellow-400 font-bold">{royalVotesTotal.toLocaleString()} монет</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-300">Максимальный банк ставок:</span>
-                                <span className="text-yellow-400 font-bold">1,000,000,000</span>
-                            </div>
-                        </div>
-
-                        {/* Candidates List */}
-                        <div className="bg-black/30 p-3 rounded-lg">
-                            <h3 className="text-yellow-200 font-bold mb-2 font-serif">Список претендентов на трон</h3>
-                            <div className="space-y-2 max-h-40 overflow-y-auto">
-                                {(() => {
-                                    // Filter candidates by gender based on selected tab
-                                    const filteredCandidates = Object.entries(royalCandidates)
-                                        .filter(([uid]) => {
-                                            const playerInfo = allUsers[uid];
-                                            const playerGender = playerInfo?.gender;
-                                            // For 'queen' tab, show only female candidates
-                                            // For 'king' tab, show only male candidates
-                                            // If gender is not set, show in both tabs for now
-                                            if (royalElectionsTab === 'queen') {
-                                                return playerGender === 'female' || playerGender === null || playerGender === undefined;
-                                            } else {
-                                                return playerGender === 'male' || playerGender === null || playerGender === undefined;
-                                            }
-                                        })
-                                        .sort(([, a], [, b]) => b - a)
-                                        .slice(0, 10);
-
-                                    if (filteredCandidates.length === 0) {
-                                        return <p className="text-gray-400 text-sm text-center py-4">Пока никто не голосовал</p>;
-                                    }
-                                    
-                                    return filteredCandidates.map(([uid, votes], index) => {
-                                        const playerInfo = allUsers[uid];
-                                        return (
-                                            <div
-                                                key={uid}
-                                                className={`flex items-center justify-between p-2 rounded ${uid === user?.uid ? 'bg-yellow-900/50 border border-yellow-500' : 'bg-gray-800/50'}`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`font-bold w-6 ${index < 3 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                                        {index + 1}.
-                                                    </span>
-                                                    <span className="text-white">{playerInfo?.name || 'Неизвестный'}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <img src={coinImageUrl} alt="coin" className="w-4 h-4" />
-                                                    <span className="text-yellow-300 font-bold">{votes.toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    });
-                                })()}
-                            </div>
-                        </div>
-
-                        {/* Buffs Info */}
-                        <div className="mt-4 bg-black/30 p-3 rounded-lg">
-                            <h3 className="text-yellow-200 font-bold mb-2 font-serif">Привилегии {royalElectionsTab === 'queen' ? 'королевы' : 'короля'}:</h3>
-                            <ul className="text-sm text-gray-300 space-y-1">
-                                <li>Пишут красным цветом в чате</li>
-                                <li>Бесплатные крики и анонимные сообщения</li>
-                                <li>Строительство и производство на 1% быстрее</li>
-                                <li>Не платят налоги</li>
-                                <li>1 иммунитет от сбития славы в день</li>
-                                <li>1 помилование бана в день</li>
-                                <li>Защита 1 здания на 2 часа в день</li>
-                                <li>+1,000,000 к хранилищу монет</li>
-                                <li>+50 жителей</li>
-                                <li>+1% шанс супер ресурсов</li>
-                            </ul>
-                            {/* Warning for police members */}
-                            {(sheriffId === user?.uid || deputies.includes(user?.uid || '')) && (
-                                <p className="text-red-400 text-xs mt-2 font-bold">Р Р†РЎв„ўР’В Р С—РЎвЂР РЏ Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ РЎРѓРЎвЂљР В°РЎвЂљРЎРЉ Р С”Р С•РЎР‚Р С•Р В»Р ВµР С/Р С”Р С•РЎР‚Р С•Р В»Р ВµР Р†Р С•Р в„–, РЎвЂљР В°Р С” Р С”Р В°Р С” Р Р†РЎвЂ№ РЎРѓР С•РЎРѓРЎвЂљР С•Р С‘РЎвЂљР Вµ Р Р† Р С—Р С•Р В»Р С‘РЎвЂ Р С‘Р С‘!</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showRoyalVotingModal && votingForPlayer && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[60] backdrop-blur-sm" onClick={() => setShowRoyalVotingModal(false)}>
-                    <div className="bg-gradient-to-b from-amber-900 to-amber-950 p-4 rounded-lg shadow-2xl w-full max-w-sm border-2 border-yellow-600 relative" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-yellow-700">
-                            <h2 className="text-lg font-bold text-yellow-200 font-serif">Голосование за короля</h2>
-                            <button onClick={() => setShowRoyalVotingModal(false)} className="text-yellow-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
-
-                        {/* Crown */}
-                        <div className="flex justify-center mb-4">
-                            <img src={royalKingCrownImageUrl} alt="Crown" className="w-20 h-20 object-contain" />
-                        </div>
-
-                        {/* Player Info */}
-                        <div className="bg-black/30 p-3 rounded-lg mb-4 text-center">
-                            <p className="text-gray-300 text-sm mb-2">Вы голосуете за</p>
-                            <div className="flex items-center justify-center gap-2">
-                                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden border-2 border-blue-400">
-                                    {allUsers[votingForPlayer]?.avatar ? (
-                                        <img src={allUsers[votingForPlayer].avatar} alt="Avatar" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className="text-lg font-bold text-white">{allUsers[votingForPlayer]?.name?.charAt(0) || '?'}</span>
-                                    )}
-                                </div>
-                                <span className="text-white font-bold text-lg">{allUsers[votingForPlayer]?.name || "Игрок"}</span>
-                            </div>
-                        </div>
-
-                        {/* Vote Count */}
-                        <div className="bg-black/30 p-3 rounded-lg mb-4">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-gray-300">Количество голосов:</span>
-                                <span className="text-yellow-400 font-bold">{voteCount} <span className="text-gray-400 text-sm">(макс 1255)</span></span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setVoteCount(prev => Math.max(1, prev - 1))}
-                                    className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold text-xl"
-                                >-</button>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="1255"
-                                    value={voteCount}
-                                    onChange={(e) => setVoteCount(parseInt(e.target.value))}
-                                    className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500"
-                                />
-                                <button
-                                    onClick={() => setVoteCount(prev => Math.min(1255, prev + 1))}
-                                    className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold text-xl"
-                                >+</button>
-                            </div>
-                            <div className="flex justify-between text-xs text-gray-500 mt-2">
-                                <span>1</span>
-                                <span className="text-yellow-400">{voteCount} ? 800 = {(voteCount * 800).toLocaleString()} монет</span>
-                                <span>1255</span>
-                            </div>
-                        </div>
-
-                        {/* Info */}
-                        <div className="bg-black/30 p-3 rounded-lg mb-4">
-                            <p className="text-sm text-gray-300">
-                                Если он победит, вы получите монеты назад (80%) и бонус в зависимости от вашего вклада в победу!
-                            </p>
-                        </div>
-
-                        {/* Vote Button */}
-                        <button
-                            onClick={() => {
-                                const totalCost = voteCount * 800;
-                                const energyCost = voteCount * 2;
-                                if (playerGold >= totalCost && playerEnergy >= energyCost) {
-                                    // Check if voting for police member
-                                    if (sheriffId === votingForPlayer || deputies.includes(votingForPlayer || '')) {
-                                        alert('Вы не можете голосовать за этого игрока, так как он состоит в полиции!');
-                                        return;
-                                    }
-                                    // Deduct resources
-                                    setPlayerGold(prev => prev - totalCost);
-                                    setPlayerEnergy(prev => prev - energyCost);
-                                    // Update candidates and total
-                                    const newCandidates = {
-                                        ...royalCandidates,
-                                        [votingForPlayer!]: (royalCandidates[votingForPlayer!] || 0) + totalCost
-                                    };
-                                    setRoyalCandidates(newCandidates);
-                                    setRoyalVotesTotal(prev => prev + totalCost);
-                                    // Save to Firebase with all election data
-                                    const electionData = {
-                                        candidates: newCandidates,
-                                        votesTotal: (royalVotesTotal || 0) + totalCost,
-                                        electionEndTime: royalElectionEndTime,
-                                        kingId: kingId,
-                                        kingName: kingName,
-                                        queenId: queenId,
-                                        queenName: queenName
-                                    };
-                                    console.log('[RoyalVote] Saving election data:', electionData);
-                                    // Use setDoc to ensure data is saved (creates or replaces)
-                                    setDoc(doc(db, 'elections', 'royal'), electionData).then(() => {
-                                        console.log('[RoyalVote] Election data saved successfully');
-                                    }).catch((err) => {
-                                        console.error('[RoyalVote] Failed to save election data:', err);
-                                    });
-                                    alert(`Вы проголосовали за ${allUsers[votingForPlayer]?.name} ${voteCount} раз(а) на сумму ${totalCost.toLocaleString()} монет!`);
-                                    setShowRoyalVotingModal(false);
-                                    setVoteCount(1);
-                                }
-                            }}
-                            disabled={playerGold < voteCount * 800 || playerEnergy < voteCount * 2}
-                            className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-3 px-4 rounded-lg transition-all disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                        >
-                            <span className="flex items-center gap-1"><span className="text-yellow-400">⚡</span> {voteCount * 2}</span>
-                            <span className="flex items-center gap-1"><img src={coinImageUrl} alt="coin" className="w-5 h-5" /> {(voteCount * 800).toLocaleString()}</span>
-                            <span>Сделать ставку</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Police Morals Modal */}
-            {showPoliceMorals && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowPoliceMorals(false)}>
-                    <div className="bg-gradient-to-b from-blue-900 to-blue-950 p-4 rounded-lg shadow-2xl w-full max-w-md border-2 border-blue-500 relative" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-blue-700">
-                            <h2 className="text-xl font-bold text-blue-200 flex items-center gap-2">
-                                <img src={policeBadgeImageUrl} alt="Badge" className="w-6 h-6" />
-                                Полиция нравов
-                            </h2>
-                            <button onClick={() => setShowPoliceMorals(false)} className="text-blue-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
-
-                        {/* Check if player has police station */}
-                        {(() => {
-                            const hasPoliceStation = placedBuildings.some(b => b.buildingId === 308 && b.ownerId === user?.uid && !b.isConstructing);
-                            if (!hasPoliceStation) {
-                                return (
-                                    <div className="bg-black/30 p-4 rounded-lg">
-                                        <div className="text-center">
-                                            <img 
-                                                src={policeBadgeImageUrl} 
-                                                alt="Police Badge" 
-                                                className="w-20 h-20 mx-auto mb-4 opacity-50"
-                                            />
-                                            <p className="text-gray-300 mb-2">Для участия в выборах полиции постройте полицейский участок.</p>
-                                            <p className="text-xs text-gray-500">ID здания: 308</p>
-                                        </div>
-                                    </div>
-                                );
-                            }
-                            return (
-                                <div className="space-y-3">
-                                    {/* Current Sheriff */}
-                                    <div className="bg-black/30 p-3 rounded-lg">
-                                        <h3 className="text-blue-300 font-bold mb-2">Текущий шериф</h3>
-                                        {sheriffId ? (
-                                            <div className="flex items-center gap-3">
-                                                <img src="/last_appx/polise/16.webp" alt="Sheriff" className="w-12 h-12 rounded border-2 border-blue-500" />
-                                                <div>
-                                                    <p className="text-white font-bold">{sheriffName || "Шериф"}</p>
-                                                    <p className="text-xs text-gray-400">Защитник города</p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="text-yellow-400 text-sm">В городе еще нет шерифа. Постройте полицейский участок, чтобы выдвинуть свою кандидатуру на пост шерифа.</p>
-                                        )}
-                                    </div>
-
-                                    {/* Election Timer */}
-                                    {(() => {
-                                        if (policeElectionEndTime > 0) {
-                                            const timeLeft = Math.max(0, policeElectionEndTime - Date.now());
-                                            if (timeLeft > 0) {
-                                                const days = Math.floor(timeLeft / 86400000);
-                                                const hours = Math.floor((timeLeft % 86400000) / 3600000);
-                                                const minutes = Math.floor((timeLeft % 3600000) / 60000);
-                                                const seconds = Math.floor((timeLeft % 60000) / 1000);
-                                                
-                                                let timeStr = '';
-                                                if (days > 0) {
-                                                    timeStr = `${days}д ${hours}ч`;
-                                                } else {
-                                                    timeStr = `${hours}ч ${minutes}м ${seconds}с`;
-                                                }
-                                                
-                                                // Check if election is ongoing (candidates exist)
-                                                const isOngoingElection = Object.keys(policeCandidates).length > 0;
-                                                
-                                                if (isOngoingElection) {
-                                                    return (
-                                                        <div className="bg-yellow-900/30 p-3 rounded-lg border border-yellow-500/50">
-                                                            <p className="text-yellow-300 text-sm font-bold">
-                                                                До окончания выборов: {timeStr}
-                                                            </p>
-                                                        </div>
-                                                    );
-                                                }
-                                            }
-                                        }
-                                        // Show next election timer if sheriff exists and election has ended
-                                        if (sheriffId && firstElectionCompleted && policeElectionEndTime > Date.now()) {
-                                            const timeLeft = policeElectionEndTime - Date.now();
-                                            const days = Math.floor(timeLeft / 86400000);
-                                            const hours = Math.floor((timeLeft % 86400000) / 3600000);
-                                            return (
-                                                <div className="bg-blue-900/30 p-3 rounded-lg border border-blue-500/50">
-                                                    <p className="text-blue-300 text-sm font-bold">
-                                                        До следующих выборов на пост шерифа: {days}д {hours}ч
-                                                    </p>
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
-
-                                    {/* Deputies */}
-                                    {deputies.length > 0 && (
-                                        <div className="bg-black/30 p-3 rounded-lg">
-                                            <h3 className="text-blue-300 font-bold mb-2">Помощники шерифа ({deputies.length}/6)</h3>
-                                            <div className="flex flex-wrap gap-2">
-                                                {deputies.map(depUid => {
-                                                    const depInfo = allUsers[depUid];
-                                                    return (
-                                                        <div key={depUid} className="bg-blue-800/50 px-2 py-1 rounded text-xs text-white flex items-center gap-1">
-                                                            <img src="/last_appx/polise/16.webp" alt="Deputy" className="w-4 h-4" />
-                                                            {depInfo?.name || "Р ВР С–РЎР‚Р С•Р С”"}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Open Profile Button */}
-                                    <button
-                                        onClick={() => {
-                                            setShowPoliceMorals(false);
-                                            setActiveProfileTab('police_elections');
-                                            setShowProfileModal(true);
-                                        }}
-                                        className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg"
-                                    >
-                                        Р С›РЎвЂљР С”РЎР‚РЎвЂ№РЎвЂљРЎРЉ Р Р†РЎвЂ№Р В±Р С•РЎР‚РЎвЂ№ Р Р† Р С—Р С•Р В»Р С‘РЎвЂ Р С‘РЎР‹
-                                    </button>
-                                </div>
-                            );
-                        })()}
-                    </div>
-                </div>
-            )}
-
-            {/* Police Voting Modal */}
-            {showPoliceVotingModal && policeVotingForPlayer && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[60] backdrop-blur-sm" onClick={() => setShowPoliceVotingModal(false)}>
-                    <div className="bg-gradient-to-b from-blue-900 to-blue-950 p-4 rounded-lg shadow-2xl w-full max-w-sm border-2 border-blue-600 relative" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-blue-700">
-                            <h2 className="text-lg font-bold text-blue-200">Голосование за шерифа</h2>
-                            <button onClick={() => setShowPoliceVotingModal(false)} className="text-blue-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
-            
-                        <div className="flex justify-center mb-4">
-                            <img src={policeBadgeImageUrl} alt="Badge" className="w-16 h-16 object-contain" />
-                        </div>
-            
-                        <div className="text-center mb-4">
-                            <p className="text-white font-bold">{allUsers[policeVotingForPlayer]?.name || "Игрок"}</p>
-                            <p className="text-xs text-gray-400">Голоса: {policeCandidates[policeVotingForPlayer]?.votes || 0}</p>
-                        </div>
-            
-                        <div className="flex items-center justify-center gap-4 mb-4">
-                            <button
-                                onClick={() => setPoliceVoteCount(prev => Math.max(1, prev - 1))}
-                                className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold text-xl"
-                            >-</button>
-                            <span className="text-2xl font-bold text-white min-w-[3rem] text-center">{policeVoteCount}</span>
-                            <button
-                                onClick={() => setPoliceVoteCount(prev => Math.min(100, prev + 1))}
-                                className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-bold text-xl"
-                            >+</button>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500 mb-2">
-                            <span>1</span>
-                            <span className="text-blue-400">{policeVoteCount} голосов = {(policeVoteCount * 1000).toLocaleString()} монет</span>
-                            <span>100</span>
-                        </div>
-            
-                        <div className="bg-black/30 p-3 rounded-lg mb-4 text-sm">
-                            <div className="flex justify-between text-gray-300 mb-1">
-                                <span>Монеты:</span>
-                                <span className={playerGold >= policeVoteCount * 1000 ? "text-yellow-400" : "text-red-400"}>
-                                    {(policeVoteCount * 1000).toLocaleString()}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-gray-300 mb-1">
-                                <span>Энергия:</span>
-                                <span className={playerEnergy >= policeVoteCount * 100 ? "text-blue-400" : "text-red-400"}>
-                                    {policeVoteCount * 100}
-                                </span>
-                            </div>
-                        </div>
-            
-                        <button
-                            onClick={async () => {
-                                const totalCost = policeVoteCount * 1000;
-                                const energyCost = policeVoteCount * 100;
-                                if (playerGold >= totalCost && playerEnergy >= energyCost) {
-                                    setPlayerGold(prev => prev - totalCost);
-                                    setPlayerEnergy(prev => prev - energyCost);
-                                    const newCandidates = {
-                                        ...policeCandidates,
-                                        [policeVotingForPlayer!]: {
-                                            votes: (policeCandidates[policeVotingForPlayer!]?.votes || 0) + policeVoteCount,
-                                            bank: (policeCandidates[policeVotingForPlayer!]?.bank || 0) + totalCost
-                                        }
-                                    };
-                                    setPoliceCandidates(newCandidates);
-                                    
-                                    // Save to Firebase with all election data
-                                    const electionData = {
-                                        candidates: newCandidates,
-                                        electionEndTime: policeElectionEndTime,
-                                        sheriffId: sheriffId,
-                                        sheriffName: sheriffName,
-                                        deputies: deputies,
-                                        firstElectionCompleted: firstElectionCompleted
-                                    };
-                                    try {
-                                        await setDoc(doc(db, 'elections', 'police'), electionData);
-                                        alert(`Вы проголосовали за ${allUsers[policeVotingForPlayer!]?.name} ${policeVoteCount} раз(а)!`);
-                                    } catch (e) {
-                                        console.error('Failed to save vote:', e);
-                                        alert('Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р С—РЎР‚Р С‘ РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р ВµР Р…Р С‘Р С‘ Р С–Р С•Р В»Р С•РЎРѓР В°. Р СџР С•Р С—РЎР‚Р С•Р В±РЎС“Р в„–РЎвЂљР Вµ Р ВµРЎвЂ°Р Вµ РЎР‚Р В°Р В·.');
-                                    }
-                                    setShowPoliceVotingModal(false);
-                                    setPoliceVoteCount(1);
-                                } else {
-                                        alert('Недостаточно ресурсов!');
-                                }
-                            }}
-                            disabled={playerGold < policeVoteCount * 1000 || playerEnergy < policeVoteCount * 100}
-                            className={`w-full py-2 rounded-lg font-bold ${playerGold >= policeVoteCount * 1000 && playerEnergy >= policeVoteCount * 100 ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}
-                        >
-                            Голосовать
-                        </button>
-            
-                        <p className="text-xs text-gray-400 text-center mt-2">
-                            Если ваш кандидат победит, вам вернется 80% вложений!
-                        </p>
-                    </div>
-                </div>
-            )}
-            
+            <PoliceVotingModal
+                isOpen={showPoliceVotingModal && !!policeVotingForPlayer}
+                votingForPlayer={policeVotingForPlayer}
+                onClose={closePoliceVotingModal}
+                playerGold={playerGold}
+                playerEnergy={playerEnergy}
+                allUsers={allUsers}
+                onVote={handlePoliceVoteAction}
+            />
             {showShoutModal && (
                 // ... (Shout Modal content) ...
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowShoutModal(false)}>
