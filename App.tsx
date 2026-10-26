@@ -17311,7 +17311,8 @@ const App: React.FC = () => {
         return calculateTopPlayerValue(playerData, tab, user?.uid, currentUserStats, playerGlory);
     };
 
-    const baseTopPlayersData = mergeTopPlayersEntries(
+    // C.5: leaderboard pipeline memoized (merge -> append self -> filter -> sort -> slice)
+    const baseTopPlayersData = useMemo(() => mergeTopPlayersEntries(
         topPlayersData.map((entry) => {
             const supplemental = allUsers[entry.uid] || {};
             return toTopPlayerEntry(entry.uid, {
@@ -17326,7 +17327,7 @@ const App: React.FC = () => {
                 theftsCommitted: Math.max(Number(entry.theftsCommitted || 0) || 0, Number(supplemental.theftsCommitted || 0) || 0),
             });
         }),
-    );
+    ), [topPlayersData, allUsers]);
     const hasLeaderboardResult = !leaderboardLoading && !leaderboardError;
     const currentPlayerLeaderboardValue = !user
         ? 0
@@ -17345,7 +17346,7 @@ const App: React.FC = () => {
         currentPlayerLeaderboardValue > 0 &&
         !baseTopPlayersData.some((entry) => entry.uid === user.uid)
     );
-    const visibleTopPlayersData = shouldAppendCurrentPlayerToLeaderboard && user
+    const visibleTopPlayersData = useMemo(() => shouldAppendCurrentPlayerToLeaderboard && user
         ? mergeTopPlayersEntries(
             baseTopPlayersData,
             [toTopPlayerEntry(user.uid, {
@@ -17357,12 +17358,11 @@ const App: React.FC = () => {
                 ...playerLeaderboardStats,
             })],
         )
-        : baseTopPlayersData;
-    const filteredTopPlayersData = visibleTopPlayersData
-        .filter((u: any) => u.name);
-    const displayedTopPlayersData = filteredTopPlayersData
+        : baseTopPlayersData, [shouldAppendCurrentPlayerToLeaderboard, user, baseTopPlayersData, allUsers, playerName, playerAvatar, playerGlory, playerLeaderboardStats]);
+    const displayedTopPlayersData = useMemo(() => visibleTopPlayersData
+        .filter((u: any) => u.name)
         .sort((a: any, b: any) => getTopPlayerValue(b, activeTopPlayersTab) - getTopPlayerValue(a, activeTopPlayersTab))
-        .slice(0, TOP_PLAYERS_QUERY_LIMIT);
+        .slice(0, TOP_PLAYERS_QUERY_LIMIT), [visibleTopPlayersData, activeTopPlayersTab, user?.uid, playerLeaderboardStats, playerGlory]);
     const hasTopPlayersData = displayedTopPlayersData.length > 0;
 
     // Auto-scroll completely disabled per user request
