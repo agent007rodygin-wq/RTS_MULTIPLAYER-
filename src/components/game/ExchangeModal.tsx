@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 
 export interface ExchangeModalProps {
     isOpen: boolean;
@@ -24,6 +24,15 @@ export const ExchangeModal: React.FC<ExchangeModalProps> = memo(({
     onConfirmExchange
 }) => {
     if (!isOpen) return null;
+
+    const [internalPressed, setInternalPressed] = useState(false);
+    const pressed = isConfirmPressed || internalPressed;
+
+    const handleConfirm = () => {
+        setInternalPressed(true);
+        setTimeout(() => setInternalPressed(false), 250);
+        onConfirmExchange();
+    };
 
     return (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[60] backdrop-blur-md" onClick={onClose}>
@@ -53,11 +62,11 @@ export const ExchangeModal: React.FC<ExchangeModalProps> = memo(({
                         Отмена
                     </button>
                     <button
-                        onClick={onConfirmExchange}
+                        onClick={handleConfirm}
                         className="flex-1 text-white py-2 rounded font-bold transition-all duration-300"
                         style={{
                             background: 'linear-gradient(180deg, rgba(34,197,94,0.95) 0%, rgba(21,128,61,0.9) 100%)',
-                            opacity: isConfirmPressed ? 0.4 : 1,
+                            opacity: pressed ? 0.4 : 1,
                             boxShadow: '0 8px 18px rgba(22,163,74,0.22), inset 0 1px 0 rgba(255,255,255,0.18)'
                         }}
                     >
