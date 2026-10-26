@@ -74,6 +74,7 @@ import { SelectedBuildingModal } from './src/components/game/SelectedBuildingMod
 import { ProfileModal, type ProfileTab } from './src/components/game/ProfileModal';
 import { TabletMenuModal } from './src/components/game/TabletMenuModal';
 import { EnergyModal, RubyModal, BuildingLimitModal } from './src/components/game/SystemModals';
+import { ChatPanel } from './src/components/game/ChatPanel';
 import {
     LogIn,
     LogOut,
@@ -18846,185 +18847,40 @@ const App: React.FC = () => {
             )}
 
             {/* Chat Window */}
-            {chatCollapseState === 'button' ? (
-                <button
-                    onClick={() => setChatCollapseState('tabs')}
-                    className="fixed bottom-2 left-2 w-10 h-10 bg-black/70 backdrop-blur-sm border border-white/10 shadow-2xl rounded-xl flex items-center justify-center hover:bg-white/20 transition-all duration-300 z-50"
-                    title={uiText("Открыть чат")}
-                >
-                    <ChatBubbleIcon className="w-5 h-5 text-gray-300" />
-                </button>
-            ) : (
-            <div className={`fixed bottom-2 left-2 bg-black/70 backdrop-blur-sm border border-white/10 shadow-2xl transition-all duration-300 flex flex-col rounded-xl overflow-hidden chat-window ${chatCollapseState === 'open' ? '' : 'w-auto h-10 chat-collapsed'}`}
-                 style={chatCollapseState === 'open' ? { width: 'min(560px, calc(100vw - 16px))', height: 'clamp(200px, 28vh, 310px)' } : undefined}>
-                <div className="flex items-center bg-black/50 border-b border-white/10 h-10 shrink-0 chat-tabs">
-                    <button
-                        onClick={() => setChatCollapseState(chatCollapseState === 'open' ? 'tabs' : chatCollapseState === 'tabs' ? 'button' : 'open')}
-                        className="h-full px-3 flex items-center justify-center hover:bg-white/10 transition-colors border-r border-white/10"
-                        title={chatCollapseState === 'open' ? uiText('Свернуть до вкладок') : uiText('Развернуть чат')}
-                    >
-                        {chatCollapseState === 'open' ? <ChevronDownIcon className="w-4 h-4 text-gray-300" /> : <ChevronDownIcon className="w-4 h-4 text-gray-300" />}
-                    </button>
-
-                    <button
-                        onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('banya'); }}
-                        className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'banya' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                    >
-                        {uiText('Баня')} {isBanned() && <span className="ml-1 text-red-400">({Math.ceil((banEndTime - Date.now()) / 60000)} {uiText('мин')})</span>}
-                    </button>
-
-                    {!isBanned() && (
-                        <>
-                            <button
-                                onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('general'); }}
-                                className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'general' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                {uiText('Общий')}
-                            </button>
-                            <button
-                                onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('loot'); }}
-                                className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'loot' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                {uiText('Находки')}
-                            </button>
-                            <button
-                                onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('clan'); }}
-                                className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'clan' ? 'bg-white/20 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                            >
-                                {uiText('Клан')}
-                            </button>
-                            {/* Police chat tab - only for sheriff and deputies */}
-                            {(sheriffId === user?.uid || deputies.includes(user?.uid || '')) && (
-                                <button
-                                    onClick={() => { if (chatCollapseState === 'tabs') { setChatCollapseState('open'); } handleSwitchChatTab('police'); }}
-                                    className={`h-full px-4 text-sm font-medium transition-colors border-r border-white/10 ${activeChatTab === 'police' ? 'bg-blue-600/80 text-white' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
-                                >
-                                    {uiText('Полиция')}
-                                </button>
-                            )}
-                        </>
-                    )}
-                </div>
-
-                {chatOpen && (
-                    <>
-                        {activeChatTab === 'clan' && !isInClan ? (
-                            <div className="flex-grow flex items-center justify-center bg-transparent text-gray-400 p-4 text-center select-none">
-                                <p>{uiText('Вы еще не создали или не вступили в клан.')}</p>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="flex-grow flex overflow-hidden">
-                                    <div className="w-3/4 flex flex-col chat-messages-container">
-                                        <div ref={chatMessagesRef} className="flex-grow overflow-y-auto p-2 space-y-1.5 bg-transparent chat-messages" onScroll={handleChatScroll}>
-                                            {orderedChatMessages.map((msg) => {
-                                                const senderText = msg.type === 'system' ? 'Система' : uiText(msg.sender);
-                                                const senderLower = senderText.toLowerCase();
-                                                const isSystemMessage = msg.type === 'system' || senderLower.includes('система');
-                                                return (
-                                                <div key={msg.id} className="text-sm break-words">
-                                                    <span className="text-gray-500 text-xs mr-2">[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>
-                                                    {!isSystemMessage && (
-                                                        <img src={getLevelIcon(getUserLevel(msg.sender, msg.senderId))} className="w-5 h-5 inline-block mr-1 align-middle object-contain translate-y-[1%]" alt="Level" />
-                                                    )}
-                                                    <span
-                                                        onClick={(e) => { if (!isSystemMessage) handleChatUserClick(msg.sender, msg.senderId, e); }}
-                                                        className={`font-bold mr-1 ${isSystemMessage ? 'text-red-500 cursor-default' : 'text-blue-400 cursor-pointer hover:underline'}`}
-                                                    >
-                                                        {senderText}:
-                                                    </span>
-                                                    <span className={msg.type === 'shout' ? 'text-blue-400 font-bold uppercase' : (isSystemMessage ? 'text-red-400 font-semibold' : 'text-gray-200')}>
-                                                        {renderMessageText(msg.text)}
-                                                    </span>
-                                                    {msg.teleportCoordinates && (
-                                                        <span
-                                                            onClick={() => handleSectorTeleport(msg.teleportCoordinates!.x, msg.teleportCoordinates!.y)}
-                                                            className="ml-2 text-green-400 font-bold cursor-pointer hover:text-green-300 hover:underline inline-flex items-center"
-                                                            title={uiText("Телепортироваться в сектор")}
-                                                        >
-                                                            <CompassIcon className="w-3 h-3 mr-1" />
-                                                            {uiText('ТУТ')}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )})}
-                                            {orderedChatMessages.length === 0 && (
-                                                <div className="text-gray-500 text-center italic pt-4 text-sm">{uiText('Сообщений пока нет...')}</div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="w-1/4 border-l border-white/10 bg-black/30 flex flex-col chat-players-sidebar">
-                                        <div className="p-1 text-xs font-bold text-gray-300 text-center border-b border-white/10">{uiText('Игроки')}</div>
-                                        <div className="overflow-y-auto flex-grow p-2 space-y-1">
-                                            {onlineUsers[activeChatTab].map((u, idx) => (
-                                                <div key={idx} className={`text-sm truncate flex items-center ${u.name === playerName ? 'text-green-400 font-bold' : 'text-gray-300'}`}>
-                                                    <span onClick={(e) => handleChatUserClick(u.name, u.uid, e)} className="cursor-pointer hover:text-white hover:underline">{uiText(u.name)}</span>
-                                                    <img src={getLevelIcon(allUsers[u.uid]?.level || 1)} className="w-5 h-5 ml-1 object-contain translate-y-[1%]" alt="Level" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="p-2 bg-black/40 border-t border-white/10 flex gap-2 shrink-0 relative chat-input-area">
-                                    {showEmojiPicker && (
-                                        <div className="absolute bottom-full left-0 mb-2 ml-2 bg-black/80 border border-white/20 rounded-lg p-2 shadow-xl grid grid-cols-6 gap-2 w-64 z-50">
-                                            {KOLOBOK_EMOJIS.map((emoji, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => handleEmojiClick(emoji.code)}
-                                                    className="hover:bg-white/20 p-1 rounded flex items-center justify-center"
-                                                    title={emoji.code}
-                                                >
-                                                    <img src={emoji.url} alt={emoji.code} className="w-6 h-6" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <input
-                                        type="text"
-                                        value={chatInput}
-                                        onChange={(e) => setChatInput(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage('normal')}
-                                        className="flex-grow bg-black/40 text-white text-sm rounded px-3 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 border border-white/20 placeholder-gray-400"
-                                        placeholder={uiText("Напишите сообщение...")}
-                                    />
-                                    <button
-                                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                        className="bg-black/40 hover:bg-white/20 text-yellow-400 px-2 py-1 rounded transition-colors border border-white/20 flex items-center justify-center"
-                                        title={uiText("Смайлики")}
-                                    >
-                                        <SmileyIcon className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={handleSendLocation}
-                                        className={`bg-black/40 hover:bg-white/20 text-white px-3 py-1 rounded transition-colors border border-white/20 flex items-center justify-center ${isLocationCooldown ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        title={isLocationCooldown ? uiText("Подождите...") : uiText("Отправить текущее местоположение")}
-                                    >
-                                        <CompassIcon className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleSendMessage('normal')}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1 rounded transition-colors"
-                                    >
-                                        {uiText('Отправить')}
-                                    </button>
-                                    <button
-                                        onClick={() => handleSendMessage('shout')}
-                                        className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold px-3 py-1 rounded transition-colors"
-                                    >
-                                        Крик
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </>
-                )}
-            </div>
-            )}
-
+            <ChatPanel
+                chatCollapseState={chatCollapseState}
+                setChatCollapseState={setChatCollapseState}
+                activeChatTab={activeChatTab}
+                onSwitchChatTab={handleSwitchChatTab}
+                isBanned={isBanned}
+                banEndTime={banEndTime}
+                sheriffId={sheriffId}
+                deputies={deputies}
+                user={user}
+                chatOpen={chatOpen}
+                isInClan={isInClan}
+                chatMessagesRef={chatMessagesRef}
+                handleChatScroll={handleChatScroll}
+                orderedChatMessages={orderedChatMessages}
+                uiText={uiText}
+                getUserLevel={getUserLevel}
+                getLevelIcon={getLevelIcon}
+                handleChatUserClick={handleChatUserClick}
+                renderMessageText={renderMessageText}
+                handleSectorTeleport={handleSectorTeleport}
+                onlineUsers={onlineUsers}
+                playerName={playerName}
+                allUsers={allUsers}
+                showEmojiPicker={showEmojiPicker}
+                setShowEmojiPicker={setShowEmojiPicker}
+                KOLOBOK_EMOJIS={KOLOBOK_EMOJIS}
+                handleEmojiClick={handleEmojiClick}
+                chatInput={chatInput}
+                setChatInput={setChatInput}
+                handleSendMessage={handleSendMessage}
+                handleSendLocation={handleSendLocation}
+                isLocationCooldown={isLocationCooldown}
+            />
             {gameAlertMessage && (
                 <div className="absolute inset-0 bg-black/60 z-[9999] flex items-start justify-center pt-20 px-4" role="dialog" aria-modal="true">
                     <div className="w-full max-w-lg bg-gray-900 border border-gray-600 rounded-xl shadow-2xl p-5">
