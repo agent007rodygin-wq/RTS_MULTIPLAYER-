@@ -11,6 +11,50 @@ import {
     clearUserCache, forceClearAuth, requestTreeHit, setRuntimeAuditContext
 } from './src/pocketbase';
 import { useMapForceReload } from './src/game/realtime/mapRealtime';
+import { repairMojibakeCp1251Utf8 } from './src/game/utils/mojibake.js';
+import {
+    isMilitaryMarketListing,
+    isGeneralMarketBuilding,
+    isMilitaryMarketBuilding,
+    matchesMarketType,
+    getGeneralMarketBuySectionForItem,
+    matchesGeneralMarketBuyFilters,
+    normalizeMarketListing,
+    buildMarketListingPayload
+} from './src/game/market/marketLogic.js';
+import {
+    getUserCounter,
+    getUserStatCounters,
+    mergeLocalUserStatCounters,
+    hasHigherLeaderboardStats,
+    normalizeClanIdValue,
+    toTopPlayerEntry,
+    mergeTopPlayersEntries
+} from './src/game/leaderboard/leaderboardLogic.js';
+import {
+    resolveUserAvatar,
+    getAvatarCacheKey,
+    readCachedAvatar,
+    writeCachedAvatar,
+    getProfileSettingsCacheKey,
+    readCachedProfileSettings,
+    writeCachedProfileSettings,
+    getLeaderboardStatsCacheKey,
+    readCachedLeaderboardStats,
+    writeCachedLeaderboardStats,
+    getLastPositionCacheKey,
+    readCachedLastPosition,
+    writeCachedLastPosition
+} from './src/game/profile/profileCache.js';
+import {
+    MAX_SAFE_INVENTORY_COUNT,
+    normalizeInventoryCount,
+    sanitizeInventoryCounts
+} from './src/game/inventory/inventorySanitize.js';
+import {
+    getMonsterZoneId,
+    buildMonsterZoneCounts
+} from './src/game/monsters/monsterZones.js';
 import {
     LogIn,
     LogOut,
@@ -349,71 +393,6 @@ type ChatTab = 'general' | 'banya' | 'loot' | 'clan' | 'police';
 type ProfileTab = 'info' | 'clan' | 'history' | 'friends' | 'mail' | 'private' | 'settings' | 'police_elections';
 type TopPlayersTab = 'glory' | 'trees' | 'monsters' | 'buildings' | 'theft';
 type MarketTab = 'buy' | 'sell';
-const isMilitaryMarketListing = (resourceId: number) => MILITARY_ITEM_IDS.includes(resourceId);
-
-const isGeneralMarketBuilding = (buildingInfo: Building) => GENERAL_MARKET_ENGLISH_NAMES.has(buildingInfo.englishName || '');
-
-const isMilitaryMarketBuilding = (buildingInfo: Building) => MILITARY_MARKET_ENGLISH_NAMES.has(buildingInfo.englishName || '');
-
-const matchesMarketType = (listing: MarketListing, type: 'general' | 'military') =>
-    type === 'military'
-        ? isMilitaryMarketListing(listing.resourceId)
-        : !isMilitaryMarketListing(listing.resourceId);
-
-const getGeneralMarketBuySectionForItem = (itemId: number): MarketBuySection | null => {
-    if (Object.values(GENERAL_MARKET_RESOURCE_SECTION_IDS).some(ids => ids.includes(itemId))) return 'resources';
-    if (Object.values(GENERAL_MARKET_BED_SECTION_IDS).some(ids => ids.includes(itemId))) return 'beds';
-    if (Object.values(GENERAL_MARKET_MONSTER_SECTION_IDS).some(ids => ids.includes(itemId))) return 'monsters';
-    return null;
-};
-
-const matchesGeneralMarketBuyFilters = (
-    itemId: number,
-    section: MarketBuySection,
-    resourceSection: MarketResourceSection,
-    bedSection: MarketBedSection,
-    monsterSection: MarketMonsterSection
-) => {
-    if (section === 'resources') return GENERAL_MARKET_RESOURCE_SECTION_IDS[resourceSection].includes(itemId);
-    if (section === 'beds') return GENERAL_MARKET_BED_SECTION_IDS[bedSection].includes(itemId);
-    return GENERAL_MARKET_MONSTER_SECTION_IDS[monsterSection].includes(itemId);
-};
-
-const normalizeMarketListing = (raw: any): MarketListing | null => {
-    const id = Number(raw?.id ?? raw?.gameId);
-    const resourceId = Number(raw?.resourceId ?? raw?.itemId);
-    const amount = Number(raw?.amount ?? raw?.quantity);
-    const price = Number(raw?.price);
-    const sellerName = repairMojibakeCp1251Utf8(String(raw?.sellerName ?? ''));
-    const sellerId = String(raw?.sellerId ?? '0');
-    const currency: 'coins' | 'rubies' = raw?.currency === 'rubies' ? 'rubies' : 'coins';
-
-    if (!Number.isFinite(id) || !Number.isFinite(resourceId) || !Number.isFinite(amount) || !Number.isFinite(price)) {
-        return null;
-    }
-
-    return {
-        id,
-        sellerName,
-        sellerId,
-        resourceId,
-        amount,
-        price,
-        currency
-    };
-};
-
-const buildMarketListingPayload = (listing: MarketListing) => {
-    const itemInfo = itemData.find(i => i.id === listing.resourceId);
-
-    return {
-        ...listing,
-        itemId: String(listing.resourceId),
-        itemName: itemInfo?.name || `Item ${listing.resourceId}`,
-        quantity: listing.amount,
-        timestamp: listing.id
-    };
-};
 
 interface ChatMessage {
     id: number;
@@ -439,91 +418,6 @@ interface Friend {
     uid?: string;
     addedAt: number;
 }
-
-const getUserCounter = (data: any, key: string): number => {
-    if (!data || typeof data !== 'object') return 0;
-    return Number(data[key] ?? data.data?.[key] ?? 0) || 0;
-};
-
-const getUserStatCounters = (data: any) => ({
-    treesChopped: getUserCounter(data, 'treesChopped'),
-    monstersDestroyed: getUserCounter(data, 'monstersDestroyed'),
-    buildingsDestroyed: getUserCounter(data, 'buildingsDestroyed'),
-    theftsCommitted: getUserCounter(data, 'theftsCommitted'),
-});
-
-const mergeLocalUserStatCounters = (incomingData: any, existingData?: any) => {
-    const incoming = getUserStatCounters(incomingData);
-    const existing = getUserStatCounters(existingData);
-    return {
-        treesChopped: Math.max(existing.treesChopped, incoming.treesChopped),
-        monstersDestroyed: Math.max(existing.monstersDestroyed, incoming.monstersDestroyed),
-        buildingsDestroyed: Math.max(existing.buildingsDestroyed, incoming.buildingsDestroyed),
-        theftsCommitted: Math.max(existing.theftsCommitted, incoming.theftsCommitted),
-    };
-};
-
-const hasHigherLeaderboardStats = (candidateData: any, baselineData: any) => {
-    const candidate = getUserStatCounters(candidateData);
-    const baseline = getUserStatCounters(baselineData);
-    return (
-        candidate.treesChopped > baseline.treesChopped ||
-        candidate.monstersDestroyed > baseline.monstersDestroyed ||
-        candidate.buildingsDestroyed > baseline.buildingsDestroyed ||
-        candidate.theftsCommitted > baseline.theftsCommitted
-    );
-};
-
-const normalizeClanIdValue = (value: any): number | null => {
-    if (value === null || value === undefined || value === '') return null;
-    const normalized = Number(value);
-    return Number.isFinite(normalized) ? normalized : null;
-};
-
-const toTopPlayerEntry = (uid: string, data: any) => ({
-    uid: String(uid),
-    name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
-    avatar: resolveUserAvatar(data),
-    glory: Math.max(0, Number(data?.glory || 0) || 0),
-    ...getUserStatCounters(data),
-});
-
-const mergeTopPlayersEntries = (...sources: any[][]) => {
-    const merged = new Map<string, any>();
-
-    sources.forEach((source) => {
-        source.forEach((entry) => {
-            const uid = String(entry?.uid || '');
-            if (!uid) return;
-            const existing = merged.get(uid);
-            if (!existing) {
-                merged.set(uid, {
-                    ...entry,
-                    uid,
-                    name: entry.name || 'Неизвестный',
-                    glory: Number(entry.glory || 0) || 0,
-                    ...getUserStatCounters(entry),
-                });
-                return;
-            }
-
-            merged.set(uid, {
-                ...existing,
-                ...entry,
-                uid,
-                name: entry.name || existing.name || 'Неизвестный',
-                avatar: entry.avatar || existing.avatar || null,
-                glory: Math.max(Number(existing.glory || 0) || 0, Number(entry.glory || 0) || 0),
-                treesChopped: Math.max(Number(existing.treesChopped || 0) || 0, Number(entry.treesChopped || 0) || 0),
-                monstersDestroyed: Math.max(Number(existing.monstersDestroyed || 0) || 0, Number(entry.monstersDestroyed || 0) || 0),
-                buildingsDestroyed: Math.max(Number(existing.buildingsDestroyed || 0) || 0, Number(entry.buildingsDestroyed || 0) || 0),
-                theftsCommitted: Math.max(Number(existing.theftsCommitted || 0) || 0, Number(entry.theftsCommitted || 0) || 0),
-            });
-        });
-    });
-
-    return Array.from(merged.values()).filter((entry) => entry.name);
-};
 
 interface PlacementGuardOptions {
     ignoreBuildingId?: string | number;
@@ -927,144 +821,6 @@ const formatBuildDuration = (seconds?: number) => {
     return `${minutes}м ${remainingSeconds}с`;
 };
 
-const resolveUserAvatar = (data: any, fallback: string | null = null): string | null => {
-    if (!data || typeof data !== 'object') return fallback;
-    return data.data?.avatar || data.avatar || data.photoURL || fallback;
-};
-
-const getAvatarCacheKey = (uid: string) => `player_avatar_${uid}`;
-
-const readCachedAvatar = (uid?: string | null): string | null => {
-    if (!uid) return null;
-    try {
-        return localStorage.getItem(getAvatarCacheKey(uid));
-    } catch {
-        return null;
-    }
-};
-
-const writeCachedAvatar = (uid: string, avatar: string | null) => {
-    try {
-        if (!avatar) {
-            localStorage.removeItem(getAvatarCacheKey(uid));
-            return;
-        }
-        localStorage.setItem(getAvatarCacheKey(uid), avatar);
-    } catch {
-        // Ignore localStorage errors for avatar cache
-    }
-};
-
-const getProfileSettingsCacheKey = (uid: string) => `goldwasdx:profileSettings:${uid}`;
-
-const readCachedProfileSettings = (uid?: string | null): { gender: 'male' | 'female' | null; friends: Friend[] } => {
-    if (!uid) return { gender: null, friends: [] };
-    try {
-        const raw = localStorage.getItem(getProfileSettingsCacheKey(uid));
-        if (!raw) return { gender: null, friends: [] };
-        const parsed = JSON.parse(raw);
-        const gender = parsed?.gender === 'male' || parsed?.gender === 'female' ? parsed.gender : null;
-        const friends = Array.isArray(parsed?.friends)
-            ? parsed.friends.filter((friend: any) => friend && typeof friend.name === 'string').map((friend: any) => ({
-                name: friend.name,
-                uid: typeof friend.uid === 'string' ? friend.uid : undefined,
-                addedAt: Number(friend.addedAt) || Date.now()
-            }))
-            : [];
-        return { gender, friends };
-    } catch {
-        return { gender: null, friends: [] };
-    }
-};
-
-const writeCachedProfileSettings = (uid: string, settings: { gender: 'male' | 'female' | null; friends: Friend[] }) => {
-    try {
-        localStorage.setItem(getProfileSettingsCacheKey(uid), JSON.stringify({
-            gender: settings.gender,
-            friends: settings.friends
-        }));
-    } catch {
-        // Ignore localStorage write failures.
-    }
-};
-
-const getLeaderboardStatsCacheKey = (uid: string) => `goldwasdx:leaderboardStats:${uid}`;
-
-const readCachedLeaderboardStats = (uid?: string | null): ReturnType<typeof getUserStatCounters> => {
-    if (!uid) return getUserStatCounters(null);
-    try {
-        const raw = localStorage.getItem(getLeaderboardStatsCacheKey(uid));
-        if (!raw) return getUserStatCounters(null);
-        const parsed = JSON.parse(raw);
-        return getUserStatCounters(parsed);
-    } catch {
-        return getUserStatCounters(null);
-    }
-};
-
-const writeCachedLeaderboardStats = (uid: string, stats: ReturnType<typeof getUserStatCounters>) => {
-    try {
-        localStorage.setItem(getLeaderboardStatsCacheKey(uid), JSON.stringify(getUserStatCounters(stats)));
-    } catch {
-        // Ignore localStorage write failures.
-    }
-};
-
-const getLastPositionCacheKey = (uid: string) => `goldwasdx:lastPosition:${uid}`;
-
-const readCachedLastPosition = (uid?: string | null): { x: number; y: number; savedAt: number } | null => {
-    if (!uid) return null;
-    try {
-        const raw = localStorage.getItem(getLastPositionCacheKey(uid));
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        const x = Number(parsed?.x);
-        const y = Number(parsed?.y);
-        const savedAt = Number(parsed?.savedAt) || 0;
-        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-        return { x, y, savedAt };
-    } catch {
-        return null;
-    }
-};
-
-const writeCachedLastPosition = (uid: string, position: { x: number; y: number; savedAt?: number } | null) => {
-    try {
-        if (!position) {
-            localStorage.removeItem(getLastPositionCacheKey(uid));
-            return;
-        }
-
-        localStorage.setItem(getLastPositionCacheKey(uid), JSON.stringify({
-            x: Number(position.x) || 0,
-            y: Number(position.y) || 0,
-            savedAt: Number(position.savedAt) || Date.now()
-        }));
-    } catch {
-        // Ignore localStorage write failures.
-    }
-};
-
-const MAX_SAFE_INVENTORY_COUNT = Number.MAX_SAFE_INTEGER - 1;
-
-const normalizeInventoryCount = (value: unknown): number => {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return 0;
-    return Math.max(0, Math.min(MAX_SAFE_INVENTORY_COUNT, Math.floor(numeric)));
-};
-
-const sanitizeInventoryCounts = (rawInventory: unknown): Record<number, number> => {
-    if (!rawInventory || typeof rawInventory !== 'object') return {};
-
-    const sanitized: Record<number, number> = {};
-    for (const [rawId, rawAmount] of Object.entries(rawInventory as Record<string, unknown>)) {
-        const itemId = Number(rawId);
-        if (!Number.isFinite(itemId)) continue;
-        sanitized[itemId] = normalizeInventoryCount(rawAmount);
-    }
-    return sanitized;
-};
-
 const TUTORIAL_FROG_HOUSE_ID = 1;
 const TUTORIAL_LILY_POND_ID = 400;
 const energyBatteryImageUrl = '/Gui/Back/energy-battery.webp';
@@ -1133,23 +889,6 @@ type MonsterPatrolMoveResult = {
     selectedTurn: 'preferred' | 'alternate' | 'forward' | 'random' | 'none';
 };
 type MonsterTeleportSpot = { x: number; y: number; zoneId: string };
-
-function getMonsterZoneId(monster: Pick<PlacedBuilding, 'x' | 'y' | 'zoneId'>): string {
-    return monster.zoneId || getZoneId(monster.x, monster.y);
-}
-
-function buildMonsterZoneCounts(buildings: PlacedBuilding[], buildingData: Building[]): Map<string, number> {
-    const counts = new Map<string, number>();
-    buildings.forEach((building) => {
-        const info = buildingData.find(i => i.id === building.buildingId);
-        if (!info || !info.stats.isMonster) return;
-        if (building.isConstructing || building.isDestroying) return;
-        if (building.hp !== undefined && building.hp <= 0) return;
-        const zoneId = getMonsterZoneId(building);
-        counts.set(zoneId, (counts.get(zoneId) || 0) + 1);
-    });
-    return counts;
-}
 
 function getCrowdingEscapeMove(
     monster: Pick<PlacedBuilding, 'x' | 'y' | 'zoneId'>,
@@ -2364,92 +2103,6 @@ const pushStartupDebugEvent = (step: string, details?: Record<string, unknown>) 
         return { step, at: Date.now(), details: details || {} };
     }
 };
-
-const cp1251Decoder = new TextDecoder('windows-1251');
-const utf8Encoder = new TextEncoder();
-const mojibakeReverseMap = new Map<string, string>();
-let mojibakeMaxTokenLen = 1;
-
-for (let cp = 32; cp <= 0x052F; cp++) {
-    const ch = String.fromCharCode(cp);
-    const wrong = cp1251Decoder.decode(utf8Encoder.encode(ch));
-    if (wrong !== ch) {
-        mojibakeReverseMap.set(wrong, ch);
-        if (wrong.length > mojibakeMaxTokenLen) mojibakeMaxTokenLen = wrong.length;
-    }
-}
-
-for (const ch of ['РІР‚В¦', 'РІР‚вЂњ', 'РІР‚вЂќ', 'РІР‚Сљ', 'РІР‚Сњ', 'РІР‚В', 'РІР‚в„ў', 'РІвЂћвЂ“']) {
-    const wrong = cp1251Decoder.decode(utf8Encoder.encode(ch));
-    if (wrong !== ch) {
-        mojibakeReverseMap.set(wrong, ch);
-        if (wrong.length > mojibakeMaxTokenLen) mojibakeMaxTokenLen = wrong.length;
-    }
-}
-
-for (const ch of [
-    'РІР‚Сћ', '<', '>', '-', 'Р’В¦', '?', '?', '?', '?', '?',
-    '?', 'Р’В¦'
-]) {
-    const wrong = cp1251Decoder.decode(utf8Encoder.encode(ch));
-    if (wrong !== ch) {
-        mojibakeReverseMap.set(wrong, ch);
-        if (wrong.length > mojibakeMaxTokenLen) mojibakeMaxTokenLen = wrong.length;
-    }
-}
-
-const mojibakeFallbackFixes: Array<[RegExp, string]> = [
-    [/Р Р†Р вЂљРЎС›/g, 'РІР‚Сћ'],
-    [/Р Р†Р вЂљРІР‚Сњ/g, 'РІР‚вЂќ'],
-    [/Р Р†Р вЂљРІР‚Сљ/g, 'РІР‚вЂњ'],
-    [/Р Р†Р вЂљР’В¦/g, 'РІР‚В¦'],
-    [/Р Р†РІР‚С›РІР‚вЂњ/g, 'РІвЂћвЂ“'],
-    [/Р Р†РІР‚В РЎвЂ™/g, '<'],
-    [/>/g, '>'],
-    [/\?/g, '?' ],
-    [/\?/g, '?' ],
-    [/Р’В¦/g, 'Р’В¦'],
-];
-
-function repairMojibakeCp1251Utf8(input: string): string {
-    if (!input) return input;
-    // Process only strings that look like CP1251/UTF-8 mojibake.
-    // The common broken Russian markers are broad: Р Сџ, Р С™, РЎРЉ, Р Вµ, etc.
-    if (!/[Р РЎР’РІРѓРЉР‹Р‚Р‰РЊРЏР„РЃС’СљСџРЋР‡ТђТ‘в„–]/.test(input)) return input;
-    let current = input;
-
-    for (let pass = 0; pass < 3; pass++) {
-        let out = '';
-        for (let i = 0; i < current.length;) {
-            let replaced = false;
-            for (let len = Math.min(mojibakeMaxTokenLen, current.length - i); len >= 1; len--) {
-                const token = current.slice(i, i + len);
-                const fixed = mojibakeReverseMap.get(token);
-                if (fixed) {
-                    out += fixed;
-                    i += len;
-                    replaced = true;
-                    break;
-                }
-            }
-            if (!replaced) {
-                out += current[i];
-                i++;
-            }
-        }
-
-        for (const [pattern, replacement] of mojibakeFallbackFixes) {
-            out = out.replace(pattern, replacement);
-        }
-
-        if (out === current || !/[Р РЎР’РІРѓРЉР‹Р‚Р‰РЊРЏР„РЃС’СљСџРЋР‡ТђТ‘в„–]/.test(out)) {
-            return out;
-        }
-        current = out;
-    }
-
-    return current;
-}
 
 function normalizeAssetUrl(url: string): string {
     if (!url) return url;

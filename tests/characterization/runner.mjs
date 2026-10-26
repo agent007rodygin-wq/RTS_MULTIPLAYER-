@@ -107,6 +107,33 @@ const FIRST_WAVE_SCENARIOS = [
     seamDecision: 'PURE_SEAM',
     fixtureReference: 'tests/characterization/scenario-003-fixture-design.md',
   },
+  {
+    order: 11,
+    scenarioId: 'scenario-11',
+    sourceScenarioId: 'scenario-004',
+    label: 'Market listing normalization, filtering, and payload construction contract.',
+    script: 'tests/characterization/scenario-004-market-listing.mjs',
+    seamDecision: 'PURE_SEAM',
+    fixtureReference: 'tests/characterization/scenario-004-market-listing.mjs',
+  },
+  {
+    order: 12,
+    scenarioId: 'scenario-12',
+    sourceScenarioId: 'scenario-005',
+    label: 'Inventory amount bounds and corrupted entry sanitization contract.',
+    script: 'tests/characterization/scenario-005-inventory-sanitize.mjs',
+    seamDecision: 'PURE_SEAM',
+    fixtureReference: 'tests/characterization/scenario-005-inventory-sanitize.mjs',
+  },
+  {
+    order: 13,
+    scenarioId: 'scenario-13',
+    sourceScenarioId: 'scenario-006',
+    label: 'Clan ID normalization and top player leaderboard stat merging contract.',
+    script: 'tests/characterization/scenario-006-clan-id-normalize.mjs',
+    seamDecision: 'PURE_SEAM',
+    fixtureReference: 'tests/characterization/scenario-006-clan-id-normalize.mjs',
+  },
 ];
 
 function toPosixPath(value) {
