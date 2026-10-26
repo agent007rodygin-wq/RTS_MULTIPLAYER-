@@ -220,3 +220,9 @@ export interface PrivateMessage {
   senderAvatar?: string;
   isAnonymous?: boolean;
 }
+
+export interface Friend {
+  name: string;
+  uid?: string;
+  addedAt: number;
+}
