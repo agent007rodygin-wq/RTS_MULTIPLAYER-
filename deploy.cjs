@@ -137,6 +137,7 @@ function connectSSH({ host, user, password }) {
       port: 22,
       username: user,
       password,
+      tryKeyboard: false,
     });
   });
 }

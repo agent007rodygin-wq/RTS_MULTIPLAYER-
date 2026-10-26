@@ -970,7 +970,7 @@ export const buildings: Building[] = [
     name: 'Деревянный дом',
     category: 'Жилые',
     type: BuildingType.Residential,
-    price: 2000,
+    price: 300,
     buildable: true,
     constructionRequirements: {},
     stats: {
@@ -983,14 +983,14 @@ export const buildings: Building[] = [
     description: 'Простой, но уютный деревянный дом.',
     imageUrl: '/buildings/residential/5.webp',
     upgradesTo: 6,
-    upgradeCost: 4000,
+    upgradeCost: 450,
   },
   {
     id: 7,
     name: 'Кирпичный дом',
     category: 'Жилые',
     type: BuildingType.Residential,
-    price: 25000,
+    price: 2500,
     buildable: true,
     constructionRequirements: {},
     stats: {
@@ -1003,7 +1003,7 @@ export const buildings: Building[] = [
     description: 'Надежный дом из кирпича.',
     imageUrl: '/buildings/residential/7.webp',
     upgradesTo: 1000,
-    upgradeCost: 50000
+    upgradeCost: 5000
   },
   {
     id: 1000,
@@ -12632,7 +12632,7 @@ export const buildings: Building[] = [
     name: 'Деревянный дом 2',
     englishName: 'Wooden house 6',
     category: 'Жилые',
-    price: 4000,
+    price: 450,
     buildable: false,
     constructionRequirements: {
       population: 8,
@@ -12684,7 +12684,7 @@ export const buildings: Building[] = [
     },
     imageUrl: '/buildings/residential/6.webp',
     upgradesTo: 51,
-    "upgradeCost": 7000,
+    "upgradeCost": 650,
     type: BuildingType.Residential,
     description: 'Деревянный дом 2'
   },
@@ -12693,7 +12693,7 @@ export const buildings: Building[] = [
     name: 'Деревянный дом 3',
     englishName: 'Wooden house 7',
     category: 'Жилые',
-    price: 7000,
+    price: 650,
     buildable: false,
     constructionRequirements: {
       population: 9,
@@ -12745,7 +12745,7 @@ export const buildings: Building[] = [
     },
     imageUrl: '/buildings/residential/51.webp',
     upgradesTo: 217,
-    "upgradeCost": 17000,
+    "upgradeCost": 900,
     type: BuildingType.Residential,
     description: 'Деревянный дом 3'
   },
@@ -12754,7 +12754,7 @@ export const buildings: Building[] = [
     name: 'Деревянный дом 4',
     englishName: 'Wooden house 1',
     category: 'Жилые',
-    price: 12000,
+    price: 900,
     buildable: false,
     constructionRequirements: {
       population: 10,
@@ -12806,7 +12806,7 @@ export const buildings: Building[] = [
     },
     imageUrl: '/buildings/residential/52.webp',
     upgradesTo: 217,
-    "upgradeCost": 17000,
+    "upgradeCost": 1250,
     type: BuildingType.Residential,
     description: 'Деревянный дом 4'
   },
@@ -12815,7 +12815,7 @@ export const buildings: Building[] = [
     name: 'Деревянный дом 5',
     englishName: 'Wooden house 8',
     category: 'Жилые',
-    price: 17000,
+    price: 1250,
     buildable: false,
     constructionRequirements: {
       population: 12,
@@ -12867,7 +12867,7 @@ export const buildings: Building[] = [
     },
     imageUrl: '/buildings/residential/217.webp',
     upgradesTo: 218,
-    "upgradeCost": 25000,
+    "upgradeCost": 1700,
     type: BuildingType.Residential,
     description: 'Деревянный дом 5'
   },
@@ -12876,7 +12876,7 @@ export const buildings: Building[] = [
     name: 'Деревянный дом 6',
     englishName: 'Wooden house 1',
     category: 'Жилые',
-    price: 25000,
+    price: 1700,
     buildable: false,
     constructionRequirements: {
       population: 11,
@@ -12933,7 +12933,7 @@ export const buildings: Building[] = [
     },
     imageUrl: '/buildings/residential/218.webp',
     upgradesTo: 7,
-    "upgradeCost": 25000,
+    "upgradeCost": 2500,
     type: BuildingType.Residential,
     description: 'Деревянный дом 6'
   },

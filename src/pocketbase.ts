@@ -6,7 +6,8 @@ type AnyRecord = Record<string, any>;
 // ─── PocketBase Client ──────────────────────────────────────────────────────
 // Google OAuth requires a real domain, so we use the explicitly provided
 // PocketBase host. Do not swap this to localhost/127 in production.
-export const pb = new PocketBase('http://89.127.214.182:8090');
+const RESOLVED_PB_URL = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_PB_URL || 'http://127.0.0.1:8090';
+export const pb = new PocketBase(RESOLVED_PB_URL);
 // Keep auth token alive automatically
 pb.autoCancellation(false);
 const PB_BUILD_MARKER = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_BUILD_MARKER || 'local-dev';

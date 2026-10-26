@@ -2164,8 +2164,7 @@ const App: React.FC = () => {
     // Grouping ALL state hooks at the top to satisfy TDZ
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const startupDebugConsoleEnabled = DEBUG_FLAG_ENABLED || readLocalStorageFlag(STARTUP_DEBUG_STORAGE_KEY, false);
-    const [cameraOffset, setCameraOffset] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 4 });
-    const [throttledCameraOffset, setThrottledCameraOffset] = useState(cameraOffset);
+    const cameraOffsetRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 4 });
     const [zoomIndex, setZoomIndex] = useState(1); // Corresponds to 1.5 zoom
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [placedBuildings, setPlacedBuildings] = useState<PlacedBuilding[]>([]);
@@ -2907,7 +2906,6 @@ const App: React.FC = () => {
             msg.includes('NOT_FOUND') ||
             msg.includes('404');
     }, []);
-    const cameraOffsetRef = useRef(cameraOffset);
     const zoomIndexRef = useRef(zoomIndex);
     const lastPersistedPlayerPositionRef = useRef<{ x: number; y: number; savedAt: number } | null>(null);
 
@@ -3042,7 +3040,6 @@ const App: React.FC = () => {
     }, [selectedBuilding, db]);
     
     // Sync camera and zoom refs for beforeunload
-    useEffect(() => { cameraOffsetRef.current = cameraOffset; }, [cameraOffset]);
     useEffect(() => { zoomIndexRef.current = zoomIndex; }, [zoomIndex]);
     useEffect(() => {
         const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -3408,14 +3405,14 @@ const App: React.FC = () => {
     }, []);
 
     const worldToScreen = useCallback((x: number, y: number, zoom: number): { screenX: number, screenY: number } => {
-        const screenX = (x - y) * (TILE_WIDTH * zoom / 2);
-        const screenY = (x + y) * (TILE_HEIGHT * zoom / 2);
+        const cam = cameraOffsetRef.current;
+        const screenX = (x - y) * (TILE_WIDTH * zoom / 2) + cam.x;
+        const screenY = (x + y) * (TILE_HEIGHT * zoom / 2) + cam.y;
         return { screenX, screenY };
     }, []);
-
     const screenToWorld = useCallback((screenX: number, screenY: number, zoom: number): { x: number, y: number } => {
-        const adjustedX = screenX - cameraOffset.x;
-        const adjustedY = screenY - cameraOffset.y;
+        const adjustedX = screenX - cameraOffsetRef.current.x;
+        const adjustedY = screenY - cameraOffsetRef.current.y;
         const scaledTileWidth = TILE_WIDTH * zoom;
         const scaledTileHeight = TILE_HEIGHT * zoom;
         let x = Math.round((adjustedX / (scaledTileWidth / 2) + adjustedY / (scaledTileHeight / 2)) / 2);
@@ -3425,7 +3422,7 @@ const App: React.FC = () => {
             y = wrapCoord(y, WORLD_HEIGHT_TILES);
         }
         return { x, y };
-    }, [cameraOffset, isWorldWrapped]);
+    }, [isWorldWrapped]);
 
     // Derived population and building states
     const hasTownHall = useMemo(() => placedBuildings.some(b =>
@@ -3812,14 +3809,6 @@ const App: React.FC = () => {
     ], []);
 
 
-    // Keep nearby sector subscriptions responsive so map changes show up almost immediately.
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setThrottledCameraOffset(cameraOffset);
-        }, 80);
-        return () => clearTimeout(timer);
-    }, [cameraOffset]);
-
     const generateMap = (seed: number, existingBuildings: PlacedBuilding[]) => {
         const random = (function (s) {
             return function () {
@@ -4080,14 +4069,15 @@ const App: React.FC = () => {
         zonePlacementStatusRef.current = nextStatus;
     }, [currentZones]);
 
-    // Calculate center zone from camera position (throttled)
+    // Calculate center zone from camera position (polled from ref; no React state churn)
     useEffect(() => {
-        const zoom = ZOOM_LEVELS[zoomIndex];
+        const computeCenterZone = () => {
+        const zoom = ZOOM_LEVELS[zoomIndexRef.current];
 
         const screenX = window.innerWidth / 2;
         const screenY = window.innerHeight / 2;
-        const adjustedX = screenX - throttledCameraOffset.x;
-        const adjustedY = screenY - throttledCameraOffset.y;
+        const adjustedX = screenX - cameraOffsetRef.current.x;
+        const adjustedY = screenY - cameraOffsetRef.current.y;
 
         // Reverse isometric projection
         const isoX = adjustedX / (TILE_WIDTH / 2 * zoom);
@@ -4108,7 +4098,11 @@ const App: React.FC = () => {
             setZoneLoadRing(0);
             return newCenter;
         });
-    }, [throttledCameraOffset, zoomIndex, isWorldWrapped]);
+        };
+        computeCenterZone();
+        const interval = setInterval(computeCenterZone, 250);
+        return () => clearInterval(interval);
+    }, [isWorldWrapped]);
 
     // Progressive ring expansion: advance ring 0 -> 1 -> 2 with short delays
     useEffect(() => {
@@ -5266,7 +5260,7 @@ const App: React.FC = () => {
                 }
             }
         }
-    }, [cameraOffset, placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
+    }, [placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
 
     const handleMouseUp = useCallback(async (event: React.MouseEvent<HTMLCanvasElement>) => {
         await handleCanvasPointerUp(event.clientX, event.clientY);
@@ -5299,11 +5293,7 @@ const App: React.FC = () => {
                 }
             }
 
-            setCameraOffset(prev => {
-                const newX = prev.x + dx;
-                const newY = prev.y + dy;
-                return { x: newX, y: newY };
-            });
+            cameraOffsetRef.current = { x: cameraOffsetRef.current.x + dx, y: cameraOffsetRef.current.y + dy };
             dragStartRef.current = { x: event.clientX, y: event.clientY };
         }
         const zoom = ZOOM_LEVELS[zoomIndex];
@@ -5383,7 +5373,7 @@ const App: React.FC = () => {
             }
         }
 
-    }, [cameraOffset, placedBuildings, tooltip.visible, zoomIndex, screenToWorld, allUsers, isMyBuilding]);
+    }, [placedBuildings, tooltip.visible, zoomIndex, screenToWorld, allUsers, isMyBuilding]);
 
     const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
         if (isDraggingRef.current && event.touches.length === 1) {
@@ -5400,7 +5390,7 @@ const App: React.FC = () => {
                 }
             }
 
-            setCameraOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+            cameraOffsetRef.current = { x: cameraOffsetRef.current.x + dx, y: cameraOffsetRef.current.y + dy };
             dragStartRef.current = { x: touch.clientX, y: touch.clientY };
         }
     }, []);
@@ -6489,10 +6479,10 @@ const App: React.FC = () => {
                             const zoom = ZOOM_LEVELS[zoomIndex];
                             const screenX = (resolvedLastPosition.x - resolvedLastPosition.y) * (TILE_WIDTH * zoom / 2);
                             const screenY = (resolvedLastPosition.x + resolvedLastPosition.y) * (TILE_HEIGHT * zoom / 2);
-                            setCameraOffset({
+                            cameraOffsetRef.current = {
                                 x: window.innerWidth / 2 - screenX,
                                 y: window.innerHeight / 2 - screenY
-                            });
+                            };
                             lastPersistedPlayerPositionRef.current = resolvedLastPosition;
                             writeCachedLastPosition(user.uid, resolvedLastPosition);
                         } else {
@@ -9526,7 +9516,6 @@ const App: React.FC = () => {
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         context.save();
-        context.translate(cameraOffset.x, cameraOffset.y);
 
         const images = loadedImageElementsRef.current;
 
@@ -9536,8 +9525,8 @@ const App: React.FC = () => {
         // Determine render center from camera position (screen center in world coords)
         const screenCX = canvas.width / 2;
         const screenCY = canvas.height / 2;
-        const adjX = screenCX - cameraOffset.x;
-        const adjY = screenCY - cameraOffset.y;
+        const adjX = screenCX - cameraOffsetRef.current.x;
+        const adjY = screenCY - cameraOffsetRef.current.y;
         const isoRX = adjX / (scaledTileWidth / 2);
         const isoRY = adjY / (scaledTileHeight / 2);
         const renderCenterX = Math.floor((isoRY + isoRX) / 2);
@@ -9558,10 +9547,10 @@ const App: React.FC = () => {
                     const { screenX, screenY } = worldToScreen(i, j, zoom);
 
                     if (
-                        screenX + scaledTileWidth / 2 < -cameraOffset.x ||
-                        screenX - scaledTileWidth / 2 > canvas.width - cameraOffset.x ||
-                        screenY + scaledTileHeight / 2 < -cameraOffset.y ||
-                        screenY - scaledTileHeight / 2 > canvas.height - cameraOffset.y
+                        screenX + scaledTileWidth / 2 < -cameraOffsetRef.current.x ||
+                        screenX - scaledTileWidth / 2 > canvas.width - cameraOffsetRef.current.x ||
+                        screenY + scaledTileHeight / 2 < -cameraOffsetRef.current.y ||
+                        screenY - scaledTileHeight / 2 > canvas.height - cameraOffsetRef.current.y
                     ) {
                         continue;
                     }
@@ -9612,10 +9601,10 @@ const App: React.FC = () => {
             const { screenX, screenY } = worldToScreen(entityVX, entityVY, zoom);
 
             if (
-                screenX + scaledTileWidth / 2 < -cameraOffset.x ||
-                screenX - scaledTileWidth / 2 > canvas.width - cameraOffset.x ||
-                screenY < -cameraOffset.y - scaledTileHeight * 4 ||
-                screenY - scaledTileHeight > canvas.height - cameraOffset.y
+                screenX + scaledTileWidth / 2 < -cameraOffsetRef.current.x ||
+                screenX - scaledTileWidth / 2 > canvas.width - cameraOffsetRef.current.x ||
+                screenY < -cameraOffsetRef.current.y - scaledTileHeight * 4 ||
+                screenY - scaledTileHeight > canvas.height - cameraOffsetRef.current.y
             ) {
                 return;
             }
@@ -11192,8 +11181,8 @@ const App: React.FC = () => {
             }
         } else if (hoveredOutOfBounds && !isWorldWrapped) {
             const zoom = ZOOM_LEVELS[zoomIndex];
-            const screenX = lastPointerPos.x - cameraOffset.x;
-            const screenY = lastPointerPos.y - cameraOffset.y;
+            const screenX = lastPointerPos.x - cameraOffsetRef.current.x;
+            const screenY = lastPointerPos.y - cameraOffsetRef.current.y;
             context.font = `bold ${14 * zoom}px sans-serif`;
             context.textAlign = 'center';
             context.textBaseline = 'middle';
@@ -11206,7 +11195,7 @@ const App: React.FC = () => {
         }
 
         context.restore();
-    }, [cameraOffset, memoizedDrawableEntities, hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, clans, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
+    }, [memoizedDrawableEntities, hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, clans, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
 
     const drawRef = useRef(draw);
     const lastDrawAtRef = useRef(0);
@@ -15256,11 +15245,15 @@ const App: React.FC = () => {
     };
 
     const handleZoomIn = () => {
-        setZoomIndex(prev => Math.min(prev + 1, ZOOM_LEVELS.length - 1));
+        const next = Math.min(zoomIndexRef.current + 1, ZOOM_LEVELS.length - 1);
+        zoomIndexRef.current = next;
+        setZoomIndex(next);
     };
 
     const handleZoomOut = () => {
-        setZoomIndex(prev => Math.max(prev - 1, 0));
+        const next = Math.max(zoomIndexRef.current - 1, 0);
+        zoomIndexRef.current = next;
+        setZoomIndex(next);
     };
 
     const handleSectorTeleport = (x: number, y: number) => {
@@ -15273,10 +15266,10 @@ const App: React.FC = () => {
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
 
-        setCameraOffset({
+        cameraOffsetRef.current = {
             x: centerX - isoX,
             y: centerY - isoY
-        });
+        };
     };
 
     const handleMoveClick = () => {
@@ -15963,12 +15956,13 @@ const App: React.FC = () => {
         const mouseX = event.clientX;
         const mouseY = event.clientY;
 
-        const newCameraX = mouseX - ((mouseX - cameraOffset.x) / oldZoom) * newZoom;
-        const newCameraY = mouseY - ((mouseY - cameraOffset.y) / oldZoom) * newZoom;
+        const newCameraX = mouseX - ((mouseX - cameraOffsetRef.current.x) / oldZoom) * newZoom;
+        const newCameraY = mouseY - ((mouseY - cameraOffsetRef.current.y) / oldZoom) * newZoom;
 
+        zoomIndexRef.current = newZoomIndex;
         setZoomIndex(newZoomIndex);
-        setCameraOffset({ x: newCameraX, y: newCameraY });
-    }, [zoomIndex, cameraOffset]);
+        cameraOffsetRef.current = { x: newCameraX, y: newCameraY };
+    }, [zoomIndex]);
 
     const handleTeleportToTownHall = () => {
         // First, try to find Town Hall in loaded buildings
@@ -18436,8 +18430,8 @@ const App: React.FC = () => {
                     const pos = interpolatedPlayers[player.uid] || { x: player.x, y: player.y };
                     const { screenX, screenY } = worldToScreen(pos.x, pos.y, zoom);
 
-                    const finalX = screenX + cameraOffset.x;
-                    const finalY = screenY + cameraOffset.y;
+                    const finalX = screenX + cameraOffsetRef.current.x;
+                    const finalY = screenY + cameraOffsetRef.current.y;
 
                     if (isNaN(finalX) || isNaN(finalY) || finalX < -150 || finalX > window.innerWidth + 150 || finalY < -150 || finalY > window.innerHeight + 150) {
                         return null;
