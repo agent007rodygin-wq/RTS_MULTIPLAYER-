@@ -67,6 +67,14 @@ export const ExchangeModal: React.FC<ExchangeModalProps> = memo(({
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    if (!prevProps.isOpen && !nextProps.isOpen) return true;
+    if (prevProps.isOpen !== nextProps.isOpen) return false;
+    return (
+        prevProps.exchangeAmount === nextProps.exchangeAmount &&
+        prevProps.playerRubies === nextProps.playerRubies &&
+        prevProps.isConfirmPressed === nextProps.isConfirmPressed
+    );
 });
 
 ExchangeModal.displayName = 'ExchangeModal';

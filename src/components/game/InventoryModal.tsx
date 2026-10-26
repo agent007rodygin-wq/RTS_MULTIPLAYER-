@@ -111,6 +111,13 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    if (!prevProps.isOpen && !nextProps.isOpen) return true;
+    if (prevProps.isOpen !== nextProps.isOpen) return false;
+    return (
+        prevProps.inventory === nextProps.inventory &&
+        prevProps.itemData === nextProps.itemData
+    );
 });
 
 InventoryModal.displayName = 'InventoryModal';

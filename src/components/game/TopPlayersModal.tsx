@@ -116,6 +116,17 @@ export const TopPlayersModal: React.FC<TopPlayersModalProps> = memo(({
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    if (!prevProps.isOpen && !nextProps.isOpen) return true;
+    if (prevProps.isOpen !== nextProps.isOpen) return false;
+    return (
+        prevProps.activeTab === nextProps.activeTab &&
+        prevProps.leaderboardLoading === nextProps.leaderboardLoading &&
+        prevProps.leaderboardError === nextProps.leaderboardError &&
+        prevProps.hasData === nextProps.hasData &&
+        prevProps.players === nextProps.players &&
+        prevProps.currentUserId === nextProps.currentUserId
+    );
 });
 
 TopPlayersModal.displayName = 'TopPlayersModal';

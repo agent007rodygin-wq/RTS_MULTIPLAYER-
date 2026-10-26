@@ -380,6 +380,25 @@ export const MarketModal: React.FC<MarketModalProps> = memo(({
             </div>
         </div>
     );
+}, (prevProps, nextProps) => {
+    if (!prevProps.isOpen && !nextProps.isOpen) return true;
+    if (prevProps.isOpen !== nextProps.isOpen) return false;
+    return (
+        prevProps.marketType === nextProps.marketType &&
+        prevProps.activeMarketTab === nextProps.activeMarketTab &&
+        prevProps.activeMarketBuySection === nextProps.activeMarketBuySection &&
+        prevProps.activeMarketResourceSection === nextProps.activeMarketResourceSection &&
+        prevProps.activeMarketBedSection === nextProps.activeMarketBedSection &&
+        prevProps.activeMarketMonsterSection === nextProps.activeMarketMonsterSection &&
+        prevProps.filteredBuyMarketListings === nextProps.filteredBuyMarketListings &&
+        prevProps.marketListings === nextProps.marketListings &&
+        prevProps.inventory === nextProps.inventory &&
+        prevProps.playerGold === nextProps.playerGold &&
+        prevProps.playerRubies === nextProps.playerRubies &&
+        prevProps.sellItemSelection === nextProps.sellItemSelection &&
+        prevProps.isMarketProcessing === nextProps.isMarketProcessing &&
+        prevProps.currentUserId === nextProps.currentUserId
+    );
 });
 
 MarketModal.displayName = 'MarketModal';

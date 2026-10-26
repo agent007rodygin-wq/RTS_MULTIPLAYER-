@@ -2633,6 +2633,12 @@ const App: React.FC = () => {
     const [newClanAvatar, setNewClanAvatar] = useState<string | null>(null);
     const [clanSearchTerm, setClanSearchTerm] = useState('');
     const [localClanOverride, setLocalClanOverride] = useState<Clan | null>(null);
+
+    const closeMarketModal = useCallback(() => setShowMarketModal(false), []);
+    const closeTopPlayersModal = useCallback(() => setShowTopPlayers(false), []);
+    const closeInventoryModal = useCallback(() => setShowInventory(false), []);
+    const closeExchangeModal = useCallback(() => setShowExchangeModal(false), []);
+    const closeShopModal = useCallback(() => setShowShop(false), []);
     const [isClanDirectoryLoading, setIsClanDirectoryLoading] = useState(false);
 
     // Audio/Time
@@ -17293,7 +17299,8 @@ const App: React.FC = () => {
     const buildTabCategoryAliases: Record<string, string[]> = {
         'Жилье': ['Жилые'],
     };
-    const buildingsInCurrentTab = buildingData.filter(b => {
+    const buildingsInCurrentTab = useMemo(() => {
+        return buildingData.filter(b => {
             if (TOWN_HALL_IDS.includes(Number(b.id))) return false;
             if (b.buildable === false) return false;
             if (normalizedBuildMenuSearch) {
@@ -17352,6 +17359,14 @@ const App: React.FC = () => {
             }
             return 0;
         });
+    }, [
+        buildingData,
+        normalizedActiveBuildTab,
+        normalizedBuildMenuSearch,
+        letterSubTab,
+        giftSubTab,
+        decorSubTab
+    ]);
 
     // Lazy-preload only the building cards for the currently opened build tab.
     useEffect(() => {
@@ -17372,17 +17387,26 @@ const App: React.FC = () => {
             stats: { ...selectedBuilding.info.stats }
         })
         : [];
-    const filteredBuyMarketListings = marketListings.filter((listing) => {
-        if (!matchesMarketType(listing, marketType)) return false;
-        if (marketType !== 'general') return true;
-        return matchesGeneralMarketBuyFilters(
-            listing.resourceId,
-            activeMarketBuySection,
-            activeMarketResourceSection,
-            activeMarketBedSection,
-            activeMarketMonsterSection
-        );
-    });
+    const filteredBuyMarketListings = useMemo(() => {
+        return marketListings.filter((listing) => {
+            if (!matchesMarketType(listing, marketType)) return false;
+            if (marketType !== 'general') return true;
+            return matchesGeneralMarketBuyFilters(
+                listing.resourceId,
+                activeMarketBuySection,
+                activeMarketResourceSection,
+                activeMarketBedSection,
+                activeMarketMonsterSection
+            );
+        });
+    }, [
+        marketListings,
+        marketType,
+        activeMarketBuySection,
+        activeMarketResourceSection,
+        activeMarketBedSection,
+        activeMarketMonsterSection
+    ]);
 
     const filteredMessages = chatHistory.filter(msg => {
         if (msg.tab === 'all') return true;
@@ -17412,26 +17436,28 @@ const App: React.FC = () => {
     const gryadkiShopItemIds = new Set<number>([10003, 10004, 10021, 10024, 10027, 10030]);
     const hiddenDuplicateResourceShopItemIds = new Set<number>([10042, 10044]);
 
-    const filteredResourceShopItems = itemData.filter((item) => {
-        if (!item.rubyPackQuantity) return false;
+    const filteredResourceShopItems = useMemo(() => {
+        return itemData.filter((item) => {
+            if (!item.rubyPackQuantity) return false;
 
-        if (activeResourceShopCategory === 'monsters') {
-            return monsterShopItemIds.has(item.id);
-        }
+            if (activeResourceShopCategory === 'monsters') {
+                return monsterShopItemIds.has(item.id);
+            }
 
-        if (activeResourceShopCategory === 'bombs') {
-            return bombShopItemIds.has(item.id);
-        }
+            if (activeResourceShopCategory === 'bombs') {
+                return bombShopItemIds.has(item.id);
+            }
 
-        if (activeResourceShopCategory === 'gryadki') {
-            return gryadkiShopItemIds.has(item.id);
-        }
+            if (activeResourceShopCategory === 'gryadki') {
+                return gryadkiShopItemIds.has(item.id);
+            }
 
-        return !monsterShopItemIds.has(item.id)
-            && !bombShopItemIds.has(item.id)
-            && !gryadkiShopItemIds.has(item.id)
-            && !hiddenDuplicateResourceShopItemIds.has(item.id);
-    });
+            return !monsterShopItemIds.has(item.id)
+                && !bombShopItemIds.has(item.id)
+                && !gryadkiShopItemIds.has(item.id)
+                && !hiddenDuplicateResourceShopItemIds.has(item.id);
+        });
+    }, [itemData, activeResourceShopCategory]);
 
     const formatLastSeenDateTime = (timestamp: number) => {
         const date = new Date(timestamp);
@@ -18712,7 +18738,7 @@ const App: React.FC = () => {
             {/* MARKET MODAL ... */}
             <MarketModal
                 isOpen={showMarketModal}
-                onClose={() => setShowMarketModal(false)}
+                onClose={closeMarketModal}
                 marketType={marketType}
                 activeMarketTab={activeMarketTab}
                 onTabChange={setActiveMarketTab}
@@ -19047,7 +19073,7 @@ const App: React.FC = () => {
 
             <InventoryModal
                 isOpen={showInventory}
-                onClose={() => setShowInventory(false)}
+                onClose={closeInventoryModal}
                 inventory={inventory}
                 itemData={itemData}
                 playCloseSound={playCloseSound}
@@ -19158,7 +19184,7 @@ const App: React.FC = () => {
 
             <ExchangeModal
                 isOpen={showExchangeModal}
-                onClose={() => setShowExchangeModal(false)}
+                onClose={closeExchangeModal}
                 exchangeAmount={exchangeAmount}
                 onExchangeAmountChange={setExchangeAmount}
                 playerRubies={playerRubies}
@@ -19418,7 +19444,7 @@ const App: React.FC = () => {
 
             <TopPlayersModal
                 isOpen={showTopPlayers}
-                onClose={() => setShowTopPlayers(false)}
+                onClose={closeTopPlayersModal}
                 activeTab={activeTopPlayersTab}
                 onTabChange={setActiveTopPlayersTab}
                 leaderboardLoading={leaderboardLoading}
