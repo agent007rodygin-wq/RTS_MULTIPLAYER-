@@ -13404,7 +13404,7 @@ const App: React.FC = () => {
     }, [playerGlory, playerLevel, getGloryForLevel, user]);
 
     // Market Handlers
-    const handleBuyMarketItem = (listing: MarketListing) => {
+    const handleBuyMarketItem = useCallback((listing: MarketListing) => {
         if (isMarketProcessing) return;
 
         if (listing.currency === 'coins') {
@@ -13510,9 +13510,9 @@ const App: React.FC = () => {
             addHistoryLog(`Куплено ${listing.amount} ${itemInfo?.name || 'предмет'} за ${listing.price} ${listing.currency === 'coins' ? 'монет' : 'рубинов'}`, 'economy');
             setMarketListings(prev => prev.filter(l => l.id !== listing.id));
         }
-    };
+    }, [db, inventory, isAuthReady, isMarketProcessing, playerGold, playerRubies, user]);
 
-    const handleCreateMarketListing = () => {
+    const handleCreateMarketListing = useCallback(() => {
         if (isMarketProcessing) return;
         if (!sellItemSelection.itemId) {
             alert("Выберите предмет для продажи!");
@@ -13594,9 +13594,9 @@ const App: React.FC = () => {
             alert("Товар выставлен на продажу!");
             setSellItemSelection(prev => ({ ...prev, itemId: null, amount: 1, price: 10 })); // Reset form
         }
-    };
+    }, [db, inventory, isAuthReady, isMarketProcessing, playerRubies, sellItemSelection, user]);
 
-    const handleCancelListing = (listing: MarketListing) => {
+    const handleCancelListing = useCallback((listing: MarketListing) => {
         if (isMarketProcessing) return;
         if (!user || listing.sellerId !== user.uid) {
             alert("Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ РЎРѓР Р…РЎРЏРЎвЂљРЎРЉ РЎРѓ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘ РЎвЂЎРЎС“Р В¶Р С•Р в„– РЎвЂљР С•Р Р†Р В°РЎР‚!");
@@ -13646,7 +13646,7 @@ const App: React.FC = () => {
                 }));
             }
         }
-    };
+    }, [db, inventory, isAuthReady, isMarketProcessing, user]);
 
 
     const handleShareOil = () => {
@@ -13888,7 +13888,7 @@ const App: React.FC = () => {
         }
     };
 
-    const handleBuyShopItem = (item: Item, quantity: number = 1) => {
+    const handleBuyShopItem = useCallback((item: Item, quantity: number = 1) => {
         if (isShopProcessing) return;
         if (!item.rubyPackQuantity) return;
         if (quantity < 1) return;
@@ -13931,9 +13931,9 @@ const App: React.FC = () => {
                 openRubyWarningModal(quantity);
             }
         }
-    };
+    }, [db, inventory, isAuthReady, isShopProcessing, playerRubies, user]);
 
-    const handleRubyExchange = () => {
+    const handleRubyExchange = useCallback(() => {
         if (isShopProcessing) return;
         if (exchangeAmount <= 0) return;
         const coins = exchangeAmount * 7777;
@@ -13983,7 +13983,7 @@ const App: React.FC = () => {
                 openRubyWarningModal(exchangeAmount);
             }
         }
-    };
+    }, [db, exchangeAmount, isAuthReady, isShopProcessing, playerRubies, user]);
 
     // Casino gambling function
     // Rules: Casino usually wins, but if bet > 10000 coins, there's a small chance to win a ruby
