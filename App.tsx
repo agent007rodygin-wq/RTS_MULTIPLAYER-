@@ -65,6 +65,7 @@ import { BuildMenuModal } from './src/components/game/BuildMenuModal';
 import { BuildConfirmationModal } from './src/components/game/BuildConfirmationModal';
 import { RoyalElectionsModal, RoyalVotingModal } from './src/components/game/RoyalElectionsModal';
 import { PoliceMoralsModal, PoliceVotingModal } from './src/components/game/PoliceMoralsModal';
+import { OtherPlayerProfileModal } from './src/components/game/OtherPlayerProfileModal';
 import {
     LogIn,
     LogOut,
@@ -2410,7 +2411,6 @@ const App: React.FC = () => {
     const [lastPointerPos, setLastPointerPos] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showPlayerProfile, setShowPlayerProfile] = useState(false);
-    const [showBuildingsMenu, setShowBuildingsMenu] = useState(false);
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
     const [selectedPlayerBuildings, setSelectedPlayerBuildings] = useState<PlacedBuilding[]>([]);
     const [showInventory, setShowInventory] = useState(false);
@@ -7280,9 +7280,6 @@ const App: React.FC = () => {
 
     const [onlinePlayersData, setOnlinePlayersData] = useState<any[]>([]);
     const [interpolatedPlayers, setInterpolatedPlayers] = useState<Record<string, { x: number, y: number }>>({});
-    const [showBanMenuInProfile, setShowBanMenuInProfile] = useState(false);
-    const [showPunishMenuInProfile, setShowPunishMenuInProfile] = useState(false);
-    const [showCurseMenuInProfile, setShowCurseMenuInProfile] = useState(false);
 
     const onlinePlayersDataRef = useRef(onlinePlayersData);
     useEffect(() => {
@@ -8714,7 +8711,6 @@ const App: React.FC = () => {
         if (targetUid) {
             setSelectedPlayerId(targetUid);
             setShowPlayerProfile(true);
-            setShowBuildingsMenu(false);
         }
     };
 
@@ -9065,6 +9061,57 @@ const App: React.FC = () => {
             alert('Ошибка при попытке заколдовать игрока.');
         }
     };
+
+    const closeOtherPlayerProfileModal = useCallback(() => {
+        setShowPlayerProfile(false);
+    }, []);
+
+    const handleOpenPrivateChatFromProfile = useCallback((targetUid: string) => {
+        setShowPlayerProfile(false);
+        setActivePrivateChat(targetUid);
+        setActivePrivateChatId([user?.uid, targetUid].sort().join('_'));
+        setIsAnonymousMessage(false);
+        setShowPrivateChatModal(true);
+    }, [user?.uid]);
+
+    const handleCatchCriminalFromProfile = useCallback((targetUid: string) => {
+        const thiefData = activeThieves[targetUid];
+        if (thiefData) {
+            const catchChance = Math.random();
+            if (catchChance < 0.5) {
+                const returnAmount = Math.floor(thiefData.stolenAmount * 0.5);
+                setPlayerGold(prev => prev + returnAmount);
+                setActiveThieves(prev => {
+                    const updated = { ...prev };
+                    delete updated[targetUid];
+                    return updated;
+                });
+                alert(`Criminal caught! You recovered ${returnAmount} coins. The victim gets ${returnAmount} coins back.`);
+                const catchMsgId = `police-catch-${Date.now()}`;
+                const catchNotification = {
+                    sender: '[ПОЛИЦИЯ]',
+                    senderId: 'system',
+                    text: `CRIMINAL CAUGHT! Player ${allUsers[targetUid]?.name || 'Unknown'} was caught by ${playerName}. Justice served!`,
+                    type: 'system',
+                    timestamp: Date.now(),
+                    tab: 'police'
+                };
+                setDoc(doc(db, 'chat_messages', catchMsgId), catchNotification).catch(() => {});
+                const hasJail = placedBuildings.some(b => b.buildingId === 310 && !b.isConstructing);
+                if (hasJail && Math.random() < 0.5) {
+                    alert(`The criminal was sent to jail for 20 minutes!`);
+                }
+            } else {
+                alert('The criminal escaped! Better luck next time.');
+            }
+            setShowPlayerProfile(false);
+        }
+    }, [activeThieves, allUsers, db, placedBuildings, playerName]);
+
+    const handleVoteKingFromProfile = useCallback((targetUid: string) => {
+        setVotingForPlayer(targetUid);
+        setShowRoyalVotingModal(true);
+    }, []);
     const maxEnergy = useMemo(() => {
         return BASE_MAX_ENERGY + ((playerLevel - 1) * 50);
     }, [playerLevel]);
@@ -19226,232 +19273,35 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {showPlayerProfile && selectedPlayerId && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowPlayerProfile(false); setShowBanMenuInProfile(false); }}>
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold text-white flex items-center">
-                                <UserIcon className="w-6 h-6 mr-2 text-blue-400" />
-                                Профиль игрока
-                            </h2>
-                            <button onClick={() => { setShowPlayerProfile(false); setShowBanMenuInProfile(false); }} className="text-gray-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
-
-                        <div className="mb-6 flex items-center space-x-4">
-                            <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden border-2 border-blue-400">
-                                {allUsers[selectedPlayerId]?.avatar ? (
-                                    <img src={allUsers[selectedPlayerId].avatar} alt="Avatar" className="w-full h-full object-cover" />
-                                ) : (
-                                    <span className="text-2xl font-bold text-white">{allUsers[selectedPlayerId]?.name?.charAt(0) || '?'}</span>
-                                )}
-                            </div>
-                            <div>
-                                <div className="text-xl font-bold text-white">{allUsers[selectedPlayerId]?.name || "Неизвестный игрок"}</div>
-                                <div className="text-sm text-gray-400">Уровень: {selectedPlayerId === user?.uid ? playerLevel : (allUsers[selectedPlayerId]?.level || 1)}</div>
-                                <div className="flex flex-col mt-1">
-                                    <div className="text-sm text-yellow-400 flex items-center">
-                                        <span className="mr-1">🏆</span>
-                                        Слава: {selectedPlayerId === user?.uid ? playerGlory : (allUsers[selectedPlayerId]?.glory || 0)}
-                                    </div>
-                                    <div className="text-sm text-blue-400 flex items-center">
-                                        <span className="mr-1">🛡️</span>
-                                        Репутация: {selectedPlayerId === user?.uid ? playerReputation : (allUsers[selectedPlayerId]?.reputation || 0)}
-                                    </div>
-                                    {(() => {
-                                        const playerStatusMeta = getPlayerStatusMeta(selectedPlayerId);
-                                        return (
-                                            <div className={`text-sm flex items-center gap-2 mt-1 ${playerStatusMeta.textClassName}`}>
-                                                <span className={`w-2.5 h-2.5 rounded-full ${playerStatusMeta.dotClassName}`}></span>
-                                                {playerStatusMeta.isOnline ? 'Онлайн' : `Был в сети: ${playerStatusMeta.label}`}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        {!showBanMenuInProfile && !showPunishMenuInProfile && !showCurseMenuInProfile && !showBuildingsMenu ? (
-                            <div className="grid grid-cols-2 gap-2 mb-4">
-                                <button onClick={() => handlePraisePlayer(selectedPlayerId)} className="bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded text-xs transition-colors">👍 Похвалить</button>
-                                <button onClick={() => handleComplainPlayer(selectedPlayerId)} className="bg-yellow-700 hover:bg-yellow-600 text-white font-bold py-2 rounded text-xs transition-colors">Пожаловаться</button>
-                                <button onClick={() => { setVotingForPlayer(selectedPlayerId); setShowRoyalVotingModal(true); }} className="bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 rounded text-xs transition-colors">👑 Это мой король!</button>
-                                <button className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded text-xs transition-colors">👤 Персонаж</button>
-                                <button className="bg-pink-700 hover:bg-pink-600 text-white font-bold py-2 rounded text-xs transition-colors flex justify-center items-center">💎 Купить рубины</button>
-                                <button onClick={() => setShowBuildingsMenu(true)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 rounded text-xs transition-colors">🏗️ Постройки</button>
-                                <button className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded text-xs transition-colors">🎁 Подарить</button>
-                                <button onClick={() => handleAddFriendByUid(selectedPlayerId)} className="bg-teal-600 hover:bg-teal-500 text-white font-bold py-2 rounded text-xs transition-colors">➕ Друзья</button>
-                                <button onClick={() => {
-                                    setShowPlayerProfile(false);
-                                    setActivePrivateChat(selectedPlayerId);
-                                    setActivePrivateChatId([user?.uid, selectedPlayerId].sort().join('_'));
-                                    setIsAnonymousMessage(false);
-                                    setShowPrivateChatModal(true);
-                                }} className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition-colors">✉️ Сообщения</button>
-                                <button onClick={() => setShowPunishMenuInProfile(true)} className="bg-red-900 hover:bg-red-800 text-white font-bold py-2 rounded text-xs transition-colors border border-red-500">Наказать</button>
-                                <button onClick={() => setShowCurseMenuInProfile(true)} className="bg-violet-800 hover:bg-violet-700 text-white font-bold py-2 rounded text-xs transition-colors border border-violet-500">Заколдовать</button>
-                                <button onClick={() => setShowBanMenuInProfile(true)} className="col-span-2 bg-red-700 hover:bg-red-600 text-white font-bold py-2 rounded text-xs transition-colors">🚫 Забанить</button>
-                                {/* Catch Criminal Button - only for sheriff/deputies when player is an active thief */}
-                                {(sheriffId === user?.uid || deputies.includes(user?.uid || '')) && activeThieves[selectedPlayerId] && (
-                                    <button 
-                                        onClick={() => {
-                                            const thiefData = activeThieves[selectedPlayerId];
-                                            if (thiefData) {
-                                                const catchChance = Math.random();
-                                                if (catchChance < 0.5) {
-                                                    // Successfully caught!
-                                                    const returnAmount = Math.floor(thiefData.stolenAmount * 0.5);
-                                                    setPlayerGold(prev => prev + returnAmount);
-                                                    // Remove from active thieves
-                                                    setActiveThieves(prev => {
-                                                        const updated = { ...prev };
-                                                        delete updated[selectedPlayerId];
-                                                        return updated;
-                                                    });
-                                                    alert(`Criminal caught! You recovered ${returnAmount} coins. The victim gets ${returnAmount} coins back.`);
-                                                    // Notify in police chat
-                                                    const catchMsgId = `police-catch-${Date.now()}`;
-                                                    const catchNotification = {
-                                                        sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
-                                                        senderId: 'system',
-                                                        text: `CRIMINAL CAUGHT! Player ${allUsers[selectedPlayerId]?.name || 'Unknown'} was caught by ${playerName}. Justice served!`,
-                                                        type: 'system',
-                                                        timestamp: Date.now(),
-                                                        tab: 'police'
-                                                    };
-                                                    setDoc(doc(db, 'chat_messages', catchMsgId), catchNotification).catch(() => {});
-                                                    // Check for jail - 50% chance if jail exists
-                                                    const hasJail = placedBuildings.some(b => b.buildingId === 310 && !b.isConstructing);
-                                                    if (hasJail && Math.random() < 0.5) {
-                                                        alert(`The criminal was sent to jail for 20 minutes!`);
-                                                        // In a real implementation, we would set a ban on the thief
-                                                    }
-                                                } else {
-                                                    alert('The criminal escaped! Better luck next time.');
-                                                }
-                                                setShowPlayerProfile(false);
-                                            }
-                                        }}
-                                        className="col-span-2 bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 rounded text-xs transition-colors border-2 border-yellow-400 animate-pulse"
-                                    >
-                                        ?? Р СџР С•Р в„–Р СР В°РЎвЂљРЎРЉ Р С—РЎР‚Р ВµРЎРѓРЎвЂљРЎС“Р С—Р Р…Р С‘Р С”Р В°!
-                                    </button>
-                                )}
-                            </div>
-                        ) : showBuildingsMenu ? (
-                            <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-blue-900/30 flex flex-col flex-1 min-h-0">
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="text-white font-bold text-sm">Постройки игрока</span>
-                                    <button onClick={() => setShowBuildingsMenu(false)} className="text-xs text-blue-400 font-bold hover:text-blue-300 transition-colors flex items-center">
-                                        {'< Назад'}
-                                    </button>
-                                </div>
-                                <div className="overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                    {selectedPlayerBuildings.length > 0 ? (
-                                        selectedPlayerBuildings.map(b => {
-                                            const info = buildingData.find(i => i.id === b.buildingId);
-                                            return (
-                                                <div key={b.id} className="bg-gray-800/80 p-2 rounded flex items-center justify-between border border-gray-700 hover:border-blue-500/50 transition-colors group">
-                                                    <div className="flex items-center space-x-2">
-                                                        <div className="w-8 h-8 bg-gray-900 rounded flex items-center justify-center p-1">
-                                                            {info && <img src={info.imageUrl} alt={info.name} className="max-w-full max-h-full object-contain" />}
-                                                        </div>
-                                                        <div className="overflow-hidden">
-                                                            <div className="text-xs font-bold text-white truncate w-32 group-hover:text-blue-300">{info?.name || "Р вЂ”Р Т‘Р В°Р Р…Р С‘Р Вµ"}</div>
-                                                            <div className="text-[10px] text-gray-500">[{b.x}, {b.y}]</div>
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => {
-                                                            handleSectorTeleport(b.x, b.y);
-                                                            setShowPlayerProfile(false);
-                                                            setShowBuildingsMenu(false);
-                                                        }}
-                                                        className="p-2 bg-indigo-600 hover:bg-indigo-500 rounded-full text-white transition-colors"
-                                                        title="Телепортироваться к зданию"
-                                                    >
-                                                        <CompassIcon className="w-5 h-5" />
-                                                    </button>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="text-center py-6 text-gray-500 text-xs italic">Построек пока не найдено</div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : showBanMenuInProfile ? (
-                            <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-red-900/30">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-white font-bold text-sm">Срок бана</span>
-                                    <button onClick={() => setShowBanMenuInProfile(false)} className="text-xs text-blue-400">{'< Назад'}</button>
-                                </div>
-                                <div className="space-y-1">
-                                    {BAN_OPTIONS.map((option, idx) => {
-                                        const targetRep = allUsers[selectedPlayerId]?.reputation || 0;
-                                        const multiplier = 1 + Math.floor(Math.max(0, targetRep) / 5);
-                                        const dynamicCost = option.cost * multiplier;
-                                        return (
-                                            <button
-                                                key={idx}
-                                                onClick={() => handleBanPlayerByUid(selectedPlayerId, dynamicCost, option.durationMinutes)}
-                                                disabled={playerGold < dynamicCost}
-                                                className="w-full bg-red-900/40 hover:bg-red-900/60 disabled:bg-gray-800 text-white py-1.5 px-3 rounded text-xs flex justify-between items-center transition-colors border border-red-900/20"
-                                            >
-                                                <span>{option.label}</span>
-                                                <span className="text-yellow-400 font-bold">{dynamicCost.toLocaleString()} монет</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        ) : showPunishMenuInProfile ? (
-                            <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-red-900/30">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-white font-bold text-sm">Наказание</span>
-                                    <button onClick={() => setShowPunishMenuInProfile(false)} className="text-xs text-blue-400">{'< Назад'}</button>
-                                </div>
-                                <div className="space-y-1">
-                                    {PUNISHMENT_OPTIONS.map((option, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handlePunishPlayerByUid(selectedPlayerId, option.cost, option.gloryPenalty, option.label)}
-                                            disabled={playerRubies < option.cost}
-                                            className="w-full bg-red-900/40 hover:bg-red-900/60 disabled:bg-gray-800 text-white py-1.5 px-3 rounded text-xs flex justify-between items-center transition-colors border border-red-900/20"
-                                        >
-                                            <span>{option.label}</span>
-                                            <span className="text-pink-400 font-bold">{option.cost} ₽</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="bg-gray-900/50 p-3 rounded-lg mb-4 border border-violet-900/30">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-white font-bold text-sm">Заколдовать</span>
-                                    <button onClick={() => setShowCurseMenuInProfile(false)} className="text-xs text-blue-400">{'< Назад'}</button>
-                                </div>
-                                <div className="space-y-1">
-                                    {CURSE_OPTIONS.map((option, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleCursePlayerByUid(selectedPlayerId, option.cost, option.durationMinutes, option.prefix, option.label)}
-                                            disabled={playerGold < option.cost}
-                                            className="w-full bg-violet-900/40 hover:bg-violet-900/60 disabled:bg-gray-800 text-white py-1.5 px-3 rounded text-xs flex justify-between items-center transition-colors border border-violet-900/20"
-                                        >
-                                            <span>{option.label}</span>
-                                            <span className="text-yellow-400 font-bold">{option.cost.toLocaleString()} монет</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                    </div>
-                </div>
-            )}
-
+            <OtherPlayerProfileModal
+                isOpen={showPlayerProfile && !!selectedPlayerId}
+                selectedPlayerId={selectedPlayerId}
+                onClose={closeOtherPlayerProfileModal}
+                allUsers={allUsers}
+                user={user}
+                playerLevel={playerLevel}
+                playerGlory={playerGlory}
+                playerReputation={playerReputation}
+                playerGold={playerGold}
+                playerRubies={playerRubies}
+                playerName={playerName}
+                sheriffId={sheriffId}
+                deputies={deputies}
+                activeThieves={activeThieves}
+                selectedPlayerBuildings={selectedPlayerBuildings}
+                buildingData={buildingData}
+                playerStatusMeta={getPlayerStatusMeta(selectedPlayerId)}
+                onPraisePlayer={handlePraisePlayer}
+                onComplainPlayer={handleComplainPlayer}
+                onVoteKing={handleVoteKingFromProfile}
+                onAddFriend={handleAddFriendByUid}
+                onOpenPrivateChat={handleOpenPrivateChatFromProfile}
+                onCatchCriminal={handleCatchCriminalFromProfile}
+                onTeleportToBuilding={handleSectorTeleport}
+                onBanPlayer={handleBanPlayerByUid}
+                onPunishPlayer={handlePunishPlayerByUid}
+                onCursePlayer={handleCursePlayerByUid}
+            />
             {showProfileModal && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowProfileModal(false); playCloseSound(); }}>
                     <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)', overflow: 'hidden' }}>
