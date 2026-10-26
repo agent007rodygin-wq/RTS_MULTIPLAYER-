@@ -3405,9 +3405,8 @@ const App: React.FC = () => {
     }, []);
 
     const worldToScreen = useCallback((x: number, y: number, zoom: number): { screenX: number, screenY: number } => {
-        const cam = cameraOffsetRef.current;
-        const screenX = (x - y) * (TILE_WIDTH * zoom / 2) + cam.x;
-        const screenY = (x + y) * (TILE_HEIGHT * zoom / 2) + cam.y;
+        const screenX = (x - y) * (TILE_WIDTH * zoom / 2);
+        const screenY = (x + y) * (TILE_HEIGHT * zoom / 2);
         return { screenX, screenY };
     }, []);
     const screenToWorld = useCallback((screenX: number, screenY: number, zoom: number): { x: number, y: number } => {
@@ -9516,6 +9515,7 @@ const App: React.FC = () => {
         context.fillRect(0, 0, canvas.width, canvas.height);
 
         context.save();
+        context.translate(cameraOffsetRef.current.x, cameraOffsetRef.current.y);
 
         const images = loadedImageElementsRef.current;
 
