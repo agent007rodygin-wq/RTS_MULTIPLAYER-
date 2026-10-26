@@ -58,6 +58,8 @@ import {
 } from './src/game/monsters/monsterZones.js';
 import { TopPlayersModal } from './src/components/game/TopPlayersModal';
 import { MarketModal } from './src/components/game/MarketModal';
+import { InventoryModal } from './src/components/game/InventoryModal';
+import { ExchangeModal } from './src/components/game/ExchangeModal';
 import {
     LogIn,
     LogOut,
@@ -19043,57 +19045,13 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {showInventory && (
-                // ... (Inventory Modal content) ...
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowInventory(false); playCloseSound(); }}>
-                    <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)', overflow: 'hidden' }}>
-                        {/* Title centered + close button */}
-                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Инвентарь</h2>
-                            </div>
-                            <button onClick={() => { setShowInventory(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
-                              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
-                              onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
-                            >
-                            </button>
-                        </div>
-                        <div className="build-menu-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-                            {Object.keys(inventory).length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-gray-500">
-                                    <InventoryIcon className="w-16 h-16 mb-4 opacity-50" />
-                                    <p>Ваш инвентарь пуст.</p>
-                                    <p className="text-sm mt-2">Попробуйте собрать дерево!</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-4">
-                                    {Object.entries(inventory).map(([idStr, val]) => {
-                                        const amount = val as number;
-                                        const id = parseInt(idStr);
-                                        if (amount <= 0) return null;
-                                        const item = itemData.find(i => i.id === id);
-                                        return (
-                                            <div key={id} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '8px', border: '2px solid rgba(255,255,255,0.07)', textAlign: 'center', position: 'relative' }}>
-                                                <div style={{ width: '100%', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
-                                                    {item ? (
-                                                        <img src={item.imageUrl} alt={item.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-gray-600 rounded flex items-center justify-center text-xs">?</div>
-                                                    )}
-                                                </div>
-                                                <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 700, color: '#d0d8e0', marginBottom: '2px' }}>{item ? item.name : `Item #${id}`}</p>
-                                                <span style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', color: '#fbbf24', fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 800, padding: '1px 6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                    {amount}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <InventoryModal
+                isOpen={showInventory}
+                onClose={() => setShowInventory(false)}
+                inventory={inventory}
+                itemData={itemData}
+                playCloseSound={playCloseSound}
+            />
 
             {showShop && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowShop(false); playCloseSound(); }}>
@@ -19198,37 +19156,20 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {showExchangeModal && (
-                // ... (Exchange Modal content) ...
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[60] backdrop-blur-md" onClick={() => setShowExchangeModal(false)}>
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-96 border border-gray-600" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-white mb-4 text-center">Обмен рубинов</h3>
-                        <div className="flex items-center justify-center mb-6 space-x-4">
-                            <div className="flex flex-col items-center">
-                                <img src={rubyImageUrl} className="w-12 h-12 mb-2 object-contain" alt="Ruby" />
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max={playerRubies}
-                                    value={exchangeAmount}
-                                    onChange={e => setExchangeAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                    className="w-20 bg-gray-700 text-white text-center rounded border border-gray-600 p-1"
-                                />
-                            </div>
-                            <div className="text-2xl text-gray-400">-</div>
-                            <div className="flex flex-col items-center">
-                                <img src={coinImageUrl} className="w-12 h-12 mb-2 object-contain" alt="Coin" />
-                                <span className="text-yellow-400 font-bold text-xl">{(exchangeAmount * 7777).toLocaleString()}</span>
-                            </div>
-                        </div>
-                        <p className="text-gray-400 text-sm text-center mb-6">Курс: 1 рубин = 7 777 монет</p>
-                        <div className="flex space-x-2">
-                            <button onClick={() => setShowExchangeModal(false)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded">Отмена</button>
-                            <button onClick={() => { triggerResourceShopButtonPress('shop-exchange-confirm'); handleRubyExchange(); }} className="flex-1 text-white py-2 rounded font-bold transition-all duration-300" style={{ background: 'linear-gradient(180deg, rgba(34,197,94,0.95) 0%, rgba(21,128,61,0.9) 100%)', opacity: resourceShopPressedButtons['shop-exchange-confirm'] ? 0.4 : 1, boxShadow: '0 8px 18px rgba(22,163,74,0.22), inset 0 1px 0 rgba(255,255,255,0.18)' }}>Обменять</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ExchangeModal
+                isOpen={showExchangeModal}
+                onClose={() => setShowExchangeModal(false)}
+                exchangeAmount={exchangeAmount}
+                onExchangeAmountChange={setExchangeAmount}
+                playerRubies={playerRubies}
+                coinImageUrl={coinImageUrl}
+                rubyImageUrl={rubyImageUrl}
+                isConfirmPressed={Boolean(resourceShopPressedButtons['shop-exchange-confirm'])}
+                onConfirmExchange={() => {
+                    triggerResourceShopButtonPress('shop-exchange-confirm');
+                    handleRubyExchange();
+                }}
+            />
 
             {/* Casino Modal */}
             {showCasinoModal && (
