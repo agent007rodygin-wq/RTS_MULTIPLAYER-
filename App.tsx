@@ -70,6 +70,7 @@ import { CasinoModal, CasinoBankModal } from './src/components/game/CasinoModal'
 import { MonsterAcademyModal } from './src/components/game/MonsterAcademyModal';
 import { WorldMapModal } from './src/components/game/WorldMapModal';
 import { ShoutModal, PrivateChatModal } from './src/components/game/ChatModals';
+import { SelectedBuildingModal } from './src/components/game/SelectedBuildingModal';
 import {
     LogIn,
     LogOut,
@@ -1897,41 +1898,6 @@ const levelIcons = [
 ] as const;
 const loadingIconUrl = '/Gui/IMG_Player_Level_/ruby.webp';
 
-const ConstructionTimer = ({ endTime, cost, onSpeedUp, isMyBuilding }: { endTime: number, cost: number, onSpeedUp: () => void, isMyBuilding: boolean }) => {
-    const [, setTick] = useState(0);
-    useEffect(() => {
-        const interval = setInterval(() => setTick(t => t + 1), 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const timeLeft = Math.max(0, endTime - Date.now());
-    const minutes = Math.floor(timeLeft / 60000);
-    const seconds = Math.floor((timeLeft % 60000) / 1000);
-    const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
-    if (timeLeft <= 0) return null;
-
-    return (
-        <div className="mt-2 p-2 bg-gray-900/40 rounded border border-blue-500/20">
-            <div className="flex items-center space-x-2 mb-1">
-                <span className="text-white font-mono font-bold text-lg">Время: {timeString}</span>
-                <div className="flex items-center bg-gray-800 px-2 py-0.5 rounded text-pink-400 font-bold border border-pink-500/30">
-                    <img src={rubyImageUrl} className="w-4 h-4 mr-1 object-contain" alt="ruby" />
-                    {cost}
-                </div>
-            </div>
-            {isMyBuilding && (
-                <button
-                    onClick={onSpeedUp}
-                    className="text-xs text-purple-300 hover:text-white underline hover:no-underline transition-colors text-left"
-                >
-                    Построить мгновенно или ускорить за рубины
-                </button>
-            )}
-        </div>
-    );
-};
-
 const getGuestId = () => {
     let id = localStorage.getItem('guestId');
     if (!id) {
@@ -2438,13 +2404,6 @@ const App: React.FC = () => {
     const [firstRoyalElectionCompleted, setFirstRoyalElectionCompleted] = useState(false);
     const [buildMenu, setBuildMenu] = useState<{ visible: boolean, x: number, y: number }>({ visible: false, x: 0, y: 0 });
     const [selectedBuilding, setSelectedBuilding] = useState<{ building: PlacedBuilding, info: Building } | null>(null);
-    const [taxRateDraft, setTaxRateDraft] = useState<number | null>(null);
-    const [showExplosionMenu, setShowExplosionMenu] = useState(false);
-    const [selectedExplosionOption, setSelectedExplosionOption] = useState<number | null>(null);
-    const [explosionQuantity, setExplosionQuantity] = useState<number>(1);
-    const [useRegularDetonator, setUseRegularDetonator] = useState(false);
-    const [useSuperDetonator, setUseSuperDetonator] = useState(false);
-    const [showProtectionMenu, setShowProtectionMenu] = useState(false);
     const [buildConfirmation, setBuildConfirmation] = useState<{ visible: boolean, building: Building | null, x: number, y: number }>({ visible: false, building: null, x: 0, y: 0 });
     const [visualEffects, setVisualEffects] = useState<VisualEffect[]>([]);
     const loadedImageElementsRef = useRef<Record<string, HTMLImageElement>>({});
@@ -2461,7 +2420,6 @@ const App: React.FC = () => {
     const [casinoBetAmount, setCasinoBetAmount] = useState(1000);
     const [casinoResult, setCasinoResult] = useState<{won: boolean, amount: number, isRuby?: boolean} | null>(null);
     const [casinoIsSpinning, setCasinoIsSpinning] = useState(false);
-    const [buyRubyAmount, setBuyRubyAmount] = useState(1);
     const [isLoadingScreen, setIsLoadingScreen] = useState(true);
     const [loadingReady, setLoadingReady] = useState(false);
     const [loadingProgress, setLoadingProgress] = useState(0);
@@ -5002,8 +4960,6 @@ const App: React.FC = () => {
             // 3. Deselection logic (if clicked empty space or non-building)
             if (selectedBuilding) {
                 setSelectedBuilding(null);
-                setShowExplosionMenu(false);
-                setShowProtectionMenu(false);
                 return;
             }
 
@@ -8558,8 +8514,6 @@ const App: React.FC = () => {
                 }
             } else {
                 setSelectedBuilding(null);
-                setShowExplosionMenu(false);
-                setShowProtectionMenu(false);
             }
         }
     }, [placedBuildings, selectedBuilding]);
@@ -13921,9 +13875,9 @@ const App: React.FC = () => {
         }
     };
 
-    const handleBuyRuby = () => {
+    const handleBuyRuby = (amount: number = 1) => {
         if (isShopProcessing) return;
-        const totalCost = buyRubyAmount * 10000;
+        const totalCost = amount * 10000;
 
         if (isAuthReady && user) {
             setIsShopProcessing(true);
@@ -13940,11 +13894,11 @@ const App: React.FC = () => {
 
                 transaction.update(userRef, {
                     gold: currentGold - totalCost,
-                    rubies: currentRubies + buyRubyAmount
+                    rubies: currentRubies + amount
                 });
             })
                 .then(() => {
-                    addHistoryLog(`Куплено ${buyRubyAmount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
+                    addHistoryLog(`Куплено ${amount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
                 })
                 .catch(e => {
                     console.error("Buy ruby failed: ", e);
@@ -13957,8 +13911,8 @@ const App: React.FC = () => {
                 .finally(() => setIsShopProcessing(false));
         } else {
             if (playerGold >= totalCost) {
-                updatePlayerResources(-totalCost, buyRubyAmount, {});
-                addHistoryLog(`Куплено ${buyRubyAmount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
+                updatePlayerResources(-totalCost, amount, {});
+                addHistoryLog(`Куплено ${amount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
             } else {
                 alert("Недостаточно золота!");
             }
@@ -15360,7 +15314,6 @@ const App: React.FC = () => {
         }
         setMoveMode({ active: true, building: selectedBuilding.building });
         setSelectedBuilding(null);
-        setShowExplosionMenu(false);
     };
 
     const calculateRepairCost = (building: PlacedBuilding, info: Building) => {
@@ -15622,10 +15575,15 @@ const App: React.FC = () => {
         })]);
 
         setSelectedBuilding(null);
-        setShowProtectionMenu(false);
     };
 
-    const handleExplode = (destructionOption: DestructionInfo, quantity: number, timeMultiplier: number = 1) => {
+    const handleExplode = (
+        destructionOption: DestructionInfo,
+        quantity: number,
+        timeMultiplier: number = 1,
+        useSuperDetonator: boolean = false,
+        useRegularDetonator: boolean = false
+    ) => {
         if (!selectedBuilding) return;
 
         if (isBanned()) {
@@ -15701,10 +15659,6 @@ const App: React.FC = () => {
             }
             updateDoc(doc(db, 'users', user.uid), userUpdates).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
         }
-
-        // Reset detonator toggle after successful use.
-        if (useSuperDetonator) setUseSuperDetonator(false);
-        if (useRegularDetonator) setUseRegularDetonator(false);
 
         addHistoryLog(`Взорвано здание "${selectedBuilding.info.name}" в [${selectedBuilding.building.x}, ${selectedBuilding.building.y}] оружием "${destructionOption.weaponName}" x${quantity}. Расход: ${totalGold} золота, ${totalEnergy} энергии.`, 'destroy');
 
@@ -15831,7 +15785,6 @@ const App: React.FC = () => {
         }
 
         setSelectedBuilding(null);
-        setShowExplosionMenu(false);
     };
 
     const handleSpeedUp = () => {
@@ -17101,14 +17054,6 @@ const App: React.FC = () => {
     const shouldHideTabletButton = showProfileModal || buildMenu.visible || !!selectedBuilding;
 
     useEffect(() => {
-        if (selectedBuilding?.info.id === WATCHTOWER_ID) {
-            setTaxRateDraft(selectedBuilding.building.taxRate || 0);
-        } else {
-            setTaxRateDraft(null);
-        }
-    }, [selectedBuilding?.info.id, selectedBuilding?.building.id]);
-
-    useEffect(() => {
         if (currentClan && playerClanId !== currentClan.id) {
             setPlayerClanId(currentClan.id);
         }
@@ -17400,14 +17345,6 @@ const App: React.FC = () => {
         };
     }, [activeProfileTab, currentClan, isAuthReady, normalizeClan, playerAvatar, playerClanId, playerName, user]);
 
-    const repairCost = selectedBuilding ? calculateRepairCost(selectedBuilding.building, selectedBuilding.info) : 0;
-    const selectedBuildingDestructionInfo = selectedBuilding
-        ? generateDestructionInfo({
-            ...selectedBuilding.info,
-            ...selectedBuilding.building,
-            stats: { ...selectedBuilding.info.stats }
-        })
-        : [];
     const filteredBuyMarketListings = useMemo(() => {
         return marketListings.filter((listing) => {
             if (!matchesMarketType(listing, marketType)) return false;
@@ -18149,577 +18086,47 @@ const App: React.FC = () => {
             )}
 
 
-            {selectedBuilding && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={() => { setSelectedBuilding(null); setShowExplosionMenu(false); setShowProtectionMenu(false); }}>
-                    <div className="bg-gray-800/90 w-96 rounded-xl border border-gray-600 flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center p-4 border-b border-gray-700">
-                            <h2 className="text-xl font-bold text-white">{selectedBuilding.info.name}</h2>
-                            <button onClick={() => { setSelectedBuilding(null); setShowExplosionMenu(false); setShowProtectionMenu(false); }} className="text-gray-400 hover:text-white">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
-                        {!showExplosionMenu && !showProtectionMenu ? (
-                            <div className="p-4">
-                                {/* Casino Under Construction Banner */}
-                                {CASINO_IDS.includes(selectedBuilding.info.id) && selectedBuilding.building.isConstructing && (
-                                    <div className="bg-yellow-900/50 p-4 rounded-lg border border-yellow-500/50 mb-4">
-                                        <h3 className="text-lg font-bold text-yellow-400 mb-2 text-center">Идет строительство</h3>
-                                        <p className="text-yellow-200 text-sm text-center mb-3">Казино будет доступно после завершения строительства</p>
-                                        <ConstructionTimer
-                                            endTime={selectedBuilding.building.constructionEndTime}
-                                            cost={selectedBuilding.info.stats.accelerationCost || 0}
-                                            onSpeedUp={handleSpeedUp}
-                                            isMyBuilding={isMyBuilding(selectedBuilding.building)}
-                                        />
-                                    </div>
-                                )}
-
-                                {selectedBuilding.info.stats.workTimeSeconds && selectedBuilding.info.category !== 'Защита' && !isBanditCastleBuildingId(selectedBuilding.info.id) && isMyBuilding(selectedBuilding.building) && !selectedBuilding.building.isConstructing && (
-                                    <div className="bg-gray-900/50 p-4 rounded-lg border border-blue-500/30 mb-4">
-                                        <h3 className="text-lg font-bold text-blue-300 mb-2">Производство</h3>
-
-                                        {/* For direct interaction factories (like lilies/mushrooms), only show menu during production */}
-                                        {DIRECT_INTERACTION_FACTORIES.includes(selectedBuilding.info.id) ? (
-                                            selectedBuilding.building.workState === 'working' && (
-                                                <div className="text-center py-2">
-                                                    <p className="text-yellow-400 font-bold animate-pulse">Идет производство...</p>
-                                                    <p className="text-xs text-gray-400 mt-1">Нажмите на здание на карте для сбора</p>
-                                                </div>
-                                            )
-                                        ) : (
-                                            <>
-                                                {(!selectedBuilding.building.workState || selectedBuilding.building.workState === 'idle') && (
-                                                    <div>
-                                                        <div className="flex flex-wrap gap-2 mb-3">
-                                                            {selectedBuilding.info.stats.takesPopulation && (
-                                                                <div className={`px-2 py-1 rounded text-sm flex items-center ${maxPopulation - currentPopulation >= selectedBuilding.info.stats.takesPopulation ? 'text-green-400 bg-green-900/30' : 'text-red-400 bg-red-900/30'}`}>
-                                                                    <img src={populationImageUrl} className="w-4 h-4 mr-1" alt="pop" />
-                                                                    {selectedBuilding.info.stats.takesPopulation} чел.
-                                                                </div>
-                                                            )}
-                                                            {selectedBuilding.info.stats.consumes?.map(req => {
-                                                                const has = (inventory[req.id] || 0) >= (req.amount || 0);
-                                                                return (
-                                                                    <div key={req.id} className={`px-2 py-1 rounded text-sm flex items-center ${has ? 'text-green-400 bg-green-900/30' : 'text-red-400 bg-red-900/30'}`}>
-                                                                        <span>{getCanonicalItemName(req.id, req.name, selectedBuilding.building.id)}: {req.amount}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        <button onClick={handleStartProduction} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded">
-                                                            Начать работу ({Math.floor((selectedBuilding.info.stats.workTimeSeconds || 0) / 60)}м {String((selectedBuilding.info.stats.workTimeSeconds || 0) % 60).padStart(2, '0')}с)
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                                {selectedBuilding.building.workState === 'working' && (
-                                                    <div className="text-center py-2">
-                                                        <p className="text-yellow-400 font-bold animate-pulse">Идет производство...</p>
-                                                        <p className="text-xs text-gray-400 mt-1">Взаимодействие ограничено</p>
-                                                    </div>
-                                                )}
-
-                                                {selectedBuilding.building.workState === 'finished' && (
-                                                    <div className="text-center py-2">
-                                                        {[400, 401, 402, 403, 404, 406, 407, 408].includes(selectedBuilding.info.id) ? (
-                                                            <button onClick={handleStartProduction} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded flex items-center justify-center">
-                                                                <img src={builderIconUrl} className="w-6 h-6 mr-2" alt="worker" />
-                                                                Отправить рабочего
-                                                            </button>
-                                                        ) : (
-                                                            <button onClick={handleCollectProduction} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded animate-bounce">
-                                                                Забрать продукцию
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Watchtower Tax Settings */}
-                                {selectedBuilding.info.id === WATCHTOWER_ID && isMyBuilding(selectedBuilding.building) && (
-                                    <div className="bg-gray-900/50 p-4 rounded-lg border border-purple-500/30 mb-4">
-                                        <h3 className="text-lg font-bold text-purple-300 mb-2">Налог сектора</h3>
-                                        <p className="text-sm text-gray-400 mb-2">Установите налог (0-50%) для этого сектора.</p>
-                                        <div className="flex items-center space-x-2">
-                                            <input
-                                                type="range"
-                                                min="0"
-                                                max="50"
-                                                value={taxRateDraft ?? (selectedBuilding.building.taxRate || 0)}
-                                                onChange={(e) => setTaxRateDraft(parseInt(e.target.value, 10))}
-                                                onMouseUp={(e) => {
-                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
-                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
-                                                }}
-                                                onTouchEnd={(e) => {
-                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
-                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
-                                                }}
-                                                onKeyUp={(e) => {
-                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
-                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
-                                                }}
-                                                className="w-full"
-                                            />
-                                            <span className="font-bold text-white w-12 text-right">{taxRateDraft ?? (selectedBuilding.building.taxRate || 0)}%</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Clan Castle Bank */}
-                                {BANDIT_CASTLE_IDS.has(Number(selectedBuilding.info.id)) && isMyBuilding(selectedBuilding.building) && (
-                                    <div className="bg-gray-900/50 p-4 rounded-lg border border-yellow-500/30 mb-4 text-center">
-                                        <h3 className="text-lg font-bold text-yellow-400 mb-2">Банк клана</h3>
-                                        <p className="text-sm text-gray-400 mb-3">Накопленная прибыль с налога.</p>
-                                        <div className="text-2xl font-bold text-white mb-3 flex items-center justify-center">
-                                            <img src={coinImageUrl} className="w-6 h-6 mr-2 object-contain" alt="coin" />
-                                            {selectedBuilding.building.bank || 0}
-                                        </div>
-                                        <button
-                                            onClick={handleWithdrawBank}
-                                            disabled={(selectedBuilding.building.bank || 0) <= 0}
-                                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                        >
-                                            Забрать прибыль
-                                        </button>
-                                    </div>
-                                )}
-
-                                <p className="text-gray-300 mb-4">{selectedBuilding.info.description}</p>
-
-                                {/* ... (Building info, upgrades, buttons) ... */}
-                                <div className="text-sm space-y-1 text-gray-400">
-                                    {selectedBuilding.info.id !== MOUNTAIN_ID && selectedBuilding.info.id !== RIVER_ID && (
-                                        <p>Прочность: <span className="font-bold text-white">{selectedBuilding.info.stats.durability}</span></p>
-                                    )}
-                                    {selectedBuilding.building.hp !== undefined && selectedBuilding.info.id !== MOUNTAIN_ID && selectedBuilding.info.id !== RIVER_ID && (
-                                        (() => {
-                                            const maxHp = selectedBuilding.building.maxHp ?? selectedBuilding.info.stats.durability;
-                                            const currentHp = Math.max(0, Math.min(selectedBuilding.building.hp ?? maxHp, maxHp));
-                                            const shieldMaxHp = Math.max(0, selectedBuilding.building.shieldMaxHp || 0);
-                                            const shieldHp = Math.max(0, Math.min(selectedBuilding.building.shieldHp || 0, shieldMaxHp || Number.MAX_SAFE_INTEGER));
-                                            const displayHp = selectedBuilding.building.isDestroying
-                                                ? Math.max(0, currentHp - (selectedBuilding.building.pendingDamage || 0))
-                                                : currentHp;
-                                            return (
-                                                <>
-                                                    {shieldMaxHp > 0 && (
-                                                        <p>Броня щита: <span className={`${shieldHp < shieldMaxHp ? 'text-yellow-400' : 'text-cyan-300'} font-bold`}>{shieldHp} / {shieldMaxHp}</span></p>
-                                                    )}
-                                                    <p>Здоровье: <span className={`${displayHp < maxHp ? 'text-red-400' : 'text-green-400'} font-bold`}>{displayHp} / {maxHp}</span></p>
-                                                </>
-                                            );
-                                        })()
-                                    )}
-                                    {selectedBuilding.info.stats.populationBonus && <p>Дает населения: <span className="font-bold text-white">{selectedBuilding.info.stats.populationBonus}</span></p>}
-                                    {selectedBuilding.info.stats.givesCoins && !isBanditCastleBuildingId(selectedBuilding.info.id) && <p>Дает монет: <span className="font-bold text-white">{selectedBuilding.info.stats.givesCoins}</span></p>}
-                                    {selectedBuilding.info.stats.increasesGoldCapacity && (
-                                        <p className="flex items-center">
-                                            Хранит:
-                                            <img src={coinImageUrl} className="w-4 h-4 mx-1 object-contain" alt="coin" />
-                                            <span className="font-bold text-white">{selectedBuilding.info.stats.increasesGoldCapacity.toLocaleString()} монет</span>
-                                        </p>
-                                    )}
-
-                                    {selectedBuilding.info.upgradesTo && (
-                                        (() => {
-                                            const nextInfo = buildingData.find(b => b.id === selectedBuilding.info.upgradesTo);
-                                            return (
-                                                <>
-                                                    {nextInfo?.stats?.increasesGoldCapacity ? (
-                                                        <p className="text-yellow-400 mt-1 flex items-center">
-                                                            Если улучшить:
-                                                            <img src={coinImageUrl} className="w-4 h-4 mx-1 object-contain" alt="coin" />
-                                                            <span>{nextInfo.stats.increasesGoldCapacity.toLocaleString()} монет</span>
-                                                        </p>
-                                                    ) : null}
-                                                    {nextInfo?.constructionRequirements?.resources ? (
-                                                        <p className="text-yellow-400 mt-1">
-                                                            Ресурсы, необходимые для постройки: {nextInfo.constructionRequirements.resources
-                                                                .map(r => `${r.name.toLowerCase()} - ${r.amount}`)
-                                                                .join(', ')}
-                                                        </p>
-                                                    ) : null}
-                                                </>
-                                            );
-                                        })()
-                                    )}
-
-                                    {selectedBuilding.building.isConstructing && (
-                                        <ConstructionTimer
-                                            endTime={selectedBuilding.building.constructionEndTime}
-                                            cost={selectedBuilding.info.stats.accelerationCost || 0}
-                                            onSpeedUp={handleSpeedUp}
-                                            isMyBuilding={isMyBuilding(selectedBuilding.building)}
-                                        />
-                                    )}
-                                </div>
-
-                                {selectedBuilding.info.id === AUCTION_ID && isMyBuilding(selectedBuilding.building) && (
-                                    <div className="mt-4 p-3 bg-gray-900/50 rounded border border-yellow-500/30">
-                                        <h4 className="text-yellow-400 font-bold mb-2 text-center">Обмен валюты</h4>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center text-sm text-gray-300">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="1000"
-                                                    value={buyRubyAmount}
-                                                    onChange={e => setBuyRubyAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                                    className="w-16 bg-gray-800 text-white text-center rounded border border-gray-700 p-1 mr-2"
-                                                />
-                                                <img src={coinImageUrl} className="w-4 h-4 mx-1 object-contain" alt="coin" />
-                                                <span>{'>'}</span>
-                                                <img src={rubyImageUrl} className="w-4 h-4 ml-1 object-contain" alt="ruby" />
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-[10px] text-gray-400 mb-1">Стоимость: {(buyRubyAmount * 10000).toLocaleString()}</div>
-                                                <button
-                                                    onClick={handleBuyRuby}
-                                                    disabled={playerGold < (buyRubyAmount * 10000)}
-                                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded text-xs disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                >
-                                                    Купить
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {CASINO_IDS.includes(selectedBuilding.info.id) && (
-                                    <div className="mt-4 space-y-2">
-                                        <button
-                                            onClick={() => handleOpenCasinoModal(selectedBuilding.building)}
-                                            className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 px-3 rounded text-sm"
-                                        >
-                                            Войти в казино
-                                        </button>
-                                        {isMyBuilding(selectedBuilding.building) && (
-                                            <button
-                                                onClick={() => handleOpenCasinoBankModal(selectedBuilding.building)}
-                                                className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-3 rounded text-sm"
-                                            >
-                                                Банк казино
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Building Upgrades Block... (omitted detailed content for brevity as it's unchanged) */}
-                                {selectedBuilding.info.upgradesTo && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && isMyBuilding(selectedBuilding.building) && (
-                                    <button
-                                        onClick={handleUpgrade}
-                                        disabled={playerGold < (selectedBuilding.info.upgradeCost || 0) || selectedBuilding.building.isConstructing}
-                                        className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded text-xs disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                    >
-                                        <span>Улучшить ({selectedBuilding.info.upgradeCost})</span>
-                                    </button>
-                                )}
-
-                                {/* Monster Academy - Enter Button */}
-                                {selectedBuilding.info.id >= 689 && selectedBuilding.info.id <= 696 && isMyBuilding(selectedBuilding.building) && (
-                                    <button
-                                        onClick={() => setShowMonsterAcademyModal(true)}
-                                        className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded text-xs"
-                                    >
-                                        <span>Войти в академию</span>
-                                    </button>
-                                )}
-
-                                <div className="mt-6 grid grid-cols-3 gap-2">
-                                    {(CANNON_IDS.includes(selectedBuilding.info.id) || selectedBuilding.info.id === PROTECTED_TOWER_ID) && isMyBuilding(selectedBuilding.building) && (
-                                        <button
-                                            onClick={handleToggleActive}
-                                            className={`col-span-3 ${selectedBuilding.building.isActive ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'} text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 transition-colors`}
-                                        >
-                                            <DefenseIcon className="w-5 h-5 mb-1" />
-                                            <span>{selectedBuilding.building.isActive ? 'Активировано' : 'Активировать'}</span>
-                                        </button>
-                                    )}
-                                    {isGeneralMarketBuilding(selectedBuilding.info) && isMyBuilding(selectedBuilding.building) && (
-                                        <button
-                                            onClick={() => { setMarketType('general'); setShowMarketModal(true); }}
-                                            className="col-span-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2"
-                                        >
-                                            <TradeIcon className="w-5 h-5 mb-1" />
-                                            <span>Торговля</span>
-                                        </button>
-                                    )}
-
-                                    {isMilitaryMarketBuilding(selectedBuilding.info) && isMyBuilding(selectedBuilding.building) && (
-                                        <button
-                                            onClick={() => { setMarketType('military'); setShowMarketModal(true); }}
-                                            className="col-span-3 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 border border-red-500"
-                                        >
-                                            <TradeIcon className="w-5 h-5 mb-1" />
-                                            <span>Купить/Продать</span>
-                                        </button>
-                                    )}
-
-                                    {(canRepairBuilding(selectedBuilding.building) || isMyBuilding(selectedBuilding.building) || Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) && (
-                                        <>
-                                            {canRepairBuilding(selectedBuilding.building) && repairCost > 0 && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID ? (
-                                                <button
-                                                    onClick={handleRepair}
-                                                    disabled={playerGold < repairCost}
-                                                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                    title={`Починить за ${repairCost} золота`}
-                                                >
-                                                    <RepairIcon className="w-4 h-4 mb-1" />
-                                                    <span>{repairCost}</span>
-                                                </button>
-                                            ) : canRepairBuilding(selectedBuilding.building) && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
-                                                <button disabled className="bg-gray-700 text-gray-500 font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 cursor-not-allowed">
-                                                    <RepairIcon className="w-4 h-4 mb-1" />
-                                                    <span>Починить</span>
-                                                </button>
-                                            )}
-
-                                            {isMyBuilding(selectedBuilding.building) && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
-                                                <button
-                                                    onClick={() => setShowProtectionMenu(true)}
-                                                    className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                >
-                                                    <ShieldIcon className="w-4 h-4 mb-1" />
-                                                    <span>Защитить</span>
-                                                </button>
-                                            )}
-
-                                            {isMyBuilding(selectedBuilding.building) && (
-                                                <button
-                                                    onClick={handleMoveClick}
-                                                    className={`${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:grayscale disabled:cursor-not-allowed`}
-                                                    title={`Переместить за ${(Number(selectedBuilding.building.buildingId) === MOUNTAIN_ID || Number(selectedBuilding.building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии`}
-                                                >
-                                                    <MoveIcon className="w-4 h-4 mb-1" />
-                                                    <span>Переместить</span>
-                                                </button>
-                                            )}
-
-                                            {isMyBuilding(selectedBuilding.building) && Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
-                                                <button
-                                                    onClick={handleSell}
-                                                    className="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                                    title="Продать за 50% стоимости"
-                                                >
-                                                    <SellIcon className="w-4 h-4 mb-1" />
-                                                    <span>Продать</span>
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {Number(selectedBuilding.building.buildingId) !== MOUNTAIN_ID && Number(selectedBuilding.building.buildingId) !== RIVER_ID && (
-                                        <button
-                                            onClick={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
-                                            className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed ${!isMyBuilding(selectedBuilding.building) ? 'col-span-3' : ''}`}
-                                        >
-                                            <span>Взорвать</span>
-                                        </button>
-                                    )}
-
-                                    {!isMyBuilding(selectedBuilding.building) && selectedBuilding.building.workState === 'finished' && placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing) && playerLevel >= 2 && (
-                                        <button
-                                            onClick={handleStealProduction}
-                                            className="col-span-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mt-2"
-                                        >
-                                            <span>Украсть</span>
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Owner Info */}
-                                <div className="mt-4 pt-3 border-t border-gray-700 text-center">
-                                    <span className="text-gray-400 text-xs uppercase tracking-wider">Владелец</span>
-                                    <div
-                                        className={`mt-1 font-bold ${(selectedBuilding.building.ownerId !== "-1" && selectedBuilding.building.ownerId !== "monster") ? 'text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted underline-offset-4' : 'text-gray-200'} transition-colors`}
-                                        onClick={() => {
-                                            if (selectedBuilding.building.ownerId !== "-1" && selectedBuilding.building.ownerId !== "monster") {
-                                                setSelectedPlayerId(selectedBuilding.building.ownerId as string);
-                                                setShowPlayerProfile(true);
-                                            }
-                                        }}
-                                    >
-                                        {isMyBuilding(selectedBuilding.building) ? "Вы" :
-                                            (selectedBuilding.building.ownerId === "-1" || selectedBuilding.building.ownerId === "monster") ?
-                                                (selectedBuilding.info.category === 'Монстры' ? "Игра (Персонаж: нет)" : "Природа") :
-                                                (allUsers[selectedBuilding.building.ownerId as string]?.name ||
-                                                    selectedBuilding.building.ownerName ||
-                                                    "Неизвестный игрок")}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : showExplosionMenu ? (
-                            // ... (Explosion menu content) ...
-                            <div className="p-4">
-                                <button onClick={() => setShowExplosionMenu(false)} className="mb-4 text-blue-400 hover:text-blue-300 text-sm flex items-center">
-                                    {'< Назад'}
-                                </button>
-                                <h3 className="text-lg font-bold text-white mb-3">Чем взрываем?</h3>
-                                <div className="space-y-3 max-h-60 overflow-y-auto">
-                                    {selectedBuildingDestructionInfo.length > 0 ? (
-                                        selectedBuildingDestructionInfo.map((option, idx) => {
-                                            const item = itemData.find(i => i.id === option.resourceId);
-                                            const invCount = inventory[option.resourceId] || 0;
-                                            const isSelected = selectedExplosionOption === idx;
-                                            const qty = isSelected ? explosionQuantity : 1;
-                                            const maxQty = Math.min(option.amount, invCount);
-                                            const hasEnough = invCount >= qty;
-                                            const hasGold = playerGold >= option.goldCost * qty;
-                                            const hasEnergy = playerEnergy >= option.energyCost * qty;
-                                            const canExplode = hasEnough && hasGold && hasEnergy && invCount >= 1;
-
-                                            return (
-                                                <div key={idx} onClick={() => { if (invCount >= 1) { setSelectedExplosionOption(idx); setExplosionQuantity(1); } }} className={`bg-gray-700/50 p-3 rounded border ${isSelected ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-600'} ${invCount >= 1 ? 'cursor-pointer hover:border-yellow-400/50' : 'opacity-60'}`}>
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <div className="flex items-center">
-                                                            <div className="w-8 h-8 mr-2">
-                                                                {item && <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />}
-                                                            </div>
-                                                            <span className="font-bold">{option.weaponName}</span>
-                                                        </div>
-                                                        <span className={`${invCount >= qty ? 'text-green-400' : 'text-red-400'} text-sm`}>
-                                                            {invCount} / {option.amount}
-                                                        </span>
-                                                    </div>
-                                                    {isSelected && maxQty > 1 && (
-                                                        <div className="flex items-center justify-center mb-3 gap-2">
-                                                            <span className="text-xs text-gray-300">Количество:</span>
-                                                            <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.max(1, prev - 1)); }} className="w-7 h-7 bg-gray-600 hover:bg-gray-500 text-white rounded font-bold text-lg flex items-center justify-center">-</button>
-                                                            <span className="text-white font-bold min-w-[40px] text-center">{explosionQuantity}</span>
-                                                            <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.min(maxQty, prev + 1)); }} className="w-7 h-7 bg-gray-600 hover:bg-gray-500 text-white rounded font-bold text-lg flex items-center justify-center">+</button>
-                                                            <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(maxQty); }} className="text-xs bg-gray-600 hover:bg-gray-500 text-yellow-400 rounded px-2 py-1">Макс</button>
-                                                        </div>
-                                                    )}
-                                                    <div className="text-xs text-gray-300 space-y-1 mb-3">
-                                                        <div className="flex justify-between">
-                                                            <span>Стоимость:</span>
-                                                            <div className="flex items-center">
-                                                                <span className={hasGold ? 'text-yellow-400' : 'text-red-400'}>{option.goldCost * qty}</span>
-                                                                <img src={coinImageUrl} className="w-3 h-3 ml-1 object-contain" alt="gold" />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex justify-between"><span>Энергия:</span> <span className={hasEnergy ? 'text-blue-400' : 'text-red-400'}>{option.energyCost * qty}</span></div>
-                                                        <div className="flex justify-between"><span>Время:</span> <span>{option.timeSeconds * qty} сек</span></div>
-                                                        <div className="flex justify-between"><span>Урон:</span> <span className="text-red-400">{(option.damage || 0) * qty}</span></div>
-                                                    </div>
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); if (invCount >= 1) { setSelectedExplosionOption(idx); setExplosionQuantity(1); } }}
-                                                        disabled={invCount < 1}
-                                                        className={`w-full font-bold py-2 rounded ${isSelected ? 'bg-yellow-600 text-white' : 'bg-gray-600 hover:bg-gray-500 text-white'} disabled:bg-gray-600 disabled:cursor-not-allowed`}
-                                                    >
-                                                        {isSelected ? 'Выбрано' : `Выбрать`}
-                                                    </button>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <p className="text-gray-400 text-center">Это здание нельзя взорвать известными способами.</p>
-                                    )}
-                                </div>
-                                {/* Detonator checkboxes + Explode button */}
-                                {selectedBuildingDestructionInfo.length > 0 && (() => {
-                                    const selOption = selectedExplosionOption !== null ? selectedBuildingDestructionInfo[selectedExplosionOption] : null;
-                                    const hasItems = selOption !== null && (inventory[selOption.resourceId] || 0) >= explosionQuantity;
-                                    const hasGold = selOption !== null && playerGold >= selOption.goldCost * explosionQuantity;
-                                    const hasEnergy = selOption !== null && playerEnergy >= selOption.energyCost * explosionQuantity;
-                                    const canExplode = hasItems && hasGold && hasEnergy;
-                                    const detonatorCount = inventory[10017] || 0;
-                                    const superDetonatorCount = inventory[10045] || 0;
-
-                                    const getTimeMultiplier = () => {
-                                        if (useSuperDetonator && superDetonatorCount > 0) return 0.5;
-                                        if (useRegularDetonator && detonatorCount > 0) return 0.75;
-                                        return 1;
-                                    };
-
-                                    const getTimeLabel = () => {
-                                        const m = getTimeMultiplier();
-                                        if (m === 0.5) return 'x0.5 (супер детонатор)';
-                                        if (m === 0.75) return 'x0.75 (детонатор)';
-                                        return 'x1 (без детонатора)';
-                                    };
-
-                                    return (
-                                        <div className="mt-4 space-y-3">
-                                            <div className="bg-gray-700/50 rounded-lg p-3 space-y-2">
-                                                <div className="text-xs text-gray-400 mb-1">Бонусы детонатора (опционально):</div>
-                                                <label className="flex items-center gap-2 cursor-pointer group" onClick={() => setUseRegularDetonator(prev => !prev)}>
-                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${useRegularDetonator ? 'bg-orange-500 border-orange-500' : 'border-gray-500 bg-gray-800 group-hover:border-orange-400'}`}>
-                                                        {useRegularDetonator && (
-                                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-sm text-white flex items-center gap-1">
-                                                        💣 Детонатор
-                                                        <span className={`text-xs ${detonatorCount > 0 ? 'text-green-400' : 'text-red-400'}`}>({detonatorCount})</span>
-                                                    </span>
-                                                </label>
-                                                <label className="flex items-center gap-2 cursor-pointer group" onClick={() => setUseSuperDetonator(prev => !prev)}>
-                                                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${useSuperDetonator ? 'bg-purple-500 border-purple-500' : 'border-gray-500 bg-gray-800 group-hover:border-purple-400'}`}>
-                                                        {useSuperDetonator && (
-                                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-sm text-white flex items-center gap-1">
-                                                        ⚡ Супер детонатор
-                                                        <span className={`text-xs ${superDetonatorCount > 0 ? 'text-green-400' : 'text-red-400'}`}>({superDetonatorCount})</span>
-                                                    </span>
-                                                </label>
-                                                {selOption && (
-                                                    <div className="text-xs text-gray-400 mt-1">
-                                                        Время: {getTimeLabel()}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={() => { if (selOption && canExplode) handleExplode(selOption, explosionQuantity, getTimeMultiplier()); }}
-                                                disabled={!canExplode}
-                                                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed text-sm"
-                                            >
-                                                💥 Взорвать
-                                            </button>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        ) : (
-                            // ... (Protection menu content) ...
-                            <div className="p-4">
-                                <button onClick={() => setShowProtectionMenu(false)} className="mb-4 text-blue-400 hover:text-blue-300 text-sm flex items-center">
-                                    {'< Назад'}
-                                </button>
-                                <h3 className="text-lg font-bold text-white mb-4 text-center">Защитить здание</h3>
-
-                                <div className="flex flex-col space-y-3">
-                                    {PROTECTION_OPTIONS.map((option, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => handleApplyProtection(option.cost, option.duration)}
-                                            disabled={playerRubies < option.cost}
-                                            className="bg-gray-700 hover:bg-blue-700 disabled:bg-gray-800 disabled:cursor-not-allowed text-white p-3 rounded-lg border border-gray-600 flex items-center justify-between transition-colors"
-                                        >
-                                            <div className="flex items-center font-bold">
-                                                <img src={rubyImageUrl} alt="Ruby" className="w-6 h-6 mr-2 object-contain" />
-                                                <span className="text-xl text-pink-400">{option.cost}</span>
-                                            </div>
-                                            <span className="text-lg font-semibold">{option.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                                <p className="mt-4 text-xs text-center text-gray-500">Щит получает урон первым. Когда броня щита падает до 0, урон начинает проходить в здание.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+            <SelectedBuildingModal
+                selectedBuilding={selectedBuilding}
+                onClose={() => setSelectedBuilding(null)}
+                buildingData={buildingData}
+                itemData={itemData}
+                inventory={inventory}
+                playerGold={playerGold}
+                playerRubies={playerRubies}
+                playerEnergy={playerEnergy}
+                playerLevel={playerLevel}
+                placedBuildings={placedBuildings}
+                allUsers={allUsers}
+                maxPopulation={maxPopulation}
+                currentPopulation={currentPopulation}
+                coinImageUrl={coinImageUrl}
+                rubyImageUrl={rubyImageUrl}
+                builderIconUrl={builderIconUrl}
+                populationImageUrl={populationImageUrl}
+                isMyBuilding={isMyBuilding}
+                canRepairBuilding={canRepairBuilding}
+                getCanonicalItemName={getCanonicalItemName}
+                handleSpeedUp={handleSpeedUp}
+                handleStartProduction={handleStartProduction}
+                handleCollectProduction={handleCollectProduction}
+                handleSetTax={handleSetTax}
+                handleWithdrawBank={handleWithdrawBank}
+                handleBuyRuby={handleBuyRuby}
+                handleOpenCasinoModal={handleOpenCasinoModal}
+                handleOpenCasinoBankModal={handleOpenCasinoBankModal}
+                handleUpgrade={handleUpgrade}
+                setShowMonsterAcademyModal={setShowMonsterAcademyModal}
+                handleToggleActive={handleToggleActive}
+                handleRepair={handleRepair}
+                handleMoveClick={handleMoveClick}
+                handleSell={handleSell}
+                handleStealProduction={handleStealProduction}
+                handleExplode={handleExplode}
+                handleApplyProtection={handleApplyProtection}
+                onOpenMarket={(type) => { setMarketType(type); setShowMarketModal(true); }}
+                onSelectPlayer={(playerId) => { setSelectedPlayerId(playerId); setShowPlayerProfile(true); }}
+            />
 
             {/* MARKET MODAL ... */}
             <MarketModal
