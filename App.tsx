@@ -66,6 +66,10 @@ import { BuildConfirmationModal } from './src/components/game/BuildConfirmationM
 import { RoyalElectionsModal, RoyalVotingModal } from './src/components/game/RoyalElectionsModal';
 import { PoliceMoralsModal, PoliceVotingModal } from './src/components/game/PoliceMoralsModal';
 import { OtherPlayerProfileModal } from './src/components/game/OtherPlayerProfileModal';
+import { CasinoModal, CasinoBankModal } from './src/components/game/CasinoModal';
+import { MonsterAcademyModal } from './src/components/game/MonsterAcademyModal';
+import { WorldMapModal } from './src/components/game/WorldMapModal';
+import { ShoutModal, PrivateChatModal } from './src/components/game/ChatModals';
 import {
     LogIn,
     LogOut,
@@ -2636,6 +2640,12 @@ const App: React.FC = () => {
     const closeRoyalVotingModal = useCallback(() => setShowRoyalVotingModal(false), []);
     const closePoliceMoralsModal = useCallback(() => setShowPoliceMorals(false), []);
     const closePoliceVotingModal = useCallback(() => setShowPoliceVotingModal(false), []);
+    const closeCasinoModal = useCallback(() => setShowCasinoModal(false), []);
+    const closeCasinoBankModal = useCallback(() => setShowCasinoBankModal(false), []);
+    const closeMonsterAcademyModal = useCallback(() => setShowMonsterAcademyModal(false), []);
+    const closeWorldMapModal = useCallback(() => setShowMap(false), []);
+    const closeShoutModal = useCallback(() => setShowShoutModal(false), []);
+    const closePrivateChatModal = useCallback(() => setShowPrivateChatModal(false), []);
     const [isClanDirectoryLoading, setIsClanDirectoryLoading] = useState(false);
 
     // Audio/Time
@@ -18814,250 +18824,38 @@ const App: React.FC = () => {
                 onConfirmExchange={handleRubyExchange}
             />
 
-            {/* Casino Modal */}
-            {showCasinoModal && (
-                <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-[60] backdrop-blur-md" onClick={() => setShowCasinoModal(false)}>
-                    <div className="bg-gradient-to-b from-purple-900 to-gray-900 p-6 rounded-lg shadow-2xl w-96 border-2 border-yellow-500" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-2xl font-bold text-yellow-400 mb-4 text-center flex items-center justify-center">
-                            Казино
-                        </h3>
-                        
-                        <div className="flex items-center justify-center mb-4 space-x-2">
-                            <img src={coinImageUrl} className="w-6 h-6" alt="Coin" />
-                            <span className="text-white">Ваши монеты: <span className="text-yellow-400 font-bold">{playerGold.toLocaleString()}</span></span>
-                        </div>
+            <CasinoModal
+                isOpen={showCasinoModal}
+                onClose={closeCasinoModal}
+                playerGold={playerGold}
+                coinImageUrl={coinImageUrl}
+                casinoBetAmount={casinoBetAmount}
+                setCasinoBetAmount={setCasinoBetAmount}
+                casinoIsSpinning={casinoIsSpinning}
+                casinoResult={casinoResult}
+                onGamble={handleCasinoGamble}
+            />
 
-                        <div className="bg-gray-800/50 p-4 rounded-lg mb-4 border border-gray-600">
-                            <label className="text-gray-300 text-sm mb-2 block">Сумма ставки:</label>
-                            <div className="flex items-center space-x-2">
-                                <img src={coinImageUrl} className="w-8 h-8" alt="Coin" />
-                                <input
-                                    type="number"
-                                    min="100"
-                                    max={playerGold}
-                                    value={casinoBetAmount}
-                                    onChange={e => setCasinoBetAmount(Math.max(100, parseInt(e.target.value) || 0))}
-                                    className="flex-1 bg-gray-700 text-white text-center rounded border border-gray-600 p-2 text-lg font-bold"
-                                />
-                            </div>
-                            <div className="flex gap-2 mt-2">
-                                <button onClick={() => setCasinoBetAmount(1000)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 rounded text-xs">1K</button>
-                                <button onClick={() => setCasinoBetAmount(5000)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 rounded text-xs">5K</button>
-                                <button onClick={() => setCasinoBetAmount(10000)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 rounded text-xs">10K</button>
-                                <button onClick={() => setCasinoBetAmount(50000)} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 rounded text-xs">50K</button>
-                                <button onClick={() => setCasinoBetAmount(Math.floor(playerGold / 2))} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-1 rounded text-xs">?</button>
-                            </div>
-                        </div>
+            <CasinoBankModal
+                isOpen={showCasinoBankModal && !!activeCasinoBuilding}
+                onClose={closeCasinoBankModal}
+                activeCasinoBuilding={activeCasinoBuilding}
+                onWithdraw={handleWithdrawCasinoBank}
+            />
 
-                        {casinoBetAmount > 10000 && (
-                            <div className="bg-purple-800/50 p-3 rounded-lg mb-4 border border-purple-500 text-center">
-                                <span className="text-purple-300 text-sm">Есть шанс выиграть рубин!</span>
-                            </div>
-                        )}
+            <MonsterAcademyModal
+                isOpen={showMonsterAcademyModal}
+                onClose={closeMonsterAcademyModal}
+            />
 
-                        {/* Spin Result Display */}
-                        {casinoIsSpinning && (
-                            <div className="bg-gray-800/50 p-4 rounded-lg mb-4 text-center">
-                                <div className="text-4xl animate-spin inline-block">🎰</div>
-                                <p className="text-yellow-400 mt-2 animate-pulse">Крутим...</p>
-                            </div>
-                        )}
-
-                        {casinoResult && !casinoIsSpinning && (
-                            <div className={`p-4 rounded-lg mb-4 text-center ${casinoResult.won ? (casinoResult.isRuby ? 'bg-purple-800/50 border-2 border-purple-400' : 'bg-green-800/50 border-2 border-green-400') : 'bg-red-800/50 border-2 border-red-400'}`}>
-                                {casinoResult.won ? (
-                                    casinoResult.isRuby ? (
-                                        <div>
-                                            <span className="text-4xl">💎</span>
-                                            <p className="text-purple-300 font-bold text-xl mt-2">ДЖЕКПОТ!</p>
-                                            <p className="text-purple-200">Вы выиграли рубин!</p>
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <span className="text-4xl">🏆</span>
-                                            <p className="text-green-300 font-bold text-xl mt-2">ПОБЕДА!</p>
-                                            <p className="text-green-200">Вы выиграли {casinoResult.amount.toLocaleString()} монет!</p>
-                                        </div>
-                                    )
-                                ) : (
-                                    <div>
-                                        <span className="text-4xl">💥</span>
-                                        <p className="text-red-300 font-bold text-xl mt-2">ПРОИГРЫШ</p>
-                                        <p className="text-red-200">Попробуйте еще раз!</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="flex space-x-2">
-                            <button 
-                                onClick={() => setShowCasinoModal(false)} 
-                                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded"
-                            >
-                                Закрыть
-                            </button>
-                            <button 
-                                onClick={handleCasinoGamble} 
-                                disabled={casinoIsSpinning || playerGold < casinoBetAmount}
-                                className="flex-1 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black py-2 rounded font-bold disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed"
-                            >
-                                {casinoIsSpinning ? 'Крутим...' : 'Играть!'}
-                            </button>
-                        </div>
-
-                        <p className="text-gray-500 text-xs text-center mt-4">
-                            Казино всегда выигрывает... но не всегда!
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {showCasinoBankModal && activeCasinoBuilding && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-[61] backdrop-blur-sm" onClick={() => setShowCasinoBankModal(false)}>
-                    <div className="bg-gradient-to-b from-emerald-900 to-gray-900 p-6 rounded-lg shadow-2xl w-80 border-2 border-emerald-400" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-emerald-300 text-center mb-4">Банк казино</h3>
-                        <div className="text-center mb-5">
-                            <p className="text-gray-300 text-sm mb-2">Накопленная прибыль:</p>
-                            <div className="text-3xl font-bold text-yellow-300">{(activeCasinoBuilding.bank || 0).toLocaleString()}</div>
-                            <div className="text-gray-400 text-sm mt-1">монет</div>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowCasinoBankModal(false)}
-                                className="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded font-bold"
-                            >
-                                Закрыть
-                            </button>
-                            <button
-                                onClick={handleWithdrawCasinoBank}
-                                disabled={(activeCasinoBuilding.bank || 0) <= 0}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded font-bold disabled:bg-gray-600 disabled:cursor-not-allowed"
-                            >
-                                Забрать прибыль
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Monster Academy Modal */}
-            {showMonsterAcademyModal && (
-                <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-[60] backdrop-blur-md" onClick={() => setShowMonsterAcademyModal(false)}>
-                    <div className="relative w-full h-full md:w-auto md:h-auto flex flex-col items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-                        {/* Academy Menu Image Container */}
-                        <div className="relative">
-                            {/* Academy Menu Image - Full screen on desktop, responsive on mobile */}
-                                <img 
-                                    src="/academymonsters/seEsr.webp" 
-                                    alt="Академия монстров" 
-                                    className="w-full h-auto md:max-h-[85vh] md:w-auto object-contain rounded-lg"
-                                />
-                            
-                            {/* Create Buttons Overlay - positioned under each capsule */}
-                            <div className="absolute bottom-[8%] left-0 right-0 flex justify-center gap-[8%] px-[10%]">
-                                {/* Left capsule button */}
-                                <button 
-                                    disabled
-                                    className="bg-purple-700/80 hover:bg-purple-600/80 disabled:bg-gray-700/60 disabled:cursor-not-allowed text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg text-xs md:text-sm border-2 border-purple-400/50 backdrop-blur-sm transition-all"
-                                >
-                                    Создать
-                                </button>
-                                
-                                {/* Center capsule button */}
-                                <button 
-                                    disabled
-                                    className="bg-purple-700/80 hover:bg-purple-600/80 disabled:bg-gray-700/60 disabled:cursor-not-allowed text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg text-xs md:text-sm border-2 border-purple-400/50 backdrop-blur-sm transition-all"
-                                >
-                                    Создать
-                                </button>
-                                
-                                {/* Right capsule button */}
-                                <button 
-                                    disabled
-                                    className="bg-purple-700/80 hover:bg-purple-600/80 disabled:bg-gray-700/60 disabled:cursor-not-allowed text-white font-bold py-2 px-4 md:py-3 md:px-6 rounded-lg text-xs md:text-sm border-2 border-purple-400/50 backdrop-blur-sm transition-all"
-                                >
-                                    Создать
-                                </button>
-                            </div>
-                        </div>
-                        
-                        {/* Close button */}
-                        <button 
-                            onClick={() => setShowMonsterAcademyModal(false)}
-                            className="absolute top-4 right-4 text-white/70 hover:text-white z-10 bg-black/30 hover:bg-black/50 rounded-full p-2 transition-all"
-                        >
-                            <CloseIcon className="w-8 h-8" />
-                        </button>
-                        
-                        {/* Hint text */}
-                        <p className="text-gray-400 text-xs md:text-sm mt-4 text-center">
-                            Выберите монстра для создания
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {showMap && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => { setShowMap(false); playCloseSound(); }}>
-                    <div className="relative flex flex-col" onClick={(e) => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)', overflow: 'hidden' }}>
-                        {/* Title centered + close button */}
-                        <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                                <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Карта Мира</h2>
-                            </div>
-                            <button onClick={() => { setShowMap(false); playCloseSound(); }} className="absolute" style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
-                              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
-                              onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
-                            >
-                            </button>
-                        </div>
-                        <div className="build-menu-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${ZONES_X}, 1fr)` }}>
-                                {Array.from({ length: ZONES_X * ZONES_Y }).map((_, index) => {
-                                    const row = Math.floor(index / ZONES_X);
-                                    const col = index % ZONES_X;
-
-                                    const hasTownHall = townHallLocation &&
-                                        Math.floor(townHallLocation.x / ZONE_SIZE) === col &&
-                                        Math.floor(townHallLocation.y / ZONE_SIZE) === row;
-
-                                    const clanCastle = placedBuildings.find(b => {
-                                        const info = buildingData.find(i => i.id === b.buildingId);
-                                        return info && info.category === 'Р С™Р В»Р В°Р Р…' &&
-                                            Math.floor(b.x / ZONE_SIZE) === col &&
-                                            Math.floor(b.y / ZONE_SIZE) === row;
-                                    });
-
-                                    return (
-                                        <div
-                                            key={index}
-                                            style={{ width: '96px', height: '96px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', background: clanCastle ? 'rgba(180,40,40,0.25)' : 'rgba(0,0,0,0.25)', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                                            title={`Зона ${col + 1}-${row + 1}`}
-                                            onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; e.currentTarget.style.background = clanCastle ? 'rgba(180,40,40,0.35)' : 'rgba(255,255,255,0.08)'; }}
-                                            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.background = clanCastle ? 'rgba(180,40,40,0.25)' : 'rgba(0,0,0,0.25)'; }}
-                                        >
-                                            <span style={{ position: 'absolute', top: '3px', left: '4px', fontFamily: 'Nunito, sans-serif', fontSize: '9px', fontWeight: 600, color: 'rgba(255,255,255,0.3)' }}>{col + 1}-{row + 1}</span>
-
-                                            {hasTownHall && (
-                                                <span className="animate-pulse" style={{ fontSize: '24px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }} title="Ваш город">⭐</span>
-                                            )}
-
-                                            {clanCastle && (
-                                                <div style={{ marginTop: '2px', display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#f87171' }}>
-                                                    <ClanIcon className="w-5 h-5" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div style={{ marginTop: '12px', textAlign: 'center', fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.35)' }}>
-                                Звездочкой отмечено ваше главное здание. Замки обозначают владения кланов.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <WorldMapModal
+                isOpen={showMap}
+                onClose={closeWorldMapModal}
+                townHallLocation={townHallLocation}
+                placedBuildings={placedBuildings}
+                buildingData={buildingData}
+                playCloseSound={playCloseSound}
+            />
 
             <TopPlayersModal
                 isOpen={showTopPlayers}
@@ -19130,148 +18928,30 @@ const App: React.FC = () => {
                 allUsers={allUsers}
                 onVote={handlePoliceVoteAction}
             />
-            {showShoutModal && (
-                // ... (Shout Modal content) ...
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowShoutModal(false)}>
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
-                            <h2 className="text-xl font-bold text-white">Отправь во все чаты</h2>
-                            <button onClick={() => setShowShoutModal(false)} className="text-gray-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
+            <ShoutModal
+                isOpen={showShoutModal}
+                onClose={closeShoutModal}
+                chatInput={chatInput}
+                playerEnergy={playerEnergy}
+                playerGold={playerGold}
+                coinImageUrl={coinImageUrl}
+                onConfirmShout={handleConfirmShout}
+            />
 
-                        <div className="bg-gray-900/80 p-4 rounded-lg mb-4 border border-blue-500/30">
-                            <p className="text-blue-400 font-medium break-words">{chatInput}</p>
-                        </div>
-
-                        <div className="text-sm text-gray-400 mb-4 flex flex-col items-center space-y-1">
-                            <div className={`flex items-center space-x-1 ${playerEnergy < SHOUT_COST_ENERGY ? 'text-red-400' : 'text-blue-300'}`}>
-                                <span className="text-yellow-500 font-bold">⚡</span>
-                                <span>Стоимость энергии: {SHOUT_COST_ENERGY}</span>
-                            </div>
-                            <div className={`flex items-center space-x-1 ${playerGold < SHOUT_COST_GOLD ? 'text-red-400' : 'text-yellow-300'}`}>
-                                <img src={coinImageUrl} className="w-4 h-4 object-contain" alt="coin" />
-                                <span>Стоимость монет: {SHOUT_COST_GOLD}</span>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={handleConfirmShout}
-                            disabled={playerGold < SHOUT_COST_GOLD || playerEnergy < SHOUT_COST_ENERGY}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex justify-center items-center"
-                        >
-                            {SHOUT_COST_ENERGY} энергии • {SHOUT_COST_GOLD} монет • Отправить
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {showPrivateChatModal && activePrivateChat && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowPrivateChatModal(false)}>
-                    <div className="bg-gray-800 border-2 border-gray-600 rounded-lg shadow-2xl w-[400px] h-[500px] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="bg-gray-900 p-3 border-b border-gray-700 flex justify-between items-center rounded-t-lg">
-                            <div className="flex items-center gap-2">
-                                {activePrivateChat === 'anonymous' ? (
-                                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600">
-                                        <span className="text-xl">???</span>
-                                    </div>
-                                ) : Object.values(allUsers).find(u => u.uid === activePrivateChat)?.avatar ? (
-                                    <img src={Object.values(allUsers).find(u => u.uid === activePrivateChat)?.avatar} alt="avatar" className="w-8 h-8 rounded-full object-cover border border-gray-600" referrerPolicy="no-referrer" />
-                                ) : (
-                                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600">
-                                        <UserIcon className="w-5 h-5 text-gray-400" />
-                                    </div>
-                                )}
-                                <div className="flex flex-col">
-                                    <span className="text-white font-bold text-sm">
-                                        {activePrivateChat === 'anonymous' ? 'Р С’Р Р…Р С•Р Р…Р С‘Р С' : (Object.values(allUsers).find(u => u.uid === activePrivateChat)?.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–')}
-                                        {activePrivateChatId?.endsWith('_anon') && activePrivateChat !== 'anonymous' && <span className="text-orange-400 ml-1">(Р С’Р Р…Р С•Р Р…Р С‘Р СР Р…Р С•)</span>}
-                                    </span>
-                                    {activePrivateChat !== 'anonymous' && (
-                                        <span className="text-gray-400 text-xs">Р Р€РЎР‚Р С•Р Р†Р ВµР Р…РЎРЉ {Object.values(allUsers).find(u => u.uid === activePrivateChat)?.level || 1}</span>
-                                    )}
-                                </div>
-                            </div>
-                            <button onClick={() => setShowPrivateChatModal(false)} className="text-gray-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-7 h-7" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3 flex flex-col">
-                            {privateMessages
-                                .filter(m => {
-                                    if (activePrivateChatId?.endsWith('_anon')) {
-                                        return m.chatId === activePrivateChatId;
-                                    } else {
-                                        const isPair = (m.senderId === user?.uid && m.receiverId === activePrivateChat) || 
-                                                       (m.senderId === activePrivateChat && m.receiverId === user?.uid);
-                                        return isPair && (!m.chatId || !m.chatId.endsWith('_anon'));
-                                    }
-                                })
-                                .map(msg => {
-                                    const isMine = msg.senderId === user?.uid;
-                                    const isAnonymous = msg.senderId === 'anonymous';
-                                    const displayText = msg.text || (msg as any).message;
-                                    // Get avatar - prefer message's senderAvatar, then fall back to allUsers
-                                    const senderAvatar = msg.senderAvatar || allUsers[msg.senderId]?.avatar;
-                                    const senderName = msg.senderName || allUsers[msg.senderId]?.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–';
-                                    return (
-                                        <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} items-end gap-2`}>
-                                            {!isMine && (
-                                                senderAvatar ? (
-                                                    <img src={senderAvatar} alt="avatar" className="w-7 h-7 rounded-full object-cover border border-gray-600 flex-shrink-0" />
-                                                ) : (
-                                                    <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center border border-gray-600 flex-shrink-0">
-                                                        <span className="text-xs font-bold text-gray-400">{senderName?.charAt(0) || '?'}</span>
-                                                    </div>
-                                                )
-                                            )}
-                                            <div className={`max-w-[80%] rounded-lg p-2 text-sm ${isMine ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}>
-                                                {!isMine && !isAnonymous && <p className="text-[10px] text-blue-300 mb-1 font-bold">{senderName}</p>}
-                                                {isAnonymous && !isMine && <p className="text-[10px] text-orange-400 mb-1 font-bold">Анонимное сообщение:</p>}
-                                                <p className="break-words font-medium">{displayText || (msg as any).content || `[Ошибка: пустое сообщение (${Object.keys(msg).join(', ')})]`}</p>
-                                                <div className={`text-[10px] mt-1 ${isMine ? 'text-blue-200 text-right' : 'text-gray-400 text-left'}`}>
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
-                                            </div>
-                                            {isMine && (
-                                                playerAvatar ? (
-                                                    <img src={playerAvatar} alt="avatar" className="w-7 h-7 rounded-full object-cover border border-gray-600 flex-shrink-0" />
-                                                ) : (
-                                                    <div className="w-7 h-7 rounded-full bg-blue-700 flex items-center justify-center border border-gray-600 flex-shrink-0">
-                                                        <span className="text-xs font-bold text-white">{playerName?.charAt(0) || '?'}</span>
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                        </div>
-
-                        <div className="p-3 bg-gray-900 border-t border-gray-700 rounded-b-lg flex flex-col gap-2">
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={privateMessageText}
-                                    onChange={e => setPrivateMessageText(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleSendPrivateMessage()}
-                                    placeholder="Написать сообщение..."
-                                    className="flex-1 bg-gray-800 text-white px-3 py-2 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
-                                />
-                                <button
-                                    onClick={handleSendPrivateMessage}
-                                    disabled={!privateMessageText.trim()}
-                                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded font-bold transition-colors"
-                                >
-                                    Отправить
-                                </button>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-            )}
+            <PrivateChatModal
+                isOpen={showPrivateChatModal && !!activePrivateChat}
+                onClose={closePrivateChatModal}
+                activePrivateChat={activePrivateChat}
+                activePrivateChatId={activePrivateChatId}
+                allUsers={allUsers}
+                privateMessages={privateMessages}
+                user={user}
+                playerAvatar={playerAvatar}
+                playerName={playerName}
+                privateMessageText={privateMessageText}
+                setPrivateMessageText={setPrivateMessageText}
+                onSendPrivateMessage={handleSendPrivateMessage}
+            />
 
             <OtherPlayerProfileModal
                 isOpen={showPlayerProfile && !!selectedPlayerId}
