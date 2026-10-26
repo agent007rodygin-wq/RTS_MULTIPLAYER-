@@ -136,3 +136,47 @@ export const mergeTopPlayersEntries = (...sources) => {
 
     return Array.from(merged.values());
 };
+
+/**
+ * @typedef {'glory' | 'trees' | 'monsters' | 'buildings' | 'theft'} TopPlayersTab
+ */
+
+/**
+ * @type {Array<{ id: TopPlayersTab, label: string, icon: string }>}
+ */
+export const TOP_PLAYERS_TABS = [
+    { id: 'glory', label: 'Слава', icon: '🏆' },
+    { id: 'trees', label: 'Деревья', icon: '🌳' },
+    { id: 'monsters', label: 'Монстры', icon: '💥' },
+    { id: 'buildings', label: 'Здания', icon: '🏚️' },
+    { id: 'theft', label: 'Воровство', icon: '🥷' },
+];
+
+/**
+ * @type {Record<TopPlayersTab, string>}
+ */
+export const TOP_PLAYERS_LABEL_BY_TAB = {
+    glory: 'Рейтинг по славе',
+    trees: 'Топ по срубленным деревьям',
+    monsters: 'Топ по взрыву монстров',
+    buildings: 'Топ по взрыву зданий',
+    theft: 'Топ по воровству',
+};
+
+/**
+ * @param {any} playerData
+ * @param {string} tab
+ * @param {string} [currentUid]
+ * @param {any} [currentUserStats]
+ * @param {number} [playerGlory]
+ * @returns {number}
+ */
+export const calculateTopPlayerValue = (playerData, tab, currentUid, currentUserStats, playerGlory = 0) => {
+    const isCurrent = Boolean(currentUid && playerData?.uid === currentUid);
+    const stats = isCurrent && currentUserStats ? currentUserStats : (playerData || {});
+    if (tab === 'glory') return isCurrent ? playerGlory : (Number(playerData?.glory || 0) || 0);
+    if (tab === 'trees') return Number(stats.treesChopped || 0) || 0;
+    if (tab === 'monsters') return Number(stats.monstersDestroyed || 0) || 0;
+    if (tab === 'buildings') return Number(stats.buildingsDestroyed || 0) || 0;
+    return Number(stats.theftsCommitted || 0) || 0;
+};

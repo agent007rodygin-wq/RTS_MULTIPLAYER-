@@ -29,7 +29,8 @@ import {
     hasHigherLeaderboardStats,
     normalizeClanIdValue,
     toTopPlayerEntry,
-    mergeTopPlayersEntries
+    mergeTopPlayersEntries,
+    calculateTopPlayerValue
 } from './src/game/leaderboard/leaderboardLogic.js';
 import {
     resolveUserAvatar,
@@ -55,6 +56,7 @@ import {
     getMonsterZoneId,
     buildMonsterZoneCounts
 } from './src/game/monsters/monsterZones.js';
+import { TopPlayersModal } from './src/components/game/TopPlayersModal';
 import {
     LogIn,
     LogOut,
@@ -17395,14 +17397,6 @@ const App: React.FC = () => {
             return Number(b.id) - Number(a.id);
         });
 
-    const topPlayersTabs: Array<{ id: TopPlayersTab; label: string; icon: string }> = [
-        { id: 'glory', label: 'Слава', icon: '🏆' },
-        { id: 'trees', label: 'Деревья', icon: '🌳' },
-        { id: 'monsters', label: 'Монстры', icon: '💥' },
-        { id: 'buildings', label: 'Здания', icon: '🏚️' },
-        { id: 'theft', label: 'Воровство', icon: '🥷' },
-    ];
-
     const resourceShopTabs: Array<{ id: ResourceShopCategory; label: string }> = [
         { id: 'resources', label: 'Ресурсы' },
         { id: 'gryadki', label: 'Грядки' },
@@ -17502,19 +17496,7 @@ const App: React.FC = () => {
 
     const getTopPlayerValue = (playerData: any, tab: TopPlayersTab) => {
         const currentUserStats = user?.uid ? playerLeaderboardStats : getUserStatCounters(null);
-        if (tab === 'glory') return playerData.uid === user?.uid ? playerGlory : (playerData.glory || 0);
-        if (tab === 'trees') return playerData.uid === user?.uid ? (currentUserStats.treesChopped || 0) : (playerData.treesChopped || 0);
-        if (tab === 'monsters') return playerData.uid === user?.uid ? (currentUserStats.monstersDestroyed || 0) : (playerData.monstersDestroyed || 0);
-        if (tab === 'buildings') return playerData.uid === user?.uid ? (currentUserStats.buildingsDestroyed || 0) : (playerData.buildingsDestroyed || 0);
-        return playerData.uid === user?.uid ? (currentUserStats.theftsCommitted || 0) : (playerData.theftsCommitted || 0);
-    };
-
-    const topPlayersLabelByTab: Record<TopPlayersTab, string> = {
-        glory: 'Рейтинг по славе',
-        trees: 'Топ по срубленным деревьям',
-        monsters: 'Топ по взрыву монстров',
-        buildings: 'Топ по взрыву зданий',
-        theft: 'Топ по воровству',
+        return calculateTopPlayerValue(playerData, tab, user?.uid, currentUserStats, playerGlory);
     };
 
     const baseTopPlayersData = mergeTopPlayersEntries(
@@ -19760,79 +19742,19 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            {showTopPlayers && (
-                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowTopPlayers(false)}>
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-2xl w-full max-w-md border border-gray-600 relative" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-700">
-                            <h2 className="text-2xl font-bold text-white flex items-center">
-                                <img src={guiMenuTopImageUrl} alt="Top" className="w-8 h-8 mr-3" />
-                                Топ игроков
-                            </h2>
-                            <button onClick={() => setShowTopPlayers(false)} className="text-gray-400 hover:text-white transition-colors">
-                                <CloseIcon className="w-8 h-8" />
-                            </button>
-                        </div>
-                        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                            <div className="flex flex-wrap gap-2 mb-3">
-                                {topPlayersTabs.map(tab => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTopPlayersTab(tab.id)}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${activeTopPlayersTab === tab.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-                                    >
-                                        {tab.icon} {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-                            {leaderboardLoading && hasTopPlayersData ? (
-                                <div className="py-2 text-center text-gray-400 font-medium">
-                                    Повторная загрузка...
-                                </div>
-                            ) : leaderboardLoading ? (
-                                <div className="py-8 text-center text-gray-300 font-medium">
-                                    Загрузка топа...
-                                </div>
-                            ) : leaderboardError && !hasTopPlayersData ? (
-                                <div className="py-8 text-center text-red-300 font-medium">
-                                    Не удалось загрузить топ игроков
-                                </div>
-                            ) : !hasTopPlayersData ? (
-                                <div className="py-8 text-center text-gray-400 font-medium">
-                                    Пока нет игроков в рейтинге
-                                </div>
-                            ) : (
-                                displayedTopPlayersData.map((u: any, index: number) => (
-                                    <div
-                                        key={u.uid}
-                                        className={`flex items-center justify-between p-3 rounded-lg ${u.uid === user?.uid ? 'bg-blue-900/50 border border-blue-500' : 'bg-gray-700/50'}`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <span className={`text-lg font-bold w-8 ${index < 3 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                                {index === 0 ? '1.' : index === 1 ? '2.' : index === 2 ? '3.' : `${index + 1}.`}
-                                            </span>
-                                            {u.avatar ? (
-                                                <img src={u.avatar} alt="avatar" className="w-9 h-9 rounded-full object-cover border border-gray-500 flex-shrink-0" />
-                                            ) : (
-                                                <div className="w-9 h-9 rounded-full bg-gray-600 border border-gray-500 flex items-center justify-center flex-shrink-0">
-                                                    <UserIcon className="w-5 h-5 text-gray-300" />
-                                                </div>
-                                            )}
-                                            <span className="text-white font-medium">{u.name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">{topPlayersTabs.find(tab => tab.id === activeTopPlayersTab)?.icon}</span>
-                                            <span className="text-yellow-300 font-bold">{getTopPlayerValue(u, activeTopPlayersTab)}</span>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        <div className="mt-4 text-center text-sm text-gray-400">
-                            {topPlayersLabelByTab[activeTopPlayersTab]}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <TopPlayersModal
+                isOpen={showTopPlayers}
+                onClose={() => setShowTopPlayers(false)}
+                activeTab={activeTopPlayersTab}
+                onTabChange={setActiveTopPlayersTab}
+                leaderboardLoading={leaderboardLoading}
+                leaderboardError={leaderboardError}
+                hasData={hasTopPlayersData}
+                players={displayedTopPlayersData}
+                currentUserId={user?.uid}
+                getValue={getTopPlayerValue}
+                guiMenuTopImageUrl={guiMenuTopImageUrl}
+            />
 
             {showRoyalElections && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowRoyalElections(false)}>

@@ -134,6 +134,15 @@ const FIRST_WAVE_SCENARIOS = [
     seamDecision: 'PURE_SEAM',
     fixtureReference: 'tests/characterization/scenario-006-clan-id-normalize.mjs',
   },
+  {
+    order: 14,
+    scenarioId: 'scenario-14',
+    sourceScenarioId: 'scenario-007',
+    label: 'Top player leaderboard tabs configuration and value calculation contract.',
+    script: 'tests/characterization/scenario-007-top-players-calculation.mjs',
+    seamDecision: 'PURE_SEAM',
+    fixtureReference: 'tests/characterization/scenario-007-top-players-calculation.mjs',
+  },
 ];
 
 function toPosixPath(value) {
