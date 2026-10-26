@@ -11084,8 +11084,8 @@ const App: React.FC = () => {
                 const clanCastleOwner = clanCastle ? allUsers[String(clanCastle.ownerId || '')] : null;
                 const clan = clanCastle
                     ? (
-                        clans.find(c => c.leaderUid === String(clanCastle.ownerId || '')) ||
-                        clans.find(c => Number(c.id) === Number(normalizeClanIdValue(clanCastleOwner?.clanId)))
+                        clansRef.current.find(c => c.leaderUid === String(clanCastle.ownerId || '')) ||
+                        clansRef.current.find(c => Number(c.id) === Number(normalizeClanIdValue(clanCastleOwner?.clanId)))
                     )
                     : null;
                 const clanAvatarUrl = clan?.avatarUrl || null;
@@ -11195,7 +11195,7 @@ const App: React.FC = () => {
         }
 
         context.restore();
-    }, [memoizedDrawableEntities, hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, clans, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
+    }, [memoizedDrawableEntities, hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
 
     const drawRef = useRef(draw);
     const lastDrawAtRef = useRef(0);
