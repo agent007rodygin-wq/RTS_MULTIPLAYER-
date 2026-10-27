@@ -52,33 +52,33 @@ const TabletMenuModalComponent: React.FC<TabletMenuModalProps> = ({
 
     return (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={onClose}>
-            <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: 'min(660px, calc(100vw - 32px))', height: 'min(490px, calc(100vh - 32px))' }}>
+            <div className="relative flex items-center justify-center" onClick={(e) => e.stopPropagation()} style={{ width: 'min(660px, calc(100vw - 32px))', aspectRatio: '1256 / 897', maxHeight: 'calc(100vh - 32px)' }}>
                 {/* Tablet background image */}
                 <img src="/Gui/tablet_menu_bg.webp" alt="Tablet" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
                 
-                {/* Close button */}
+                {/* Close button aligned with background texture X */}
                 <button 
                     onClick={onClose} 
                     className="absolute z-10"
-                    style={{ right: '35px', top: '42px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                    style={{ right: '7.06%', top: '8.91%', transform: 'translate(50%, -50%)', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                     onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55)'; e.currentTarget.style.color = '#fff'; }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                 />
 
                 {/* Content overlay on tablet screen */}
-                <div className="relative z-[1] flex flex-col items-center" style={{ width: '620px', padding: '28px 40px 22px 40px' }}>
+                <div className="relative z-[1] flex flex-col items-center justify-center" style={{ width: '88%', height: '84%', padding: '8px 24px' }}>
                     {activeTabletTutorial ? (
-                        <div className="w-full flex flex-col items-center">
-                            <div style={{ border: '4px solid #d4af37', borderRadius: '14px', boxShadow: '0 0 0 2px rgba(255,215,0,0.25), 0 8px 24px rgba(0,0,0,0.45)', overflow: 'hidden', marginTop: '6px', marginBottom: '14px', padding: activeTabletTutorial === 'intro' ? '0' : '8px', background: activeTabletTutorial === 'intro' ? 'transparent' : '#f4ead1' }}>
+                        <div className="w-full flex flex-col items-center justify-center">
+                            <div style={{ border: '3px solid #d4af37', borderRadius: '12px', boxShadow: '0 0 0 2px rgba(255,215,0,0.25), 0 6px 18px rgba(0,0,0,0.45)', overflow: 'hidden', marginTop: '0px', marginBottom: '8px', padding: activeTabletTutorial === 'intro' ? '0' : '6px', background: activeTabletTutorial === 'intro' ? 'transparent' : '#f4ead1' }}>
                                 {activeTabletTutorial === 'monsterWarning' ? (
-                                    <div className="flex items-center justify-center gap-4" style={{ width: '380px', height: '205px' }}>
-                                        <img src={monsterTutorialImageUrl} alt="Monster warning 1" style={{ width: '170px', height: '185px', objectFit: 'contain' }} />
-                                        <img src={monsterTutorialImageUrl2} alt="Monster warning 2" style={{ width: '170px', height: '185px', objectFit: 'contain' }} />
+                                    <div className="flex items-center justify-center gap-4" style={{ width: '320px', height: '145px' }}>
+                                        <img src={monsterTutorialImageUrl} alt="Monster warning 1" style={{ width: '135px', height: '135px', objectFit: 'contain' }} />
+                                        <img src={monsterTutorialImageUrl2} alt="Monster warning 2" style={{ width: '135px', height: '135px', objectFit: 'contain' }} />
                                     </div>
                                 ) : activeTabletTutorial === 'firecrackerWarning' ? (
-                                    <div className="flex items-center justify-center gap-4" style={{ width: '380px', height: '205px' }}>
-                                        <img src={firecrackerTutorialImageUrl} alt="Петарды" style={{ width: '140px', height: '160px', objectFit: 'contain' }} />
-                                        <img src={tutorialEndImageUrl} alt="Tutorial end" style={{ width: '190px', height: '185px', objectFit: 'contain' }} />
+                                    <div className="flex items-center justify-center gap-4" style={{ width: '320px', height: '145px' }}>
+                                        <img src={firecrackerTutorialImageUrl} alt="Петарды" style={{ width: '115px', height: '130px', objectFit: 'contain' }} />
+                                        <img src={tutorialEndImageUrl} alt="Tutorial end" style={{ width: '145px', height: '135px', objectFit: 'contain' }} />
                                     </div>
                                 ) : (
                                     <img
@@ -107,8 +107,8 @@ const TabletMenuModalComponent: React.FC<TabletMenuModalProps> = ({
                                                             : 'Lily pond tutorial'
                                         }
                                         style={{
-                                            width: activeTabletTutorial === 'intro' ? '400px' : '380px',
-                                            height: activeTabletTutorial === 'intro' ? '230px' : '205px',
+                                            width: activeTabletTutorial === 'intro' ? '300px' : '280px',
+                                            height: activeTabletTutorial === 'intro' ? '145px' : '135px',
                                             objectFit: activeTabletTutorial === 'intro' ? 'cover' : 'contain',
                                             background: 'transparent'
                                         }}
@@ -117,19 +117,19 @@ const TabletMenuModalComponent: React.FC<TabletMenuModalProps> = ({
                             </div>
                             {activeTabletTutorial === 'intro' ? (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '28px', lineHeight: 1.2, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '20px', lineHeight: 1.2, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         Найди свободное место, и кликни по<br />нему чтобы построить дом!
                                     </p>
-                                    <p style={{ marginTop: '14px', marginBottom: '20px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '18px', lineHeight: 1.25, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ marginTop: '6px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '13px', lineHeight: 1.25, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         Еще ты можешь искать клады, грабить, взрывать дома<br />конкурентов, торговать на рынке и даже вступать в клан
                                     </p>
                                 </>
                             ) : activeTabletTutorial === 'townHallBuilt' ? (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '30px', lineHeight: 1.18, textTransform: 'uppercase', textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '21px', lineHeight: 1.18, textTransform: 'uppercase', textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         «Главное здание» построено!
                                     </p>
-                                    <p style={{ marginTop: '14px', marginBottom: '20px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '20px', lineHeight: 1.35, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ marginTop: '6px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '14px', lineHeight: 1.3, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         «Главное здание» нужно вам для управления городом
                                         <br />
                                         чем выше его уровень, тем больше домов вы сможете построить
@@ -137,10 +137,10 @@ const TabletMenuModalComponent: React.FC<TabletMenuModalProps> = ({
                                 </>
                             ) : activeTabletTutorial === 'housePrompt' ? (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '30px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '21px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         Построй дом!
                                     </p>
-                                    <p style={{ marginTop: '14px', marginBottom: '14px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '20px', lineHeight: 1.35, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ marginTop: '6px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '14px', lineHeight: 1.3, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         Щелкни по пустому месту рядом с «Главным зданием», чтобы построить дом.
                                         <br />
                                         Ведь рабочим нужно где-то жить!
@@ -148,10 +148,10 @@ const TabletMenuModalComponent: React.FC<TabletMenuModalProps> = ({
                                 </>
                             ) : activeTabletTutorial === 'houseBuilt' ? (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '30px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '21px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         Отлично! Дом построен!
                                     </p>
-                                    <p style={{ marginTop: '14px', marginBottom: '14px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '19px', lineHeight: 1.35, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ marginTop: '6px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '13px', lineHeight: 1.3, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         Количество рабочих в вашем городе зависит от количества «домов».
                                         <br />
                                         Рабочие нужны вам для строительства домов и работы на фабриках
@@ -159,61 +159,47 @@ const TabletMenuModalComponent: React.FC<TabletMenuModalProps> = ({
                                 </>
                             ) : activeTabletTutorial === 'pondPrompt' ? (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '29px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                        Ура! Мы можем начать
-                                        <br />
-                                        зарабатывать монеты!
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '20px', lineHeight: 1.18, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
+                                        Ура! Мы можем начать зарабатывать монеты!
                                     </p>
-                                    <p style={{ marginTop: '14px', marginBottom: '14px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '18px', lineHeight: 1.32, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                        Нажмите на свободное место рядом с «Главным зданием»
+                                    <p style={{ marginTop: '6px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '13px', lineHeight: 1.3, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
+                                        Нажмите на свободное место рядом с «Главным зданием»,
                                         <br />
-                                        Чтобы построить «Пруд с лилиями»
+                                        чтобы построить «Пруд с лилиями»
                                     </p>
                                 </>
                             ) : activeTabletTutorial === 'monsterWarning' ? (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '20px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
                                         Эй Друг! Хочу тебя предупредить!
                                     </p>
-                                    <p style={{ marginTop: '12px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '18px', lineHeight: 1.3, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                        Вокруг твоего города бродит множество «монстров», они ненавидят гномов и часто нападают на города. Будь осторожен!
+                                    <p style={{ marginTop: '6px', marginBottom: '8px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '13px', lineHeight: 1.25, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
+                                        Вокруг твоего города бродят монстры, они часто нападают на города. Будь осторожен!
                                     </p>
                                 </>
                             ) : activeTabletTutorial === 'firecrackerWarning' ? (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                        Помни у тебя есть петарды
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '20px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
+                                        Помни, у тебя есть петарды!
                                     </p>
-                                    <p style={{ marginTop: '12px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '17px', lineHeight: 1.28, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                        С их помощью можно взрывать монстров и взрывать постройки как свои так и игроков на карте. Мы дали тебе на первое время несколько штук петард
-                                        <br />
-                                        Так ты продержишься первое время.
-                                        <br />
-                                        А как подкопишь монет, сразу строй «Петардный завод»
+                                    <p style={{ marginTop: '6px', marginBottom: '8px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', lineHeight: 1.25, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
+                                        С их помощью можно взрывать монстров и постройки. Мы дали тебе несколько петард на первое время!
                                     </p>
                                 </>
                             ) : (
                                 <>
-                                    <p style={{ margin: 0, textAlign: 'center', color: '#2563eb', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '28px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                        Прекрасно! Построен
-                                        <br />
-                                        Пруд с лилиями
+                                    <p style={{ margin: 0, textAlign: 'center', color: '#38bdf8', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '20px', lineHeight: 1.16, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
+                                        Прекрасно! Построен Пруд с лилиями
                                     </p>
-                                    <p style={{ marginTop: '12px', marginBottom: '10px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '17px', lineHeight: 1.28, textShadow: '0 2px 6px rgba(0,0,0,0.35)' }}>
-                                        Теперь для рабочих есть работа! Кликая по постройке
-                                        <br />
-                                        можно отправлять их на работу, и получать за это монеты.
-                                        <br />
-                                        Если повезет, то рабочие смогут вырастить для тебя «Супер
-                                        <br />
-                                        лилию». Ее можно будет продать на «рынке» или переработать на «заводе»
+                                    <p style={{ marginTop: '6px', marginBottom: '8px', textAlign: 'center', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '12px', lineHeight: 1.25, textShadow: '0 2px 6px rgba(0,0,0,0.5)' }}>
+                                        Теперь для рабочих есть работа! Кликая по постройке, можно отправлять их на работу и получать за это монеты.
                                     </p>
                                 </>
                             )}
                             <button
                                 onClick={activeTabletTutorial === 'intro' ? onCompleteTutorial : onCompleteTownHallTutorial}
-                                style={{ background: 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)', color: '#ffffff', border: '2px solid #14532d', borderRadius: '16px', padding: '10px 26px', marginTop: '0px', transform: 'translateY(-10px)', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', boxShadow: '0 6px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35)' }}
-                                className="hover:scale-105 transition-transform"
+                                style={{ background: 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)', color: '#ffffff', border: '2px solid #14532d', borderRadius: '14px', padding: '8px 26px', marginTop: '2px', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '18px', boxShadow: '0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35)' }}
+                                className="hover:scale-105 transition-transform cursor-pointer"
                             >
                                 {activeTabletTutorial === 'intro'
                                     ? 'Начать играть!'
