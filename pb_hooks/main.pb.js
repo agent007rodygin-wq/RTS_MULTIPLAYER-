@@ -11,7 +11,10 @@ routerAdd(
     });
 
     try {
-      e.bindBody(payload);
+      // PocketBase v0.22.57: bindBody не существует — читаем requestInfo().body
+      var _body = e.requestInfo().body || {};
+      payload.resourceId = String(_body.resourceId || _body.id || "");
+      payload.id = String(_body.id || "");
     } catch (error) {
       console.log("[TreeHit Debug][route][bind-error]", String(error));
       return e.json(400, {
@@ -23,7 +26,13 @@ routerAdd(
       });
     }
 
-    var authUserId = e.auth ? e.auth.id : null;
+    var authRecord = null;
+    try {
+      var _h = e.requestInfo().headers;
+      var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
+      if (_token) authRecord = $app.findAuthRecordByToken(_token);
+    } catch (_e) { authRecord = null; }
+    var authUserId = authRecord ? authRecord.id : null;
     var incomingBody = null;
     try {
       incomingBody = e.requestInfo().body;
@@ -40,7 +49,7 @@ routerAdd(
       logicalResourceId: logicalResourceId,
     }));
 
-    var result = treeUtils.processTreeHit($app, e.auth, logicalResourceId);
+    var result = treeUtils.processTreeHit($app, authRecord, logicalResourceId);
     console.log("[TreeHit Debug][route][response]", JSON.stringify({
       authUserId: authUserId,
       logicalResourceId: logicalResourceId,
@@ -49,7 +58,6 @@ routerAdd(
     }));
     return e.json(result.status, result.body);
   },
-  $apis.requireAuth("users"),
 );
 
 cronAdd("tree-respawn-manager", "*/1 * * * *", function () {
@@ -394,5 +402,4 @@ routerAdd(
       });
     }
   },
-  $apis.requireAuth("users"),
 );

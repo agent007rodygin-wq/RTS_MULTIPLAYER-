@@ -402,7 +402,7 @@ const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
   history: ['userId', 'message', 'type', 'timestamp'],
   private_messages: ['senderId', 'receiverId', 'participants', 'text', 'timestamp', 'senderName', 'gameId', 'data'],
   chat_messages: ['sender', 'text', 'type', 'timestamp', 'tab', 'senderId', 'channel', 'gameId', 'data'],
-  presence: ['uid', 'lastSeen', 'isOnline', 'gameId', 'data'],
+  presence: ['userId', 'userName', 'lastSeen', 'gameId', 'data'],
   clans: ['name', 'leaderId', 'members', 'description', 'gameId', 'data'],
   market: ['sellerId', 'sellerName', 'itemId', 'itemName', 'quantity', 'price', 'timestamp', 'gameId', 'data'],
   elections: ['candidates', 'sheriffId', 'sheriffName', 'deputies', 'electionEndTime', 'firstElectionCompleted', 'kingId', 'kingName', 'queenId', 'queenName', 'votesTotal', 'gameId', 'data'],
@@ -491,6 +491,16 @@ function wrapData(collectionName: string, docData: any): any {
 function unwrapData(record: RecordModel): AnyRecord {
   const data = { ...record };
   const extra = (record as AnyRecord).data;
+
+  // Presence alias: PB schema uses userId/userName; frontend expects uid/name.
+  if (record.collectionName === 'presence') {
+    if ((record as AnyRecord).userId !== undefined && (record as AnyRecord).uid === undefined) {
+      data.uid = (record as AnyRecord).userId;
+    }
+    if ((record as AnyRecord).userName !== undefined && (record as AnyRecord).name === undefined) {
+      data.name = (record as AnyRecord).userName;
+    }
+  }
   
   if (record.collectionName === 'users') {
     // Debug logging disabled to reduce console noise
