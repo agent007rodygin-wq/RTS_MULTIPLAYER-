@@ -210,8 +210,8 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                     onClick={onClose}
                     className="absolute z-10 cursor-pointer"
                     style={{
-                        right: '7.54%',
-                        top: '8.89%',
+                        right: '6.8%',
+                        top: '8.8%',
                         transform: 'translate(50%, -50%)',
                         width: '36px',
                         height: '36px',
