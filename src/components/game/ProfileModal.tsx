@@ -205,20 +205,45 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                     overflow: 'hidden'
                 }}
             >
-                {/* Title centered + close button */}
+                {/* Close button aligned with background texture X */}
+                <button
+                    onClick={onClose}
+                    className="absolute z-10 cursor-pointer"
+                    style={{
+                        right: '7.54%',
+                        top: '8.89%',
+                        transform: 'translate(50%, -50%)',
+                        width: '36px',
+                        height: '36px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '50%',
+                        background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)',
+                        boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)',
+                        border: '1px solid rgba(96,165,250,0.4)',
+                        color: 'rgba(200,225,255,0.9)',
+                        transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)';
+                        e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)';
+                        e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)';
+                        e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)';
+                        e.currentTarget.style.color = 'rgba(200,225,255,0.9)';
+                    }}
+                />
+
+                {/* Title centered */}
                 <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                     <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
                         <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>
                             Личный кабинет
                         </h2>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="absolute"
-                        style={{ right: '-23px', top: '3px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
-                    >
-                        <CloseIcon className="w-5 h-5" />
-                    </button>
                 </div>
 
                 {/* Navigation Tabs */}
