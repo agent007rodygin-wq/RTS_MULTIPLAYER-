@@ -1784,6 +1784,14 @@ export async function updateDoc(
         payload.data.banEndTime = activeBan;
       }
     }
+    // Presence tab preservation: never drop activeTab during partial presence updates
+    if (ref.collectionName === 'presence' && !('activeTab' in data)) {
+      const existingTab = currentRawDataJson?.activeTab || current.activeTab;
+      if (existingTab) {
+        if (!payload.data) payload.data = {};
+        payload.data.activeTab = existingTab;
+      }
+    }
     if (PB_WRITE_DIAGNOSTICS && ref.collectionName === 'users' && payload.data) {
       console.log('[StartupUserWrite]', {
         recordId: targetId,

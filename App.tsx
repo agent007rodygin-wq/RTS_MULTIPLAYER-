@@ -3898,6 +3898,7 @@ const App: React.FC = () => {
                 await updateDoc(presenceDocRef, {
                     x: worldCenter.x,
                     y: worldCenter.y,
+                    activeTab: activeChatTabRef.current || 'general',
                     lastSeen: Date.now()
                 });
             } catch (e) {
@@ -4372,6 +4373,7 @@ const App: React.FC = () => {
     useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
     const allActiveOnlineNamesRef = useRef<Set<string>>(new Set());
     const allActiveOnlineUidsRef = useRef<Set<string>>(new Set());
+    const playerLastKnownTabRef = useRef<Map<string, ChatTab>>(new Map());
 
 
     // Redundant or misplaced useMemo consolidation
@@ -8636,9 +8638,18 @@ const App: React.FC = () => {
                     allActiveUids.add(uid);
 
                     const isSelf = (uid === user.uid);
-                    let rawTab = isSelf ? activeChatTabRef.current : (data.activeTab as ChatTab);
-                    if (!rawTab || !VALID_CHAT_TABS.includes(rawTab)) {
-                        rawTab = 'general';
+                    let rawTab: ChatTab;
+                    if (isSelf) {
+                        rawTab = activeChatTabRef.current || 'general';
+                        playerLastKnownTabRef.current.set(uid, rawTab);
+                    } else {
+                        const incomingTab = data.activeTab as ChatTab;
+                        if (incomingTab && VALID_CHAT_TABS.includes(incomingTab)) {
+                            rawTab = incomingTab;
+                            playerLastKnownTabRef.current.set(uid, incomingTab);
+                        } else {
+                            rawTab = playerLastKnownTabRef.current.get(uid) || 'general';
+                        }
                     }
 
                     if (rawTab === 'clan') {
@@ -8662,7 +8673,7 @@ const App: React.FC = () => {
                 }
             });
 
-            // Ensure current active user is always visible in their own active tab
+            // Ensure current active user is always visible in their own active tab and never in others
             const currentTab = activeChatTabRef.current || 'general';
             const myName = playerNameRef.current || playerName;
             if (user && myName && myName !== 'Неизвестный') {
@@ -8674,6 +8685,18 @@ const App: React.FC = () => {
                     if (currentTab !== 'clan' || Boolean(myClanId)) {
                         tabOnlineUsers[currentTab].push({ name: myName, uid: user.uid });
                     }
+                }
+                (Object.keys(tabOnlineUsers) as ChatTab[]).forEach(tab => {
+                    if (tab !== currentTab) {
+                        tabOnlineUsers[tab] = tabOnlineUsers[tab].filter(u => u.uid !== user.uid && u.name !== myName);
+                    }
+                });
+            }
+
+            // Prune offline users from playerLastKnownTabRef to keep memory lean
+            for (const cachedUid of playerLastKnownTabRef.current.keys()) {
+                if (!allActiveUids.has(cachedUid)) {
+                    playerLastKnownTabRef.current.delete(cachedUid);
                 }
             }
 
@@ -10342,7 +10365,9 @@ const App: React.FC = () => {
         // Broadcast title to presence
         const presenceDocRef = doc(db, 'presence', user.uid);
         updateDoc(presenceDocRef, {
-            title: title
+            title: title,
+            activeTab: activeChatTabRef.current || 'general',
+            lastSeen: Date.now()
         }).catch(() => {});
 
         if (title) {
@@ -19130,6 +19155,9 @@ const App: React.FC = () => {
         if (targetTab === activeChatTab) return;
         setActiveChatTab(targetTab);
         activeChatTabRef.current = targetTab;
+        if (user) {
+            playerLastKnownTabRef.current.set(user.uid, targetTab);
+        }
         
         // Immediate optimistic update to onlineUsers per tab so local player moves seamlessly
         setOnlineUsers(prev => {
@@ -19185,6 +19213,9 @@ const App: React.FC = () => {
                     console.warn('[Presence] Failed to update:', err);
                 }
             });
+            try {
+                void updatePresenceRef.current();
+            } catch (e) {}
         }
     };
 
