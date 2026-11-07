@@ -189,3 +189,16 @@ export const SmileyIcon = ({ className }: { className?: string }) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Z" />
     </svg>
 );
+
+export const AntiquityIcon = ({ className }: { className?: string }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <line x1="3" y1="22" x2="21" y2="22" strokeLinecap="round" />
+        <line x1="6" y1="18" x2="6" y2="11" strokeLinecap="round" />
+        <line x1="10" y1="18" x2="10" y2="11" strokeLinecap="round" />
+        <line x1="14" y1="18" x2="14" y2="11" strokeLinecap="round" />
+        <line x1="18" y1="18" x2="18" y2="11" strokeLinecap="round" />
+        <polygon points="12 2 20 7 4 7" strokeLinejoin="round" />
+        <line x1="2" y1="7" x2="22" y2="7" strokeLinecap="round" />
+        <line x1="3" y1="18" x2="21" y2="18" strokeLinecap="round" />
+    </svg>
+);

@@ -1,0 +1,78 @@
+{
+  "id": "4b520235-3d7d-80f6-8008-e68d3e39859d",
+  "name": "heart",
+  "type": "rect",
+  "x": 286,
+  "y": 949,
+  "width": 49,
+  "height": 45,
+  "rotation": 0,
+  "selrect": {
+    "x": 286,
+    "y": 949,
+    "width": 49,
+    "height": 45,
+    "x1": 286,
+    "y1": 949,
+    "x2": 335,
+    "y2": 994
+  },
+  "points": [
+    {
+      "x": 286,
+      "y": 949
+    },
+    {
+      "x": 335,
+      "y": 949
+    },
+    {
+      "x": 335,
+      "y": 994
+    },
+    {
+      "x": 286,
+      "y": 994
+    }
+  ],
+  "transform": {
+    "a": 1.0,
+    "b": 0.0,
+    "c": 0.0,
+    "d": 1.0,
+    "e": 0.0,
+    "f": 0.0
+  },
+  "transformInverse": {
+    "a": 1.0,
+    "b": 0.0,
+    "c": 0.0,
+    "d": 1.0,
+    "e": 0.0,
+    "f": 0.0
+  },
+  "parentId": "15f829f7-bc28-8092-8008-e778cc44a420",
+  "frameId": "15f829f7-bc28-8092-8008-e778cc44a420",
+  "flipX": null,
+  "flipY": null,
+  "r2": 0,
+  "proportionLock": true,
+  "pageId": "2f1be954-9d1b-812a-8008-e6843cdae620",
+  "r3": 0,
+  "r1": 0,
+  "strokes": [],
+  "proportion": 1.0942452043369475,
+  "r4": 0,
+  "fills": [
+    {
+      "fillOpacity": 1,
+      "fillImage": {
+        "width": 1312,
+        "height": 1199,
+        "mtype": "image\/png",
+        "id": "aedf1ab4-ae6f-804f-8008-e68d3dbc8537",
+        "keepAspectRatio": true
+      }
+    }
+  ]
+}

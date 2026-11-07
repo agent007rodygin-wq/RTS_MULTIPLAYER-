@@ -1,4 +1,4 @@
-﻿
+
 import { Building, BuildingType } from '../types';
 import { validateBuildingItemNames } from './validateBuildingItemNames';
 
@@ -165,7 +165,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10011, name: 'Садовая супер бомба', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ],
       rare: [
         { id: 10044, name: 'Самородок', amount: 13 }
@@ -203,7 +203,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10011, name: 'Садовая супер бомба', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ],
       rare: [
         { id: 10044, name: 'Самородок', amount: 13 }
@@ -241,7 +241,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10011, name: 'Садовая супер бомба', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ],
       rare: [
         { id: 10044, name: 'Самородок', amount: 13 }
@@ -1147,7 +1147,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10033, name: 'Черепки', amount: 12 },
-        { id: 10042, name: '??????', amount: 2 },
+        { id: 10042, name: 'Сердце', amount: 2 },
         { id: 10040, name: 'Стальной лист', amount: 4 }
       ],
       rare: [
@@ -1156,8 +1156,84 @@ export const buildings: Building[] = [
     },
     description: 'Каменный дом 6 - Stone house 13',
     imageUrl: '/buildings/residential/220.webp',
-    upgradesTo: 1002,
+    upgradesTo: 98002,
     upgradeCost: 500000
+  },
+  {
+    id: 98002,
+    name: 'Каменный дом 7',
+    englishName: 'Stone house 7',
+    category: 'Жилые',
+    type: BuildingType.Residential,
+    price: 500000,
+    buildable: false,
+    constructionRequirements: {
+      population: 28,
+      resources: [
+        { id: 10005, name: 'Камни', amount: 130 },
+        { id: 10006, name: 'Каменные блоки', amount: 48 },
+        { id: 10024, name: 'Супер лилия', amount: 16 }
+      ]
+    },
+    stats: {
+      populationBonus: 22,
+      constructionTimeSeconds: 68000,
+      accelerationCost: 58,
+      durability: 11500,
+      gloryOnExplosion: 25000
+    },
+    drops: {
+      frequent: [
+        { id: 10033, name: 'Черепок', amount: 14 },
+        { id: 10040, name: 'Стальной лист', amount: 5 },
+        { id: 10023, name: 'Сталь', amount: 4 }
+      ],
+      rare: [
+        { id: 10044, name: 'Самородок', amount: 130 }
+      ]
+    },
+    description: 'Каменный дом 7 - Stone house 7',
+    imageUrl: '/buildings/residential/98002.webp',
+    upgradesTo: 98003,
+    upgradeCost: 650000
+  },
+  {
+    id: 98003,
+    name: 'Каменный дом 8',
+    englishName: 'Stone house 8',
+    category: 'Жилые',
+    type: BuildingType.Residential,
+    price: 650000,
+    buildable: false,
+    constructionRequirements: {
+      population: 29,
+      resources: [
+        { id: 10005, name: 'Камни', amount: 155 },
+        { id: 10006, name: 'Каменные блоки', amount: 58 },
+        { id: 10024, name: 'Супер лилия', amount: 20 }
+      ]
+    },
+    stats: {
+      populationBonus: 26,
+      constructionTimeSeconds: 78000,
+      accelerationCost: 65,
+      durability: 14000,
+      gloryOnExplosion: 32000
+    },
+    drops: {
+      frequent: [
+        { id: 10033, name: 'Черепок', amount: 16 },
+        { id: 10040, name: 'Стальной лист', amount: 6 },
+        { id: 10023, name: 'Сталь', amount: 5 }
+      ],
+      rare: [
+        { id: 10044, name: 'Самородок', amount: 150 }
+      ]
+    },
+    description: 'Каменный дом 8 - Stone house 8',
+    imageUrl: '/buildings/residential/98003.webp',
+    upgradesTo: 1002,
+    upgradeCost: 800000
   },
   {
     id: 1002,
@@ -1240,7 +1316,7 @@ export const buildings: Building[] = [
       workYieldGold: 5,
       givesCoins: 181,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 30, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 30, amount: 1 }
       ]
     },
     drops: {
@@ -1480,7 +1556,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 5 },
+        { id: 10003, name: 'Куски супер гриба', amount: 5 },
         { id: 10024, name: 'Супер лилия', amount: 10 },
         { id: 999, name: 'Монеты', amount: 2735 }
       ],
@@ -1587,7 +1663,7 @@ export const buildings: Building[] = [
         { id: 999, name: 'Монеты', amount: 405 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 2 }
+        { id: 10003, name: 'Куски супер гриба', amount: 2 }
       ]
     },
     description: 'Тыквенная грядка 3 уровня.',
@@ -1836,7 +1912,7 @@ export const buildings: Building[] = [
         { id: 999, name: 'Монеты', amount: 405 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 2 }
+        { id: 10003, name: 'Куски супер гриба', amount: 2 }
       ]
     },
     description: 'Супер тыква 4 уровня.',
@@ -2022,7 +2098,7 @@ export const buildings: Building[] = [
         { id: 10002, name: 'Доски', amount: 19 },
         { id: 10013, name: 'Петарда', amount: 7 }
       ],
-      rare: [{ id: 10003, name: '????? ????? ?????', amount: 3 }]
+      rare: [{ id: 10003, name: 'Куски супер гриба', amount: 3 }]
     },
     description: 'Опасная грядка с бомбами.',
     imageUrl: '/buildings/garden_beds/garden_bombs/garden_bed_with_bombs/105.webp',
@@ -2104,7 +2180,7 @@ export const buildings: Building[] = [
         { id: 10001, name: 'Дерево', amount: 50 },
         { id: 10009, name: 'Канистра с бензином', amount: 13 }
       ],
-      rare: [{ id: 10003, name: '????? ????? ?????', amount: 3 }]
+      rare: [{ id: 10003, name: 'Куски супер гриба', amount: 3 }]
     },
     description: 'Опасная грядка с бомбами.',
     imageUrl: '/buildings/garden_beds/garden_bombs/super_garden_bomb/109.webp',
@@ -2919,7 +2995,7 @@ export const buildings: Building[] = [
     stats: {
       constructionTimeSeconds: 40,
       accelerationCost: 5,
-      durability: 1,
+      durability: 72,
       gloryOnExplosion: 3,
       takesPopulation: 1,
       workTimeSeconds: 65, // 1 minute 5 seconds
@@ -3280,7 +3356,7 @@ export const buildings: Building[] = [
         { id: 10025, name: 'Золотая руда', amount: 5 }
       ]
     },
-    description: 'Здесь можно получить информацию о месторождениях. Когда на карте появляется новое месторождение, в чате "Находки" появляется уведомление с координатами.',
+    description: 'Центр управления экономикой города. Позволяет собирать весь готовый доход и урожай базы в 1 клик (перезарядка 30 минут, а при наличии Египетского обелиска — без кулдауна), а также удалённо распределять рабочих и запускать производства. Уведомляет в чате "Находки" о новых месторождениях.',
     imageUrl: '/buildings/Специальные Здания/Финансовая разведка - Financial intelligence/14.webp',
     upgradesTo: 341,
     upgradeCost: 35000,
@@ -3306,10 +3382,10 @@ export const buildings: Building[] = [
         { id: 10024, name: 'Супер лилия', amount: 6 }
       ],
       rare: [
-        { id: 10042, name: '??????', amount: 2 }
+        { id: 10042, name: 'Сердце', amount: 2 }
       ]
     },
-    description: 'Улучшенная финансовая разведка. Обнаруживает месторождения нефти и клады.',
+    description: 'Улучшенная финансовая разведка. Сбор всего готового дохода базы в 1 клик (перезарядка 30 минут или мгновенно с Египетским обелиском), расширенная координация производств, а также обнаружение месторождений нефти и спрятанных кладов.',
     imageUrl: '/buildings/Специальные Здания/Финансовая разведка - Financial intelligence/20.webp',
     upgradesTo: 342,
     upgradeCost: 40000,
@@ -3338,7 +3414,7 @@ export const buildings: Building[] = [
         { id: 10040, name: 'Стальной лист', amount: 3 }
       ]
     },
-    description: 'Максимальный уровень финансовой разведки. Обнаруживает месторождения ресурсов и спрятанные клады на карте.',
+    description: 'Максимальный уровень финансовой разведки. Мгновенный сбор доходов и урожая базы в 1 клик (перезарядка 30 минут или без кулдауна с Египетским обелиском), полный контроль производственных цепочек и обнаружение всех видов редких ресурсов, каменоломен и кладов на карте.',
     imageUrl: '/buildings/Специальные Здания/Финансовая разведка - Financial intelligence/29.webp',
   },
   {
@@ -3537,7 +3613,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 5 },
+        { id: 10042, name: 'Сердце', amount: 5 },
         { id: 10040, name: 'Стальной лист', amount: 8 }
       ],
       rare: [
@@ -3574,7 +3650,7 @@ export const buildings: Building[] = [
       workYieldGold: 60,
       givesCoins: 20997,
       produces: [
-        { id: 10042, name: '??????', amount: 1 }
+        { id: 10042, name: 'Сердце', amount: 1 }
       ],
       consumes: [
         { id: 10009, name: 'Канистра с бензином', amount: 25 },
@@ -3705,7 +3781,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 69 },
+        { id: 10003, name: 'Куски супер гриба', amount: 69 },
         { id: 10023, name: 'Сталь', amount: 13 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
@@ -3747,7 +3823,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10009, name: 'Канистра с бензином', amount: 40 },
         { id: 10023, name: 'Сталь', amount: 1 },
-        { id: 10003, name: '????? ????? ?????', amount: 5 }
+        { id: 10003, name: 'Куски супер гриба', amount: 5 }
       ],
     },
     drops: {
@@ -3790,7 +3866,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10009, name: 'Канистра с бензином', amount: 35 },
         { id: 10023, name: 'Сталь', amount: 1 },
-        { id: 10003, name: '????? ????? ?????', amount: 5 }
+        { id: 10003, name: 'Куски супер гриба', amount: 5 }
       ],
     },
     drops: {
@@ -3833,7 +3909,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10009, name: 'Канистра с бензином', amount: 50 },
         { id: 10023, name: 'Сталь', amount: 1 },
-        { id: 10003, name: '????? ????? ?????', amount: 9 }
+        { id: 10003, name: 'Куски супер гриба', amount: 9 }
       ],
     },
     drops: {
@@ -3885,7 +3961,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10035, name: 'Элитная древесина', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 2 }
+        { id: 10003, name: 'Куски супер гриба', amount: 2 }
       ],
       rare: [
         { id: 10026, name: 'Золото', amount: 2 }
@@ -4086,7 +4162,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 5 },
-        { id: 10042, name: '??????', amount: 3 },
+        { id: 10042, name: 'Сердце', amount: 3 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
       rare: [
@@ -4136,7 +4212,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 4 },
+        { id: 10042, name: 'Сердце', amount: 4 },
         { id: 10040, name: 'Стальной лист', amount: 6 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
@@ -4549,7 +4625,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10012, name: 'MGM-52 «Ланс»', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ],
       rare: [
         { id: 10025, name: 'Золотая руда', amount: 14 }
@@ -4584,7 +4660,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10012, name: 'MGM-52 «Ланс»', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ],
       rare: [
         { id: 10040, name: 'Стальной лист', amount: 6 }
@@ -4666,7 +4742,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 3 },
-        { id: 10042, name: '??????', amount: 2 }
+        { id: 10042, name: 'Сердце', amount: 2 }
       ],
       rare: [
         { id: 10043, name: 'Суператомная бомба', amount: 2 }
@@ -5216,10 +5292,10 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10035, name: 'Элитная древесина', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 3 }
+        { id: 10003, name: 'Куски супер гриба', amount: 3 }
       ],
       rare: [
-        { id: 10042, name: '??????', amount: 2 }
+        { id: 10042, name: 'Сердце', amount: 2 }
       ]
     },
     description: 'Специализированный рынок для торговли военными товарами и редкими ресурсами.',
@@ -5411,7 +5487,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 9 },
-        { id: 10042, name: '??????', amount: 5 }
+        { id: 10042, name: 'Сердце', amount: 5 }
       ],
       rare: [
         { id: 10044, name: 'Самородок', amount: 305 }
@@ -5461,7 +5537,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 7 },
+        { id: 10042, name: 'Сердце', amount: 7 },
         { id: 10040, name: 'Стальной лист', amount: 12 }
       ],
       rare: [
@@ -5666,7 +5742,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 44 },
-        { id: 10042, name: '??????', amount: 24 }
+        { id: 10042, name: 'Сердце', amount: 24 }
       ],
       rare: [
         { id: 10036, name: 'Изумрудная руда', amount: 403 }
@@ -5716,7 +5792,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 30 },
+        { id: 10042, name: 'Сердце', amount: 30 },
         { id: 10040, name: 'Стальной лист', amount: 52 }
       ],
       rare: [
@@ -5969,7 +6045,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 7 },
-        { id: 10042, name: '??????', amount: 4 }
+        { id: 10042, name: 'Сердце', amount: 4 }
       ],
       rare: [
         { id: 10034, name: 'Изумруд', amount: 29 }
@@ -6175,7 +6251,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 19 },
-        { id: 10042, name: '??????', amount: 10 }
+        { id: 10042, name: 'Сердце', amount: 10 }
       ],
       rare: [
         { id: 10044, name: 'Самородок', amount: 622 }
@@ -6435,7 +6511,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 75 },
-        { id: 10042, name: '??????', amount: 40 }
+        { id: 10042, name: 'Сердце', amount: 40 }
       ],
       rare: [
         { id: 10036, name: 'Изумрудная руда', amount: 682 }
@@ -6486,7 +6562,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 48 },
+        { id: 10042, name: 'Сердце', amount: 48 },
         { id: 10040, name: 'Стальной лист', amount: 83 }
       ],
       rare: [
@@ -6747,7 +6823,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 222 },
-        { id: 10042, name: '??????', amount: 117 }
+        { id: 10042, name: 'Сердце', amount: 117 }
       ],
       rare: [
         { id: 10043, name: 'Суператомная бомба', amount: 128 }
@@ -6798,7 +6874,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 137 },
+        { id: 10042, name: 'Сердце', amount: 137 },
         { id: 10040, name: 'Стальной лист', amount: 237 }
       ],
       rare: [
@@ -7049,7 +7125,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 10 },
+        { id: 10042, name: 'Сердце', amount: 10 },
         { id: 10040, name: 'Стальной лист', amount: 16 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
@@ -7093,7 +7169,7 @@ export const buildings: Building[] = [
       ],
       consumes: [
         { id: 10001, name: 'Дерево', amount: 5 },
-        { id: 10003, name: '????? ????? ?????', amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', amount: 1 }
       ]
     },
     drops: {
@@ -7143,7 +7219,7 @@ export const buildings: Building[] = [
       ],
       consumes: [
         { id: 10001, name: 'Дерево', amount: 7 },
-        { id: 10003, name: '????? ????? ?????', amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', amount: 1 }
       ]
     },
     drops: {
@@ -7195,7 +7271,7 @@ export const buildings: Building[] = [
       ],
       consumes: [
         { id: 10001, name: 'Дерево', amount: 9 },
-        { id: 10003, name: '????? ????? ?????', amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', amount: 1 }
       ]
     },
     drops: {
@@ -7248,7 +7324,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 13 },
         { id: 10008, name: 'Бочка с нефтью', amount: 6 },
-        { id: 10003, name: '????? ????? ?????', amount: 2 }
+        { id: 10003, name: 'Куски супер гриба', amount: 2 }
       ]
     },
     drops: {
@@ -7302,7 +7378,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 17 },
         { id: 10008, name: 'Бочка с нефтью', amount: 8 },
-        { id: 10003, name: '????? ????? ?????', amount: 2 }
+        { id: 10003, name: 'Куски супер гриба', amount: 2 }
       ]
     },
     drops: {
@@ -7356,12 +7432,12 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 23 },
         { id: 10008, name: 'Бочка с нефтью', amount: 11 },
-        { id: 10003, name: '????? ????? ?????', amount: 2 }
+        { id: 10003, name: 'Куски супер гриба', amount: 2 }
       ]
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 9 },
+        { id: 10003, name: 'Куски супер гриба', amount: 9 },
         { id: 10023, name: 'Сталь', amount: 2 },
         { id: 10000, name: 'Монеты', amount: 5839 }
       ],
@@ -7410,7 +7486,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 28 },
         { id: 10008, name: 'Бочка с нефтью', amount: 14 },
-        { id: 10003, name: '????? ????? ?????', amount: 2 }
+        { id: 10003, name: 'Куски супер гриба', amount: 2 }
       ]
     },
     drops: {
@@ -7464,7 +7540,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 37 },
         { id: 10008, name: 'Бочка с нефтью', amount: 18 },
-        { id: 10003, name: '????? ????? ?????', amount: 3 }
+        { id: 10003, name: 'Куски супер гриба', amount: 3 }
       ]
     },
     drops: {
@@ -7519,7 +7595,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 45 },
         { id: 10008, name: 'Бочка с нефтью', amount: 22 },
-        { id: 10003, name: '????? ????? ?????', amount: 3 }
+        { id: 10003, name: 'Куски супер гриба', amount: 3 }
       ]
     },
     drops: {
@@ -7574,7 +7650,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 55 },
         { id: 10008, name: 'Бочка с нефтью', amount: 27 },
-        { id: 10003, name: '????? ????? ?????', amount: 4 }
+        { id: 10003, name: 'Куски супер гриба', amount: 4 }
       ]
     },
     drops: {
@@ -7629,7 +7705,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 65 },
         { id: 10008, name: 'Бочка с нефтью', amount: 32 },
-        { id: 10003, name: '????? ????? ?????', amount: 4 }
+        { id: 10003, name: 'Куски супер гриба', amount: 4 }
       ]
     },
     drops: {
@@ -7684,7 +7760,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 77 },
         { id: 10008, name: 'Бочка с нефтью', amount: 38 },
-        { id: 10003, name: '????? ????? ?????', amount: 4 }
+        { id: 10003, name: 'Куски супер гриба', amount: 4 }
       ]
     },
     drops: {
@@ -7739,7 +7815,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 88 },
         { id: 10009, name: 'Канистра с бензином', amount: 44 },
-        { id: 10003, name: '????? ????? ?????', amount: 5 }
+        { id: 10003, name: 'Куски супер гриба', amount: 5 }
       ]
     },
     drops: {
@@ -7794,7 +7870,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 103 },
         { id: 10009, name: 'Канистра с бензином', amount: 51 },
-        { id: 10003, name: '????? ????? ?????', amount: 5 }
+        { id: 10003, name: 'Куски супер гриба', amount: 5 }
       ]
     },
     drops: {
@@ -7849,7 +7925,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 117 },
         { id: 10009, name: 'Канистра с бензином', amount: 58 },
-        { id: 10003, name: '????? ????? ?????', amount: 5 }
+        { id: 10003, name: 'Куски супер гриба', amount: 5 }
       ]
     },
     drops: {
@@ -7904,7 +7980,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 133 },
         { id: 10009, name: 'Канистра с бензином', amount: 66 },
-        { id: 10003, name: '????? ????? ?????', amount: 6 }
+        { id: 10003, name: 'Куски супер гриба', amount: 6 }
       ]
     },
     drops: {
@@ -7959,7 +8035,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 149 },
         { id: 10009, name: 'Канистра с бензином', amount: 74 },
-        { id: 10003, name: '????? ????? ?????', amount: 6 }
+        { id: 10003, name: 'Куски супер гриба', amount: 6 }
       ]
     },
     drops: {
@@ -8014,7 +8090,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 167 },
         { id: 10009, name: 'Канистра с бензином', amount: 83 },
-        { id: 10003, name: '????? ????? ?????', amount: 6 }
+        { id: 10003, name: 'Куски супер гриба', amount: 6 }
       ]
     },
     drops: {
@@ -8069,7 +8145,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 185 },
         { id: 10009, name: 'Канистра с бензином', amount: 92 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ]
     },
     drops: {
@@ -8124,7 +8200,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 205 },
         { id: 10009, name: 'Канистра с бензином', amount: 102 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ]
     },
     drops: {
@@ -8179,7 +8255,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 225 },
         { id: 10009, name: 'Канистра с бензином', amount: 112 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7 }
       ]
     },
     drops: {
@@ -8234,7 +8310,7 @@ export const buildings: Building[] = [
       consumes: [
         { id: 10001, name: 'Дерево', amount: 247 },
         { id: 10009, name: 'Канистра с бензином', amount: 123 },
-        { id: 10003, name: '????? ????? ?????', amount: 8 }
+        { id: 10003, name: 'Куски супер гриба', amount: 8 }
       ]
     },
     drops: {
@@ -8310,7 +8386,7 @@ export const buildings: Building[] = [
         { id: 10000, name: 'Монеты', amount: 504 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 3 }
+        { id: 10003, name: 'Куски супер гриба', amount: 3 }
       ]
     },
     description: 'Производит монеты.',
@@ -8423,7 +8499,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 20 },
+        { id: 10003, name: 'Куски супер гриба', amount: 20 },
         { id: 10016, name: 'Яйцо Горыныча', amount: 5 },
         { id: 10000, name: 'Монеты', amount: 7853 }
       ],
@@ -9038,7 +9114,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10011, name: 'Садовая супер бомба', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 6 }
+        { id: 10003, name: 'Куски супер гриба', amount: 6 }
       ],
       rare: [
         { id: 10044, name: 'Самородок', amount: 13 }
@@ -9269,7 +9345,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 7 },
-        { id: 10042, name: '??????', amount: 4 }
+        { id: 10042, name: 'Сердце', amount: 4 }
       ],
       rare: [
         { id: 10034, name: 'Изумруд', amount: 28 }
@@ -9315,7 +9391,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 5 },
+        { id: 10042, name: 'Сердце', amount: 5 },
         { id: 10040, name: 'Стальной лист', amount: 8 }
       ],
       rare: [
@@ -9550,7 +9626,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 16 },
+        { id: 10042, name: 'Сердце', amount: 16 },
         { id: 10040, name: 'Стальной лист', amount: 28 }
       ],
       rare: [
@@ -9788,7 +9864,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 71 },
-        { id: 10042, name: '??????', amount: 38 }
+        { id: 10042, name: 'Сердце', amount: 38 }
       ],
       rare: [
         { id: 10036, name: 'Изумрудная руда', amount: 646 }
@@ -9835,7 +9911,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 43 },
+        { id: 10042, name: 'Сердце', amount: 43 },
         { id: 10040, name: 'Стальной лист', amount: 75 }
       ],
       rare: [
@@ -9969,7 +10045,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 2.68, amount: 1 },
-        { id: 10042, name: '??????', chance: 1.19, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 1.19, amount: 1 }
       ],
       consumes: []
     },
@@ -10016,7 +10092,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 3.02, amount: 1 },
-        { id: 10042, name: '??????', chance: 1.34, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 1.34, amount: 1 }
       ],
       consumes: []
     },
@@ -10063,7 +10139,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 3.40, amount: 1 },
-        { id: 10042, name: '??????', chance: 1.51, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 1.51, amount: 1 }
       ],
       consumes: []
     },
@@ -10110,7 +10186,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 3.83, amount: 1 },
-        { id: 10042, name: '??????', chance: 1.70, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 1.70, amount: 1 }
       ],
       consumes: []
     },
@@ -10157,7 +10233,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 4.31, amount: 1 },
-        { id: 10042, name: '??????', chance: 1.91, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 1.91, amount: 1 }
       ],
       consumes: []
     },
@@ -10205,7 +10281,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 4.85, amount: 1 },
-        { id: 10042, name: '??????', chance: 2.15, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 2.15, amount: 1 }
       ],
       consumes: []
     },
@@ -10253,7 +10329,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 5.46, amount: 1 },
-        { id: 10042, name: '??????', chance: 2.42, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 2.42, amount: 1 }
       ],
       consumes: []
     },
@@ -10301,7 +10377,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 6.14, amount: 1 },
-        { id: 10042, name: '??????', chance: 2.72, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 2.72, amount: 1 }
       ],
       consumes: []
     },
@@ -10349,7 +10425,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 6.91, amount: 1 },
-        { id: 10042, name: '??????', chance: 3.06, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 3.06, amount: 1 }
       ],
       consumes: []
     },
@@ -10397,7 +10473,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 7.77, amount: 1 },
-        { id: 10042, name: '??????', chance: 3.44, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 3.44, amount: 1 }
       ],
       consumes: []
     },
@@ -10446,7 +10522,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 8.74, amount: 1 },
-        { id: 10042, name: '??????', chance: 3.87, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 3.87, amount: 1 }
       ],
       consumes: []
     },
@@ -10495,7 +10571,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 9.83, amount: 1 },
-        { id: 10042, name: '??????', chance: 4.35, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 4.35, amount: 1 }
       ],
       consumes: []
     },
@@ -10544,7 +10620,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 11.06, amount: 1 },
-        { id: 10042, name: '??????', chance: 4.89, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 4.89, amount: 1 }
       ],
       consumes: []
     },
@@ -10593,7 +10669,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 12.44, amount: 1 },
-        { id: 10042, name: '??????', chance: 5.50, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 5.50, amount: 1 }
       ],
       consumes: []
     },
@@ -10642,7 +10718,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 14.00, amount: 1 },
-        { id: 10042, name: '??????', chance: 6.19, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 6.19, amount: 1 }
       ],
       consumes: []
     },
@@ -10691,7 +10767,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 15.75, amount: 1 },
-        { id: 10042, name: '??????', chance: 6.96, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 6.96, amount: 1 }
       ],
       consumes: []
     },
@@ -10740,7 +10816,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 17.72, amount: 1 },
-        { id: 10042, name: '??????', chance: 7.83, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 7.83, amount: 1 }
       ],
       consumes: []
     },
@@ -10789,7 +10865,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 19.93, amount: 1 },
-        { id: 10042, name: '??????', chance: 8.81, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 8.81, amount: 1 }
       ],
       consumes: []
     },
@@ -10838,7 +10914,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 22.42, amount: 1 },
-        { id: 10042, name: '??????', chance: 9.91, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 9.91, amount: 1 }
       ],
       consumes: []
     },
@@ -10887,7 +10963,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 25.22, amount: 1 },
-        { id: 10042, name: '??????', chance: 11.15, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 11.15, amount: 1 }
       ],
       consumes: []
     },
@@ -10936,7 +11012,7 @@ export const buildings: Building[] = [
       ],
       sometimesProduces: [
         { id: 10017, name: 'Детонатор', chance: 28.37, amount: 1 },
-        { id: 10042, name: '??????', chance: 12.54, amount: 1 }
+        { id: 10042, name: 'Сердце', chance: 12.54, amount: 1 }
       ],
       consumes: []
     },
@@ -11035,7 +11111,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 13 },
-        { id: 10042, name: '??????', amount: 7 }
+        { id: 10042, name: 'Сердце', amount: 7 }
       ],
       rare: [
         { id: 10034, name: 'Изумруд', amount: 53 }
@@ -11081,7 +11157,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 9 },
+        { id: 10042, name: 'Сердце', amount: 9 },
         { id: 10040, name: 'Стальной лист', amount: 16 }
       ],
       rare: [
@@ -11274,7 +11350,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 47 },
-        { id: 10042, name: '??????', amount: 25 }
+        { id: 10042, name: 'Сердце', amount: 25 }
       ],
       rare: [
         { id: 10043, name: 'Суператомная бомба', amount: 28 }
@@ -11321,7 +11397,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 32 },
+        { id: 10042, name: 'Сердце', amount: 32 },
         { id: 10040, name: 'Стальной лист', amount: 55 }
       ],
       rare: [
@@ -11562,7 +11638,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 157 },
-        { id: 10042, name: '??????', amount: 83 }
+        { id: 10042, name: 'Сердце', amount: 83 }
       ],
       rare: [
         { id: 10036, name: 'Изумрудная руда', amount: 1437 }
@@ -11609,7 +11685,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 98 },
+        { id: 10042, name: 'Сердце', amount: 98 },
         { id: 10040, name: 'Стальной лист', amount: 170 }
       ],
       rare: [
@@ -11850,7 +11926,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 376 },
-        { id: 10042, name: '??????', amount: 198 }
+        { id: 10042, name: 'Сердце', amount: 198 }
       ],
       rare: [
         { id: 10043, name: 'Суператомная бомба', amount: 217 }
@@ -11897,7 +11973,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 225 },
+        { id: 10042, name: 'Сердце', amount: 225 },
         { id: 10040, name: 'Стальной лист', amount: 392 }
       ],
       rare: [
@@ -12052,8 +12128,8 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10002, name: 'золото', amount: 4 },
-        { id: 10042, name: '??????', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 10631 }
+        { id: 10042, name: 'Сердце', amount: 2 },
+        { id: 10003, name: 'Куски супер гриба', amount: 10631 }
       ],
       rare: [
         { id: 10035, name: 'изумрудная руда', amount: 28 }
@@ -12064,8 +12140,8 @@ export const buildings: Building[] = [
   },
   {
     id: 50001,
-    name: 'Дорога',
-    englishName: 'Road',
+    name: 'Дорога (прямая С-Ю)',
+    englishName: 'Road (Straight NS)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 70,
@@ -12081,13 +12157,13 @@ export const buildings: Building[] = [
     drops: {
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
-    description: 'Обычная дорога.',
-    imageUrl: '/buildings/Дороги/Дорога/IMG-74939-11.webp',
+    description: 'Обычная дорога (прямая С-Ю).',
+    imageUrl: '/buildings/Дороги/Дорога/road_straight_ns.webp',
   },
   {
     id: 500012,
-    name: 'Дорога',
-    englishName: 'Road',
+    name: 'Дорога (прямая З-В)',
+    englishName: 'Road (Straight EW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 70,
@@ -12103,8 +12179,294 @@ export const buildings: Building[] = [
     drops: {
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
-    description: 'Обычная дорога.',
-    imageUrl: '/buildings/Дороги/Дорога/Icogram-2026.webp',
+    description: 'Обычная дорога (прямая З-В).',
+    imageUrl: '/buildings/Дороги/Дорога/road_straight_ew.webp',
+  },
+  {
+    id: 500013,
+    name: 'Дорога (поворот С-В)',
+    englishName: 'Road (Corner NE)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Поворот дороги (Север - Восток).',
+    imageUrl: '/buildings/Дороги/Дорога/road_corner_ne.webp',
+  },
+  {
+    id: 500014,
+    name: 'Дорога (поворот В-Ю)',
+    englishName: 'Road (Corner ES)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Поворот дороги (Восток - Юг).',
+    imageUrl: '/buildings/Дороги/Дорога/road_corner_es.webp',
+  },
+  {
+    id: 500015,
+    name: 'Дорога (поворот Ю-З)',
+    englishName: 'Road (Corner SW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Поворот дороги (Юг - Запад).',
+    imageUrl: '/buildings/Дороги/Дорога/road_corner_sw.webp',
+  },
+  {
+    id: 500016,
+    name: 'Дорога (поворот З-С)',
+    englishName: 'Road (Corner WN)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Поворот дороги (Запад - Север).',
+    imageUrl: '/buildings/Дороги/Дорога/road_corner_wn.webp',
+  },
+  {
+    id: 500017,
+    name: 'Дорога (Т-образная С-В-Ю)',
+    englishName: 'Road (T-Junction NES)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Т-образное разветвление дороги (Север - Восток - Юг).',
+    imageUrl: '/buildings/Дороги/Дорога/road_t_nes.webp',
+  },
+  {
+    id: 500018,
+    name: 'Дорога (Т-образная В-Ю-З)',
+    englishName: 'Road (T-Junction ESW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Т-образное разветвление дороги (Восток - Юг - Запад).',
+    imageUrl: '/buildings/Дороги/Дорога/road_t_esw.webp',
+  },
+  {
+    id: 500019,
+    name: 'Дорога (Т-образная С-Ю-З)',
+    englishName: 'Road (T-Junction NSW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Т-образное разветвление дороги (Север - Юг - Запад).',
+    imageUrl: '/buildings/Дороги/Дорога/road_t_nsw.webp',
+  },
+  {
+    id: 5000120,
+    name: 'Дорога (Т-образная С-В-З)',
+    englishName: 'Road (T-Junction NEW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Т-образное разветвление дороги (Север - Восток - Запад).',
+    imageUrl: '/buildings/Дороги/Дорога/road_t_new.webp',
+  },
+  {
+    id: 5000121,
+    name: 'Дорога (перекрёсток)',
+    englishName: 'Road (Crossroad)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Четырёхсторонний перекрёсток дороги.',
+    imageUrl: '/buildings/Дороги/Дорога/road_crossroad.webp',
+  },
+  {
+    id: 5000122,
+    name: 'Дорога (тупик С)',
+    englishName: 'Road (Dead End N)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Тупик дороги (Север).',
+    imageUrl: '/buildings/Дороги/Дорога/road_dead_end_n.webp',
+  },
+  {
+    id: 5000123,
+    name: 'Дорога (тупик В)',
+    englishName: 'Road (Dead End E)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Тупик дороги (Восток).',
+    imageUrl: '/buildings/Дороги/Дорога/road_dead_end_e.webp',
+  },
+  {
+    id: 5000124,
+    name: 'Дорога (тупик Ю)',
+    englishName: 'Road (Dead End S)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Тупик дороги (Юг).',
+    imageUrl: '/buildings/Дороги/Дорога/road_dead_end_s.webp',
+  },
+  {
+    id: 5000125,
+    name: 'Дорога (тупик З)',
+    englishName: 'Road (Dead End W)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 70,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1,
+      gloryOnExplosion: 4,
+    },
+    drops: {
+      rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
+    },
+    description: 'Тупик дороги (Запад).',
+    imageUrl: '/buildings/Дороги/Дорога/road_dead_end_w.webp',
   },
   {
     id: 50006,
@@ -12171,6 +12533,1371 @@ export const buildings: Building[] = [
     imageUrl: '/buildings/Дороги/Мостовая/Icogram-2026-04-15-01-12-1.webp',
   },
   {
+    id: 50007,
+    name: 'Улучшенная мостовая (прямая С-Ю)',
+    englishName: 'Enhanced Pavement (Straight NS)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Улучшенная мостовая из тёплого камня (прямая С-Ю).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_straight_ns.webp',
+  },
+  {
+    id: 500072,
+    name: 'Улучшенная мостовая (прямая З-В)',
+    englishName: 'Enhanced Pavement (Straight EW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Улучшенная мостовая из тёплого камня (прямая З-В).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_straight_ew.webp',
+  },
+  {
+    id: 500073,
+    name: 'Улучшенная мостовая (поворот С-В)',
+    englishName: 'Enhanced Pavement (Corner NE)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Поворот улучшенной мостовой (Север - Восток).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_corner_ne.webp',
+  },
+  {
+    id: 500074,
+    name: 'Улучшенная мостовая (поворот В-Ю)',
+    englishName: 'Enhanced Pavement (Corner ES)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Поворот улучшенной мостовой (Восток - Юг).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_corner_es.webp',
+  },
+  {
+    id: 500075,
+    name: 'Улучшенная мостовая (поворот Ю-З)',
+    englishName: 'Enhanced Pavement (Corner SW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Поворот улучшенной мостовой (Юг - Запад).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_corner_sw.webp',
+  },
+  {
+    id: 500076,
+    name: 'Улучшенная мостовая (поворот З-С)',
+    englishName: 'Enhanced Pavement (Corner WN)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Поворот улучшенной мостовой (Запад - Север).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_corner_wn.webp',
+  },
+  {
+    id: 500077,
+    name: 'Улучшенная мостовая (Т-образная С-В-Ю)',
+    englishName: 'Enhanced Pavement (T-Junction NES)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Т-образное разветвление улучшенной мостовой (Север - Восток - Юг).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_t_nes.webp',
+  },
+  {
+    id: 500078,
+    name: 'Улучшенная мостовая (Т-образная В-Ю-З)',
+    englishName: 'Enhanced Pavement (T-Junction ESW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Т-образное разветвление улучшенной мостовой (Восток - Юг - Запад).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_t_esw.webp',
+  },
+  {
+    id: 500079,
+    name: 'Улучшенная мостовая (Т-образная С-Ю-З)',
+    englishName: 'Enhanced Pavement (T-Junction NSW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Т-образное разветвление улучшенной мостовой (Север - Юг - Запад).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_t_nsw.webp',
+  },
+  {
+    id: 5000720,
+    name: 'Улучшенная мостовая (Т-образная С-В-З)',
+    englishName: 'Enhanced Pavement (T-Junction NEW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Т-образное разветвление улучшенной мостовой (Север - Восток - Запад).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_t_new.webp',
+  },
+  {
+    id: 5000721,
+    name: 'Улучшенная мостовая (перекрёсток)',
+    englishName: 'Enhanced Pavement (Crossroad)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Четырёхсторонний перекрёсток улучшенной мостовой.',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_crossroad.webp',
+  },
+  {
+    id: 5000722,
+    name: 'Улучшенная мостовая (тупик С)',
+    englishName: 'Enhanced Pavement (Dead End N)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Тупик улучшенной мостовой (Север).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_dead_end_n.webp',
+  },
+  {
+    id: 5000723,
+    name: 'Улучшенная мостовая (тупик В)',
+    englishName: 'Enhanced Pavement (Dead End E)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Тупик улучшенной мостовой (Восток).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_dead_end_e.webp',
+  },
+  {
+    id: 5000724,
+    name: 'Улучшенная мостовая (тупик Ю)',
+    englishName: 'Enhanced Pavement (Dead End S)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Тупик улучшенной мостовой (Юг).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_dead_end_s.webp',
+  },
+  {
+    id: 5000725,
+    name: 'Улучшенная мостовая (тупик З)',
+    englishName: 'Enhanced Pavement (Dead End W)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10006, name: 'Каменные блоки', amount: 20 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 1500,
+      gloryOnExplosion: 750,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
+      ]
+    },
+    description: 'Тупик улучшенной мостовой (Запад).',
+    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_dead_end_w.webp',
+  },
+  {
+    id: 50008,
+    name: 'Железная дорога (прямая С-Ю)',
+    englishName: 'Railway (Straight NS)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Прямой участок железной дороги (север - юг).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_straight_ns.webp',
+  },
+  {
+    id: 500081,
+    name: 'Железная дорога (прямая З-В)',
+    englishName: 'Railway (Straight EW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Прямой участок железной дороги (запад - восток).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_straight_ew.webp',
+  },
+  {
+    id: 500082,
+    name: 'Железная дорога (поворот С-В)',
+    englishName: 'Railway (Corner NE)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Поворотный участок железной дороги (север - восток).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_corner_ne.webp',
+  },
+  {
+    id: 500083,
+    name: 'Железная дорога (поворот В-Ю)',
+    englishName: 'Railway (Corner ES)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Поворотный участок железной дороги (восток - юг).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_corner_es.webp',
+  },
+  {
+    id: 500084,
+    name: 'Железная дорога (поворот Ю-З)',
+    englishName: 'Railway (Corner SW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Поворотный участок железной дороги (юг - запад).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_corner_sw.webp',
+  },
+  {
+    id: 500085,
+    name: 'Железная дорога (поворот З-С)',
+    englishName: 'Railway (Corner WN)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Поворотный участок железной дороги (запад - север).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_corner_wn.webp',
+  },
+  {
+    id: 500086,
+    name: 'Железная дорога (тупик С)',
+    englishName: 'Railway (Dead End N)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Тупиковый упор железной дороги на севере.',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_dead_end_n.webp',
+  },
+  {
+    id: 500087,
+    name: 'Железная дорога (тупик В)',
+    englishName: 'Railway (Dead End E)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Тупиковый упор железной дороги на востоке.',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_dead_end_e.webp',
+  },
+  {
+    id: 500088,
+    name: 'Железная дорога (тупик Ю)',
+    englishName: 'Railway (Dead End S)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Тупиковый упор железной дороги на юге.',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_dead_end_s.webp',
+  },
+  {
+    id: 500089,
+    name: 'Железная дорога (тупик З)',
+    englishName: 'Railway (Dead End W)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Тупиковый упор железной дороги на западе.',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_dead_end_w.webp',
+  },
+  {
+    id: 5000810,
+    name: 'Железная дорога (пересечение)',
+    englishName: 'Railway (Crossing)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Глухое пересечение двух железнодорожных путей.',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_crossing.webp',
+  },
+  {
+    id: 5000811,
+    name: 'Железная дорога (стрелка С-В-Ю)',
+    englishName: 'Railway (Switch NES)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (север-восток-юг).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_nes.webp',
+  },
+  {
+    id: 5000812,
+    name: 'Железная дорога (стрелка С-Ю-З)',
+    englishName: 'Railway (Switch NSW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (север-юг-запад).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_nsw.webp',
+  },
+  {
+    id: 5000813,
+    name: 'Железная дорога (стрелка В-С-З)',
+    englishName: 'Railway (Switch ENW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (восток-север-запад).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_enw.webp',
+  },
+  {
+    id: 5000814,
+    name: 'Железная дорога (стрелка В-Ю-З)',
+    englishName: 'Railway (Switch ESW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (восток-юг-запад).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_esw.webp',
+  },
+  {
+    id: 5000815,
+    name: 'Железная дорога (стрелка Ю-В-С)',
+    englishName: 'Railway (Switch SEN)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (юг-восток-север).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_sen.webp',
+  },
+  {
+    id: 5000816,
+    name: 'Железная дорога (стрелка Ю-З-С)',
+    englishName: 'Railway (Switch SWN)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (юг-запад-север).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_swn.webp',
+  },
+  {
+    id: 5000817,
+    name: 'Железная дорога (стрелка З-С-В)',
+    englishName: 'Railway (Switch WNE)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (запад-север-восток).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_wne.webp',
+  },
+  {
+    id: 5000818,
+    name: 'Железная дорога (стрелка З-Ю-В)',
+    englishName: 'Railway (Switch WSE)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Стрелочный перевод путей (запад-юг-восток).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_switch_wse.webp',
+  },
+  {
+    id: 5000819,
+    name: 'Железная дорога (развилка С-В-Ю)',
+    englishName: 'Railway (Junction NES)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Y-образная развилка путей (север-восток-юг).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_junction_nes.webp',
+  },
+  {
+    id: 5000820,
+    name: 'Железная дорога (развилка В-Ю-З)',
+    englishName: 'Railway (Junction ESW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Y-образная развилка путей (восток-юг-запад).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_junction_esw.webp',
+  },
+  {
+    id: 5000821,
+    name: 'Железная дорога (развилка Ю-З-С)',
+    englishName: 'Railway (Junction SWN)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Y-образная развилка путей (юг-запад-север).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_junction_swn.webp',
+  },
+  {
+    id: 5000822,
+    name: 'Железная дорога (развилка З-С-В)',
+    englishName: 'Railway (Junction WNE)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Y-образная развилка путей (запад-север-восток).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_junction_wne.webp',
+  },
+  {
+    id: 5000823,
+    name: 'Железная дорога (перекрёстный съезд)',
+    englishName: 'Railway (Double Slip Switch)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'Перекрёстный стрелочный съезд путей.',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_cross_double.webp',
+  },
+  {
+    id: 5000824,
+    name: 'Железная дорога (S-кривая С-В)',
+    englishName: 'Railway (S-Curve NE)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'S-образное сопряжение путей (север-восток).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_s_curve_ne.webp',
+  },
+  {
+    id: 5000825,
+    name: 'Железная дорога (S-кривая Ю-З)',
+    englishName: 'Railway (S-Curve SW)',
+    category: 'Дороги и стены',
+    type: BuildingType.Default,
+    price: 25000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10002, name: 'Доски', amount: 15 },
+      ],
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 1,
+      durability: 2000,
+      gloryOnExplosion: 1000,
+    },
+    drops: {
+      frequent: [
+        { id: 10013, name: 'Петарда', amount: 25, chance: 30 },
+        { id: 10010, name: 'Садовая бомба', amount: 10, chance: 30 },
+        { id: 999, name: 'Монеты', amount: 1500, chance: 30 }
+      ],
+      rare: [
+        { id: 10023, name: 'Сталь', amount: 4, chance: 30 },
+        { id: 10002, name: 'Доски', amount: 10, chance: 30 }
+      ]
+    },
+    description: 'S-образное сопряжение путей (юг-запад).',
+    imageUrl: '/buildings/Дороги/Железная дорога/rail_s_curve_sw.webp',
+  },
+
+  {
     id: 50002,
     name: 'Стена',
     englishName: 'Wall',
@@ -12234,7 +13961,7 @@ export const buildings: Building[] = [
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
     description: 'Каменная стена.',
-    imageUrl: '/buildings/Дороги/Каменная стена/50003.webp',
+    imageUrl: '/buildings/Дороги/Каменная стена/50003_restored.webp?v=restored',
   },
   {
     id: 500031,
@@ -12256,12 +13983,12 @@ export const buildings: Building[] = [
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
     description: 'Каменная стена.',
-    imageUrl: '/buildings/Дороги/Каменная стена/Icogram-2026-1.webp',
+    imageUrl: '/buildings/Дороги/Каменная стена/Icogram-2026-1_restored.webp?v=restored',
   },
   {
     id: 500032,
-    name: 'Каменная стена',
-    englishName: 'Stone wall',
+    name: 'Каменная стена (поворот)',
+    englishName: 'Stone wall (Corner)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 6000,
@@ -12277,8 +14004,8 @@ export const buildings: Building[] = [
     drops: {
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
-    description: 'Каменная стена.',
-    imageUrl: '/buildings/Дороги/Каменная стена/Gemini-G32321.webp',
+    description: 'Каменная стена (поворот).',
+    imageUrl: '/buildings/Дороги/Каменная стена/flower_corner_from_original.webp',
   },
   {
     id: 300,
@@ -12398,7 +14125,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10017, name: 'Детонатор', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 2 },
+        { id: 10003, name: 'Куски супер гриба', amount: 2 },
         { id: 10024, name: 'Супер лилия', amount: 4 }
       ],
       rare: [
@@ -12622,10 +14349,238 @@ export const buildings: Building[] = [
       ]
     },
     imageUrl: '/buildings/residential/54.webp',
-    upgradesTo: 5,
+    upgradesTo: 98881,
     "upgradeCost": 2000,
     type: BuildingType.Residential,
     description: 'Лягушачья нора 4'
+  },
+  {
+    id: 98881,
+    name: 'Лягушачья нора 5',
+    englishName: "Frog's burrow 5",
+    category: 'Жилые',
+    price: 680,
+    buildable: false,
+    constructionRequirements: {
+      population: 6,
+      resources: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 2
+        },
+        {
+          id: 10002,
+          name: 'Доски',
+          amount: 1
+        }
+      ]
+    },
+    stats: {
+      "populationBonus": 6,
+      constructionTimeSeconds: 580,
+      accelerationCost: 5,
+      durability: 300,
+      gloryOnExplosion: 28,
+      givesCoins: 235
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 8
+        },
+        {
+          id: 10008,
+          name: 'Нефть',
+          amount: 4
+        }
+      ],
+      rare: [
+        {
+          id: 10041,
+          name: 'Песок',
+          amount: 3
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98881.webp',
+    upgradesTo: 98882,
+    "upgradeCost": 2500,
+    type: BuildingType.Residential,
+    description: 'Лягушачья нора 5'
+  },
+  {
+    id: 98882,
+    name: 'Лягушачья нора 6',
+    englishName: "Frog's burrow 6",
+    category: 'Жилые',
+    price: 1100,
+    buildable: false,
+    constructionRequirements: {
+      population: 7,
+      resources: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 3
+        },
+        {
+          id: 10002,
+          name: 'Доски',
+          amount: 2
+        }
+      ]
+    },
+    stats: {
+      "populationBonus": 7,
+      constructionTimeSeconds: 850,
+      accelerationCost: 6,
+      durability: 380,
+      gloryOnExplosion: 38,
+      givesCoins: 295
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 10
+        },
+        {
+          id: 10008,
+          name: 'Нефть',
+          amount: 5
+        }
+      ],
+      rare: [
+        {
+          id: 10041,
+          name: 'Песок',
+          amount: 4
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98882.webp',
+    upgradesTo: 98883,
+    "upgradeCost": 3200,
+    type: BuildingType.Residential,
+    description: 'Лягушачья нора 6'
+  },
+  {
+    id: 98883,
+    name: 'Лягушачья нора 7',
+    englishName: "Frog's burrow 7",
+    category: 'Жилые',
+    price: 1650,
+    buildable: false,
+    constructionRequirements: {
+      population: 8,
+      resources: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 4
+        },
+        {
+          id: 10002,
+          name: 'Доски',
+          amount: 3
+        }
+      ]
+    },
+    stats: {
+      "populationBonus": 8,
+      constructionTimeSeconds: 1200,
+      accelerationCost: 7,
+      durability: 470,
+      gloryOnExplosion: 50,
+      givesCoins: 360
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 12
+        },
+        {
+          id: 10008,
+          name: 'Нефть',
+          amount: 6
+        }
+      ],
+      rare: [
+        {
+          id: 10041,
+          name: 'Песок',
+          amount: 5
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98883.webp',
+    upgradesTo: 98884,
+    "upgradeCost": 4000,
+    type: BuildingType.Residential,
+    description: 'Лягушачья нора 7'
+  },
+  {
+    id: 98884,
+    name: 'Лягушачья нора 8',
+    englishName: "Frog's burrow 8",
+    category: 'Жилые',
+    price: 2400,
+    buildable: false,
+    constructionRequirements: {
+      population: 9,
+      resources: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 5
+        },
+        {
+          id: 10002,
+          name: 'Доски',
+          amount: 4
+        }
+      ]
+    },
+    stats: {
+      "populationBonus": 9,
+      constructionTimeSeconds: 1600,
+      accelerationCost: 8,
+      durability: 580,
+      gloryOnExplosion: 65,
+      givesCoins: 430
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 15
+        },
+        {
+          id: 10008,
+          name: 'Нефть',
+          amount: 7
+        }
+      ],
+      rare: [
+        {
+          id: 10041,
+          name: 'Песок',
+          amount: 6
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98884.webp',
+    upgradesTo: 5,
+    "upgradeCost": 5000,
+    type: BuildingType.Residential,
+    description: 'Лягушачья нора 8'
   },
   {
     id: 6,
@@ -12932,10 +14887,76 @@ export const buildings: Building[] = [
       ]
     },
     imageUrl: '/buildings/residential/218.webp',
-    upgradesTo: 7,
+    upgradesTo: 98001,
     "upgradeCost": 2500,
     type: BuildingType.Residential,
     description: 'Деревянный дом 6'
+  },
+  {
+    id: 98001,
+    name: 'Деревянный дом 7',
+    englishName: 'Wooden house 7',
+    category: 'Жилые',
+    price: 2500,
+    buildable: false,
+    constructionRequirements: {
+      population: 12,
+      resources: [
+        {
+          id: 10001,
+          name: 'Дерево',
+          amount: 85
+        },
+        {
+          id: 10002,
+          name: 'Доски',
+          amount: 35
+        },
+        {
+          id: 10005,
+          name: 'Камни',
+          amount: 12
+        }
+      ]
+    },
+    stats: {
+      "populationBonus": 12,
+      constructionTimeSeconds: 5200,
+      accelerationCost: 16,
+      durability: 1950,
+      gloryOnExplosion: 1600
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10033,
+          name: 'Черепок',
+          amount: 6
+        },
+        {
+          id: 10017,
+          name: 'Детонатор',
+          amount: 3
+        },
+        {
+          id: 10007,
+          name: 'Яйцо Избушки-убийцы',
+          amount: 3
+        }
+      ],
+      rare: [
+        {
+          id: 10040,
+          name: 'Стальной лист',
+          amount: 3
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98001.webp',
+    upgradesTo: 7,
+    "upgradeCost": 3500,
+    type: BuildingType.Residential,
+    description: 'Деревянный дом 7'
   },
   {
     id: 101,
@@ -13130,10 +15151,142 @@ export const buildings: Building[] = [
       ]
     },
     imageUrl: '/buildings/residential/115.webp',
-    upgradesTo: 146,
+    upgradesTo: 98004,
     "upgradeCost": 1500000,
     type: BuildingType.Residential,
     description: 'Маленький замок 4'
+  },
+  {
+    id: 98004,
+    name: 'Маленький замок 5',
+    englishName: 'Little castle 5',
+    category: 'Жилые',
+    price: 1500000,
+    buildable: false,
+    constructionRequirements: {
+      population: 30,
+      resources: [
+        {
+          id: 10035,
+          name: 'Элитная древесина',
+          amount: 12
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 3
+        },
+        {
+          id: 10003,
+          name: 'Куски супер гриба',
+          amount: 18
+        }
+      ]
+    },
+    stats: {
+      populationBonus: 23,
+      constructionTimeSeconds: 72000,
+      accelerationCost: 60,
+      durability: 11500,
+      gloryOnExplosion: 60000
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 5
+        },
+        {
+          id: 10033,
+          name: 'Черепки',
+          amount: 16
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 12
+        }
+      ],
+      rare: [
+        {
+          id: 10043,
+          name: 'Суператомная бомба',
+          amount: 4
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98004.webp',
+    upgradesTo: 98005,
+    upgradeCost: 2000000,
+    type: BuildingType.Residential,
+    description: 'Маленький замок 5'
+  },
+  {
+    id: 98005,
+    name: 'Маленький замок 6',
+    englishName: 'Little castle 6',
+    category: 'Жилые',
+    price: 2000000,
+    buildable: false,
+    constructionRequirements: {
+      population: 32,
+      resources: [
+        {
+          id: 10035,
+          name: 'Элитная древесина',
+          amount: 15
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 4
+        },
+        {
+          id: 10003,
+          name: 'Куски супер гриба',
+          amount: 22
+        }
+      ]
+    },
+    stats: {
+      populationBonus: 25,
+      constructionTimeSeconds: 80000,
+      accelerationCost: 66,
+      durability: 13000,
+      gloryOnExplosion: 70000
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 6
+        },
+        {
+          id: 10033,
+          name: 'Черепки',
+          amount: 18
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 15
+        }
+      ],
+      rare: [
+        {
+          id: 10043,
+          name: 'Суператомная бомба',
+          amount: 5
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98005.webp',
+    upgradesTo: 146,
+    upgradeCost: 2600000,
+    type: BuildingType.Residential,
+    description: 'Маленький замок 6'
   },
   {
     id: 148,
@@ -13394,10 +15547,142 @@ export const buildings: Building[] = [
       ]
     },
     imageUrl: '/buildings/residential/151.webp',
-    upgradesTo: 205,
-    "upgradeCost": 5000000,
+    upgradesTo: 98006,
+    "upgradeCost": 3500000,
     type: BuildingType.Residential,
     description: 'Вилла 5'
+  },
+  {
+    id: 98006,
+    name: 'Вилла 6',
+    englishName: 'Villa 6',
+    category: 'Жилые',
+    price: 3500000,
+    buildable: false,
+    constructionRequirements: {
+      population: 40,
+      resources: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 4
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 7
+        },
+        {
+          id: 10030,
+          name: 'Цветок подсолнуха',
+          amount: 3
+        }
+      ]
+    },
+    stats: {
+      populationBonus: 28,
+      constructionTimeSeconds: 155000,
+      accelerationCost: 88,
+      durability: 19500,
+      gloryOnExplosion: 165000
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 15
+        },
+        {
+          id: 10033,
+          name: 'Черепки',
+          amount: 22
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 32
+        }
+      ],
+      rare: [
+        {
+          id: 10043,
+          name: 'Суператомная бомба',
+          amount: 8
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98006.webp',
+    upgradesTo: 98007,
+    upgradeCost: 4200000,
+    type: BuildingType.Residential,
+    description: 'Вилла 6'
+  },
+  {
+    id: 98007,
+    name: 'Вилла 7',
+    englishName: 'Villa 7',
+    category: 'Жилые',
+    price: 4200000,
+    buildable: false,
+    constructionRequirements: {
+      population: 44,
+      resources: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 5
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 8
+        },
+        {
+          id: 10030,
+          name: 'Цветок подсолнуха',
+          amount: 4
+        }
+      ]
+    },
+    stats: {
+      populationBonus: 30,
+      constructionTimeSeconds: 175000,
+      accelerationCost: 96,
+      durability: 22000,
+      gloryOnExplosion: 185000
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 18
+        },
+        {
+          id: 10033,
+          name: 'Черепки',
+          amount: 25
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 38
+        }
+      ],
+      rare: [
+        {
+          id: 10043,
+          name: 'Суператомная бомба',
+          amount: 10
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98007.webp',
+    upgradesTo: 205,
+    upgradeCost: 5000000,
+    type: BuildingType.Residential,
+    description: 'Вилла 7'
   },
   {
     id: 206,
@@ -13447,7 +15732,7 @@ export const buildings: Building[] = [
         },
         {
           id: 10042,
-          name: '??????',
+          name: 'Сердце',
           amount: 12
         }
       ],
@@ -13508,7 +15793,7 @@ export const buildings: Building[] = [
         },
         {
           id: 10042,
-          name: '??????',
+          name: 'Сердце',
           amount: 13
         },
         {
@@ -13777,7 +16062,7 @@ export const buildings: Building[] = [
         },
         {
           id: 10042,
-          name: '??????',
+          name: 'Сердце',
           amount: 44
         }
       ],
@@ -13838,7 +16123,7 @@ export const buildings: Building[] = [
         },
         {
           id: 10042,
-          name: '??????',
+          name: 'Сердце',
           amount: 48
         },
         {
@@ -13922,8 +16207,74 @@ export const buildings: Building[] = [
       ]
     },
     imageUrl: '/buildings/residential/213.webp',
+    upgradesTo: 98008,
+    "upgradeCost": 9000000,
     type: BuildingType.Residential,
     description: 'Дворец 9'
+  },
+  {
+    id: 98008,
+    name: 'Дворец 10',
+    englishName: 'Palace 10',
+    category: 'Жилые',
+    price: 9000000,
+    buildable: false,
+    constructionRequirements: {
+      population: 65,
+      resources: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 8
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 20
+        },
+        {
+          id: 10030,
+          name: 'Цветок подсолнуха',
+          amount: 5
+        }
+      ]
+    },
+    stats: {
+      "populationBonus": 37,
+      constructionTimeSeconds: 720000,
+      accelerationCost: 185,
+      durability: 53000,
+      gloryOnExplosion: 450000
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10044,
+          name: 'Самородок',
+          amount: 250
+        },
+        {
+          id: 10033,
+          name: 'Черепки',
+          amount: 32
+        },
+        {
+          id: 10040,
+          name: 'Стальной лист',
+          amount: 95
+        }
+      ],
+      rare: [
+        {
+          id: 10036,
+          name: 'Изумрудная руда',
+          amount: 1000
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98008.webp',
+    type: BuildingType.Residential,
+    description: 'Дворец 10'
   },
   {
     id: 241,
@@ -14034,7 +16385,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 1500
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":2},{"id":10020,"name":"Супер гриб","amount":2}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":2},{"id":10020,"name":"Супер гриб","amount":2}],
       rare: [{"id":10045,"name":"Золото","amount":2}]
     },
     description: 'Грядка для выращивания репки.',
@@ -14149,7 +16500,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 2000
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":2},{"id":10020,"name":"Супер гриб","amount":2}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":2},{"id":10020,"name":"Супер гриб","amount":2}],
       rare: [{"id":10044,"name":"Самородок","amount":4}]
     },
     description: 'Грядка для выращивания репки.',
@@ -14287,7 +16638,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 2000
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":2},{"id":10020,"name":"Супер гриб","amount":2}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":2},{"id":10020,"name":"Супер гриб","amount":2}],
       rare: [{"id":10045,"name":"Золото","amount":2}]
     },
     description: 'Грядка для выращивания репки.',
@@ -14357,7 +16708,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 2400
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
       rare: [{"id":10034,"name":"Изумруд","amount":2}]
     },
     description: 'Грядка для выращивания пшеницы.',
@@ -14472,7 +16823,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 2400
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":4},{"id":10011,"name":"Садовая супер бомба","amount":2}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":4},{"id":10011,"name":"Садовая супер бомба","amount":2}],
       rare: [{"id":10006,"name":"Стальной лист","amount":5}]
     },
     description: 'Грядка для выращивания пшеницы.',
@@ -14495,7 +16846,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 2400
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
       rare: [{"id":10044,"name":"Самородок","amount":11}]
     },
     description: 'Грядка для выращивания пшеницы.',
@@ -14610,7 +16961,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 3400
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":4},{"id":10011,"name":"Садовая супер бомба","amount":2}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":4},{"id":10011,"name":"Садовая супер бомба","amount":2}],
       rare: [{"id":10036,"name":"Изумрудная руда","amount":3}]
     },
     description: 'Грядка для выращивания гигантской пшеницы.',
@@ -14633,7 +16984,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 3400
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
       rare: [{"id":10034,"name":"Изумруд","amount":2}]
     },
     description: 'Грядка для выращивания гигантской пшеницы.',
@@ -14748,7 +17099,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 3400
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":4},{"id":10011,"name":"Садовая супер бомба","amount":2}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":4},{"id":10011,"name":"Садовая супер бомба","amount":2}],
       rare: [{"id":10006,"name":"Стальной лист","amount":5}]
     },
     description: 'Грядка для выращивания гигантской пшеницы.',
@@ -14771,7 +17122,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 3400
     },
     drops: {
-      frequent: [{"id":10003,"name":"????? ????? ?????","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
+      frequent: [{"id":10003,"name":"Куски супер гриба","amount":4},{"id":10024,"name":"Супер тыква","amount":4}],
       rare: [{"id":10044,"name":"Самородок","amount":11}]
     },
     description: 'Грядка для выращивания гигантской пшеницы.',
@@ -15180,7 +17531,7 @@ export const buildings: Building[] = [
         },
         {
           id: 10003,
-          name: '????? ????? ?????',
+          name: 'Куски супер гриба',
           amount: 7
         },
         {
@@ -15610,7 +17961,7 @@ export const buildings: Building[] = [
         },
         {
           id: 10042,
-          name: '??????',
+          name: 'Сердце',
           amount: 8
         },
         {
@@ -15695,7 +18046,7 @@ export const buildings: Building[] = [
       frequent: [
         {
           id: 10042,
-          name: '??????',
+          name: 'Сердце',
           amount: 12
         },
         {
@@ -16165,7 +18516,7 @@ export const buildings: Building[] = [
       frequent: [
         {
           id: 10042,
-          name: '??????',
+          name: 'Сердце',
           amount: 75
         },
         {
@@ -16313,7 +18664,7 @@ export const buildings: Building[] = [
       "accelerationCost": 43,
       "durability": 838,
       "gloryOnExplosion": 1620,
-      "damage": "3",
+      "damage": "22",
       "workTimeSeconds": 5,
       "givesCoins": 2268
     },
@@ -16375,7 +18726,7 @@ export const buildings: Building[] = [
       "accelerationCost": 69,
       "durability": 1462,
       "gloryOnExplosion": 5120,
-      "damage": "4",
+      "damage": "35",
       "workTimeSeconds": 5,
       "givesCoins": 4775
     },
@@ -16388,7 +18739,7 @@ export const buildings: Building[] = [
         },
         {
           "id": 10003,
-          "name": "????? ????? ?????",
+          "name": "Куски супер гриба",
           "amount": 9
         },
         {
@@ -16442,7 +18793,7 @@ export const buildings: Building[] = [
       "accelerationCost": 107,
       "durability": 2305,
       "gloryOnExplosion": 12500,
-      "damage": "5",
+      "damage": "52",
       "workTimeSeconds": 5,
       "givesCoins": 7853
     },
@@ -16508,7 +18859,7 @@ export const buildings: Building[] = [
       "accelerationCost": 157,
       "durability": 3379,
       "gloryOnExplosion": 25920,
-      "damage": "6",
+      "damage": "75",
       "workTimeSeconds": 5,
       "givesCoins": 10631
     },
@@ -16574,7 +18925,7 @@ export const buildings: Building[] = [
       "accelerationCost": 215,
       "durability": 4699,
       "gloryOnExplosion": 48020,
-      "damage": "7",
+      "damage": "105",
       "workTimeSeconds": 5,
       "givesCoins": 13538
     },
@@ -16582,7 +18933,7 @@ export const buildings: Building[] = [
       "frequent": [
         {
           "id": 10042,
-          "name": "??????",
+          "name": "Сердце",
           "amount": 4
         },
         {
@@ -16640,7 +18991,7 @@ export const buildings: Building[] = [
       "accelerationCost": 287,
       "durability": 6283,
       "gloryOnExplosion": 81920,
-      "damage": "8",
+      "damage": "142",
       "workTimeSeconds": 5,
       "givesCoins": 13538
     },
@@ -16698,7 +19049,7 @@ export const buildings: Building[] = [
         },
         {
           "id": 10003,
-          "name": "????? ????? ?????",
+          "name": "Куски супер гриба",
           "amount": 39
         }
       ]
@@ -16708,7 +19059,7 @@ export const buildings: Building[] = [
       "accelerationCost": 376,
       "durability": 8140,
       "gloryOnExplosion": 131220,
-      "damage": "9",
+      "damage": "188",
       "workTimeSeconds": 5,
       "givesCoins": 13538
     },
@@ -16766,7 +19117,7 @@ export const buildings: Building[] = [
         },
         {
           "id": 10003,
-          "name": "????? ????? ?????",
+          "name": "Куски супер гриба",
           "amount": 59
         }
       ]
@@ -16776,7 +19127,7 @@ export const buildings: Building[] = [
       "accelerationCost": 473,
       "durability": 10282,
       "gloryOnExplosion": 200000,
-      "damage": "10",
+      "damage": "245",
       "workTimeSeconds": 5,
       "givesCoins": 20997
     },
@@ -16843,7 +19194,7 @@ export const buildings: Building[] = [
       "accelerationCost": 590,
       "durability": 12724,
       "gloryOnExplosion": 292820,
-      "damage": "11",
+      "damage": "315",
       "workTimeSeconds": 5,
       "givesCoins": 20997
     },
@@ -16910,7 +19261,7 @@ export const buildings: Building[] = [
       "accelerationCost": 727,
       "durability": 15478,
       "gloryOnExplosion": 414720,
-      "damage": "12",
+      "damage": "400",
       "workTimeSeconds": 5,
       "givesCoins": 20997
     },
@@ -16923,7 +19274,7 @@ export const buildings: Building[] = [
         },
         {
           "id": 10042,
-          "name": "??????",
+          "name": "Сердце",
           "amount": 35
         },
         {
@@ -16946,8 +19297,8 @@ export const buildings: Building[] = [
   // Egyptian Obelisks 1-20
   {
     "id": 185,
-    "name": "Египетский обелиск 1",
-    "englishName": "Egyptian obelisk 1",
+    "name": "Египетский обелиск",
+    "englishName": "Egyptian obelisk",
     "category": "Статуи",
     "type": BuildingType.Default,
     "rubyPrice": 60,
@@ -16963,7 +19314,7 @@ export const buildings: Building[] = [
     },
     "drops": {
       "frequent": [
-        { "id": 10003, "name": "????? ????? ?????", "amount": 6, "chance": 80 },
+        { "id": 10003, "name": "Куски супер гриба", "amount": 6, "chance": 80 },
         { "id": 10005, "name": "Стальной лист", "amount": 3, "chance": 70 },
         { "id": 10000, "name": "Монеты", "amount": 10631, "chance": 100 }
       ],
@@ -16971,8 +19322,8 @@ export const buildings: Building[] = [
         { "id": 10020, "name": "Изумрудная руда", "amount": 22, "chance": 20 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/164.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/185.webp',
     "upgradesTo": 186,
     "upgradeCost": 90000
   },
@@ -17003,8 +19354,8 @@ export const buildings: Building[] = [
         { "id": 10020, "name": "Изумрудная руда", "amount": 4, "chance": 20 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/165.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/186.webp',
     "upgradesTo": 187,
     "upgradeCost": 100000
   },
@@ -17035,8 +19386,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 3, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/166.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/187.webp',
     "upgradesTo": 188,
     "upgradeCost": 110000
   },
@@ -17067,8 +19418,8 @@ export const buildings: Building[] = [
         { "id": 10005, "name": "Стальной лист", "amount": 8, "chance": 25 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/167.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/188.webp',
     "upgradesTo": 189,
     "upgradeCost": 120000
   },
@@ -17096,11 +19447,11 @@ export const buildings: Building[] = [
         { "id": 10000, "name": "Монеты", "amount": 5839, "chance": 100 }
       ],
       "rare": [
-        { "id": 10003, "name": "????? ????? ?????", "amount": 23, "chance": 20 }
+        { "id": 10003, "name": "Куски супер гриба", "amount": 23, "chance": 20 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/168.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/189.webp',
     "upgradesTo": 190,
     "upgradeCost": 130000
   },
@@ -17131,8 +19482,8 @@ export const buildings: Building[] = [
         { "id": 10020, "name": "Изумрудная руда", "amount": 7, "chance": 20 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/169.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/190.webp',
     "upgradesTo": 191,
     "upgradeCost": 140000
   },
@@ -17163,8 +19514,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 4, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/170.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/191.webp',
     "upgradesTo": 192,
     "upgradeCost": 150000
   },
@@ -17195,8 +19546,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 5, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/171.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/192.webp',
     "upgradesTo": 193,
     "upgradeCost": 160000
   },
@@ -17227,8 +19578,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 6, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/172.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/193.webp',
     "upgradesTo": 194,
     "upgradeCost": 170000
   },
@@ -17259,8 +19610,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 7, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/173.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/194.webp',
     "upgradesTo": 195,
     "upgradeCost": 180000
   },
@@ -17291,8 +19642,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 8, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/174.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/195.webp',
     "upgradesTo": 196,
     "upgradeCost": 190000
   },
@@ -17323,8 +19674,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 9, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/175.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/196.webp',
     "upgradesTo": 197,
     "upgradeCost": 200000
   },
@@ -17355,8 +19706,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 10, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/164.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/197.webp',
     "upgradesTo": 198,
     "upgradeCost": 220000
   },
@@ -17387,8 +19738,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 11, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/165.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/198.webp',
     "upgradesTo": 199,
     "upgradeCost": 240000
   },
@@ -17419,8 +19770,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 12, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/166.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/199.webp',
     "upgradesTo": 200,
     "upgradeCost": 260000
   },
@@ -17451,8 +19802,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 13, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/167.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/200.webp',
     "upgradesTo": 201,
     "upgradeCost": 280000
   },
@@ -17483,8 +19834,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 14, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/168.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/201.webp',
     "upgradesTo": 202,
     "upgradeCost": 300000
   },
@@ -17515,8 +19866,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 15, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/169.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/202.webp',
     "upgradesTo": 203,
     "upgradeCost": 320000
   },
@@ -17547,8 +19898,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 16, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/170.webp',
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/203.webp',
     "upgradesTo": 204,
     "upgradeCost": 340000
   },
@@ -17579,8 +19930,8 @@ export const buildings: Building[] = [
         { "id": 10034, "name": "Изумруд", "amount": 17, "chance": 15 }
       ]
     },
-        "description": "Древний египетский обелиск. Декоративное сооружение.",
-    imageUrl: '/buildings/Статуи/Обелиск - Obelisk/171.webp'
+        "description": "Древний египетский обелиск. Дарует благословение: полностью снимает перезарядку экспресс-сбора доходов в «Финансовой разведке» (сбор в 1 клик доступен без задержки).",
+    imageUrl: '/buildings/Статуи/Египетский обелиск - Egyptian obelisk/204.webp'
   },
   // Obelisk Xm chain (164-175)
   {
@@ -17634,7 +19985,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 4 },
+        { id: 10003, name: 'Куски супер гриба', amount: 4 },
         { id: 10024, name: 'Супер лилия', amount: 8 },
         { id: 999, name: 'Монеты', amount: 2268 }
       ],
@@ -17731,7 +20082,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10011, name: 'Садовая супер бомба', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 8 },
+        { id: 10003, name: 'Куски супер гриба', amount: 8 },
         { id: 999, name: 'Монеты', amount: 4775 }
       ],
       rare: [
@@ -18178,7 +20529,7 @@ export const buildings: Building[] = [
       ], population: 43 },
     stats: { constructionTimeSeconds: 238521, accelerationCost: 103, durability: 24848, gloryOnExplosion: 197000, populationBonus: 0 },
     upgradesTo: 51701, upgradeCost: 4840000,
-    drops: { frequent: [{ id: 10003, name: '????? ????? ?????', amount: 314 }, { id: 10005, name: 'Сталь', amount: 59 }, { id: 999, name: 'монеты', amount: 13538 }], rare: [{ id: 10004, name: 'Самородок', amount: 838 }] },
+    drops: { frequent: [{ id: 10003, name: 'Куски супер гриба', amount: 314 }, { id: 10005, name: 'Сталь', amount: 59 }, { id: 999, name: 'монеты', amount: 13538 }], rare: [{ id: 10004, name: 'Самородок', amount: 838 }] },
     description: 'Вдохновляет ваших монстров, и они начинают лучше лечить и ремонтировать.', imageUrl: '/buildings/Статуи/Статуя Гнома Защитника уровень/489.webp'
   },
   {
@@ -18514,7 +20865,7 @@ export const buildings: Building[] = [
         { "id": 10000, "name": "Монеты", "amount": 10631, "chance": 100 }
       ],
       "rare": [
-        { "id": 10003, "name": "????? ????? ?????", "amount": 70, "chance": 10 }
+        { "id": 10003, "name": "Куски супер гриба", "amount": 70, "chance": 10 }
       ]
     },
         "description": "Собирает налоги с сектора, на котором находится.",
@@ -18546,11 +20897,11 @@ export const buildings: Building[] = [
     "drops": {
       "frequent": [
         { "id": 10011, "name": "Садовая супер бомба", "amount": 2, "chance": 70 },
-        { "id": 10003, "name": "????? ????? ?????", "amount": 7, "chance": 80 },
+        { "id": 10003, "name": "Куски супер гриба", "amount": 7, "chance": 80 },
         { "id": 10000, "name": "Монеты", "amount": 4299, "chance": 100 }
       ],
       "rare": [
-        { "id": 10003, "name": "????? ????? ?????", "amount": 15, "chance": 15 }
+        { "id": 10003, "name": "Куски супер гриба", "amount": 15, "chance": 15 }
       ]
     },
         "description": "Замок нужен для создания клана. Чем выше уровень замка тем больше игроков вы сможете набрать в клан.",
@@ -18584,7 +20935,7 @@ export const buildings: Building[] = [
     "drops": {
       "frequent": [
         { "id": 10016, "name": "Атомная бомба «Снежинка»", "amount": 2, "chance": 60 },
-        { "id": 10003, "name": "????? ????? ?????", "amount": 2, "chance": 70 },
+        { "id": 10003, "name": "Куски супер гриба", "amount": 2, "chance": 70 },
         { "id": 10000, "name": "Монеты", "amount": 6401, "chance": 100 }
       ],
       "rare": [
@@ -18622,7 +20973,7 @@ export const buildings: Building[] = [
     "drops": {
       "frequent": [
         { "id": 10026, "name": "Золото", "amount": 3, "chance": 60 },
-        { "id": 10039, "name": "?????? ?????", "amount": 2, "chance": 70 },
+        { "id": 10039, "name": "Символ любви", "amount": 2, "chance": 70 },
         { "id": 10000, "name": "Монеты", "amount": 10631, "chance": 100 }
       ],
       "rare": [
@@ -18659,12 +21010,12 @@ export const buildings: Building[] = [
     },
     "drops": {
       "frequent": [
-        { "id": 10003, "name": "????? ????? ?????", "amount": 18, "chance": 70 },
+        { "id": 10003, "name": "Куски супер гриба", "amount": 18, "chance": 70 },
         { "id": 10040, "name": "Стальной лист", "amount": 7, "chance": 80 },
         { "id": 10000, "name": "Монеты", "amount": 13538, "chance": 100 }
       ],
       "rare": [
-        { "id": 10003, "name": "????? ????? ?????", "amount": 260, "chance": 5 }
+        { "id": 10003, "name": "Куски супер гриба", "amount": 260, "chance": 5 }
       ]
     },
         "description": "Замок нужен для создания клана. Чем выше уровень замка тем больше игроков вы сможете набрать в клан.",
@@ -18697,7 +21048,7 @@ export const buildings: Building[] = [
     },
     "drops": {
       "frequent": [
-        { "id": 10003, "name": "????? ????? ?????", "amount": 44, "chance": 70 },
+        { "id": 10003, "name": "Куски супер гриба", "amount": 44, "chance": 70 },
         { "id": 10020, "name": "Изумрудная руда", "amount": 12, "chance": 80 },
         { "id": 10000, "name": "Монеты", "amount": 13538, "chance": 100 }
       ],
@@ -19176,7 +21527,7 @@ export const buildings: Building[] = [
     "drops": {
       "frequent": [
         { "id": 10026, "name": "Золото", "amount": 5, "chance": 60 },
-        { "id": 10039, "name": "?????? ?????", "amount": 3, "chance": 70 },
+        { "id": 10039, "name": "Символ любви", "amount": 3, "chance": 70 },
         { "id": 10000, "name": "Монеты", "amount": 13538, "chance": 100 }
       ],
       "rare": [
@@ -19226,7 +21577,7 @@ export const buildings: Building[] = [
     },
     "drops": {
       "frequent": [
-        { "id": 10039, "name": "?????? ?????", "amount": 5, "chance": 70 },
+        { "id": 10039, "name": "Символ любви", "amount": 5, "chance": 70 },
         { "id": 10040, "name": "Стальной лист", "amount": 8, "chance": 80 },
         { "id": 10000, "name": "Монеты", "amount": 13538, "chance": 100 }
       ],
@@ -20082,7 +22433,7 @@ export const buildings: Building[] = [
     },
     "drops": {
       "frequent": [
-        { "id": 10039, "name": "?????? ?????", "amount": 17, "chance": 70 },
+        { "id": 10039, "name": "Символ любви", "amount": 17, "chance": 70 },
         { "id": 10040, "name": "Стальной лист", "amount": 30, "chance": 80 },
         { "id": 10000, "name": "Монеты", "amount": 20997, "chance": 100 }
       ],
@@ -20897,7 +23248,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10012, name: 'MGM-52 «Ланс»', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 },
+        { id: 10003, name: 'Куски супер гриба', amount: 7 },
         { id: 10000, name: 'Монеты', amount: 3788 }
       ],
       rare: [
@@ -23116,7 +25467,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10011, name: 'Садовая супер бомба', amount: 2 },
-        { id: 10003, name: '????? ????? ?????', amount: 7 },
+        { id: 10003, name: 'Куски супер гриба', amount: 7 },
         { id: 999, name: 'монеты', amount: 3788 }
       ],
       rare: [
@@ -23206,7 +25557,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 235 },
+        { id: 10003, name: 'Куски супер гриба', amount: 235 },
         { id: 10005, name: 'Сталь', amount: 44 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -23733,7 +26084,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 328 },
+        { id: 10003, name: 'Куски супер гриба', amount: 328 },
         { id: 10005, name: 'Сталь', amount: 62 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -23989,7 +26340,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 16 },
+        { id: 10003, name: 'Куски супер гриба', amount: 16 },
         { id: 10007, name: 'Яйцо Горыныча', amount: 4 },
         { id: 999, name: 'монеты', amount: 7853 }
       ],
@@ -24357,7 +26708,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 118 },
+        { id: 10003, name: 'Куски супер гриба', amount: 118 },
         { id: 10005, name: 'Сталь', amount: 22 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -24430,7 +26781,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 16 },
+        { id: 10003, name: 'Куски супер гриба', amount: 16 },
         { id: 10007, name: 'Яйцо Горыныча', amount: 4 },
         { id: 999, name: 'монеты', amount: 7853 }
       ],
@@ -24577,7 +26928,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 17 },
+        { id: 10003, name: 'Куски супер гриба', amount: 17 },
         { id: 10005, name: 'Сталь', amount: 4 },
         { id: 999, name: 'монеты', amount: 7853 }
       ],
@@ -24688,7 +27039,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 230 },
+        { id: 10003, name: 'Куски супер гриба', amount: 230 },
         { id: 10005, name: 'Сталь', amount: 43 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -24908,7 +27259,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 52 },
+        { id: 10003, name: 'Куски супер гриба', amount: 52 },
         { id: 10005, name: 'Сталь', amount: 10 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -25018,7 +27369,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 17 },
+        { id: 10003, name: 'Куски супер гриба', amount: 17 },
         { id: 10005, name: 'Сталь', amount: 4 },
         { id: 999, name: 'монеты', amount: 7853 }
       ],
@@ -25129,7 +27480,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 230 },
+        { id: 10003, name: 'Куски супер гриба', amount: 230 },
         { id: 10005, name: 'Сталь', amount: 43 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -25526,7 +27877,7 @@ export const buildings: Building[] = [
     upgradeCost: 1360000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 51 },
+        { id: 10003, name: 'Куски супер гриба', amount: 51 },
         { id: 10005, name: 'Сталь', amount: 10 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -25723,7 +28074,7 @@ export const buildings: Building[] = [
     upgradeCost: 2270000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 118 },
+        { id: 10003, name: 'Куски супер гриба', amount: 118 },
         { id: 10005, name: 'Сталь', amount: 22 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -25821,7 +28172,7 @@ export const buildings: Building[] = [
     upgradeCost: 710000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 16 },
+        { id: 10003, name: 'Куски супер гриба', amount: 16 },
         { id: 10005, name: 'Сталь', amount: 3 },
         { id: 999, name: 'монеты', amount: 7853 }
       ],
@@ -25920,7 +28271,7 @@ export const buildings: Building[] = [
     upgradeCost: 3440000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 230 },
+        { id: 10003, name: 'Куски супер гриба', amount: 230 },
         { id: 10005, name: 'Сталь', amount: 43 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -26627,7 +28978,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 328 },
+        { id: 10003, name: 'Куски супер гриба', amount: 328 },
         { id: 10005, name: 'Сталь', amount: 62 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -27039,7 +29390,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 281 },
+        { id: 10003, name: 'Куски супер гриба', amount: 281 },
         { id: 10005, name: 'Сталь', amount: 53 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -27102,7 +29453,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 328 },
+        { id: 10003, name: 'Куски супер гриба', amount: 328 },
         { id: 10005, name: 'Сталь', amount: 62 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -27397,7 +29748,7 @@ export const buildings: Building[] = [
     upgradeCost: 1960000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 94 },
+        { id: 10003, name: 'Куски супер гриба', amount: 94 },
         { id: 10009, name: 'Сталь', amount: 18 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -28114,7 +30465,7 @@ export const buildings: Building[] = [
     upgradeCost: 1360000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 66 },
+        { id: 10003, name: 'Куски супер гриба', amount: 66 },
         { id: 10009, name: 'Сталь', amount: 13 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -28330,7 +30681,7 @@ export const buildings: Building[] = [
     upgradeCost: 4240000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 300 },
+        { id: 10003, name: 'Куски супер гриба', amount: 300 },
         { id: 10009, name: 'Сталь', amount: 56 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -28869,7 +31220,7 @@ export const buildings: Building[] = [
     upgradeCost: 680000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 33 },
+        { id: 10003, name: 'Куски супер гриба', amount: 33 },
         { id: 10030, name: 'Цветок подсолнуха', amount: 2 },
         { id: 999, name: 'монеты', amount: 10631 }
       ],
@@ -28905,7 +31256,7 @@ export const buildings: Building[] = [
     upgradeCost: 820000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 42 },
+        { id: 10003, name: 'Куски супер гриба', amount: 42 },
         { id: 10009, name: 'Сталь', amount: 8 },
         { id: 999, name: 'монеты', amount: 10631 }
       ],
@@ -29086,7 +31437,7 @@ export const buildings: Building[] = [
     upgradeCost: 2120000,
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 150 },
+        { id: 10003, name: 'Куски супер гриба', amount: 150 },
         { id: 10009, name: 'Сталь', amount: 28 },
         { id: 999, name: 'монеты', amount: 13538 }
       ],
@@ -29852,7 +32203,84 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Современный дом 3 уровня. Modern House Level 3.',
-    imageUrl: '/buildings/residential/63.webp'
+    imageUrl: '/buildings/residential/63.webp',
+    upgradesTo: 98009,
+    upgradeCost: 1200000
+  },
+  {
+    id: 98009,
+    name: 'Современный дом 4',
+    englishName: 'Modern House 4',
+    category: 'Жилые',
+    type: BuildingType.Residential,
+    price: 1200000,
+    buildable: false,
+    constructionRequirements: {
+      resources: [
+        { id: 10035, name: 'Элитная древесина', amount: 11 },
+        { id: 10023, name: 'Сталь', amount: 3 },
+        { id: 10003, name: 'Куски супер гриба', amount: 16 }
+      ],
+      population: 31
+    },
+    stats: {
+      constructionTimeSeconds: 82000,
+      accelerationCost: 62,
+      durability: 12500,
+      gloryOnExplosion: 55000,
+      populationBonus: 20
+    },
+    drops: {
+      frequent: [
+        { id: 10033, name: 'Черепок', amount: 14 },
+        { id: 10045, name: 'Супер детонатор', amount: 4 },
+        { id: 10040, name: 'Стальной лист', amount: 6 }
+      ],
+      rare: [
+        { id: 10043, name: 'Суператомная бомба', amount: 4 }
+      ]
+    },
+    description: 'Современный дом 4 уровня. Modern House Level 4.',
+    imageUrl: '/buildings/residential/98009.webp',
+    upgradesTo: 98010,
+    upgradeCost: 1500000
+  },
+  {
+    id: 98010,
+    name: 'Современный дом 5',
+    englishName: 'Modern House 5',
+    category: 'Жилые',
+    type: BuildingType.Residential,
+    price: 1500000,
+    buildable: false,
+    constructionRequirements: {
+      resources: [
+        { id: 10035, name: 'Элитная древесина', amount: 14 },
+        { id: 10023, name: 'Сталь', amount: 4 },
+        { id: 10003, name: 'Куски супер гриба', amount: 20 }
+      ],
+      population: 34
+    },
+    stats: {
+      constructionTimeSeconds: 98000,
+      accelerationCost: 70,
+      durability: 14800,
+      gloryOnExplosion: 65000,
+      populationBonus: 22
+    },
+    drops: {
+      frequent: [
+        { id: 10026, name: 'Золото', amount: 4 },
+        { id: 10033, name: 'Черепок', amount: 16 },
+        { id: 10045, name: 'Супер детонатор', amount: 5 },
+        { id: 10040, name: 'Стальной лист', amount: 8 }
+      ],
+      rare: [
+        { id: 10043, name: 'Суператомная бомба', amount: 5 }
+      ]
+    },
+    description: 'Современный дом 5 уровня. Modern House Level 5.',
+    imageUrl: '/buildings/residential/98010.webp'
   },
   {
     id: 64,
@@ -29926,7 +32354,83 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Поместье 2 уровня. Estate Level 2.',
-    imageUrl: '/buildings/residential/65.webp'
+    imageUrl: '/buildings/residential/65.webp',
+    upgradesTo: 98011,
+    upgradeCost: 1800000
+  },
+  {
+    id: 98011,
+    name: 'Поместье 3',
+    englishName: 'Estate 3',
+    category: 'Жилые',
+    type: BuildingType.Residential,
+    price: 1800000,
+    buildable: false,
+    constructionRequirements: {
+      resources: [
+        { id: 10026, name: 'Золото', amount: 2 },
+        { id: 10023, name: 'Сталь', amount: 4 },
+        { id: 10004, name: 'Куски супер тыквы', amount: 16 }
+      ],
+      population: 33
+    },
+    stats: {
+      constructionTimeSeconds: 102000,
+      accelerationCost: 70,
+      durability: 14800,
+      gloryOnExplosion: 90000,
+      populationBonus: 22
+    },
+    drops: {
+      frequent: [
+        { id: 10044, name: 'Самородок', amount: 20 },
+        { id: 10033, name: 'Черепок', amount: 16 },
+        { id: 10036, name: 'Изумрудная руда', amount: 6 }
+      ],
+      rare: [
+        { id: 10036, name: 'Изумрудная руда', amount: 80 }
+      ]
+    },
+    description: 'Поместье 3 уровня. Estate Level 3.',
+    imageUrl: '/buildings/residential/98011.webp',
+    upgradesTo: 98012,
+    upgradeCost: 2200000
+  },
+  {
+    id: 98012,
+    name: 'Поместье 4',
+    englishName: 'Estate 4',
+    category: 'Жилые',
+    type: BuildingType.Residential,
+    price: 2200000,
+    buildable: false,
+    constructionRequirements: {
+      resources: [
+        { id: 10026, name: 'Золото', amount: 3 },
+        { id: 10023, name: 'Сталь', amount: 5 },
+        { id: 10004, name: 'Куски супер тыквы', amount: 20 }
+      ],
+      population: 36
+    },
+    stats: {
+      constructionTimeSeconds: 118000,
+      accelerationCost: 76,
+      durability: 17200,
+      gloryOnExplosion: 110000,
+      populationBonus: 24
+    },
+    drops: {
+      frequent: [
+        { id: 10044, name: 'Самородок', amount: 25 },
+        { id: 10033, name: 'Черепок', amount: 18 },
+        { id: 10040, name: 'Стальной лист', amount: 8 }
+      ],
+      rare: [
+        { id: 10043, name: 'Суператомная бомба', amount: 6 }
+      ]
+    },
+    description: 'Поместье 4 уровня. Estate Level 4.',
+    imageUrl: '/buildings/residential/98012.webp'
   },
   {
     id: 66,
@@ -30301,7 +32805,7 @@ export const buildings: Building[] = [
         { id: 999, name: 'Монеты', amount: 405 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 3 }
+        { id: 10003, name: 'Куски супер гриба', amount: 3 }
       ]
     },
     description: 'Хотдоги! Горячие пирожки! Супер тележка, супер доходы! Hot dogs! Fresh patties! Super cart, super income!',
@@ -30459,7 +32963,7 @@ export const buildings: Building[] = [
         { id: 10000, name: 'Монеты', amount: 2268, chance: 100 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 8, chance: 20 }
+        { id: 10003, name: 'Куски супер гриба', amount: 8, chance: 20 }
       ]
     },
     description: 'Волшебное цветочное дерево. Укрась свой город!',
@@ -30487,7 +32991,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10011, name: 'Садовая супер бомба', amount: 2, chance: 80 },
-        { id: 10003, name: '????? ????? ?????', amount: 5, chance: 70 },
+        { id: 10003, name: 'Куски супер гриба', amount: 5, chance: 70 },
         { id: 10000, name: 'Монеты', amount: 2735, chance: 100 }
       ],
       rare: [
@@ -30617,7 +33121,7 @@ export const buildings: Building[] = [
         { id: 10000, name: 'Монеты', amount: 2268, chance: 100 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 7, chance: 20 }
+        { id: 10003, name: 'Куски супер гриба', amount: 7, chance: 20 }
       ]
     },
     description: 'Уютная беседка для отдыха. Укрась свой город!',
@@ -30644,7 +33148,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 4, chance: 80 },
+        { id: 10003, name: 'Куски супер гриба', amount: 4, chance: 80 },
         { id: 10025, name: 'Супер лилия', amount: 9, chance: 70 },
         { id: 10000, name: 'Монеты', amount: 2268, chance: 100 }
       ],
@@ -30807,7 +33311,7 @@ export const buildings: Building[] = [
         { id: 10000, name: 'Монеты', amount: 504, chance: 100 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 4, chance: 20 }
+        { id: 10003, name: 'Куски супер гриба', amount: 4, chance: 20 }
       ]
     },
     description: 'Красивые цветочки для украшения города.',
@@ -30899,7 +33403,7 @@ export const buildings: Building[] = [
         { id: 10000, name: 'Монеты', amount: 7853, chance: 100 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 55, chance: 20 }
+        { id: 10003, name: 'Куски супер гриба', amount: 55, chance: 20 }
       ]
     },
     description: 'Гномы говорят, если у города нет фонтана, то у него нет души. Gnomes said, if the city has no fountain, he has no soul.',
@@ -32246,7 +34750,7 @@ export const buildings: Building[] = [
         { id: 10000, name: 'Монеты', amount: 140 }
       ],
       rare: [
-        { id: 10003, name: '????? ????? ?????', amount: 6 }
+        { id: 10003, name: 'Куски супер гриба', amount: 6 }
       ]
     },
     description: 'Улучшеный пруд с лилиями 2 уровня.',
@@ -32747,7 +35251,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10035, name: 'Золото', amount: 5 },
-        { id: 10042, name: '??????', amount: 3 },
+        { id: 10042, name: 'Сердце', amount: 3 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
       rare: [
@@ -32789,7 +35293,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 4 },
+        { id: 10042, name: 'Сердце', amount: 4 },
         { id: 10006, name: 'Стальной лист', amount: 6 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
@@ -33007,7 +35511,7 @@ export const buildings: Building[] = [
     drops: {
       frequent: [
         { id: 10035, name: 'Золото', amount: 18 },
-        { id: 10042, name: '??????', amount: 10 },
+        { id: 10042, name: 'Сердце', amount: 10 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
       rare: [
@@ -33050,7 +35554,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 11 },
+        { id: 10042, name: 'Сердце', amount: 11 },
         { id: 10006, name: 'Стальной лист', amount: 20 },
         { id: 10000, name: 'Монеты', amount: 13538 }
       ],
@@ -33088,7 +35592,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 655,
       workYieldGold: 50,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 30.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 30.25, amount: 1 }
       ]
     },
     drops: {
@@ -33130,7 +35634,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 677,
       workYieldGold: 100,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 31, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 31, amount: 1 }
       ]
     },
     drops: {
@@ -33172,7 +35676,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 1057,
       workYieldGold: 150,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 32.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 32.25, amount: 1 }
       ]
     },
     drops: {
@@ -33213,7 +35717,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 1470,
       workYieldGold: 200,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 34, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 34, amount: 1 }
       ]
     },
     drops: {
@@ -33255,12 +35759,12 @@ export const buildings: Building[] = [
       workTimeSeconds: 1921,
       workYieldGold: 250,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 36.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 36.25, amount: 1 }
       ]
     },
     drops: {
       frequent: [
-        { id: 10003, name: '????? ????? ?????', amount: 5 },
+        { id: 10003, name: 'Куски супер гриба', amount: 5 },
         { id: 10024, name: 'Супер лилия', amount: 10 },
         { id: 10000, name: 'Монеты', amount: 2735 },
       ],
@@ -33297,7 +35801,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 2414,
       workYieldGold: 300,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 39, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 39, amount: 1 }
       ]
     },
     drops: {
@@ -33339,7 +35843,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 2954,
       workYieldGold: 350,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 42.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 42.25, amount: 1 }
       ]
     },
     drops: {
@@ -33381,7 +35885,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 3539,
       workYieldGold: 400,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 46, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 46, amount: 1 }
       ]
     },
     drops: {
@@ -33424,7 +35928,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 4174,
       workYieldGold: 450,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 50.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 50.25, amount: 1 }
       ]
     },
     drops: {
@@ -33467,7 +35971,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 4860,
       workYieldGold: 500,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 55, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 55, amount: 1 }
       ]
     },
     drops: {
@@ -33510,13 +36014,13 @@ export const buildings: Building[] = [
       workTimeSeconds: 5598,
       workYieldGold: 550,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 60.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 60.25, amount: 1 }
       ]
     },
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 5 },
-        { id: 10042, name: '??????', amount: 3 },
+        { id: 10042, name: 'Сердце', amount: 3 },
         { id: 10000, name: 'Монеты', amount: 13538 },
       ],
       rare: [
@@ -33554,12 +36058,12 @@ export const buildings: Building[] = [
       workTimeSeconds: 6389,
       workYieldGold: 600,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 66, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 66, amount: 1 }
       ]
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 3 },
+        { id: 10042, name: 'Сердце', amount: 3 },
         { id: 10040, name: 'Стальной лист', amount: 6 },
         { id: 10000, name: 'Монеты', amount: 13538 },
       ],
@@ -33598,7 +36102,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 7234,
       workYieldGold: 650,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 72.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 72.25, amount: 1 }
       ]
     },
     drops: {
@@ -33641,7 +36145,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 8133,
       workYieldGold: 700,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 79, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 79, amount: 1 }
       ]
     },
     drops: {
@@ -33685,7 +36189,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 9088,
       workYieldGold: 750,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 86.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 86.25, amount: 1 }
       ]
     },
     drops: {
@@ -33729,7 +36233,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 10097,
       workYieldGold: 800,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 94, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 94, amount: 1 }
       ]
     },
     drops: {
@@ -33773,13 +36277,13 @@ export const buildings: Building[] = [
       workTimeSeconds: 11164,
       workYieldGold: 850,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 102.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 102.25, amount: 1 }
       ]
     },
     drops: {
       frequent: [
         { id: 10026, name: 'Золото', amount: 20 },
-        { id: 10042, name: '??????', amount: 11 },
+        { id: 10042, name: 'Сердце', amount: 11 },
         { id: 10000, name: 'Монеты', amount: 13538 },
       ],
       rare: [
@@ -33817,12 +36321,12 @@ export const buildings: Building[] = [
       workTimeSeconds: 12286,
       workYieldGold: 900,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 111, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 111, amount: 1 }
       ]
     },
     drops: {
       frequent: [
-        { id: 10042, name: '??????', amount: 13 },
+        { id: 10042, name: 'Сердце', amount: 13 },
         { id: 10040, name: 'Стальной лист', amount: 22 },
         { id: 10000, name: 'Монеты', amount: 13538 },
       ],
@@ -33861,7 +36365,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 13464,
       workYieldGold: 950,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 120.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 120.25, amount: 1 }
       ]
     },
     drops: {
@@ -33905,7 +36409,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 14701,
       workYieldGold: 1000,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 130, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 130, amount: 1 }
       ]
     },
     drops: {
@@ -33949,7 +36453,7 @@ export const buildings: Building[] = [
       workTimeSeconds: 15993,
       workYieldGold: 1050,
       sometimesProduces: [
-        { id: 10003, name: '????? ????? ?????', chance: 140.25, amount: 1 }
+        { id: 10003, name: 'Куски супер гриба', chance: 140.25, amount: 1 }
       ]
     },
     drops: {
@@ -33964,6 +36468,1559 @@ export const buildings: Building[] = [
     },
     description: 'Максимальный уровень улучшеной грибной грядки. Невероятная мощь!',
     imageUrl: '/buildings/garden_beds/mushroom/enhanced_mushroom_bed/894.webp',
+  },
+  {
+    id: 7980000,
+    name: 'ЖД вокзал',
+    englishName: 'Railway Station',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'ЖД вокзал. Специальное здание для города.',
+    imageUrl: '/buildings/спецальное/89022223.png',
+  },
+  {
+    id: 7980001,
+    name: 'Ботанический сад',
+    englishName: 'Botanical Garden',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Ботанический сад. Специальное здание для города.',
+    imageUrl: '/buildings/спецальное/7980001.webp',
+  },
+  {
+    id: 7980002,
+    name: 'Научный центр',
+    englishName: 'Science Center',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Научный центр. Специальное здание для исследований и развития города.',
+    imageUrl: '/buildings/спецальное/7980002.webp',
+    upgradesTo: 7980015,
+    upgradeCost: 2000,
+  },
+  {
+    id: 7980003,
+    name: 'Верфь',
+    englishName: 'Shipyard',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Верфь. Специальное здание для строительства и обслуживания судов.',
+    imageUrl: '/buildings/спецальное/7980003.png',
+  },
+  {
+    id: 7980004,
+    name: 'Оперный театр',
+    englishName: 'Opera House',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Беломраморный театр с золотым куполом. Специальное здание культуры и искусства.',
+    imageUrl: '/buildings/спецальное/7980004.webp',
+  },
+  {
+    id: 7980005,
+    name: 'Музей',
+    englishName: 'Museum',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Величественный музей с динозавром и куполами. Специальное здание для хранения исторических реликвий и сокровищ.',
+    imageUrl: '/buildings/спецальное/7980005.webp',
+  },
+  {
+    id: 7980006,
+    name: 'Гранд отель',
+    englishName: 'Grand Hotel',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Величественный бело-золотой дворец-отель. Роскошный отель для гостей города.',
+    imageUrl: '/buildings/спецальное/7980006.webp',
+  },
+  {
+    id: 7980007,
+    name: 'Обсерватория',
+    englishName: 'Observatory',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Величественная обсерватория под звёздным куполом. Специальное здание для наблюдения за звёздами и космосом.',
+    imageUrl: '/buildings/спецальное/7980007.webp',
+    upgradesTo: 7980017,
+    upgradeCost: 2000,
+  },
+  {
+    id: 7980008,
+    name: 'Колоссальный океанариум',
+    englishName: 'Colossal Oceanarium',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Колоссальный океанариум. Специальное здание для города.',
+    imageUrl: '/buildings/спецальное/890222222.webp',
+  },
+  {
+    id: 7980009,
+    name: 'Эйфелева башня',
+    englishName: 'Eiffel Tower',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Роскошная Эйфелева башня в стиле фэнтези. Специальное здание для города.',
+    imageUrl: '/buildings/спецальное/7980009.webp',
+  },
+  {
+    id: 7980010,
+    name: 'Пизанская башня',
+    englishName: 'Leaning Tower of Pisa',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Наклонная башня с цветочными аркадами. Специальное здание для города.',
+    imageUrl: '/buildings/спецальное/7980010.webp',
+  },
+  {
+    id: 7980011,
+    name: 'Колизей',
+    englishName: 'Colosseum',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Античный Колизей в руинном стиле. Можно восстановить и улучшить до величественного Императорского Колизея.',
+    imageUrl: '/buildings/спецальное/7980011.webp',
+    upgradesTo: 7980012,
+    upgradeCost: 2000,
+  },
+  {
+    id: 7980012,
+    name: 'Императорский Колизей',
+    englishName: 'Imperial Colosseum',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 2000,
+    buildable: false,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 10000,
+      gloryOnExplosion: 1000,
+      populationBonus: 25,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 2 },
+        { id: 10001, name: 'Дерево', amount: 20 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 5 }
+      ]
+    },
+    description: 'Величественный Императорский Колизей с красными знаменами. Полностью восстановленное легендарное сооружение.',
+    imageUrl: '/buildings/спецальное/7980012.webp',
+  },
+  {
+    id: 7980013,
+    name: 'Огненная башня с часами и флагом',
+    englishName: 'Fire Tower with Clock and Flag',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Огненная башня с часами и флагом. Специальное здание для города.',
+    imageUrl: '/buildings/спецальное/7980013.webp',
+  },
+  {
+    id: 7980014,
+    name: 'Монументальный Стоунхендж',
+    englishName: 'Monumental Stonehenge',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Изометрический Стоунхендж с фонарями и кострами. Древнее монументальное сооружение для города.',
+    imageUrl: '/buildings/спецальное/7980014.webp',
+  },
+  {
+    id: 7980015,
+    name: 'Научный центр 2',
+    englishName: 'Science Center 2',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 2000,
+    buildable: false,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 7500,
+      gloryOnExplosion: 750,
+      populationBonus: 20,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 2 },
+        { id: 10001, name: 'Дерево', amount: 15 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 3 }
+      ]
+    },
+    description: 'Футуристическая башня научного центра 2 уровня. Продвинутые исследования и технологии.',
+    imageUrl: '/buildings/спецальное/7980015.webp',
+    upgradesTo: 7980016,
+    upgradeCost: 5000,
+  },
+  {
+    id: 7980016,
+    name: 'Научный центр 3',
+    englishName: 'Science Center 3',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 5000,
+    buildable: false,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 12000,
+      gloryOnExplosion: 1500,
+      populationBonus: 35,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 3 },
+        { id: 10001, name: 'Дерево', amount: 25 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 6 }
+      ]
+    },
+    description: 'Футуристическая башня научной обсерватории 3 уровня. Высший уровень научных достижений города.',
+    imageUrl: '/buildings/спецальное/7980016.webp',
+  },
+  {
+    id: 7980017,
+    name: 'Обсерватория 2',
+    englishName: 'Observatory 2',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 2000,
+    buildable: false,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 7500,
+      gloryOnExplosion: 750,
+      populationBonus: 20,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 2 },
+        { id: 10001, name: 'Дерево', amount: 15 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 3 }
+      ]
+    },
+    description: 'Величественная небесная обсерватория 2 уровня. Глубокое изучение звёздного неба и космических явлений.',
+    imageUrl: '/buildings/спецальное/7980017.webp',
+    upgradesTo: 7980018,
+    upgradeCost: 5000,
+  },
+  {
+    id: 7980018,
+    name: 'Обсерватория 3',
+    englishName: 'Observatory 3',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 5000,
+    buildable: false,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 12000,
+      gloryOnExplosion: 1500,
+      populationBonus: 35,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 3 },
+        { id: 10001, name: 'Дерево', amount: 25 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 6 }
+      ]
+    },
+    description: 'Изометрическая обсерватория с золотыми куполами 3 уровня. Монументальный планетарный комплекс города.',
+    imageUrl: '/buildings/спецальное/7980018.webp',
+  },
+  {
+    id: 7980019,
+    name: 'Башни командного центра',
+    englishName: 'Command Center Towers',
+    category: 'Спецальное',
+    type: BuildingType.Default,
+    price: 1000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: 'Башни командного центра. Специальное здание для города.',
+    imageUrl: '/buildings/спецальное/7980019.webp',
+  },
+  {
+    id: 7980020,
+    name: 'Таксопарк',
+    englishName: 'Taxi Depot',
+    category: 'Бизнес',
+    type: BuildingType.Default,
+    price: 15000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      takesPopulation: 1,
+      populationBonus: 5,
+      workTimeSeconds: 1800,
+      workYieldGold: 1500,
+      givesCoins: 1500,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10009, name: 'Канистра с бензином', amount: 5 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 },
+        { id: 10023, name: 'Сталь', amount: 2 }
+      ]
+    },
+    description: 'Таксопарк. Городская служба такси и стоянка автомобилей.',
+    imageUrl: '/buildings/Бизнес/таксопарк/7980020.webp',
+  },
+  {
+    id: 7980021,
+    name: 'Автовокзал',
+    englishName: 'Bus Station',
+    category: 'Бизнес',
+    type: BuildingType.Default,
+    price: 18000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      takesPopulation: 1,
+      populationBonus: 5,
+      workTimeSeconds: 1800,
+      workYieldGold: 1800,
+      givesCoins: 1800,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10009, name: 'Канистра с бензином', amount: 5 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 },
+        { id: 10023, name: 'Сталь', amount: 2 }
+      ]
+    },
+    description: 'Автовокзал. Городской транспортный узел для междугородних и пригородных рейсов.',
+    imageUrl: '/buildings/Бизнес/Автовокзал/7980021.webp',
+  },
+  {
+    id: 7980022,
+    name: 'Футуристический дом',
+    englishName: 'Futuristic House',
+    category: 'Жилые',
+    type: BuildingType.Residential,
+    price: 500000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 6000,
+      gloryOnExplosion: 600,
+      populationBonus: 50,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 15 },
+        { id: 10023, name: 'Сталь', amount: 5 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 3 }
+      ]
+    },
+    description: 'Футуристический дом. Высокотехнологичное жильё будущего для процветающего города.',
+    imageUrl: '/buildings/Жилые дома/9 Футуристический дом/7980022.webp',
+  },
+  {
+    id: 7980023,
+    name: "Саркофаг Медузы Горгоны",
+    englishName: "Gorgon Sarcophagus",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 45000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Древний мраморный саркофаг с ликом Медузы Горгоны, обвитый змеями, с жертвенными чашами вечного огня.",
+    imageUrl: '/buildings/Античность/gorgona_exact_2to1_base.webp',
+  },
+  {
+    id: 7980024,
+    name: "Александровская колонна с львами и фонарями",
+    englishName: "Alexander Column with Lions and Lanterns",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 35000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Величественная триумфальная колонна со стражами-львами и античными фонарями.",
+    imageUrl: '/buildings/Античность/Александровская колонна с львами и фонарями.webp',
+  },
+  {
+    id: 7980025,
+    name: "Базальтовый храм с каменными стражами",
+    englishName: "Basalt Temple with Stone Guardians",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 50000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Древнее святилище из темного базальта, охраняемое колоссальными каменными идолами.",
+    imageUrl: '/buildings/Античность/Базальтовый храм с каменными стражами.webp',
+  },
+  {
+    id: 7980026,
+    name: "Величественные руины с террасами и арками",
+    englishName: "Majestic Ruins with Terraces and Arches",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 48000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Монументальный комплекс античных руин с многоярусными террасами, арками и каменными лестницами.",
+    imageUrl: '/buildings/Античность/Величественные руины с террасами и арками.webp',
+  },
+  {
+    id: 7980027,
+    name: "Древнегреческий храм с воинами и факелами",
+    englishName: "Ancient Greek Temple with Warriors and Torches",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 55000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Классический эллинский храм со скульптурами доблестных воинов и пылающими факелами.",
+    imageUrl: '/buildings/Античность/Древнегреческий храм с воинами и факелами.webp',
+  },
+  {
+    id: 7980028,
+    name: "Древний римский акведук в руинах",
+    englishName: "Ancient Roman Aqueduct in Ruins",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 40000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Грандиозный арочный пролет римского акведука, дошедший сквозь века.",
+    imageUrl: '/buildings/Античность/Древний римский акведук в руинах.webp',
+  },
+  {
+    id: 7980029,
+    name: "Древний саркофаг со львом",
+    englishName: "Ancient Sarcophagus with Lion",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 32000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Искусно высеченный античный саркофаг, увенчанный фигурой могучего каменного льва.",
+    imageUrl: '/buildings/Античность/Древний саркофаг со львом ваҡ.webp',
+  },
+  {
+    id: 7980030,
+    name: "Древняя гробница среди руин и зелени",
+    englishName: "Ancient Tomb among Ruins and Greenery",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 36000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Забытая царская усыпальница в окружении древних колонн, каменных плит и дикой зелени.",
+    imageUrl: '/buildings/Античность/Древняя гробница среди руин и зелени.webp',
+  },
+  {
+    id: 7980031,
+    name: "Египетская усыпальница с крылатыми стражами",
+    englishName: "Egyptian Tomb with Winged Guardians",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 42000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Священная египетская гробница под охраной крылатых божеств и древних оберегов.",
+    imageUrl: '/buildings/Античность/Египетская усыпальница с крылатыми стражами.webp',
+  },
+  {
+    id: 7980032,
+    name: "Золотой храм ЯХВЕ с менорами",
+    englishName: "Golden Temple of Yahweh with Menorahs",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 60000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Величественный храм с сияющими золотыми колоннами, резными вратами и священными менорами.",
+    imageUrl: '/buildings/Античность/Золотой храм ЯХВЕ с менорами.webp',
+  },
+  {
+    id: 7980033,
+    name: "Золотой храмовый алтарь Будды",
+    englishName: "Golden Buddha Temple Altar",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 52000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Храмовый алтарь Будды в сиянии золота, с цветками лотоса и курильницами благовоний.",
+    imageUrl: '/buildings/Античность/Золотой храмовый алтарь Будды.webp',
+  },
+  {
+    id: 7980034,
+    name: "Изометрические руины храма Баальбека",
+    englishName: "Ruins of Baalbek Temple",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 46000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Монолитные исполинские руины храма в Баальбеке, символ непоколебимого величия античности.",
+    imageUrl: '/buildings/Античность/Изометрические руины храма Баальбека.webp',
+  },
+  {
+    id: 7980035,
+    name: "Изометрический моаи в тропическом саду",
+    englishName: "Moai in Tropical Garden",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 28000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Знаменитый базальтовый монолит моаи среди пальм и цветущей тропической растительности.",
+    imageUrl: '/buildings/Античность/Изометрический моаи в тропическом саду.webp',
+  },
+  {
+    id: 7980036,
+    name: "Изометрический монумент инков среди зелени",
+    englishName: "Inca Monument among Greenery",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 30000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Древний монумент инков из плотно пригнанных камней с сакральными барельефами.",
+    imageUrl: '/buildings/Античность/Изометрический монумент инков среди зелени.webp',
+  },
+  {
+    id: 7980037,
+    name: "Изометрический храм Ангкора среди джунглей",
+    englishName: "Angkor Temple in the Jungle",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 58000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Кхмерский храмовый комплекс Ангкора с резными башнями среди диких джунглей.",
+    imageUrl: '/buildings/Античность/Изометрический храм Ангкора среди джунглей.webp',
+  },
+  {
+    id: 7980038,
+    name: "Коринфский ордер: руины и чертежи",
+    englishName: "Corinthian Order: Ruins and Blueprints",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 38000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Шедевр античного зодчества: коринфские капители, фрагменты фриза и архитектурные чертежи.",
+    imageUrl: '/buildings/Античность/Коринфский ордер_ руины и чертежи.webp',
+  },
+  {
+    id: 7980039,
+    name: "Мавзолей Галикарнаса в золотом сиянии",
+    englishName: "Mausoleum at Halicarnassus in Golden Glow",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 65000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Легендарный Галикарнасский мавзолей — чудо света, озаренное золотым солнечным сиянием.",
+    imageUrl: '/buildings/Античность/Мавзолей Галикарнаса в золотом сиянии.webp',
+  },
+  {
+    id: 7980040,
+    name: "Мистический храм с порталом и стражами",
+    englishName: "Mystical Temple with Portal and Guardians",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 47000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Таинственный храм древних с мерцающим порталом пространства и бдительными стражами.",
+    imageUrl: '/buildings/Античность/Мистический храм с порталом и стражами.webp',
+  },
+  {
+    id: 7980041,
+    name: "Монументальный храм-пирамида с грифонами и огнями",
+    englishName: "Monumental Pyramid Temple with Griffins and Fires",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 54000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Ступенчатый храм-пирамида со статуями грифонов и священными чашами живого огня.",
+    imageUrl: '/buildings/Античность/Монументальный храм-пирамида с грифонами и огнями.webp',
+  },
+  {
+    id: 7980042,
+    name: "Моховитый каменный страж на руинах",
+    englishName: "Mossy Stone Guardian on Ruins",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 26000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Каменный страж, поросший изумрудным мхом, дремлющий на обломках древней цивилизации.",
+    imageUrl: '/buildings/Античность/Моховитый каменный страж на руинах.webp',
+  },
+  {
+    id: 7980043,
+    name: "Мраморные атланты с золотым глобусом",
+    englishName: "Marble Atlases with Golden Globe",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 56000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Античная скульптурная группа: исполинские атланты из белого мрамора, несущие небесную сферу.",
+    imageUrl: '/buildings/Античность/Мраморные атланты с золотым глобусом.webp',
+  },
+  {
+    id: 7980044,
+    name: "Мраморный каньон с солнечным порталом",
+    englishName: "Marble Canyon with Sun Portal",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 49000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Высеченный в белоснежном мраморе портал, пропускающий через себя чистые лучи солнца.",
+    imageUrl: '/buildings/Античность/Мраморный каньон с солнечным порталом.webp',
+  },
+  {
+    id: 7980045,
+    name: "Петра: храм в песчаных скалах",
+    englishName: "Petra: Temple in Sandstone Cliffs",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 58000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Монументальный фасад Эль-Хазне в Петре, высеченный прямо в скалах из розового песчаника.",
+    imageUrl: '/buildings/Античность/Петра_ храм в песчаных скалах.webp',
+  },
+  {
+    id: 7980046,
+    name: "Роскошная статуя Нанди в храмовом убранстве",
+    englishName: "Statue of Nandi in Temple Vestments",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 34000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Священный бык Нанди в богатом храмовом убранстве с золотыми колокольчиками и гирляндами.",
+    imageUrl: '/buildings/Античность/Роскошная статуя Нанди в храмовом убранстве.webp',
+  },
+  {
+    id: 7980047,
+    name: "Руины древней колоннады Баальбека",
+    englishName: "Ruins of Ancient Colonnade of Baalbek",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 39000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Величественная колоннада Баальбека, пережившая империи и эпохи.",
+    imageUrl: '/buildings/Античность/Руины древней колоннады Баальбека.webp',
+  },
+  {
+    id: 7980048,
+    name: "Симметричный индийский храм с лестницей",
+    englishName: "Symmetrical Indian Temple with Stairs",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 44000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Гармоничный храм древней Индии с симметричными террасами и парадной лестницей.",
+    imageUrl: '/buildings/Античность/Симметричный индийский храм с лестницей.webp',
+  },
+  {
+    id: 7980049,
+    name: "Солнечный Аполлон среди руин",
+    englishName: "Solar Apollo among Ruins",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 36000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Мраморная статуя Аполлона, бога солнца и гармонии, возвышающаяся среди античных руин.",
+    imageUrl: '/buildings/Античность/Солнечный Аполлон среди руин.webp',
+  },
+  {
+    id: 7980050,
+    name: "Храм тысячи лингамов в изометрии",
+    englishName: "Temple of a Thousand Lingams",
+    category: 'Античность',
+    type: BuildingType.Default,
+    price: 43000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+    },
+    stats: {
+      constructionTimeSeconds: 5,
+      accelerationCost: 1,
+      durability: 5000,
+      gloryOnExplosion: 500,
+      populationBonus: 10,
+    },
+    drops: {
+      frequent: [
+        { id: 10000, name: 'Сундук с сокровищем', amount: 1 },
+        { id: 10001, name: 'Дерево', amount: 10 }
+      ],
+      rare: [
+        { id: 10026, name: 'Золото', amount: 2 }
+      ]
+    },
+    description: "Святилище с множеством священных лингамов и древней резьбой по песчанику.",
+    imageUrl: '/buildings/Античность/Храм тысячи лингамов в изометрии.webp',
   },
 ];
 

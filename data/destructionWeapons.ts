@@ -38,6 +38,16 @@ export const DESTRUCTION_WEAPONS: DestructionWeaponDefinition[] = [
     minDamage: 6,
   },
   {
+    resourceId: 10050,
+    weaponName: 'Связка хлопушек',
+    baseDamageRatio: 0.012,
+    goldPerItem: 15,
+    energyPerItem: 2,
+    timePerItem: 35,
+    minDamage: 25,
+  },
+
+  {
     resourceId: 10010,
     weaponName: 'Садовая бомба',
     baseDamageRatio: 0.04,

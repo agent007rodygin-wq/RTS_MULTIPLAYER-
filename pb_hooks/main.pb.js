@@ -337,7 +337,10 @@ routerAdd(
           firstItemBanEndTime: targetData && targetData[0] && targetData[0].banEndTime
         }));
 
-        var existingTargetBanEnd = finitePositive(targetData.banEndTime) || 0;
+        var existingTargetBanEnd = Math.max(
+          finitePositive(targetRecord.get("banEndTime")) || 0,
+          finitePositive(targetData.banEndTime) || 0
+        );
         var now = Date.now();
         var newBanEndTime = Math.max(existingTargetBanEnd, now) + duration * 60 * 1000;
 
@@ -351,6 +354,9 @@ routerAdd(
         issuerRecord.set("gold", issuerGold - cost);
         // Also sync to data for consistency with client
         issuerData.gold = issuerGold - cost;
+
+        // Authoritative ban storage: save to top-level schema column AND data.json
+        targetRecord.set("banEndTime", newBanEndTime);
         targetData.banEndTime = newBanEndTime;
 
         console.log("[ban-player] target data after assign (before save)", JSON.stringify(targetData));
@@ -403,3 +409,304 @@ routerAdd(
     }
   },
 );
+
+// --- BasingSe Telegram Link & Daily Reward API ---
+
+routerAdd(
+  "POST",
+  "/api/basingse/telegram-link",
+  function (e) {
+    var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var _body = e.requestInfo().body || {};
+    var result = dailyUtils.linkTelegram($app, _body.userId, _body.telegramId, _body.telegramUsername);
+    return e.json(result.status, result.body);
+  }
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/telegram-status",
+  function (e) {
+    var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var _body = e.requestInfo().body || {};
+    var result = dailyUtils.getTelegramStatus($app, _body.telegramId);
+    return e.json(result.status, result.body);
+  }
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/claim-daily-reward",
+  function (e) {
+    var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var authRecord = null;
+    try {
+      var _h = e.requestInfo().headers;
+      var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
+      if (_token) authRecord = $app.findAuthRecordByToken(_token);
+    } catch (_e) { authRecord = null; }
+
+    var _body = e.requestInfo().body || {};
+    var result = dailyUtils.claimDailyReward($app, authRecord, _body.userId);
+    return e.json(result.status, result.body);
+  }
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/validate-promo",
+  function (e) {
+    var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var _body = e.requestInfo().body || {};
+    var result = dailyUtils.validatePromoCode($app, _body.promoCode, _body.currentName);
+    return e.json(result.status, result.body);
+  }
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/complete-referral-tutorial",
+  function (e) {
+    var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var _body = e.requestInfo().body || {};
+    var result = dailyUtils.processReferralTutorialCompleted($app, _body.userId);
+    return e.json(result.status, result.body);
+  }
+);
+
+// --- BasingSe Achievements Stats & Join Order API ---
+
+routerAdd(
+  "GET",
+  "/api/basingse/achievements-stats",
+  function (e) {
+    var parseRecordData = function (record) {
+      if (!record) return {};
+      var raw = record.get("data");
+      if (!raw) return {};
+      if (Array.isArray(raw)) {
+        try {
+          var decoded = "";
+          for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
+          var pb = JSON.parse(decoded);
+          if (pb && typeof pb === "object" && !Array.isArray(pb)) return pb;
+        } catch (_e) {}
+      }
+      if (typeof raw === "string") {
+        try {
+          var ps = JSON.parse(raw);
+          if (ps && typeof ps === "object" && !Array.isArray(ps)) return ps;
+        } catch (_e) {}
+      }
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      return {};
+    };
+
+    try {
+      var records = [];
+      try {
+        records = $app.findRecordsByFilter("users", "1=1", "-created", 2000);
+      } catch (_e) { records = []; }
+      var totalUsers = Math.max(1, records.length);
+      var counts = {};
+      for (var i = 0; i < records.length; i++) {
+        var uData = parseRecordData(records[i]);
+        var achList = uData.achievements || [];
+        if (Array.isArray(achList)) {
+          for (var j = 0; j < achList.length; j++) {
+            var aid = achList[j];
+            counts[aid] = (counts[aid] || 0) + 1;
+          }
+        }
+      }
+      var percentages = {};
+      for (var key in counts) {
+        percentages[key] = Math.round((counts[key] / totalUsers) * 1000) / 10;
+      }
+      return e.json(200, {
+        success: true,
+        totalUsers: totalUsers,
+        counts: counts,
+        percentages: percentages
+      });
+    } catch (err) {
+      return e.json(500, { success: false, error: String(err) });
+    }
+  }
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/player-order",
+  function (e) {
+    var parseRecordData = function (record) {
+      if (!record) return {};
+      var raw = record.get("data");
+      if (!raw) return {};
+      if (Array.isArray(raw)) {
+        try {
+          var decoded = "";
+          for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
+          var pb = JSON.parse(decoded);
+          if (pb && typeof pb === "object" && !Array.isArray(pb)) return pb;
+        } catch (_e) {}
+      }
+      if (typeof raw === "string") {
+        try {
+          var ps = JSON.parse(raw);
+          if (ps && typeof ps === "object" && !Array.isArray(ps)) return ps;
+        } catch (_e) {}
+      }
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      return {};
+    };
+
+    try {
+      var _body = e.requestInfo().body || {};
+      var userId = _body.userId;
+      if (!userId) return e.json(400, { success: false, error: "Missing userId" });
+      var userRecord = null;
+      try {
+        userRecord = $app.findRecordById("users", userId);
+      } catch (_e) { userRecord = null; }
+      if (!userRecord) return e.json(404, { success: false, error: "User not found" });
+
+      var uData = parseRecordData(userRecord);
+      if (typeof uData.joinNumber === "number" && uData.joinNumber > 0) {
+        return e.json(200, { success: true, joinNumber: uData.joinNumber });
+      }
+      var userCreated = userRecord.get("created");
+      var olderRecords = [];
+      try {
+        olderRecords = $app.findRecordsByFilter("users", "created <= {:created}", "+created", 5000, 0, { created: userCreated });
+      } catch (_e2) { olderRecords = []; }
+      var joinNumber = olderRecords.length || 1;
+      uData.joinNumber = joinNumber;
+      userRecord.set("data", JSON.stringify(uData));
+      try {
+        $app.save(userRecord);
+      } catch (_e3) {}
+      return e.json(200, { success: true, joinNumber: joinNumber });
+    } catch (err) {
+      return e.json(500, { success: false, error: String(err) });
+    }
+  }
+);
+
+// ==============================================================================
+//  🏰 Server-side Protection: Building Placement & Town Hall Uniqueness
+// ==============================================================================
+
+onRecordCreate(function (e) {
+  var TOWN_HALL_IDS_LIST = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
+
+  var parseRecordData = function (record) {
+    if (!record) return {};
+    var raw = record.get("data");
+    if (!raw) return {};
+    if (Array.isArray(raw)) {
+      try {
+        var decoded = "";
+        for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
+        var pb = JSON.parse(decoded);
+        if (pb && typeof pb === "object" && !Array.isArray(pb)) return pb;
+      } catch (_e) {}
+    }
+    if (typeof raw === "string") {
+      try {
+        var ps = JSON.parse(raw);
+        if (ps && typeof ps === "object" && !Array.isArray(ps)) return ps;
+      } catch (_e) {}
+    }
+    if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+    return {};
+  };
+
+  var bId = Number(e.record.get("buildingId") || 0);
+  var ownerId = String(e.record.get("ownerId") || "");
+  var x = Number(e.record.get("x"));
+  var y = Number(e.record.get("y"));
+
+  // 1. One Town Hall per player check
+  if (ownerId && ownerId !== "-1" && ownerId !== "0" && ownerId !== "monster" && TOWN_HALL_IDS_LIST.indexOf(bId) !== -1) {
+    var thFilter = "ownerId = {:ownerId} && (" + TOWN_HALL_IDS_LIST.map(function(id) { return "buildingId = '" + id + "'"; }).join(" || ") + ")";
+    var existingTh = e.app.findRecordsByFilter("buildings", thFilter, "", 10, 0, { ownerId: ownerId });
+    if (existingTh && existingTh.length > 0) {
+      for (var i = 0; i < existingTh.length; i++) {
+        if (existingTh[i].id !== e.record.id) {
+          var thData = parseRecordData(existingTh[i]);
+          var hp = thData.hp !== undefined ? Number(thData.hp) : 1;
+          if (hp > 0 && !thData.isDestroying) {
+            throw new BadRequestError("У игрока уже есть Главное здание!");
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Prevent stacking: no two alive buildings on the exact same tile
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    var existingAtTile = e.app.findRecordsByFilter("buildings", "x = {:x} && y = {:y}", "", 5, 0, { x: x, y: y });
+    if (existingAtTile && existingAtTile.length > 0) {
+      for (var j = 0; j < existingAtTile.length; j++) {
+        if (existingAtTile[j].id !== e.record.id) {
+          var bData = parseRecordData(existingAtTile[j]);
+          var bHp = bData.hp !== undefined ? Number(bData.hp) : 1;
+          if (bHp > 0 && !bData.isDestroying) {
+            throw new BadRequestError("Клетка [" + x + ", " + y + "] уже занята другим зданием!");
+          }
+        }
+      }
+    }
+  }
+
+  e.next();
+}, "buildings");
+
+onRecordUpdate(function (e) {
+  var parseRecordData = function (record) {
+    if (!record) return {};
+    var raw = record.get("data");
+    if (!raw) return {};
+    if (Array.isArray(raw)) {
+      try {
+        var decoded = "";
+        for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
+        var pb = JSON.parse(decoded);
+        if (pb && typeof pb === "object" && !Array.isArray(pb)) return pb;
+      } catch (_e) {}
+    }
+    if (typeof raw === "string") {
+      try {
+        var ps = JSON.parse(raw);
+        if (ps && typeof ps === "object" && !Array.isArray(ps)) return ps;
+      } catch (_e) {}
+    }
+    if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+    return {};
+  };
+
+  var x = Number(e.record.get("x"));
+  var y = Number(e.record.get("y"));
+
+  // Prevent moving a building onto an occupied tile
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    var existingAtTile = e.app.findRecordsByFilter("buildings", "x = {:x} && y = {:y}", "", 5, 0, { x: x, y: y });
+    if (existingAtTile && existingAtTile.length > 0) {
+      for (var j = 0; j < existingAtTile.length; j++) {
+        if (existingAtTile[j].id !== e.record.id) {
+          var bData = parseRecordData(existingAtTile[j]);
+          var bHp = bData.hp !== undefined ? Number(bData.hp) : 1;
+          if (bHp > 0 && !bData.isDestroying) {
+            throw new BadRequestError("Клетка [" + x + ", " + y + "] уже занята другим зданием!");
+          }
+        }
+      }
+    }
+  }
+
+  e.next();
+}, "buildings");
+
+
+

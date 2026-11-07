@@ -8,8 +8,28 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts: true,
+        proxy: {
+          '/api': {
+            target: 'http://127.0.0.1:8090',
+            changeOrigin: true
+          }
+        }
       },
-      plugins: [react()],
+      plugins: [
+        react(),
+        {
+          name: 'static-assets-cache-control',
+          configureServer(server) {
+            server.middlewares.use((req, res, next) => {
+              if (req.url && (req.url.startsWith('/buildings/') || req.url.startsWith('/Gui/') || req.url.startsWith('/Chat/') || /\.(webp|png|jpg|jpeg|gif|svg)$/i.test(req.url))) {
+                res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+              }
+              next();
+            });
+          }
+        }
+      ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

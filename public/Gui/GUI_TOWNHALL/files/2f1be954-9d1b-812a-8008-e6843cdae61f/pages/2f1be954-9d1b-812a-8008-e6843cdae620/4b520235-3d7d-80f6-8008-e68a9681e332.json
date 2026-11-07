@@ -1,0 +1,78 @@
+{
+  "id": "4b520235-3d7d-80f6-8008-e68a9681e332",
+  "name": "\u0413\u043b\u044f\u043d\u0446\u0435\u0432\u0430\u044f \u0437\u043e\u043b\u043e\u0442\u0438\u0441\u0442\u0430\u044f \u043a\u043d\u043e\u043f\u043a\u0430 \u0431\u0435\u0437 \u0442\u0435\u043a\u0441\u0442\u0430",
+  "type": "rect",
+  "x": 726,
+  "y": 1124,
+  "width": 195,
+  "height": 72,
+  "rotation": 0,
+  "selrect": {
+    "x": 726,
+    "y": 1124,
+    "width": 195,
+    "height": 72,
+    "x1": 726,
+    "y1": 1124,
+    "x2": 921,
+    "y2": 1196
+  },
+  "points": [
+    {
+      "x": 726,
+      "y": 1124
+    },
+    {
+      "x": 921,
+      "y": 1124
+    },
+    {
+      "x": 921,
+      "y": 1196
+    },
+    {
+      "x": 726,
+      "y": 1196
+    }
+  ],
+  "transform": {
+    "a": 1.0,
+    "b": 0.0,
+    "c": 0.0,
+    "d": 1.0,
+    "e": 0.0,
+    "f": 0.0
+  },
+  "transformInverse": {
+    "a": 1.0,
+    "b": 0.0,
+    "c": 0.0,
+    "d": 1.0,
+    "e": 0.0,
+    "f": 0.0
+  },
+  "parentId": "15f829f7-bc28-8092-8008-e778cc44a420",
+  "frameId": "15f829f7-bc28-8092-8008-e778cc44a420",
+  "flipX": null,
+  "flipY": null,
+  "r2": 0,
+  "proportionLock": true,
+  "pageId": "2f1be954-9d1b-812a-8008-e6843cdae620",
+  "r3": 0,
+  "r1": 0,
+  "strokes": [],
+  "proportion": 2.7011795543905635,
+  "r4": 0,
+  "fills": [
+    {
+      "fillOpacity": 1,
+      "fillImage": {
+        "width": 2061,
+        "height": 763,
+        "mtype": "image\/png",
+        "id": "9cb3e748-a249-805e-8008-e68a9603ce46",
+        "keepAspectRatio": true
+      }
+    }
+  ]
+}

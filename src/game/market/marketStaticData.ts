@@ -5,7 +5,7 @@ export type MarketMonsterSection = 'hut' | 'gorynych' | 'troll';
 
 export const GENERAL_MARKET_ENGLISH_NAMES = new Set(['Market']);
 export const MILITARY_MARKET_ENGLISH_NAMES = new Set(['Military Market']);
-export const MILITARY_ITEM_IDS = [10010, 10011, 10012, 10013, 10015, 10016, 10017, 10042, 10043];
+export const MILITARY_ITEM_IDS = [10010, 10011, 10012, 10013, 10015, 10016, 10017, 10042, 10043, 10050];
 
 export const MARKET_BUY_SECTION_LABELS: Record<MarketBuySection, string> = {
     resources: 'Ресурсы',
@@ -45,7 +45,7 @@ export const GENERAL_MARKET_RESOURCE_SECTION_IDS: Record<MarketResourceSection, 
     ore: [10022, 10023, 10040],
     gold: [10025, 10026],
     emerald: [10034, 10036],
-    misc: [10019, 10028, 10029, 10032, 10033, 10041, 10039, 10038],
+    misc: [10014, 10019, 10028, 10029, 10032, 10033, 10041, 10039, 10038],
 };
 
 export const GENERAL_MARKET_BED_SECTION_IDS: Record<MarketBedSection, number[]> = {

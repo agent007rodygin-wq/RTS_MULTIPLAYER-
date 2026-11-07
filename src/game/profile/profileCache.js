@@ -163,3 +163,43 @@ export const writeCachedLastPosition = (uid, position) => {
         // Ignore localStorage write failures.
     }
 };
+
+/**
+ * @param {string} uid
+ * @returns {string}
+ */
+export const getBanEndTimeCacheKey = (uid) => `goldwasdx:banEndTime:${uid}`;
+
+/**
+ * @param {string | null | undefined} [uid]
+ * @returns {number}
+ */
+export const readCachedBanEndTime = (uid) => {
+    if (!uid) return 0;
+    try {
+        const raw = localStorage.getItem(getBanEndTimeCacheKey(uid));
+        const val = Number(raw || 0) || 0;
+        return val > Date.now() ? val : 0;
+    } catch {
+        return 0;
+    }
+};
+
+/**
+ * @param {string} uid
+ * @param {number} banEndTime
+ */
+export const writeCachedBanEndTime = (uid, banEndTime) => {
+    if (!uid) return;
+    try {
+        const normalized = Number(banEndTime || 0) || 0;
+        if (normalized > Date.now()) {
+            localStorage.setItem(getBanEndTimeCacheKey(uid), String(normalized));
+        } else {
+            localStorage.removeItem(getBanEndTimeCacheKey(uid));
+        }
+    } catch {
+        // Ignore localStorage write failures.
+    }
+};
+

@@ -5,20 +5,20 @@ import { KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID, KOLOBOK_ID, BABA_YAGA_ID, B
 
 /** @type {Record<number, number>} */
 export const MONSTER_MOVE_INTERVALS = {
-  [KILLING_HUT_ID]: 26000,
-  [KIND_SANTA_ID]: 23000,
-  [GORYNYCH_ID]: 30000,
-  [KOLOBOK_ID]: 28000,
-  [BABA_YAGA_ID]: 29000,
-  [BRONEKUR_ID]: 18000,
+  [KILLING_HUT_ID]: 4500,
+  [KIND_SANTA_ID]: 4000,
+  [GORYNYCH_ID]: 5000,
+  [KOLOBOK_ID]: 3500,
+  [BABA_YAGA_ID]: 4500,
+  [BRONEKUR_ID]: 4500,
 };
-export const DEFAULT_MONSTER_MOVE_INTERVAL = 32000;
+export const DEFAULT_MONSTER_MOVE_INTERVAL = 4500;
 export const MONSTER_MOVE_JITTER_RATIO = 0.18;
 export const MONSTER_RECENT_POSITIONS_LIMIT = 6;
-export const MONSTER_MOVE_BATCH_INTERVAL_MS = 900;
-export const MAX_MONSTER_MOVES_PER_BATCH = 6;
+export const MONSTER_MOVE_BATCH_INTERVAL_MS = 500;
+export const MAX_MONSTER_MOVES_PER_BATCH = 12;
 export const MAX_MONSTER_WRITE_UPDATES_PER_TICK = 20;
-export const MONSTER_WRITE_MIN_INTERVAL_MS = 600;
+export const MONSTER_WRITE_MIN_INTERVAL_MS = 800;
 export const MONSTER_WALK_DURATION_MULTIPLIER = 1.5;
 
 /**
@@ -57,10 +57,10 @@ export function seededShuffle(items, seedSource) {
 }
 
 export function getMonsterMoveInterval(buildingId, monsterId) {
-    const baseInterval = MONSTER_MOVE_INTERVALS[buildingId] || DEFAULT_MONSTER_MOVE_INTERVAL;
+    const baseInterval = MONSTER_MOVE_INTERVALS[Number(buildingId)] || MONSTER_MOVE_INTERVALS[buildingId] || DEFAULT_MONSTER_MOVE_INTERVAL;
     const seed = getMonsterMoveSeed(monsterId, buildingId) % 1000;
     const jitter = ((seed / 999) * 2 - 1) * MONSTER_MOVE_JITTER_RATIO;
-    return Math.max(12000, Math.round(baseInterval * (1 + jitter)));
+    return Math.max(2500, Math.round(baseInterval * (1 + jitter)));
 }
 
 export function getPlaybackDurationMs(frameCount, fps, durationMultiplier = 1) {
@@ -113,17 +113,25 @@ export function chooseMonsterPatrolMove(validMoves, lastDir, preferLeftTurn, mon
     let chosenMove;
     let selectedTurn;
 
-    if (preferTurnMove) {
-        chosenMove = preferTurnMove;
-        selectedTurn = 'preferred';
-    } else if (forwardMove) {
+    // Monsters walk straight forward by default (~80% chance) for smooth, natural patrolling.
+    // They turn when forward is blocked or with a ~20% wandering chance.
+    const seed = getMonsterMoveSeed(monsterId, buildingId) + fallbackStepOffset;
+    const shouldRandomlyTurn = (seed % 5 === 0);
+
+    if (forwardMove && !shouldRandomlyTurn && (!previousPos || forwardMove.x !== previousPos.x || forwardMove.y !== previousPos.y)) {
         chosenMove = forwardMove;
         selectedTurn = 'forward';
+    } else if (preferTurnMove) {
+        chosenMove = preferTurnMove;
+        selectedTurn = 'preferred';
     } else if (altTurnMove) {
         chosenMove = altTurnMove;
         selectedTurn = 'alternate';
+    } else if (forwardMove) {
+        chosenMove = forwardMove;
+        selectedTurn = 'forward';
     } else {
-        chosenMove = validMoves[(getMonsterMoveSeed(monsterId, buildingId) + fallbackStepOffset) % validMoves.length];
+        chosenMove = validMoves[seed % validMoves.length];
         selectedTurn = 'random';
     }
 

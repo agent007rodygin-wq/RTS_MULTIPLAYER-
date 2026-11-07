@@ -14,14 +14,24 @@ import {
     RefreshCw
 } from 'lucide-react';
 import { ClanTab, type ClanSettingsState } from './profile/ClanTab';
+import { AchievementsView } from './AchievementsView';
 
-export type ProfileTab = 'info' | 'clan' | 'history' | 'friends' | 'mail' | 'private' | 'settings' | 'police_elections';
+export type ProfileTab = 'info' | 'clan' | 'history' | 'friends' | 'mail' | 'private' | 'settings' | 'police_elections' | 'achievements';
 
 export interface ProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
     activeProfileTab: ProfileTab;
     setActiveProfileTab: (tab: ProfileTab) => void;
+    // Achievements tab props
+    completedAchievements?: string[];
+    claimedAchievements?: string[];
+    selectedTitle?: string | null;
+    achievementStats?: any;
+    achievementPercentages?: Record<string, number>;
+    onClaimAchievementReward?: (tierId: string, rubies: number) => void;
+    onClaimAllAchievementRewards?: () => void;
+    onSelectTitle?: (title: string | null) => void;
     // Info tab props
     playerAvatar: string | null;
     tempPlayerName: string;
@@ -69,8 +79,9 @@ export interface ProfileModalProps {
     onRemoveFriend: (name: string) => void;
     onSelectChatUser: (name: string, uid: string, e: React.MouseEvent) => void;
     // Mail and Private tabs props
+    mailChats?: { otherUserId: string; lastMessage: PrivateMessage; unreadCount: number }[];
     privateChats: { otherUserId: string; lastMessage: PrivateMessage; unreadCount: number }[];
-    onOpenChat: (otherUserId: string, chatId: string, isAnon: boolean) => void;
+    onOpenChat: (otherUserId: string, chatId: string, isAnon: boolean, initialMode?: 'mail' | 'private') => void;
     // Settings tab props
     musicEnabled: boolean;
     setMusicEnabled: (enabled: boolean) => void;
@@ -107,6 +118,15 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
     onClose,
     activeProfileTab,
     setActiveProfileTab,
+    // Achievements tab props
+    completedAchievements = [],
+    claimedAchievements = [],
+    selectedTitle = null,
+    achievementStats = {},
+    achievementPercentages = {},
+    onClaimAchievementReward,
+    onClaimAllAchievementRewards,
+    onSelectTitle,
     // Info tab props
     playerAvatar,
     tempPlayerName,
@@ -154,6 +174,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
     onRemoveFriend,
     onSelectChatUser,
     // Mail and Private tabs props
+    mailChats,
     privateChats,
     onOpenChat,
     // Settings tab props
@@ -247,36 +268,46 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                 </div>
 
                 {/* Navigation Tabs */}
-                <div className="flex space-x-1 mb-4 overflow-x-auto pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    {[
-                        { id: 'info', label: 'Информация' },
-                        { id: 'clan', label: 'Клан' },
-                        { id: 'history', label: 'История' },
-                        { id: 'friends', label: 'Друзья' },
-                        { id: 'mail', label: 'Письма' },
-                        { id: 'private', label: 'Приватные' },
-                        { id: 'settings', label: 'Настройки' },
-                        { id: 'police_elections', label: 'Выборы в полиции' }
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveProfileTab(tab.id as ProfileTab)}
-                            className="transition-colors whitespace-nowrap"
-                            style={{
-                                padding: '7px 14px',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                fontFamily: 'Nunito, sans-serif',
-                                fontWeight: activeProfileTab === tab.id ? 800 : 600,
-                                background: activeProfileTab === tab.id ? 'rgba(59, 130, 246, 0.7)' : 'rgba(255,255,255,0.05)',
-                                color: activeProfileTab === tab.id ? '#fff' : 'rgba(200,210,220,0.8)',
-                                border: activeProfileTab === tab.id ? '1px solid rgba(96,165,250,0.5)' : '1px solid transparent',
-                            }}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                {(() => {
+                    const effectiveMailChats = mailChats || privateChats.filter(chat => !chat.lastMessage.messageType || chat.lastMessage.messageType === 'mail');
+                    const effectivePrivateChats = privateChats.filter(chat => chat.lastMessage.messageType === 'private' && !chat.lastMessage.isAnonymous);
+                    const unreadMailCount = effectiveMailChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+                    const unreadPrivateCount = effectivePrivateChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+
+                    return (
+                        <div className="flex space-x-1 mb-4 overflow-x-auto pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            {[
+                                { id: 'info', label: 'Информация' },
+                                { id: 'clan', label: 'Клан' },
+                                { id: 'history', label: 'История' },
+                                { id: 'friends', label: 'Друзья' },
+                                { id: 'mail', label: unreadMailCount > 0 ? `Письма (${unreadMailCount})` : 'Письма' },
+                                { id: 'private', label: unreadPrivateCount > 0 ? `Приватные (${unreadPrivateCount})` : 'Приватные' },
+                                { id: 'settings', label: 'Настройки' },
+                                { id: 'police_elections', label: 'Выборы в полиции' },
+                                { id: 'achievements', label: 'Очивки' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveProfileTab(tab.id as ProfileTab)}
+                                    className="transition-colors whitespace-nowrap"
+                                    style={{
+                                        padding: '7px 14px',
+                                        borderRadius: '8px',
+                                        fontSize: '12px',
+                                        fontFamily: 'Nunito, sans-serif',
+                                        fontWeight: activeProfileTab === tab.id ? 800 : 600,
+                                        background: activeProfileTab === tab.id ? 'rgba(59, 130, 246, 0.7)' : 'rgba(255,255,255,0.05)',
+                                        color: activeProfileTab === tab.id ? '#fff' : 'rgba(200,210,220,0.8)',
+                                        border: activeProfileTab === tab.id ? '1px solid rgba(96,165,250,0.5)' : '1px solid transparent',
+                                    }}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+                    );
+                })()}
 
                 {/* Tab Content */}
                 <div className="build-menu-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
@@ -495,7 +526,9 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                         </div>
                     )}
 
-                    {activeProfileTab === 'mail' && (
+                    {activeProfileTab === 'mail' && (() => {
+                        const effectiveMailChats = mailChats || privateChats.filter(chat => !chat.lastMessage.messageType || chat.lastMessage.messageType === 'mail');
+                        return (
                         <div
                             className="h-full flex flex-col overflow-y-auto bg-[#efe1bd] text-black border-4 border-[#8b5a2b] shadow-inner relative p-4 rounded-sm"
                             style={{
@@ -504,17 +537,17 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                             }}
                         >
                             <h2 className="text-2xl font-bold mb-4 font-serif text-[#5c3a21] border-b border-[#a88a6d] pb-2 uppercase tracking-wider pl-2 w-3/4">
-                                Королевская почта
+                                Королевская почта (Письма)
                             </h2>
 
-                            {privateChats.length === 0 ? (
+                            {effectiveMailChats.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-[#8b6a4b]">
                                     <LettersIcon className="w-16 h-16 mb-4 opacity-50" />
                                     <p className="font-serif italic font-bold">Ваш почтовый ящик пуст.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4 pt-2 px-2 pb-10">
-                                    {privateChats.map(chat => {
+                                    {effectiveMailChats.map(chat => {
                                         const otherUser = Object.values(allUsers).find(u => u.uid === chat.otherUserId);
                                         const computedChatId = chat.lastMessage.chatId || [user?.uid || '', otherUser?.uid || ''].sort().join('_');
                                         return (
@@ -522,7 +555,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                                 key={computedChatId || Math.random().toString()}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onOpenChat(chat.otherUserId, computedChatId, chat.lastMessage.chatId?.endsWith('_anon') || false);
+                                                    onOpenChat(chat.otherUserId, computedChatId, chat.lastMessage.chatId?.endsWith('_anon') || false, 'mail');
                                                 }}
                                                 className="relative bg-[#fdf6e3] p-4 rounded-sm cursor-pointer hover:bg-[#fff9ed] transition-colors flex items-center gap-4 group shadow-md border border-[#c2b280]"
                                                 style={{
@@ -600,9 +633,12 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                 </div>
                             )}
                         </div>
-                    )}
+                        );
+                    })()}
 
-                    {activeProfileTab === 'private' && (
+                    {activeProfileTab === 'private' && (() => {
+                        const effectivePrivateChats = privateChats.filter(chat => chat.lastMessage.messageType === 'private' && !chat.lastMessage.isAnonymous);
+                        return (
                         <div
                             className="h-full flex flex-col overflow-y-auto bg-[#efe1bd] text-black border-4 border-[#8b5a2b] shadow-inner relative p-4 rounded-sm"
                             style={{
@@ -614,14 +650,14 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                 Приватные сообщения
                             </h2>
 
-                            {privateChats.filter(chat => !chat.lastMessage.isAnonymous).length === 0 ? (
+                            {effectivePrivateChats.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-[#8b6a4b]">
                                     <LettersIcon className="w-16 h-16 mb-4 opacity-50" />
                                     <p className="font-serif italic font-bold">Нет приватных сообщений.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4 pt-2 px-2 pb-10">
-                                    {privateChats.filter(chat => !chat.lastMessage.isAnonymous).map(chat => {
+                                    {effectivePrivateChats.map(chat => {
                                         const otherUser = Object.values(allUsers).find(u => u.uid === chat.otherUserId);
                                         const computedChatId = chat.lastMessage.chatId || [user?.uid || '', otherUser?.uid || ''].sort().join('_');
                                         return (
@@ -629,7 +665,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                                 key={computedChatId || Math.random().toString()}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onOpenChat(chat.otherUserId, computedChatId, false);
+                                                    onOpenChat(chat.otherUserId, computedChatId, false, 'private');
                                                 }}
                                                 className="relative bg-[#fdf6e3] p-4 rounded-sm cursor-pointer hover:bg-[#fff9ed] transition-colors flex items-center gap-4 group shadow-md border border-[#c2b280]"
                                                 style={{
@@ -672,7 +708,8 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                 </div>
                             )}
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {activeProfileTab === 'settings' && (
                         <div className="flex flex-col h-full space-y-4">
@@ -986,6 +1023,25 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                             )}
                         </div>
                     )}
+
+                    {/* Achievements Tab */}
+                    {activeProfileTab === 'achievements' && (
+                        <div className="flex flex-col h-full overflow-hidden">
+                            <AchievementsView
+                                isOwnProfile={true}
+                                playerName={tempPlayerName || 'Игрок'}
+                                playerAvatar={playerAvatar}
+                                completedAchievements={completedAchievements}
+                                claimedAchievements={claimedAchievements}
+                                selectedTitle={selectedTitle}
+                                stats={achievementStats}
+                                percentages={achievementPercentages}
+                                onClaimReward={onClaimAchievementReward}
+                                onClaimAllRewards={onClaimAllAchievementRewards}
+                                onSelectTitle={onSelectTitle}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -998,6 +1054,11 @@ const arePropsEqual = (prevProps: ProfileModalProps, nextProps: ProfileModalProp
     if (prevProps.activeProfileTab !== nextProps.activeProfileTab) return false;
 
     if (
+        prevProps.completedAchievements !== nextProps.completedAchievements ||
+        prevProps.claimedAchievements !== nextProps.claimedAchievements ||
+        prevProps.selectedTitle !== nextProps.selectedTitle ||
+        prevProps.achievementStats !== nextProps.achievementStats ||
+        prevProps.achievementPercentages !== nextProps.achievementPercentages ||
         prevProps.playerAvatar !== nextProps.playerAvatar ||
         prevProps.tempPlayerName !== nextProps.tempPlayerName ||
         prevProps.playerGender !== nextProps.playerGender ||
@@ -1012,6 +1073,7 @@ const arePropsEqual = (prevProps: ProfileModalProps, nextProps: ProfileModalProp
         prevProps.playerHistory !== nextProps.playerHistory ||
         prevProps.historyClearing !== nextProps.historyClearing ||
         prevProps.friends !== nextProps.friends ||
+        prevProps.mailChats !== nextProps.mailChats ||
         prevProps.privateChats !== nextProps.privateChats ||
         prevProps.musicEnabled !== nextProps.musicEnabled ||
         prevProps.musicVolume !== nextProps.musicVolume ||

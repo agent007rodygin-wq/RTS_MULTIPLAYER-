@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <!-- Background Outer Glow -->
+    <radialGradient id="pieAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.5"/>
+      <stop offset="60%" stop-color="#d97706" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#b45309" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Pie Crust Gradient -->
+    <linearGradient id="pieCrust" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="30%" stop-color="#f59e0b"/>
+      <stop offset="70%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+
+    <!-- Pie Filling Gradient -->
+    <radialGradient id="pieFilling" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="45%" stop-color="#ea580c"/>
+      <stop offset="85%" stop-color="#c2410c"/>
+      <stop offset="100%" stop-color="#9a3412"/>
+    </radialGradient>
+
+    <!-- Ceramic Plate Gradient -->
+    <linearGradient id="plateGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="60%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+
+    <!-- Cream Dollop Gradient -->
+    <linearGradient id="creamGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#fde68a"/>
+    </linearGradient>
+
+    <filter id="pieGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Ambient Glow -->
+  <circle cx="64" cy="68" r="56" fill="url(#pieAura)"/>
+
+  <!-- Plate Shadow -->
+  <ellipse cx="64" cy="108" rx="46" ry="12" fill="rgba(0,0,0,0.35)"/>
+
+  <!-- Ceramic Plate Underneath -->
+  <ellipse cx="64" cy="94" rx="48" ry="20" fill="url(#plateGradient)" stroke="#94a3b8" stroke-width="1.5"/>
+  <ellipse cx="64" cy="92" rx="44" ry="16" fill="#e2e8f0"/>
+
+  <!-- Pie Outer Crust Rim -->
+  <ellipse cx="64" cy="82" rx="40" ry="19" fill="url(#pieCrust)" stroke="#78350f" stroke-width="1.8"/>
+
+  <!-- Crust Fluting / Crimped Edge Highlights -->
+  <path d="M26 80 Q32 86 38 82 Q44 86 50 82 Q56 86 64 82 Q72 86 78 82 Q84 86 90 82 Q96 86 102 80"
+        fill="none" stroke="#fde68a" stroke-width="2" opacity="0.8"/>
+
+  <!-- Warm Pumpkin Filling Base -->
+  <ellipse cx="64" cy="78" rx="34" ry="14" fill="url(#pieFilling)" stroke="#9a3412" stroke-width="1"/>
+
+  <!-- Cut Slice Indentations / Texture Patterns -->
+  <line x1="64" y1="78" x2="36" y2="72" stroke="#7c2d12" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.6"/>
+  <line x1="64" y1="78" x2="92" y2="72" stroke="#7c2d12" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.6"/>
+  <line x1="64" y1="78" x2="64" y2="90" stroke="#7c2d12" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.6"/>
+  <line x1="64" y1="78" x2="48" y2="86" stroke="#7c2d12" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.6"/>
+  <line x1="64" y1="78" x2="80" y2="86" stroke="#7c2d12" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.6"/>
+
+  <!-- Whipped Cream Dollop in Center -->
+  <g filter="url(#pieGlow)">
+    <ellipse cx="64" cy="74" rx="10" ry="6" fill="url(#creamGradient)" stroke="#d97706" stroke-width="0.8"/>
+    <path d="M57 74 Q64 62 65 60 Q66 65 71 74" fill="url(#creamGradient)"/>
+    <circle cx="65" cy="60" r="1.5" fill="#ffffff"/>
+  </g>
+
+  <!-- Pumpkin Leaf / Mint Garnish -->
+  <path d="M68 64 Q76 58 78 62 Q74 68 68 65 Z" fill="#22c55e" stroke="#15803d" stroke-width="0.8"/>
+
+  <!-- Warm Rising Steam -->
+  <path d="M48 54 Q44 42 50 34" fill="none" stroke="#fed7aa" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+  <path d="M64 48 Q60 36 66 26" fill="none" stroke="#ffedd5" stroke-width="2.5" stroke-linecap="round" opacity="0.85"/>
+  <path d="M78 52 Q82 40 76 32" fill="none" stroke="#fed7aa" stroke-width="2" stroke-linecap="round" opacity="0.75"/>
+
+  <!-- Sparkles -->
+  <circle cx="34" cy="46" r="1.8" fill="#fef08a"/>
+  <circle cx="94" cy="48" r="1.5" fill="#fef08a"/>
+  <circle cx="88" cy="30" r="2" fill="#fbbf24"/>
+</svg>

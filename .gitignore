@@ -58,3 +58,5 @@ graphify-out/cache/
 backup_before_*/
 
 
+*.bak
+*.backup_*

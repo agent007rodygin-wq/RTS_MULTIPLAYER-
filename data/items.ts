@@ -410,15 +410,59 @@ export const items: Item[] = [
     description: 'Крупный кусок самородного золота.',
     imageUrl: '/buildings/ресурсы/Ресурсы/Золотая руда или Самородок/10025.webp',
     rubyPackQuantity: 2
-  }
-  ,
+  },
   {
     id: 10045,
-    name: 'РЎСѓРїРµСЂ РґРµС‚РѕРЅР°С‚РѕСЂ',
+    name: 'Супер детонатор',
     englishName: 'Super Detonator',
     category: 'Ресурсы',
-    description: 'РЈСЃРєРѕСЂСЏРµС‚ РІР·СЂС‹РІ Р±РѕРјР± РЅР° 70%. РњРѕР¶РЅРѕ РёР·РіРѕС‚РѕРІРёС‚СЊ РЅР° РґСЊСЏРІРѕР»СЊСЃРєРѕР№ РјР°С€РёРЅРµ.',
+    description: 'Ускоряет взрыв бомб на 70%. Можно изготовить на дьявольской машине.',
     imageUrl: '/buildings/ресурсы/Бомбы/Супер детонатор/10020.webp',
     rubyPackQuantity: 1
+  },
+  {
+    id: 10046,
+    name: 'Энергетик',
+    englishName: 'Energy Drink',
+    category: 'Расходники',
+    description: 'Бодрящее зелье из супер грибов. Мгновенно восстанавливает 15 энергии.',
+    imageUrl: '/Gui/energy_potion.svg',
+    rubyPackQuantity: 5
+  },
+  {
+    id: 10047,
+    name: 'Тыквенный пирог',
+    englishName: 'Pumpkin Pie',
+    category: 'Расходники',
+    description: 'Свежеиспеченный сытный пирог из супер тыквы и муки. Восстанавливает 25 энергии.',
+    imageUrl: '/Gui/pumpkin_pie.svg',
+    rubyPackQuantity: 5
+  },
+  {
+    id: 10048,
+    name: 'Эликсир дровосека',
+    englishName: 'Lumberjack Elixir',
+    category: 'Расходники',
+    description: 'Магическое зелье лесоруба. Дает временный бафф +1 дополнительное дерево за каждый срубленный ствол на 10 минут.',
+    imageUrl: '/Gui/lumberjack_elixir.svg',
+    rubyPackQuantity: 5
+  },
+  {
+    id: 10049,
+    name: 'Каменный укрепляющий раствор',
+    englishName: 'Reinforcing Mortar',
+    category: 'Расходники',
+    description: 'Особая строительная смесь высшей прочности. Снижает стоимость ремонта любого здания на 30%.',
+    imageUrl: '/Gui/stone_mortar.svg',
+    rubyPackQuantity: 5
+  },
+  {
+    id: 10050,
+    name: 'Связка хлопушек',
+    englishName: 'Firecracker Bundle',
+    category: 'Расходники',
+    description: 'Легкое оружие быстрого крафта из петард и досок. Наносит взрывной урон зданиям и монстрам.',
+    imageUrl: '/Gui/firecracker_bundle.svg',
+    rubyPackQuantity: 10
   }
 ];

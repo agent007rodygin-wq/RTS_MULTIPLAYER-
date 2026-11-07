@@ -8,7 +8,7 @@ import { buildMonsterZoneCounts } from './monsterCrowding.js';
 import { getMonsterAdjacentAttackTarget } from './monsterTargetSelection.js';
 
 /**
- * @typedef {{ x: number; y: number; id?: string|number; buildingId: number; hp?: number; ownerId?: string|number; isConstructing?: boolean; isDestroying?: boolean; lastMoveTime?: number; lastAttackTime?: number }} MonsterRecord
+ * @typedef {{ x: number; y: number; id?: string|number; gameId?: string|number; buildingId: number; hp?: number; ownerId?: string|number; isConstructing?: boolean; isDestroying?: boolean; lastMoveTime?: number; lastAttackTime?: number }} MonsterRecord
  */
 
 /**
@@ -44,7 +44,12 @@ export function buildMonsterRuntimeSnapshot({
         if (!info || !info.stats.isMonster) return false;
         if (!isMonsterHost(b)) return false;
         const monsterId = String(b.id || '');
-        const lastTime = Math.max(b.lastMoveTime || 0, monsterLastAction.get(monsterId) || 0);
+        const gameIdStr = b.gameId ? String(b.gameId) : '';
+        const refLastAction = Math.max(
+            monsterLastAction.get(monsterId) || 0,
+            gameIdStr ? (monsterLastAction.get(gameIdStr) || 0) : 0
+        );
+        const lastTime = Math.max(b.lastMoveTime || 0, refLastAction);
         const moveInterval = getMonsterMoveInterval(b.buildingId, monsterId);
         return (now - lastTime >= moveInterval);
     });
@@ -56,9 +61,14 @@ export function buildMonsterRuntimeSnapshot({
         if (!info || !info.stats.isMonster) return false;
         if (!isMonsterHost(monster)) return false;
         const monsterId = String(monster.id || '');
+        const gameIdStr = monster.gameId ? String(monster.gameId) : '';
+        const refAttackTime = Math.max(
+            monsterAttackTime.get(monsterId) || 0,
+            gameIdStr ? (monsterAttackTime.get(gameIdStr) || 0) : 0
+        );
         const lastAttackTime = Math.max(
             monster.lastAttackTime || 0,
-            monsterAttackTime.get(monsterId) || 0
+            refAttackTime
         );
         if (lastAttackTime > now) return false;
         if ((now - lastAttackTime) < 40000) return false; // MONSTER_ATTACK_INTERVAL_MS
@@ -75,8 +85,10 @@ export function buildMonsterRuntimeSnapshot({
     const sorted = [...monstersMoving].sort((a, b) => {
         const aId = String(a.id || '');
         const bId = String(b.id || '');
-        const aLastTime = Math.max(a.lastMoveTime || 0, monsterLastAction.get(aId) || 0);
-        const bLastTime = Math.max(b.lastMoveTime || 0, monsterLastAction.get(bId) || 0);
+        const aGameId = a.gameId ? String(a.gameId) : '';
+        const bGameId = b.gameId ? String(b.gameId) : '';
+        const aLastTime = Math.max(a.lastMoveTime || 0, monsterLastAction.get(aId) || 0, aGameId ? (monsterLastAction.get(aGameId) || 0) : 0);
+        const bLastTime = Math.max(b.lastMoveTime || 0, monsterLastAction.get(bId) || 0, bGameId ? (monsterLastAction.get(bGameId) || 0) : 0);
         const aOverdue = now - aLastTime - getMonsterMoveInterval(a.buildingId, aId);
         const bOverdue = now - bLastTime - getMonsterMoveInterval(b.buildingId, bId);
         if (aOverdue !== bOverdue) return bOverdue - aOverdue;

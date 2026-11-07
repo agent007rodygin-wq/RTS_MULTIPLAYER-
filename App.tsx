@@ -7,7 +7,7 @@ import {
     db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, FirebaseUser,
     signInWithEmailAndPassword, createUserWithEmailAndPassword,
     doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, onSnapshot, query, where, orderBy, limit,
-    handleFirestoreError, OperationType, testConnection, deleteField, increment, runTransaction, writeBatch, deleteAll, sanitizePbId,
+    handleFirestoreError, OperationType, testConnection, deleteField, increment, runTransaction, writeBatch, deleteAll, sanitizePbId, pbFilterString,
     clearUserCache, forceClearAuth, requestTreeHit, setRuntimeAuditContext
 } from './src/pocketbase';
 import { useMapForceReload } from './src/game/realtime/mapRealtime';
@@ -45,7 +45,9 @@ import {
     writeCachedLeaderboardStats,
     getLastPositionCacheKey,
     readCachedLastPosition,
-    writeCachedLastPosition
+    writeCachedLastPosition,
+    readCachedBanEndTime,
+    writeCachedBanEndTime
 } from './src/game/profile/profileCache.js';
 import {
     MAX_SAFE_INVENTORY_COUNT,
@@ -63,16 +65,87 @@ import { ExchangeModal } from './src/components/game/ExchangeModal';
 import { ResourceShopModal } from './src/components/game/ResourceShopModal';
 import { BuildMenuModal } from './src/components/game/BuildMenuModal';
 import { BuildConfirmationModal } from './src/components/game/BuildConfirmationModal';
+import { BlackMarketMissingModal } from './src/components/game/BlackMarketMissingModal';
+import { MissingResource } from './src/game/economy/blackMarketLogic';
 import { RoyalElectionsModal, RoyalVotingModal } from './src/components/game/RoyalElectionsModal';
 import { PoliceMoralsModal, PoliceVotingModal } from './src/components/game/PoliceMoralsModal';
 import { OtherPlayerProfileModal } from './src/components/game/OtherPlayerProfileModal';
 import { CasinoModal, CasinoBankModal } from './src/components/game/CasinoModal';
+import type { LuckyWheelSector } from './src/components/game/LuckyWheel';
 import { MonsterAcademyModal } from './src/components/game/MonsterAcademyModal';
 import { WorldMapModal } from './src/components/game/WorldMapModal';
+import { ComboJuiceOverlay } from './src/components/game/ComboJuiceOverlay';
+import {
+    ComboState,
+    FloatingTextItem,
+    LevelUpCelebration,
+    createInitialComboState,
+    registerGatherHit,
+    createGatherFloatingItems,
+    createLevelUpFloatingItems,
+    createLevelUpCelebration,
+} from './src/game/juice/comboSystem';
+import { playComboSound, initComboAudio, playLevelUpFanfare } from './src/game/juice/comboAudio';
+import { ClanStockExchangeModal } from './src/components/game/ClanStockExchangeModal';
+import {
+    ClanStockListing,
+    PlayerStockHolding,
+    createClanStockListing,
+    calculateDynamicSharePrice,
+    calculateSharePurchaseCost,
+    calculateShareSellProceeds,
+    allocateTaxToDividends,
+    calculateClaimableDividends,
+    MIN_DIVIDEND_PERCENT,
+    MAX_DIVIDEND_PERCENT,
+} from './src/game/economy/clanStockLogic';
 import { ShoutModal, PrivateChatModal } from './src/components/game/ChatModals';
 import { SelectedBuildingModal } from './src/components/game/SelectedBuildingModal';
+import { FinancialProductionModal } from './src/components/game/FinancialProductionModal';
+import {
+    checkHasEgyptianObelisk,
+    getFinancialCollectCooldownStatus,
+    isBuildingReadyForCollection,
+    calculateBuildingReward,
+} from './src/game/economy/productionCollectLogic';
+import { TownHallOrdersModal } from './src/components/game/TownHallOrdersModal';
+import {
+    TownHallOrder,
+    getCurrentOrdersCycle,
+    generateThreeTownHallOrders,
+    generateTownHallOrder,
+    canFulfillTownHallOrder,
+    isOrderSkipAvailable,
+    getTimeUntilSkipAvailable,
+    normalizeTownHallOrder
+} from './src/game/townHallOrders/townHallOrdersLogic';
+import {
+    ENERGY_DRINK_ID,
+    ENERGY_DRINK_RESTORE,
+    PUMPKIN_PIE_ID,
+    PUMPKIN_PIE_RESTORE,
+    LUMBERJACK_ELIXIR_ID,
+    LUMBERJACK_BUFF_DURATION_MS,
+    REINFORCING_MORTAR_ID,
+    MORTAR_BUFF_DURATION_MS,
+    FIRECRACKER_BUNDLE_ID,
+    getCraftingRecipe,
+    canCraftRecipe,
+    craftRecipe,
+    getItemEnergyRestore,
+    isUsableInventoryItem
+} from './src/game/crafting/craftingLogic';
+import { getItemQuickSellPrice } from './src/game/economy/quickSellLogic';
 import { ProfileModal, type ProfileTab } from './src/components/game/ProfileModal';
+import {
+    ACHIEVEMENTS_DATA,
+    ACHIEVEMENT_TIERS_MAP,
+    evaluateAllCompletedTiers,
+    findNewlyUnlockedTiers,
+    getStatValue
+} from './src/game/achievements/achievementsData';
 import { TabletMenuModal } from './src/components/game/TabletMenuModal';
+import { DailyRewardModal } from './src/components/game/DailyRewardModal';
 import { EnergyModal, RubyModal, BuildingLimitModal } from './src/components/game/SystemModals';
 import { ChatPanel } from './src/components/game/ChatPanel';
 import { compressImageFile } from './src/game/utils/imageCompress';
@@ -273,11 +346,37 @@ const CANNON_IDS = [700, 701, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385];
 const PROTECTED_TOWER_ID = 702;
 const CLAN_CASTLE_ID = 800;
 const WATCHTOWER_ID = 801;
+const WATCHTOWER_IDS = [801, 214, 215, 216];
+const isWatchtowerId = (id: number | string | undefined | null) => id != null && WATCHTOWER_IDS.includes(Number(id));
+const WATCHTOWER_SHIELD_BOXES: Record<number, { x: number; y: number; w: number; h: number }> = {
+    801: { x: 109, y: 92, w: 35, h: 30 }, // Level 1 (147.webp, 265x279)
+    214: { x: 109, y: 92, w: 35, h: 30 }, // Level 2 (214.webp, 265x279)
+    215: { x: 109, y: 107, w: 35, h: 30 }, // Level 3 (215.webp, 264x294)
+    216: { x: 109, y: 151, w: 35, h: 30 }, // Level 4 (216.webp, 264x338)
+};
 const BANDIT_CASTLE_IDS = new Set(
     buildingData
         .filter(building => building.category === 'Клан' && building.name.startsWith('Бандитский замок'))
         .map(building => Number(building.id))
 );
+const BANDIT_CASTLE_BANNER_BOXES: Record<number, { x: number; y: number; w: number; h: number }> = {
+    800: { x: 68, y: 103, w: 40, h: 40 }, // Level 1 (373.webp)
+    373: { x: 68, y: 103, w: 40, h: 40 }, // Level 2 (373.webp)
+    374: { x: 68, y: 103, w: 40, h: 40 }, // Level 3 (374.webp)
+    375: { x: 63, y: 103, w: 40, h: 40 }, // Level 4 (375.webp)
+    376: { x: 66, y: 104, w: 40, h: 40 }, // Level 5 (376.webp)
+    377: { x: 86, y: 104, w: 40, h: 40 }, // Level 6 (377.webp)
+    378: { x: 86, y: 103, w: 40, h: 40 }, // Level 7 (378.webp)
+    379: { x: 93, y: 103, w: 40, h: 40 }, // Level 8 (379.webp)
+    380: { x: 93, y: 103, w: 40, h: 40 }, // Level 9 (380.webp)
+    386: { x: 98, y: 103, w: 40, h: 40 }, // Level 10 (386.webp)
+    387: { x: 103, y: 103, w: 40, h: 40 }, // Level 11 (387.webp)
+    388: { x: 109, y: 102, w: 40, h: 40 }, // Level 12 (388.webp)
+    389: { x: 109, y: 102, w: 40, h: 40 }, // Level 13 (389.webp)
+    415: { x: 110, y: 129, w: 40, h: 40 }, // Level 14 (415.webp)
+    416: { x: 110, y: 129, w: 40, h: 40 }, // Level 15 (416.webp)
+    451: { x: 110, y: 130, w: 40, h: 40 }, // Level 16 (451.webp)
+};
 const PROTECTION_SHIELD_HP = 6666;
 const FINANCIAL_INTELLIGENCE_ID = 340;
 const OIL_RIG_ID = 606;
@@ -391,22 +490,34 @@ const MOCK_USER_LEVELS: Record<string, number> = {
 
 // Kolobok / Classic style emojis
 const KOLOBOK_EMOJIS = [
-    { code: ':)', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/smile.gif' },
-    { code: ':(', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/sad.gif' },
-    { code: ';)', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/wink.gif' },
-    { code: ':D', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/biggrin.gif' },
-    { code: ':P', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/beee.gif' },
-    { code: ':cool:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/dirol.gif' },
-    { code: ':crazy:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/crazy.gif' },
+    { code: ':)', url: '/Chat/smile.gif' },
+    { code: ':(', url: '/Chat/sad.gif' },
+    { code: ';)', url: '/Chat/wink.gif' },
+    { code: ':D', url: '/Chat/biggrin.gif' },
+    { code: ':P', url: '/Chat/beee.gif' },
+    { code: ':cool:', url: '/Chat/dirol.gif' },
+    { code: ':crazy:', url: '/Chat/crazy.gif' },
     { code: ':mad:', url: '/Chat/aggressive.gif' },
-    { code: ':blush:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/blush.gif' },
-    { code: ':rofl:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/rofl.gif' },
-    { code: ':ok:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/ok.gif' },
-    { code: ':hi:', url: 'https://raw.githubusercontent.com/walfas/kolobok/master/smiles/standart/hello.gif' }
+    { code: ':blush:', url: '/Chat/blush.gif' },
+    { code: ':rofl:', url: '/Chat/rofl.gif' },
+    { code: ':ok:', url: '/Chat/ok.gif' },
+    { code: ':hi:', url: '/Chat/hello.gif' },
+    { code: ':cray:', url: '/Chat/cray.gif' },
+    { code: ':shok:', url: '/Chat/shok.gif' },
+    { code: ':dash:', url: '/Chat/dash.gif' },
+    { code: ':drinks:', url: '/Chat/drinks.gif' },
+    { code: ':dance:', url: '/Chat/dance.gif' },
+    { code: ':clapping:', url: '/Chat/clapping.gif' },
+    { code: ':dntknw:', url: '/Chat/dntknw.gif' },
+    { code: ':popcorn:', url: '/Chat/popcorn.gif' },
+    { code: ':pardon:', url: '/Chat/pardon.gif' },
+    { code: ':yahoo:', url: '/Chat/yahoo.gif' },
+    { code: ':smoke:', url: '/Chat/smoke.gif' },
+    { code: ':kiss:', url: '/Chat/kiss.gif' }
 ];
 
 
-type BuildMenuTab = 'Грядки' | 'Жилье' | 'Бизнес' | 'Буквы' | 'Декор' | 'Дороги и стены' | 'Заводы' | 'Монстры' | 'Клан' | 'Подарки' | 'Защита' | 'Статуи';
+type BuildMenuTab = 'Грядки' | 'Жилье' | 'Бизнес' | 'Буквы' | 'Декор' | 'Дороги и стены' | 'Заводы' | 'Монстры' | 'Клан' | 'Подарки' | 'Защита' | 'Статуи' | 'Спецальное' | 'Античность';
 type LetterSubTab = 'english' | 'russian' | 'numbers';
 type GiftSubTab = 'main' | 'castles' | 'babies' | 'march8' | 'halloween' | 'valentine' | 'spring';
 type DecorSubTab = 'flags' | 'other';
@@ -425,6 +536,7 @@ interface ChatMessage {
     teleportCoordinates?: { x: number, y: number };
     clanId?: number | null;
     localOnly?: boolean;
+    title?: string | null;
 }
 
 const SYSTEM_CHAT_MESSAGE_TTL_MS = 60 * 60 * 1000;
@@ -508,6 +620,7 @@ const processOfflineTimers = (
         canApplyDestructionTimer?: (building: PlacedBuilding) => boolean;
         resources?: MapResource[];
         isWrappedWorld?: boolean;
+        monsterAttackTimes?: Map<string | number, number>;
     }
 ): { updated: PlacedBuilding[], updates: { id: string, data: Partial<PlacedBuilding> }[] } => {
     const now = Date.now();
@@ -571,8 +684,10 @@ const processOfflineTimers = (
         if (needsUpdate) {
             updated.push(updatedBuilding);
             
-            // Only push DB update if we haven't already synced this building's timer
-            if (!_offlineTimersSynced.has(bId)) {
+            // Only push DB update if we haven't already synced this building's timer.
+            // If hp <= 0, do not push an intermediate update setting isDestroying=false to DB,
+            // as the local game loop will immediately process its destruction, award rewards, and delete it.
+            if (!_offlineTimersSynced.has(bId) && (updatedBuilding.hp === undefined || updatedBuilding.hp > 0)) {
                 _offlineTimersSynced.add(bId);
                 const updateData: Partial<PlacedBuilding> = {};
                 
@@ -666,7 +781,12 @@ const processOfflineTimers = (
             dmg *= 2;
         }
 
-        const lastAttack = monster.lastAttackTime || 0;
+        const gameIdStr = monster.gameId ? String(monster.gameId) : '';
+        const refLastAttack = Math.max(
+            options?.monsterAttackTimes?.get(monsterId) || 0,
+            gameIdStr ? (options?.monsterAttackTimes?.get(gameIdStr) || 0) : 0
+        );
+        const lastAttack = Math.max(monster.lastAttackTime || 0, refLastAttack);
         const elapsedRaw = Math.max(0, nowTs - lastAttack);
         const elapsed = Math.min(elapsedRaw, MAX_OFFLINE_COMBAT_WINDOW_MS);
         const availableHits = Math.floor(elapsed / MONSTER_ATTACK_INTERVAL_MS);
@@ -767,6 +887,12 @@ const processOfflineTimers = (
             pendingDamage: monsterFatalHit ? targetBaseHp : 0
         });
         byId.set(monsterId, { ...monster, lastAttackTime: nowTs });
+        if (options?.monsterAttackTimes) {
+            options.monsterAttackTimes.set(monsterId, nowTs);
+            if (gameIdStr) {
+                options.monsterAttackTimes.set(gameIdStr, nowTs);
+            }
+        }
 
         updates.push({
             id: targetId,
@@ -860,8 +986,8 @@ const royalKingCrownImageUrl = '/Gui/GUI_Menu/Королевские выбор�
 const policeBadgeImageUrl = '/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp';
 const ZONE_RING_ONE_DELAY_MS = 900;
 const ZONE_RING_TWO_DELAY_MS = 2200;
-const WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE = 3;
-const WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE = 12;
+const WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE = 10;
+const WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE = 25;
 const WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER = 6;
 
 // Monster movement, targeting, IDs — canonical modules
@@ -919,7 +1045,6 @@ function getCrowdingEscapeMove(
 
     const currentZoneId = getMonsterZoneId(monster);
     const currentCount = zoneCounts.get(currentZoneId) || 0;
-    if (currentCount < WILD_MONSTER_CROWDING_SOFT_CAP) return null;
 
     const zoneX = Math.floor(monster.x / ZONE_SIZE);
     const zoneY = Math.floor(monster.y / ZONE_SIZE);
@@ -935,6 +1060,9 @@ function getCrowdingEscapeMove(
         isWrappedWorld || (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y)
     );
 
+    const isCrowded = currentCount >= WILD_MONSTER_CROWDING_SOFT_CAP;
+    const isSparseZone = currentCount <= 2;
+
     let bestDirection: MonsterDirection | null = null;
     let bestScore = -Infinity;
     const pressureMultiplier = currentCount >= WILD_MONSTER_CROWDING_HARD_CAP ? 2 : 1;
@@ -944,9 +1072,24 @@ function getCrowdingEscapeMove(
         const wrappedY = isWrappedWorld ? wrapCoord(ny, ZONES_Y) : ny;
         const neighborZoneId = `${wrappedX}_${wrappedY}`;
         const neighborCount = zoneCounts.get(neighborZoneId) || 0;
+
+        if (isSparseZone && (neighborCount >= currentCount || currentCount <= 1)) {
+            return;
+        }
+
+        const hasScarcityDeficit = neighborCount < 4 && currentCount > neighborCount;
+        if (!isCrowded && !hasScarcityDeficit) {
+            return;
+        }
+
         const scarcityScore = currentCount - neighborCount;
+        let urgencyBonus = 0;
+        if (neighborCount === 0) urgencyBonus = 400;
+        else if (neighborCount === 1) urgencyBonus = 250;
+        else if (neighborCount === 2) urgencyBonus = 120;
+
         const borderBonus = Math.max(0, ZONE_SIZE - borderDist);
-        const score = scarcityScore * 100 * pressureMultiplier + borderBonus;
+        const score = (scarcityScore * 100 * pressureMultiplier) + urgencyBonus + borderBonus;
         if (score > bestScore) {
             bestScore = score;
             bestDirection = { dx, dy };
@@ -1062,18 +1205,15 @@ function chooseMonsterBackgroundMove(
     if (chaseTarget) {
         chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWrappedWorld);
     } else {
-        chosenMove = getCrowdingEscapeMove(monster, candidateMoves, zoneCounts, isWrappedWorld);
-        if (!chosenMove) {
-            chosenMove = chooseMonsterPatrolMove(
-                candidateMoves,
-                nextDir,
-                true,
-                monster.id,
-                monster.buildingId,
-                0,
-                previousPos
-            ).chosenMove;
-        }
+        chosenMove = chooseMonsterPatrolMove(
+            candidateMoves,
+            nextDir,
+            true,
+            monster.id,
+            monster.buildingId,
+            0,
+            previousPos
+        ).chosenMove;
     }
 
     if (chosenMove && previousPos && chosenMove.x === previousPos.x && chosenMove.y === previousPos.y && candidateMoves.length > 1) {
@@ -1165,11 +1305,11 @@ const isBuildingAlive = (building: Pick<PlacedBuilding, 'hp'>): boolean =>
     building.hp === undefined || building.hp > 0;
 
 const REGULAR_MONSTER_SPAWN_CONFIG = [
-    { typeId: GORYNYCH_ID, count: 1, name: 'Р С–Р С•РЎР‚РЎвЂ№Р Р…РЎвЂ№РЎвЂЎ' },
-    { typeId: KILLING_HUT_ID, count: 1, name: 'Р С‘Р В·Р В±РЎС“РЎв‚¬Р С”Р В°' },
-    { typeId: KIND_SANTA_ID, count: 1, name: 'РЎРѓР В°Р Р…РЎвЂљР В°' },
-    { typeId: KOLOBOK_ID, count: 1, name: 'Р С”Р С•Р В»Р С•Р В±Р С•Р С”' },
-    { typeId: BABA_YAGA_ID, count: 1, name: 'Р В±Р В°Р В±Р В° РЎРЏР С–Р В°' }
+    { typeId: GORYNYCH_ID, count: 1, name: 'горыныч' },
+    { typeId: KILLING_HUT_ID, count: 1, name: 'избушка' },
+    { typeId: KIND_SANTA_ID, count: 1, name: 'санта' },
+    { typeId: KOLOBOK_ID, count: 1, name: 'колобок' },
+    { typeId: BABA_YAGA_ID, count: 1, name: 'баба яга' }
 ];
 
 const getRegularMonsterPlanForZone = (zoneX: number, zoneY: number) => {
@@ -1259,6 +1399,16 @@ for (const id of SAWMILL_LEVEL6_16_IDS) {
   sawmillAnimationFrames[id] = Array.from({ length: 90 }, (_, i) => `/animation/sawmill/${folder}/${i + 1}.webp`);
 }
 const SAWMILL_ID_SET = new Set(SAWMILL_IDS);
+
+// Financial Intelligence (Финансовая разведка: 340, 341, 342) animation frames
+// 60 frames, 3 second smooth scanning loop
+const FINANCIAL_INTELLIGENCE_IDS = [340, 341, 342];
+const financialIntelligenceAnimationFrames: Record<number, string[]> = {
+  340: Array.from({ length: 60 }, (_, i) => `/animation/financial_intelligence/1/${i + 1}.webp`),
+  341: Array.from({ length: 60 }, (_, i) => `/animation/financial_intelligence/2/${i + 1}.webp`),
+  342: Array.from({ length: 60 }, (_, i) => `/animation/financial_intelligence/3/${i + 1}.webp`),
+};
+const FINANCIAL_INTELLIGENCE_ID_SET = new Set(FINANCIAL_INTELLIGENCE_IDS);
 
 // Monster Academy animation frames (working + idle states)
 // Building IDs by level group:
@@ -1602,6 +1752,7 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
 
     if (TOWN_HALL_FLAG_ID_SET.has(building.buildingId)) return townHallFlagAnimationFrames[building.buildingId] || [];
     if (FLAG_ANIMATION_ID_SET.has(building.buildingId)) return flagAnimationFrames[building.buildingId] || [];
+    if (FINANCIAL_INTELLIGENCE_ID_SET.has(building.buildingId)) return financialIntelligenceAnimationFrames[building.buildingId] || [];
     if (building.buildingId === DETONATOR_FACTORY_ID && isWorking) return detonatorFactoryAnimationFrames;
     if (building.buildingId === DEVIL_MACHINE_ID && isWorking) return devilMachineAnimationFrames;
     if (building.buildingId === MILL_ID && isWorking) return millAnimationFrames;
@@ -1830,38 +1981,60 @@ const drawAnimatedCoin = (ctx: CanvasRenderingContext2D, x: number, y: number, s
     ctx.restore();
 };
 
-// Function to draw dark swirling loading spinner
+// Function to draw swirling loading spinner matching the UI Swirling component
 const drawLoadingSpinner = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number) => {
     const r = size / 2;
+    const swirlRadius = Math.max(2, r * 0.65);
+    const strokeWidth = Math.max(1.8, swirlRadius * 0.28);
     
     ctx.save();
     ctx.translate(x, y);
     
-    // Dark background circle with subtle border
+    // Dark background circle with subtle border for contrast on game map
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(10, 10, 10, 0.92)';
     ctx.fill();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(1, 1.2 * (size / 20));
     ctx.stroke();
+
+    // Faint circular track
+    ctx.beginPath();
+    ctx.arc(0, 0, swirlRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = strokeWidth;
+    ctx.stroke();
+
+    // Swirling dash & spin animation (exact formula from Swirling component):
+    // Duration: dash 1.5s (alternate cycle = 3.0s), spin = 1.5s * 1.333333 = 2.0s
+    const tNorm = (time % 3000) / 1500;
+    const p = tNorm <= 1 ? tNorm : 2 - tNorm;
+    const eased = 0.5 - 0.5 * Math.cos(Math.PI * p);
     
-    // Three swirling arcs at different speeds for depth
-    const arcs = [
-        { speed: 600, opacity: 0.85, width: 2.5, length: Math.PI * 1.6, offset: 0 },
-        { speed: 900, opacity: 0.55, width: 2.0, length: Math.PI * 1.2, offset: Math.PI * 0.7 },
-        { speed: 1200, opacity: 0.30, width: 1.5, length: Math.PI * 0.9, offset: Math.PI * 1.4 },
-    ];
-    
-    arcs.forEach(arc => {
-        const rotation = ((time / arc.speed) % 1) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.arc(0, 0, r - 3, rotation + arc.offset, rotation + arc.offset + arc.length);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${arc.opacity})`;
-        ctx.lineWidth = arc.width;
-        ctx.lineCap = 'round';
-        ctx.stroke();
-    });
+    let theta1: number;
+    let theta2: number;
+    if (eased <= 0.5) {
+        const k = eased / 0.5;
+        theta1 = 0 + 1.0 * k;
+        theta2 = 0.005 + (3.0 - 0.005) * k;
+    } else {
+        const k = (eased - 0.5) / 0.5;
+        theta1 = 1.0 + (4.0 - 1.0) * k;
+        theta2 = 3.0 + (8.0 - 3.0) * k;
+    }
+
+    const spinAngle = ((time % 2000) / 2000) * Math.PI * 2;
+    const startAngle = spinAngle + theta1;
+    const endAngle = spinAngle + theta2;
+
+    // Draw swirling animated arc
+    ctx.beginPath();
+    ctx.arc(0, 0, swirlRadius, startAngle, endAngle);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.stroke();
     
     ctx.restore();
 };
@@ -2132,7 +2305,6 @@ function repairMojibakeDom(root: ParentNode): void {
             el instanceof HTMLInputElement ||
             el instanceof HTMLTextAreaElement ||
             el instanceof HTMLSelectElement ||
-            el instanceof HTMLButtonElement ||
             el.isContentEditable
         ) {
             continue;
@@ -2174,7 +2346,7 @@ const App: React.FC = () => {
     // State for Global/Player Context
     const [user, setUser] = useState<FirebaseUser | null>(null);
     const [isAuthReady, setIsAuthReady] = useState(false);
-    const [playerName, setPlayerName] = useState(() => repairMojibakeCp1251Utf8('Р вЂњР С•РЎРѓРЎвЂљРЎРЉ') + ' ' + GUEST_ID.slice(-4).toUpperCase());
+    const [playerName, setPlayerName] = useState(() => 'Гость ' + GUEST_ID.slice(-4).toUpperCase());
     const [playerLevel, setPlayerLevel] = useState(1);
     const isWorldWrapped = playerLevel < 8;
     const [playerGlory, setPlayerGlory] = useState(0);
@@ -2199,6 +2371,69 @@ const App: React.FC = () => {
     const [banEndTime, setBanEndTime] = useState(0);
     const [playerActiveCurse, setPlayerActiveCurse] = useState<{ prefix: string, endTime: number } | null>(null);
     const [currentTime, setCurrentTime] = useState(Date.now());
+    const [lumberjackBuffUntil, setLumberjackBuffUntil] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem('basingse_buff_lumberjack');
+            const num = saved ? Number(saved) : 0;
+            return Number.isFinite(num) && num > Date.now() ? num : 0;
+        } catch {
+            return 0;
+        }
+    });
+    const [mortarBuffUntil, setMortarBuffUntil] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem('basingse_buff_mortar');
+            const num = saved ? Number(saved) : 0;
+            return Number.isFinite(num) && num > Date.now() ? num : 0;
+        } catch {
+            return 0;
+        }
+    });
+    const [playerAchievements, setPlayerAchievements] = useState<string[]>([]);
+    const [claimedAchievements, setClaimedAchievements] = useState<string[]>([]);
+    const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
+    const [achievementPercentages, setAchievementPercentages] = useState<Record<string, number>>({});
+    const [playerJoinNumber, setPlayerJoinNumber] = useState<number | null>(null);
+    const [playTimeTodaySeconds, setPlayTimeTodaySeconds] = useState(0);
+    const [totalLoginDays, setTotalLoginDays] = useState(1);
+    const [lastLoginDay, setLastLoginDay] = useState(() => Math.floor(Date.now() / 86400000));
+    const [buildingsBuiltCount, setBuildingsBuiltCount] = useState(0);
+    const [peakGold, setPeakGold] = useState(100);
+    const [showTownHallOrdersModal, setShowTownHallOrdersModal] = useState(false);
+    const [townHallOrders, setTownHallOrders] = useState<TownHallOrder[]>([]);
+    const [townHallOrdersCycle, setTownHallOrdersCycle] = useState<number>(0);
+    const [townHallLastSkipTime, setTownHallLastSkipTime] = useState<number>(0);
+    const [townHallSkipSalt, setTownHallSkipSalt] = useState<number>(0);
+    const [showFinancialProductionModal, setShowFinancialProductionModal] = useState<boolean>(false);
+    const [lastFinancialCollectTime, setLastFinancialCollectTime] = useState<number>(() => {
+        try {
+            const raw = localStorage.getItem('basingse_last_financial_collect');
+            return raw ? Number(raw) || 0 : 0;
+        } catch {
+            return 0;
+        }
+    });
+
+    const updateFinancialCollectTime = useCallback((time: number) => {
+        setLastFinancialCollectTime(time);
+        try {
+            localStorage.setItem('basingse_last_financial_collect', String(time));
+            if (user?.uid) {
+                localStorage.setItem(`basingse_last_financial_collect_${user.uid}`, String(time));
+            }
+        } catch (e) {
+            console.warn('Failed to save financial collect time', e);
+        }
+    }, [user?.uid]);
+
+    const playTimeTodaySecondsRef = useRef(playTimeTodaySeconds);
+    useEffect(() => { playTimeTodaySecondsRef.current = playTimeTodaySeconds; }, [playTimeTodaySeconds]);
+    const totalLoginDaysRef = useRef(totalLoginDays);
+    useEffect(() => { totalLoginDaysRef.current = totalLoginDays; }, [totalLoginDays]);
+    const lastLoginDayRef = useRef(lastLoginDay);
+    useEffect(() => { lastLoginDayRef.current = lastLoginDay; }, [lastLoginDay]);
+    const playerAchievementsRef = useRef(playerAchievements);
+    useEffect(() => { playerAchievementsRef.current = playerAchievements; }, [playerAchievements]);
     const [gameAlertMessage, setGameAlertMessage] = useState<string | null>(null);
     const [buildingLimitModalData, setBuildingLimitModalData] = useState<{ currentLimit: number; nextLimit: number } | null>(null);
     const [pendingConstructionIntent, setPendingConstructionIntent] = useState<{ building: Building; x: number; y: number; retried?: boolean } | null>(null);
@@ -2376,6 +2611,7 @@ const App: React.FC = () => {
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isBuildingActionProcessing, setIsBuildingActionProcessing] = useState(false);
+    const isPlacingTownHallRef = useRef(false);
     const [isMoveActionProcessing, setIsMoveActionProcessing] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, content: React.ReactNode | null }>({ visible: false, x: 0, y: 0, content: null });
@@ -2387,6 +2623,11 @@ const App: React.FC = () => {
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
     const [selectedPlayerBuildings, setSelectedPlayerBuildings] = useState<PlacedBuilding[]>([]);
     const [showInventory, setShowInventory] = useState(false);
+    const [showDailyRewardModal, setShowDailyRewardModal] = useState(false);
+    const [telegramLinked, setTelegramLinked] = useState(false);
+    const [lastDailyRewardClaim, setLastDailyRewardClaim] = useState(0);
+    const [streakDays, setStreakDays] = useState(1);
+    const shownDailyRewardAutoPromptRef = useRef(false);
     const [showShop, setShowShop] = useState(false);
     const [showMap, setShowMap] = useState(false);
     const [showTopPlayers, setShowTopPlayers] = useState(false);
@@ -2415,6 +2656,40 @@ const App: React.FC = () => {
     const [moveMode, setMoveMode] = useState<{ active: boolean, building: PlacedBuilding | null }>({ active: false, building: null });
     const [selectedOilDeposit, setSelectedOilDeposit] = useState<MapResource | null>(null);
     const [selectedQuarry, setSelectedQuarry] = useState<MapResource | null>(null);
+    const [showBlackMarketMissingModal, setShowBlackMarketMissingModal] = useState(false);
+    const [blackMarketBuilding, setBlackMarketBuilding] = useState<Building | null>(null);
+    const [comboState, setComboState] = useState<ComboState>(() => createInitialComboState());
+    const [floatingJuiceItems, setFloatingJuiceItems] = useState<FloatingTextItem[]>([]);
+    const [levelUpCelebration, setLevelUpCelebration] = useState<LevelUpCelebration | null>(null);
+    const [showClanStockExchangeModal, setShowClanStockExchangeModal] = useState(false);
+    const [clanStockListings, setClanStockListings] = useState<ClanStockListing[]>(() => {
+        try {
+            const raw = localStorage.getItem('basingse_clan_stocks_v1');
+            return raw ? JSON.parse(raw) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [playerStockPortfolio, setPlayerStockPortfolio] = useState<Record<number, PlayerStockHolding>>(() => {
+        try {
+            const raw = localStorage.getItem('basingse_player_stocks_v1');
+            return raw ? JSON.parse(raw) : {};
+        } catch {
+            return {};
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('basingse_clan_stocks_v1', JSON.stringify(clanStockListings));
+        } catch {}
+    }, [clanStockListings]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('basingse_player_stocks_v1', JSON.stringify(playerStockPortfolio));
+        } catch {}
+    }, [playerStockPortfolio]);
     const [showExchangeModal, setShowExchangeModal] = useState(false);
     const [exchangeAmount, setExchangeAmount] = useState(1);
     const [showCasinoModal, setShowCasinoModal] = useState(false);
@@ -2423,6 +2698,15 @@ const App: React.FC = () => {
     const [casinoBetAmount, setCasinoBetAmount] = useState(1000);
     const [casinoResult, setCasinoResult] = useState<{won: boolean, amount: number, isRuby?: boolean} | null>(null);
     const [casinoIsSpinning, setCasinoIsSpinning] = useState(false);
+    const [casinoInitialTab, setCasinoInitialTab] = useState<'slots' | 'wheel'>('wheel');
+    const [lastLuckyWheelSpin, setLastLuckyWheelSpin] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem('basingse_last_lucky_wheel_spin');
+            return saved ? Number(saved) || 0 : 0;
+        } catch {
+            return 0;
+        }
+    });
     const [isLoadingScreen, setIsLoadingScreen] = useState(true);
     const [loadingReady, setLoadingReady] = useState(false);
     const [loadingProgress, setLoadingProgress] = useState(0);
@@ -2545,6 +2829,7 @@ const App: React.FC = () => {
     const [authEmail, setAuthEmail] = useState('');
     const [authPassword, setAuthPassword] = useState('');
     const [regPlayerName, setRegPlayerName] = useState('');
+    const [regPromoCode, setRegPromoCode] = useState('');
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [authError, setAuthError] = useState<string | null>(null);
     const [isMarketProcessing, setIsMarketProcessing] = useState(false);
@@ -2567,6 +2852,7 @@ const App: React.FC = () => {
     const closeMarketModal = useCallback(() => setShowMarketModal(false), []);
     const closeTopPlayersModal = useCallback(() => setShowTopPlayers(false), []);
     const closeInventoryModal = useCallback(() => setShowInventory(false), []);
+    const closeDailyRewardModal = useCallback(() => setShowDailyRewardModal(false), []);
     const closeExchangeModal = useCallback(() => setShowExchangeModal(false), []);
     const closeShopModal = useCallback(() => setShowShop(false), []);
     const closeRoyalElectionsModal = useCallback(() => setShowRoyalElections(false), []);
@@ -2617,6 +2903,7 @@ const App: React.FC = () => {
     const [activePrivateChatId, setActivePrivateChatId] = useState<string | null>(null);
     const [privateMessageText, setPrivateMessageText] = useState('');
     const [showPrivateChatModal, setShowPrivateChatModal] = useState(false);
+    const [privateChatMode, setPrivateChatMode] = useState<'mail' | 'private'>('mail');
     const [isAnonymousMessage, setIsAnonymousMessage] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [selectedChatUser, setSelectedChatUser] = useState<string | null>(null);
@@ -2637,6 +2924,8 @@ const App: React.FC = () => {
     const isAuthReadyRef = useRef(isAuthReady);
     const placedBuildingsRef = useRef(placedBuildings);
     const mapResourcesRef = useRef(mapResources);
+    const droppedItemsRef = useRef(droppedItems);
+    const lastPlacedBuildingsSetRef = useRef(0);
     const initialResourcesLoaded = useRef(false);
     const seededZones = useRef(new Set<string>());
     // Map<buildingId, deletionTimestamp> - keeps deleted building IDs to prevent sync flicker/rollback
@@ -2676,6 +2965,8 @@ const App: React.FC = () => {
     }, [isBuildingDeleting]);
     const serverZoneBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
     const serverMyBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+    const serverInitiatedBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+    const serverMonsterBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
     const optimisticBuildDocIdByTempIdRef = useRef<Map<string, string>>(new Map());
     const optimisticBuildTempIdByDocIdRef = useRef<Map<string, string>>(new Map());
     const townHallCleanupFirstSeenRef = useRef<Map<string, number>>(new Map());
@@ -2688,6 +2979,7 @@ const App: React.FC = () => {
         return true;
     }, []);
     const monsterLastActionRef = useRef<Map<string | number, number>>(new Map());
+    const monsterLastMoveTimeRef = useRef<Map<string | number, number>>(new Map());
     const pendingHostClaimsRef = useRef<Set<string>>(new Set());
     const monsterDirectionRef = useRef<Map<string | number, {dx: number, dy: number}>>(new Map()); // Store last movement direction
     const lastMonsterAiTickRef = useRef<number>(0);
@@ -2891,10 +3183,46 @@ const App: React.FC = () => {
             gameSoundCoinRef.current.play().catch(() => {});
         }
     }, [gameSoundsVolume]);
+
+    const triggerGatherJuice = useCallback((params: {
+        worldX: number;
+        worldY: number;
+        gold?: number;
+        resources?: Record<string | number, number>;
+    }) => {
+        const now = Date.now();
+        setComboState(prev => {
+            const { nextState, combo } = registerGatherHit(prev, now);
+
+            // Play musical rising-pitch combo audio
+            playComboSound(combo, gameSoundsVolume);
+
+            // Spawn floating numbers and combo badges
+            const newItems = createGatherFloatingItems({
+                worldX: params.worldX,
+                worldY: params.worldY,
+                gold: params.gold,
+                resources: params.resources,
+                combo,
+                now,
+            });
+
+            if (newItems.length > 0) {
+                setFloatingJuiceItems(current => [
+                    ...current.filter(item => now - item.createdAt < item.durationMs),
+                    ...newItems,
+                ]);
+            }
+
+            return nextState;
+        });
+    }, [gameSoundsVolume]);
     const removeBuildingFromSnapshotCaches = useCallback((docId: string) => {
         deletingBuildingsRef.current.set(docId, Date.now());
         serverZoneBuildingsRef.current.delete(docId);
         serverMyBuildingsRef.current.delete(docId);
+        serverInitiatedBuildingsRef.current.delete(docId);
+        serverMonsterBuildingsRef.current.delete(docId);
         confirmedDeletedRef.current.add(docId);
     }, []);
     const isNotFoundBuildingError = useCallback((error: any): boolean => {
@@ -3011,7 +3339,7 @@ const App: React.FC = () => {
                     [ownerId]: {
                         ...prev[ownerId],
                         uid: ownerId,
-                        name: repairMojibakeCp1251Utf8(String(userData.name || selectedBuilding?.building?.ownerName || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–')),
+                        name: repairMojibakeCp1251Utf8(String(userData.name || selectedBuilding?.building?.ownerName || 'Неизвестный')),
                         level: userData.level || 1,
                         glory: userData.glory || 0,
                         reputation: userData.reputation || 0,
@@ -3059,10 +3387,20 @@ const App: React.FC = () => {
             console.error('[BanIntegrity] Suspicious banEndTime — expected ms timestamp, got:', incoming);
             return prev;
         }
+        const now = Date.now();
         let next: number;
-        if (incoming === 0) next = 0;
-        else if (prev <= Date.now()) next = incoming;
-        else next = Math.max(prev, incoming);
+        if (incoming === 0) {
+            // Protect active local ban during transient initial load before authoritative server sync
+            if (prev > now && !initialLoadDone.current) {
+                next = prev;
+            } else {
+                next = 0;
+            }
+        } else if (prev <= now) {
+            next = incoming;
+        } else {
+            next = Math.max(prev, incoming);
+        }
         if (next !== prev) {
             console.log('[BanStateTransition]', { prev, incoming, next, now: Date.now(), action: next === 0 ? 'UNBAN' : next > prev ? 'EXTEND' : incoming === prev ? 'NOCHANGE' : 'PRESERVE_STALE' });
         }
@@ -3141,6 +3479,65 @@ const App: React.FC = () => {
         }
         return b.ownerId === GUEST_ID || b.ownerId === "0";
     }, [user]);
+
+    const playerBuildingsCount = placedBuildings
+        .filter(b => isMyBuilding(b) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)))
+        .length;
+
+    const hasEgyptianObelisk = useMemo(() => {
+        return checkHasEgyptianObelisk(placedBuildings, isMyBuilding);
+    }, [placedBuildings, isMyBuilding]);
+
+    const myPlacedBuildings = useMemo(() => {
+        return placedBuildings.filter(b => isMyBuilding(b));
+    }, [placedBuildings, isMyBuilding]);
+
+    const playerTownHall = useMemo(() => {
+        const local = placedBuildings.find(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isMyBuilding(b) && (b.hp === undefined || b.hp > 0));
+        if (local) return local;
+        if (user) {
+            for (const b of serverMyBuildingsRef.current.values()) {
+                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isMyBuilding(b) && (b.hp === undefined || b.hp > 0)) {
+                    return b;
+                }
+            }
+        }
+        return undefined;
+    }, [placedBuildings, isMyBuilding, user]);
+
+    const playerTownHallLevel = useMemo(() => {
+        if (!playerTownHall) return 1;
+        const idx = TOWN_HALL_IDS.indexOf(Number(playerTownHall.buildingId));
+        return idx >= 0 ? idx + 1 : 1;
+    }, [playerTownHall]);
+
+    const completedTownHall = useMemo(() => {
+        const local = placedBuildings.find(b =>
+            TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
+            isMyBuilding(b) &&
+            !b.isConstructing &&
+            (b.hp === undefined || b.hp > 0)
+        );
+        if (local) return local;
+        if (user) {
+            for (const b of serverMyBuildingsRef.current.values()) {
+                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing && (b.hp === undefined || b.hp > 0)) {
+                    return b;
+                }
+            }
+        }
+        return undefined;
+    }, [placedBuildings, isMyBuilding, user]);
+
+    const completedTownHallLevel = useMemo(() => {
+        if (!completedTownHall) return 0;
+        const idx = TOWN_HALL_IDS.indexOf(Number(completedTownHall.buildingId));
+        return idx >= 0 ? idx + 1 : 1;
+    }, [completedTownHall]);
+
+    const townHallAvailableOrdersCount = useMemo(() => {
+        return townHallOrders.filter(order => !order.completed).length;
+    }, [townHallOrders]);
 
     const clearZoneSyncRetry = useCallback((retryKey: string, resetCount: boolean = true) => {
         const timer = zoneSyncRetryTimeoutsRef.current.get(retryKey);
@@ -3423,19 +3820,203 @@ const App: React.FC = () => {
         return { x, y };
     }, [isWorldWrapped]);
 
-    // Derived population and building states
-    const hasTownHall = useMemo(() => placedBuildings.some(b =>
-        TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
-        isBuildingAlive(b) &&
-        (isMyBuilding(b) || (!!user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === "0")))
-    ), [placedBuildings, isMyBuilding, user]);
+    const lastMovementSyncTimeRef = useRef(0);
+    const lastMovementSyncPosRef = useRef<{ x: number, y: number } | null>(null);
+    const movementSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const updatePresenceRef = useRef<() => void>(() => {});
 
-    const hasCompletedTownHall = useMemo(() => placedBuildings.some(b =>
-        TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
-        isBuildingAlive(b) &&
-        !b.isConstructing &&
-        (isMyBuilding(b) || (!!user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === "0")))
-    ), [placedBuildings, isMyBuilding, user]);
+    // Helper function to convert screen to world coordinates (without useCallback dependency)
+    const screenToWorldSimple = useCallback((screenX: number, screenY: number, camOffset: { x: number, y: number }, zoom: number): { x: number, y: number } => {
+        const adjustedX = screenX - camOffset.x;
+        const adjustedY = screenY - camOffset.y;
+        const scaledTileWidth = TILE_WIDTH * zoom;
+        const scaledTileHeight = TILE_HEIGHT * zoom;
+        const x = Math.round((adjustedX / (scaledTileWidth / 2) + adjustedY / (scaledTileHeight / 2)) / 2);
+        const y = Math.round((adjustedY / (scaledTileHeight / 2) - adjustedX / (scaledTileWidth / 2)) / 2);
+        if (isWorldWrapped) {
+            return { x: wrapCoord(x, WORLD_WIDTH_TILES), y: wrapCoord(y, WORLD_HEIGHT_TILES) };
+        }
+        return { x, y };
+    }, [isWorldWrapped]);
+
+    const getCurrentWorldCenter = useCallback((): { x: number; y: number } => {
+        const zoom = ZOOM_LEVELS[zoomIndexRef.current];
+        return screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
+    }, [screenToWorldSimple]);
+
+    // Throttled movement reporting so other players see synchronous smooth movement without overloading the server
+    const reportPlayerMovement = useCallback((immediate = false) => {
+        if (!isAuthReady || !user || !initialLoadDone.current) return;
+        const now = Date.now();
+        const minInterval = 400; // ms throttle during active drag (at most 2.5 lightweight updates/sec)
+
+        const performSync = async () => {
+            if (!user || !initialLoadDone.current) return;
+            const worldCenter = getCurrentWorldCenter();
+            
+            const lastPos = lastMovementSyncPosRef.current;
+            if (lastPos && Math.hypot(worldCenter.x - lastPos.x, worldCenter.y - lastPos.y) < 0.25) {
+                return;
+            }
+
+            lastMovementSyncTimeRef.current = Date.now();
+            lastMovementSyncPosRef.current = worldCenter;
+
+            try {
+                const presenceDocRef = doc(db, 'presence', user.uid);
+                await updateDoc(presenceDocRef, {
+                    x: worldCenter.x,
+                    y: worldCenter.y,
+                    lastSeen: Date.now()
+                });
+            } catch (e) {
+                // Non-critical, ignore
+            }
+        };
+
+        if (immediate) {
+            if (movementSyncTimeoutRef.current) {
+                clearTimeout(movementSyncTimeoutRef.current);
+                movementSyncTimeoutRef.current = null;
+            }
+            void performSync();
+            return;
+        }
+
+        if (now - lastMovementSyncTimeRef.current >= minInterval) {
+            void performSync();
+        } else if (!movementSyncTimeoutRef.current) {
+            const delay = minInterval - (now - lastMovementSyncTimeRef.current);
+            movementSyncTimeoutRef.current = setTimeout(() => {
+                movementSyncTimeoutRef.current = null;
+                void performSync();
+            }, Math.max(50, delay));
+        }
+    }, [isAuthReady, user, getCurrentWorldCenter]);
+
+    const triggerLevelUpJuice = useCallback((params: {
+        type: 'town_hall' | 'glory_rank';
+        newLevel: number;
+        worldX?: number;
+        worldY?: number;
+    }) => {
+        const now = Date.now();
+        const { type, newLevel } = params;
+
+        // 1. Play triumphant fanfare & victory chord from Web Audio
+        playLevelUpFanfare(gameSoundsVolume, type);
+
+        // 2. Set celebration banner for HUD display
+        const celebration = createLevelUpCelebration({
+            type,
+            newLevel,
+            now,
+            durationMs: 3800,
+        });
+        setLevelUpCelebration(celebration);
+
+        // 3. Spawn radiating golden stars & floating triumph badge in world space
+        const center = getCurrentWorldCenter();
+        const targetWorldX = params.worldX ?? center.x;
+        const targetWorldY = params.worldY ?? center.y;
+
+        const starItems = createLevelUpFloatingItems({
+            type,
+            newLevel,
+            worldX: targetWorldX,
+            worldY: targetWorldY,
+            now,
+        });
+
+        if (starItems.length > 0) {
+            setFloatingJuiceItems(current => [
+                ...current.filter(item => now - item.createdAt < item.durationMs),
+                ...starItems,
+            ]);
+        }
+    }, [gameSoundsVolume, getCurrentWorldCenter]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            (window as unknown as { __triggerLevelUpJuice?: typeof triggerLevelUpJuice }).__triggerLevelUpJuice = triggerLevelUpJuice;
+        }
+        return () => {
+            if (typeof window !== 'undefined') {
+                delete (window as unknown as { __triggerLevelUpJuice?: typeof triggerLevelUpJuice }).__triggerLevelUpJuice;
+            }
+        };
+    }, [triggerLevelUpJuice]);
+
+    const prevCompletedTownHallLevelRef = useRef<number | null>(null);
+
+    // Trigger dopamine fireworks & fanfare on Town Hall Level-Up
+    useEffect(() => {
+        if (!initialLoadDone.current) return;
+        if (completedTownHallLevel <= 0) return;
+
+        if (prevCompletedTownHallLevelRef.current === null) {
+            // Baseline level established on initial data load
+            prevCompletedTownHallLevelRef.current = completedTownHallLevel;
+            return;
+        }
+
+        if (completedTownHallLevel > prevCompletedTownHallLevelRef.current) {
+            const oldLevel = prevCompletedTownHallLevelRef.current;
+            prevCompletedTownHallLevelRef.current = completedTownHallLevel;
+            console.log(`[TownHallLevelUp] ${oldLevel} > ${completedTownHallLevel}`);
+
+            const center = getCurrentWorldCenter();
+            const targetX = completedTownHall?.x ?? center.x;
+            const targetY = completedTownHall?.y ?? center.y;
+
+            triggerLevelUpJuice({
+                type: 'town_hall',
+                newLevel: completedTownHallLevel,
+                worldX: targetX,
+                worldY: targetY,
+            });
+        } else if (completedTownHallLevel !== prevCompletedTownHallLevelRef.current) {
+            prevCompletedTownHallLevelRef.current = completedTownHallLevel;
+        }
+    }, [completedTownHallLevel, completedTownHall, triggerLevelUpJuice, getCurrentWorldCenter]);
+
+    // Derived population and building states
+    const hasTownHall = useMemo(() => {
+        if (placedBuildings.some(b =>
+            TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
+            isBuildingAlive(b) &&
+            (isMyBuilding(b) || (!!user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === "0")))
+        )) {
+            return true;
+        }
+        if (user) {
+            for (const b of serverMyBuildingsRef.current.values()) {
+                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && isMyBuilding(b)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }, [placedBuildings, isMyBuilding, user]);
+
+    const hasCompletedTownHall = useMemo(() => {
+        if (placedBuildings.some(b =>
+            TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
+            isBuildingAlive(b) &&
+            !b.isConstructing &&
+            (isMyBuilding(b) || (!!user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === "0")))
+        )) {
+            return true;
+        }
+        if (user) {
+            for (const b of serverMyBuildingsRef.current.values()) {
+                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && !b.isConstructing && isMyBuilding(b)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }, [placedBuildings, isMyBuilding, user]);
 
     const tutorialForcedBuildingCompleted = useMemo(() => {
         const hasCompletedTrackedTutorialBuilding = tutorialForcedBuildingId
@@ -3600,6 +4181,28 @@ const App: React.FC = () => {
         return placedBuildings.some(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing);
     }, [placedBuildings, isMyBuilding]);
 
+    const isClanLeader = useMemo(() => {
+        return Boolean(currentClan && user && currentClan.leaderUid === user.uid);
+    }, [currentClan, user]);
+
+    const controlledWatchtowersCount = useMemo(() => {
+        if (!currentClan) return 0;
+        return placedBuildings.filter(b =>
+            isWatchtowerId(b.buildingId) &&
+            !b.isConstructing &&
+            (b.ownerId === currentClan.leaderUid || (user && b.ownerId === user.uid))
+        ).length;
+    }, [placedBuildings, currentClan, user]);
+
+    const currentClanBank = useMemo(() => {
+        if (!currentClan) return 0;
+        const castle = placedBuildings.find(b =>
+            BANDIT_CASTLE_IDS.has(Number(b.buildingId)) &&
+            (b.ownerId === currentClan.leaderUid || (user && b.ownerId === user.uid))
+        );
+        return castle?.bank || 0;
+    }, [placedBuildings, currentClan, user]);
+
     const hasFinancialIntelligence = useMemo(() => {
         return placedBuildings.some(b => [340, 341, 342].includes(b.buildingId) && isMyBuilding(b) && !b.isConstructing);
     }, [placedBuildings, isMyBuilding]);
@@ -3608,11 +4211,55 @@ const App: React.FC = () => {
         return placedBuildings.some(b => [341, 342].includes(b.buildingId) && isMyBuilding(b) && !b.isConstructing);
     }, [placedBuildings, isMyBuilding]);
 
+    const getClanForBuilding = useCallback((building: PlacedBuilding): Clan | null => {
+        const ownerIdStr = String(building.ownerId || '');
+        if (isMyBuilding(building) || (user && ownerIdStr === user.uid)) {
+            if (currentClan) return currentClan;
+            const byLeader = clansRef.current.find(c => user && c.leaderUid === user.uid);
+            if (byLeader) return byLeader;
+            const byClanId = clansRef.current.find(c => Number(c.id) === Number(normalizeClanIdValue(playerClanIdRef.current)));
+            if (byClanId) return byClanId;
+        }
+        if (ownerIdStr && ownerIdStr !== '0' && ownerIdStr !== GUEST_ID && ownerIdStr !== 'monster' && ownerIdStr !== '-1') {
+            const byLeader = clansRef.current.find(c => c.leaderUid === ownerIdStr);
+            if (byLeader) return byLeader;
+            const ownerUser = allUsers[ownerIdStr];
+            if (ownerUser?.clanId) {
+                const byUserClan = clansRef.current.find(c => Number(c.id) === Number(normalizeClanIdValue(ownerUser.clanId)));
+                if (byUserClan) return byUserClan;
+            }
+        }
+        // Fallback: check if sector has a Bandit Castle controlling it
+        const zoneX = Math.floor(building.x / ZONE_SIZE);
+        const zoneY = Math.floor(building.y / ZONE_SIZE);
+        const castle = placedBuildings.find(b =>
+            BANDIT_CASTLE_IDS.has(Number(b.buildingId)) &&
+            isBuildingAlive(b) &&
+            !b.isConstructing &&
+            Math.floor(b.x / ZONE_SIZE) === zoneX &&
+            Math.floor(b.y / ZONE_SIZE) === zoneY
+        );
+        if (castle) {
+            const castleOwnerId = String(castle.ownerId || '');
+            if (castleOwnerId && castleOwnerId !== '0') {
+                const byLeader = clansRef.current.find(c => c.leaderUid === castleOwnerId);
+                if (byLeader) return byLeader;
+                const castleOwnerUser = allUsers[castleOwnerId];
+                if (castleOwnerUser?.clanId) {
+                    const byCastleClan = clansRef.current.find(c => Number(c.id) === Number(normalizeClanIdValue(castleOwnerUser.clanId)));
+                    if (byCastleClan) return byCastleClan;
+                }
+            }
+        }
+        return null;
+    }, [isMyBuilding, user, currentClan, allUsers, placedBuildings]);
+
     // Sync refs with current state
     useEffect(() => { userRef.current = user; }, [user]);
     useEffect(() => { isAuthReadyRef.current = isAuthReady; }, [isAuthReady]);
     useEffect(() => { placedBuildingsRef.current = placedBuildings; }, [placedBuildings]);
     useEffect(() => { mapResourcesRef.current = mapResources; }, [mapResources]);
+    useEffect(() => { droppedItemsRef.current = droppedItems; }, [droppedItems]);
     const playerEnergyRef = useRef(playerEnergy);
     useEffect(() => { playerEnergyRef.current = playerEnergy; }, [playerEnergy]);
     const deletingDroppedItemsRef = useRef<Map<string, number>>(new Map());
@@ -3849,7 +4496,7 @@ const App: React.FC = () => {
                         zoneId: getZoneId(pos.x, pos.y),
                         buildingId: MOUNTAIN_ID,
                         ownerId: "-1",
-                        ownerName: "Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°",
+                        ownerName: "Система",
                         isConstructing: false,
                         constructionEndTime: 0,
                         type: BuildingType.Default,
@@ -3874,7 +4521,7 @@ const App: React.FC = () => {
                         zoneId: getZoneId(pos.x, pos.y),
                         buildingId: RIVER_ID,
                         ownerId: "-1",
-                        ownerName: "Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°",
+                        ownerName: "Система",
                         isConstructing: false,
                         constructionEndTime: 0,
                         type: BuildingType.Default,
@@ -4361,15 +5008,15 @@ const App: React.FC = () => {
 
                         if (hasIntel) {
                             let text = "";
-                            if (newResource.type === 'oil') text = `Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} Р С•Р В±Р Р…Р В°РЎР‚РЎС“Р В¶Р ВµР Р…Р С• Р Р…Р С•Р Р†Р С•Р Вµ Р СР ВµРЎРѓРЎвЂљР С•РЎР‚Р С•Р В¶Р Т‘Р ВµР Р…Р С‘Р Вµ Р Р…Р ВµРЎвЂћРЎвЂљР С‘!`;
-                            else if (newResource.type === 'quarry') text = `Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} Р С•Р В±Р Р…Р В°РЎР‚РЎС“Р В¶Р ВµР Р…Р С• Р Р…Р С•Р Р†Р С•Р Вµ Р СР ВµРЎРѓРЎвЂљР С•РЎР‚Р С•Р В¶Р Т‘Р ВµР Р…Р С‘Р Вµ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР С•Р Р†!`;
-                            else if (newResource.type === 'chest') text = `Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} Р С•Р В±Р Р…Р В°РЎР‚РЎС“Р В¶Р ВµР Р… РЎРѓРЎС“Р Р…Р Т‘РЎС“Р С” РЎРѓ РЎРѓР С•Р С”РЎР‚Р С•Р Р†Р С‘РЎвЂ°Р В°Р СР С‘!`;
+                            if (newResource.type === 'oil') text = `В секторе ${sectorX}-${sectorY} обнаружено новое месторождение нефти!`;
+                            else if (newResource.type === 'quarry') text = `В секторе ${sectorX}-${sectorY} обнаружено новое месторождение ресурсов!`;
+                            else if (newResource.type === 'chest') text = `В секторе ${sectorX}-${sectorY} обнаружен сундук с сокровищами!`;
 
                             if (text) {
                                 setChatHistory(history => {
                                     const msg: ChatMessage = {
                                         id: Date.now() + Math.random(),
-                                        sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°',
+                                        sender: 'Система',
                                         text: text,
                                         type: 'system',
                                         timestamp: Date.now(),
@@ -4441,7 +5088,7 @@ const App: React.FC = () => {
     // No need to seed zones when players join - all 7500 trees (300 per sector) are already there
 
     const handleResetMap = async () => {
-        if (!window.confirm("Р С›Р РЋР СћР С›Р В Р С›Р вЂ“Р СњР С›! Р В­РЎвЂљР С• РЎС“Р Т‘Р В°Р В»Р С‘РЎвЂљ Р вЂ™Р РЋР вЂў Р В·Р Т‘Р В°Р Р…Р С‘РЎРЏ Р С‘ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓРЎвЂ№ Р Р…Р В° Р С”Р В°РЎР‚РЎвЂљР Вµ. Вы РЎС“Р Р†Р ВµРЎР‚Р ВµР Р…РЎвЂ№?")) return;
+        if (!window.confirm("ОСТОРОЖНО! Это удалит ВСЕ здания и ресурсы на карте. Вы уверены?")) return;
 
         try {
             console.log("?? [RESET] Clearing all map data...");
@@ -4450,7 +5097,7 @@ const App: React.FC = () => {
             await deleteAll('map_resources');
             await deleteAll('dropped_items');
 
-            alert("Р С™Р В°РЎР‚РЎвЂљР В° Р С•РЎвЂЎР С‘РЎвЂ°Р ВµР Р…Р В°! Р СџР ВµРЎР‚Р ВµР В·Р В°Р С–РЎР‚РЎС“Р В·Р С‘РЎвЂљР Вµ РЎРѓРЎвЂљРЎР‚Р В°Р Р…Р С‘РЎвЂ РЎС“ Р Т‘Р В»РЎРЏ Р С–Р ВµР Р…Р ВµРЎР‚Р В°РЎвЂ Р С‘Р С‘ Р Р…Р С•Р Р†РЎвЂ№РЎвЂ¦ Р СР С•Р Р…РЎРѓРЎвЂљРЎР‚Р С•Р Р†.");
+            alert("Карта очищена! Перезагрузите страницу для генерации новых монстров.");
             window.location.reload();
         } catch (e) {
             handleFirestoreError(e, OperationType.DELETE, "GLOBAL_MAP_RESET");
@@ -4509,7 +5156,7 @@ const App: React.FC = () => {
             ]);
             const allBuildings = allBuildingsSnap.docs.map(d => ({ id: d.id, ...d.data() } as PlacedBuilding));
             const movableBuildings = allBuildings.filter(b => b.ownerId !== 'monster' && b.ownerId !== '-1');
-            const allResources = allResourcesSnap.docs.map(d => d.data() as MapResource);
+            const allResources = allResourcesSnap.docs.map(d => ({ id: d.id, ...d.data() } as MapResource));
             const resourceByPosition = new Map<string, MapResource>();
             allResources.forEach(resource => {
                 resourceByPosition.set(`${resource.x},${resource.y}`, resource);
@@ -4626,10 +5273,6 @@ const App: React.FC = () => {
                 }
             }
 
-            const occupiedPositions = new Set([
-                ...allBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`),
-                ...allResources.map(r => `${r.x},${r.y}`)
-            ]);
             let resourceCollisionsFixed = 0;
 
             for (const building of allBuildings) {
@@ -4641,38 +5284,16 @@ const App: React.FC = () => {
                 const allowedResourceTypes = new Set(getAllowedResourceTypesForBuildingId(Number(building.buildingId)));
                 if (allowedResourceTypes.has(resource.type)) continue;
 
-                let foundSpot: { x: number; y: number } | null = null;
-                for (let radius = 1; radius <= 20 && !foundSpot; radius++) {
-                    for (let dx = -radius; dx <= radius && !foundSpot; dx++) {
-                        for (let dy = -radius; dy <= radius && !foundSpot; dy++) {
-                            if (dx === 0 && dy === 0) continue;
-
-                            const testX = building.x + dx;
-                            const testY = building.y + dy;
-                            if (testX < 0 || testX >= WORLD_WIDTH_TILES || testY < 0 || testY >= WORLD_HEIGHT_TILES) continue;
-
-                            const key = `${testX},${testY}`;
-                            if (occupiedPositions.has(key)) continue;
-
-                            foundSpot = { x: testX, y: testY };
-                        }
-                    }
-                }
-
-                if (foundSpot) {
-                    const docId = String(building.id);
-                    const newZoneId = getZoneId(foundSpot.x, foundSpot.y);
-                    await updateDoc(doc(db, 'buildings', docId), {
-                        x: foundSpot.x,
-                        y: foundSpot.y,
-                        zoneId: newZoneId
-                    });
-                    occupiedPositions.delete(`${building.x},${building.y}`);
-                    occupiedPositions.add(`${foundSpot.x},${foundSpot.y}`);
-                    console.log(`[CollisionDetect] Moved building ${building.id} away from resource ${resource.type} at (${building.x},${building.y}) to (${foundSpot.x},${foundSpot.y})`);
+                // An invalid resource (e.g. respawned tree) overlaps a placed building.
+                // NEVER move the player's building! Remove the colliding resource instead.
+                const resourceDocId = String(resource.id || `${resource.x}_${resource.y}`);
+                try {
+                    await deleteDoc(doc(db, 'map_resources', resourceDocId));
+                    resourceByPosition.delete(`${building.x},${building.y}`);
+                    console.log(`[CollisionDetect] Removed colliding resource ${resource.type} (${resourceDocId}) under building ${building.id} at (${building.x},${building.y})`);
                     resourceCollisionsFixed++;
-                } else {
-                    console.warn(`[CollisionDetect] Could not find free spot for building ${building.id} away from resource at (${building.x},${building.y})`);
+                } catch (delErr) {
+                    console.error(`[CollisionDetect] Failed to remove colliding resource ${resourceDocId}:`, delErr);
                 }
             }
             
@@ -4708,12 +5329,14 @@ const App: React.FC = () => {
     // ============================================================
 
     const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+        initComboAudio();
         isDraggingRef.current = true;
         hasDraggedRef.current = false;
         dragStartRef.current = { x: event.clientX, y: event.clientY };
     }, []);
 
     const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+        initComboAudio();
         if (event.touches.length === 1) {
             const touch = event.touches[0];
             isDraggingRef.current = true;
@@ -4756,6 +5379,7 @@ const App: React.FC = () => {
                     alert("Перемещать можно только свои постройки.");
                     return;
                 }
+                const docId = String(buildingToMove.id);
                 setIsMoveActionProcessing(true);
                 try {
                     const placementGuard = await validatePlacementTarget(gridX, gridY, {
@@ -4779,18 +5403,23 @@ const App: React.FC = () => {
                     const isMountainOrRiver = Number(buildingToMove.buildingId) === MOUNTAIN_ID || Number(buildingToMove.buildingId) === RIVER_ID;
                     const newZoneId = getZoneId(gridX, gridY);
 
-                    const docId = String(buildingToMove.id);
                     const moveStartedAt = Date.now();
                     lastInteractionRef.current.set(docId, moveStartedAt);
                     recentMoveInteractionRef.current.set(docId, moveStartedAt);
+                    if (buildingToMove.gameId) {
+                        const gId = String(buildingToMove.gameId);
+                        lastInteractionRef.current.set(gId, moveStartedAt);
+                        recentMoveInteractionRef.current.set(gId, moveStartedAt);
+                    }
 
                     setPlacedBuildings(prev => prev.map(b => {
-                        if (String(b.id) === String(buildingToMove.id)) {
+                        if (String(b.id) === String(buildingToMove.id) || (buildingToMove.gameId && String(b.gameId) === String(buildingToMove.gameId))) {
                             return {
                                 ...b,
                                 x: gridX,
                                 y: gridY,
                                 zoneId: newZoneId,
+                                lastMoveTime: moveStartedAt,
                                 isLocal: true,
                                 ...(isMountainOrRiver && user ? { ownerId: user.uid } : {})
                             };
@@ -4798,19 +5427,42 @@ const App: React.FC = () => {
                         return b;
                     }));
 
+                    // Synchronize server cache maps immediately so subsequent snapshot merges won't revert coordinates
+                    const updatedMovePartial = {
+                        x: gridX,
+                        y: gridY,
+                        zoneId: newZoneId,
+                        lastMoveTime: moveStartedAt,
+                        ...(isMountainOrRiver && user ? { ownerId: user.uid } : {})
+                    };
+                    [serverMyBuildingsRef.current, serverZoneBuildingsRef.current].forEach(map => {
+                        for (const [key, b] of map.entries()) {
+                            const matches = String(key) === docId || String(b.id) === docId ||
+                                (b.gameId && String(b.gameId) === docId) ||
+                                (buildingToMove.gameId && (String(b.id) === String(buildingToMove.gameId) || String(b.gameId) === String(buildingToMove.gameId)));
+                            if (matches) {
+                                map.set(key, { ...b, ...updatedMovePartial });
+                            }
+                        }
+                    });
+
                     setPlayerEnergy(prev => prev - moveCost);
                     const buildingInfo = buildingData.find(b => b.id === buildingToMove.buildingId);
                     addHistoryLog(`Перемещен объект "${buildingInfo?.name}" с [${buildingToMove.x}, ${buildingToMove.y}] на [${gridX}, ${gridY}]. Расход: ${moveCost} энергии.`, 'move');
                     setMoveMode({ active: false, building: null });
 
                     if (isAuthReady && user) {
-                        const updates: any = { x: gridX, y: gridY, zoneId: newZoneId };
+                        const updates: any = { x: gridX, y: gridY, zoneId: newZoneId, lastMoveTime: moveStartedAt };
                         if (isMountainOrRiver) {
                             updates.ownerId = user.uid;
                         }
                         await updateDoc(doc(db, 'buildings', docId), updates);
+                        updateDoc(doc(db, 'users', user.uid), {
+                            energy: increment(-moveCost)
+                        }).catch(e => console.warn('[MoveBuilding] Failed to deduct energy in DB:', e));
                     }
                 } catch (error) {
+                    console.error('[MoveBuilding] Error during building move:', error);
                     setPlacedBuildings(prev => prev.map(b => {
                         if (String(b.id) !== String(buildingToMove.id)) return b;
                         return {
@@ -4821,7 +5473,28 @@ const App: React.FC = () => {
                             ...(buildingToMove.ownerId !== undefined ? { ownerId: buildingToMove.ownerId } : {})
                         };
                     }));
+                    const revertPartial = {
+                        x: buildingToMove.x,
+                        y: buildingToMove.y,
+                        zoneId: buildingToMove.zoneId,
+                        ...(buildingToMove.ownerId !== undefined ? { ownerId: buildingToMove.ownerId } : {})
+                    };
+                    [serverMyBuildingsRef.current, serverZoneBuildingsRef.current].forEach(map => {
+                        for (const [key, b] of map.entries()) {
+                            const matches = String(key) === docId || String(b.id) === docId ||
+                                (b.gameId && String(b.gameId) === docId) ||
+                                (buildingToMove.gameId && (String(b.id) === String(buildingToMove.gameId) || String(b.gameId) === String(buildingToMove.gameId)));
+                            if (matches) {
+                                map.set(key, { ...b, ...revertPartial });
+                            }
+                        }
+                    });
                     setPlayerEnergy(prev => prev + ((Number(buildingToMove.buildingId) === MOUNTAIN_ID || Number(buildingToMove.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST));
+                    if (isAuthReady && user) {
+                        updateDoc(doc(db, 'users', user.uid), {
+                            energy: increment((Number(buildingToMove.buildingId) === MOUNTAIN_ID || Number(buildingToMove.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST)
+                        }).catch(e => console.warn('[MoveBuilding] Failed to refund energy in DB:', e));
+                    }
                     setMoveMode({ active: false, building: null });
                     handleFirestoreError(error, OperationType.UPDATE, `buildings/${String(buildingToMove.id)}`);
                 } finally {
@@ -4840,7 +5513,7 @@ const App: React.FC = () => {
             const droppedItemIndex = droppedItems.findIndex(i => i.x === gridX && i.y === gridY);
             if (droppedItemIndex !== -1) {
                 if (isBanned()) {
-                    alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ РЎРѓР С•Р В±Р С‘РЎР‚Р В°РЎвЂљРЎРЉ Р С—РЎР‚Р ВµР Т‘Р СР ВµРЎвЂљРЎвЂ№!");
+                    alert("Вы забанены и не можете собирать предметы!");
                     return;
                 }
 
@@ -4851,23 +5524,25 @@ const App: React.FC = () => {
                 deletingDroppedItemsRef.current.set(String(item.id), Date.now());
 
                 // Add to inventory or gold
-                if (item.itemId === 999) {
-                    setPlayerGold(prev => prev + item.amount);
+                const numericItemId = Number(item.itemId);
+                const itemAmount = Number(item.amount) || 1;
+                if (numericItemId === 999) {
+                    setPlayerGold(prev => prev + itemAmount);
                     if (isAuthReadyRef.current && userRef.current) {
-                        updateDoc(doc(db, 'users', userRef.current.uid), { gold: increment(item.amount) }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
+                        updateDoc(doc(db, 'users', userRef.current.uid), { gold: increment(itemAmount) }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
                     }
-                    addHistoryLog(`Подобрано ${item.amount} монет!`, 'economy');
+                    addHistoryLog(`Подобрано ${itemAmount} монет!`, 'economy');
                 } else {
                     setInventory(prev => ({
                         ...prev,
-                        [item.itemId]: (prev[item.itemId] || 0) + item.amount
+                        [numericItemId]: (prev[numericItemId] || 0) + itemAmount
                     }));
                     if (isAuthReadyRef.current && userRef.current) {
-                        const itemInfo = itemData.find(i => i.id === item.itemId);
+                        const itemInfo = itemData.find(i => Number(i.id) === numericItemId);
                         updateDoc(doc(db, 'users', userRef.current.uid), {
-                            [`inventory.${item.itemId}`]: increment(item.amount)
+                            [`inventory.${numericItemId}`]: increment(itemAmount)
                         }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
-                        addHistoryLog(`Подобрано: ${itemInfo?.name || 'предмет'} x${item.amount}`, 'social');
+                        addHistoryLog(`Подобрано: ${itemInfo?.name || 'предмет'} x${itemAmount}`, 'social');
                     }
                 }
 
@@ -4892,7 +5567,7 @@ const App: React.FC = () => {
 
                 // Special direct interaction for Lilly/Mushroom and Factories
                 const buildingIdNum = Number(buildingAtTile.buildingId);
-                const isLilyOrMushroom = [500, 393, 394, 395, 396, 397, 398, 399, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingIdNum);
+                const isLilyOrMushroom = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingIdNum);
                 const isDirectFactory = DIRECT_INTERACTION_FACTORIES.includes(buildingIdNum);
 
                 if ((isLilyOrMushroom || isDirectFactory) && isMyBuilding(buildingAtTile)) {
@@ -4974,7 +5649,12 @@ const App: React.FC = () => {
                             return;
                         }
 
-                        playCoinSound();
+                        triggerGatherJuice({
+                            worldX: resource.x,
+                            worldY: resource.y,
+                            gold: Math.max(0, hitResult.rewardGold || 0),
+                            resources: { wood: hitResult.rewardWood || 1 },
+                        });
 
                         if (typeof hitResult.playerEnergy === 'number') {
                             setPlayerEnergy(Math.max(0, hitResult.playerEnergy));
@@ -5020,6 +5700,25 @@ const App: React.FC = () => {
                             }));
                         }
 
+                        const isTreeFelled = Boolean(hitResult.depleted || (typeof hitResult.currentHp === 'number' && hitResult.currentHp <= 0));
+                        if (isTreeFelled) {
+                            setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
+                            if (lumberjackBuffUntil > Date.now()) {
+                                updatePlayerResources(0, 0, { [WOOD_ITEM_ID]: 1 });
+                                addHistoryLog('🪓 Бонус Эликсира дровосека: +1 дополнительное дерево за срубленный ствол!', 'economy');
+                                setPermitPurchaseToast('+1 бонусное дерево 🪓');
+                                if (permitPurchaseToastTimerRef.current !== null) {
+                                    window.clearTimeout(permitPurchaseToastTimerRef.current);
+                                }
+                                permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                                    setPermitPurchaseToast(null);
+                                    permitPurchaseToastTimerRef.current = null;
+                                }, 2000);
+                            }
+                        } else if (typeof hitResult.currentHp === 'number') {
+                            setMapResources(prev => prev.map(r => r.x === resource.x && r.y === resource.y ? { ...r, hp: hitResult.currentHp } : r));
+                        }
+
                         addHistoryLog(
                             `Рубка дерева. Получено: дерево (+${hitResult.rewardWood || 1}) и ${Math.max(0, hitResult.rewardGold || 0)} монет.`,
                             'economy'
@@ -5027,7 +5726,7 @@ const App: React.FC = () => {
 
                         const resourceZone = getZoneId(resource.x, resource.y);
                         const sectorOwnerBuilding = placedBuildings.find(b =>
-                            b.buildingId === WATCHTOWER_ID &&
+                            isWatchtowerId(b.buildingId) &&
                             b.zoneId === resourceZone &&
                             b.ownerId !== (user?.uid ?? '0') &&
                             b.ownerId !== '-1' &&
@@ -5039,8 +5738,8 @@ const App: React.FC = () => {
                             const sectorY = Math.floor(resource.y / ZONE_SIZE) + 1;
                             const theftMsg: ChatMessage = {
                                 id: Date.now() + Math.random(),
-                                sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°',
-                                text: `?? Р СљР В°РЎР‚Р С•Р Т‘РЎвЂРЎР‚! Р ВР С–РЎР‚Р С•Р С” "${playerName}" РЎРѓРЎР‚РЎС“Р В±Р С‘Р В» Р Т‘Р ВµРЎР‚Р ВµР Р†Р С• Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${sectorX}-${sectorY} [${resource.x}, ${resource.y}]!`,
+                                sender: 'Система',
+                                text: `🪓 Мародёр! Игрок "${playerName}" срубил дерево в вашем секторе ${sectorX}-${sectorY} [${resource.x}, ${resource.y}]!`,
                                 type: 'system',
                                 timestamp: Date.now(),
                                 tab: 'loot',
@@ -5078,6 +5777,7 @@ const App: React.FC = () => {
 
                         if (errorCode === 'TREE_NOT_FOUND' || errorCode === 'TREE_NOT_ALIVE') {
                             console.warn('[TreeHit][client] Tree already changed on server:', { resourceId, status, details });
+                            setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
                             return;
                         }
 
@@ -5118,6 +5818,11 @@ const App: React.FC = () => {
                     const randomCoins = coinRewards[Math.floor(Math.random() * coinRewards.length)];
                     updatePlayerResources(randomCoins, 0, {});
                     addHistoryLog(`Найден клад в точке [${gridX}, ${gridY}]! Получено ${randomCoins} монет.`, 'economy');
+                    triggerGatherJuice({
+                        worldX: resource.x,
+                        worldY: resource.y,
+                        gold: randomCoins,
+                    });
                 }
 
                 if (newHp <= 0 || resource.type === 'chest') {
@@ -5132,13 +5837,14 @@ const App: React.FC = () => {
                     }
                 }
             } else {
-                const placementGuard = await validatePlacementTarget(gridX, gridY);
-                if (!placementGuard.ok) {
-                    alert(placementGuard.message);
-                    return;
-                }
+                const alreadyHasTownHall = hasTownHall ||
+                    isPlacingTownHallRef.current ||
+                    placedBuildingsRef.current.some(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && isMyBuilding(b)) ||
+                    (userRef.current ? Array.from(serverMyBuildingsRef.current.values()).some(b =>
+                        TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && isMyBuilding(b)
+                    ) : false);
 
-                if (!hasTownHall) {
+                if (!alreadyHasTownHall) {
                     const townHallBuilding = buildingData.find(b => b.id === TOWN_HALL_ID);
                     if (townHallBuilding) {
                         // RACE-CONDITION FIX: use refs instead of stale closure values.
@@ -5156,6 +5862,31 @@ const App: React.FC = () => {
                             alert('Аккаунт еще синхронизируется. Попробуйте поставить Городской центр через пару секунд.');
                             return;
                         }
+
+                        // SYNCHRONOUS LOCK: prevent any concurrent click from placing a second Town Hall
+                        isPlacingTownHallRef.current = true;
+
+                        const placementGuard = await validatePlacementTarget(gridX, gridY);
+                        if (!placementGuard.ok) {
+                            isPlacingTownHallRef.current = false;
+                            alert(placementGuard.message);
+                            return;
+                        }
+
+                        // Double check on server for safety before placing
+                        try {
+                            const userBuildingsSnap = await getDocs(query(collection(db, 'buildings'), where('ownerId', '==', currentUser.uid)));
+                            const hasTownHallOnServer = userBuildingsSnap.docs.some(d => {
+                                const b = d.data() as PlacedBuilding;
+                                return TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b);
+                            });
+                            if (hasTownHallOnServer) {
+                                return;
+                            }
+                        } catch (checkErr) {
+                            console.warn('[TH-PLACE] Server check failed:', checkErr);
+                        }
+
                         const newTownHallId = makePlacedEntityId(currentUser.uid);
                         const newTownHall: PlacedBuilding = {
                             id: newTownHallId,
@@ -5166,8 +5897,9 @@ const App: React.FC = () => {
                             ownerId: currentUser.uid,
                             ownerName: playerName,
                             timestamp: Date.now(),
-                            isConstructing: true,
-                            constructionEndTime: Date.now() + (townHallBuilding.stats.constructionTimeSeconds || 0) * 1000,
+                            isConstructing: false,
+                            constructionEndTime: 0,
+                            workState: 'idle',
                             type: BuildingType.TownHall,
                             hp: townHallBuilding.stats.durability,
                             maxHp: townHallBuilding.stats.durability,
@@ -5181,6 +5913,7 @@ const App: React.FC = () => {
                                 console.info(`[TH-PLACE] Saved Town Hall ${docId} at [${gridX}, ${gridY}]`);
                             }
                         } catch (e) {
+                            isPlacingTownHallRef.current = false;
                             setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
                             handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
                             alert('Ошибка сохранения Городского центра. Попробуйте еще раз.');
@@ -5188,6 +5921,11 @@ const App: React.FC = () => {
                         addHistoryLog("Основан новый город!", 'build');
                     }
                 } else {
+                    const placementGuard = await validatePlacementTarget(gridX, gridY);
+                    if (!placementGuard.ok) {
+                        alert(placementGuard.message);
+                        return;
+                    }
                     if (tutorialAutoBuildMode === 'frogHouse') {
                         const tutorialHouse = buildingData.find(b => b.id === TUTORIAL_FROG_HOUSE_ID);
                         if (!tutorialHouse) {
@@ -5202,7 +5940,6 @@ const App: React.FC = () => {
                             if (placedHouse) {
                                 setTutorialForcedBuildingId(String(placedHouse.id));
                                 setTutorialAutoBuildMode(null);
-                                await new Promise(resolve => window.setTimeout(resolve, 1000));
                                 setPlacedBuildings(prev => prev.map(b => String(b.id) === String(placedHouse.id)
                                     ? { ...b, isConstructing: false, constructionEndTime: 0, workState: 'idle' }
                                     : b
@@ -5235,7 +5972,6 @@ const App: React.FC = () => {
                             if (placedLilyPond) {
                                 setTutorialForcedBuildingId(String(placedLilyPond.id));
                                 setTutorialAutoBuildMode(null);
-                                await new Promise(resolve => window.setTimeout(resolve, 1000));
                                 setPlacedBuildings(prev => prev.map(b => String(b.id) === String(placedLilyPond.id)
                                     ? { ...b, isConstructing: false, constructionEndTime: 0, workState: 'idle' }
                                     : b
@@ -5262,8 +5998,11 @@ const App: React.FC = () => {
     }, [placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
 
     const handleMouseUp = useCallback(async (event: React.MouseEvent<HTMLCanvasElement>) => {
+        if (isDraggingRef.current && hasDraggedRef.current) {
+            reportPlayerMovement(true);
+        }
         await handleCanvasPointerUp(event.clientX, event.clientY);
-    }, [handleCanvasPointerUp]);
+    }, [handleCanvasPointerUp, reportPlayerMovement]);
 
     const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
         const wasDragging = hasDraggedRef.current;
@@ -5274,8 +6013,10 @@ const App: React.FC = () => {
         if (!wasDragging) {
             const touch = event.changedTouches[0];
             void handleCanvasPointerUp(touch.clientX, touch.clientY, true);
+        } else {
+            reportPlayerMovement(true);
         }
-    }, [handleCanvasPointerUp]);
+    }, [handleCanvasPointerUp, reportPlayerMovement]);
 
     const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
         setLastPointerPos({ x: event.clientX, y: event.clientY });
@@ -5294,6 +6035,7 @@ const App: React.FC = () => {
 
             cameraOffsetRef.current = { x: cameraOffsetRef.current.x + dx, y: cameraOffsetRef.current.y + dy };
             dragStartRef.current = { x: event.clientX, y: event.clientY };
+            reportPlayerMovement(false);
         }
         const zoom = ZOOM_LEVELS[zoomIndex];
         const { x: gridX, y: gridY } = screenToWorld(event.clientX, event.clientY, zoom);
@@ -5314,7 +6056,7 @@ const App: React.FC = () => {
                         ownerName = "Вы";
                     } else if (hoveredBuilding.ownerId === "-1" || hoveredBuilding.ownerId === "monster") {
                         if (isMonster) {
-                            ownerName = "Р ВР С–РЎР‚Р В° (Персонаж: нет)";
+                            ownerName = "Игра (Персонаж: нет)";
                         } else if (isNature) {
                             ownerName = "Природа";
                         } else {
@@ -5337,7 +6079,7 @@ const App: React.FC = () => {
 
                     const content = (
                         <div>
-                            <p className="font-bold">{buildingInfo.name}</p>
+                            <p className="font-bold building-title-shimmer">{buildingInfo.name}</p>
                             <p className="text-xs">Владелец: <span style={{ color: ownerColor }}>{ownerName}</span></p>
                             {buildingInfo.id !== MOUNTAIN_ID && buildingInfo.id !== RIVER_ID && (
                                 <p className="text-xs">Прочность: <span className={curHp < maxHp ? 'text-red-400' : 'text-green-400'}>{curHp} / {maxHp}</span></p>
@@ -5348,7 +6090,7 @@ const App: React.FC = () => {
                             {buildingInfo.stats.workTimeSeconds && hoveredBuilding.workState === 'working' && (
                                 <p className="text-xs text-blue-400">Р В Р В°Р В±Р С•РЎвЂљР В°Р ВµРЎвЂљ...</p>
                             )}
-                            {buildingInfo.id === WATCHTOWER_ID && hoveredBuilding.taxRate !== undefined && (
+                            {isWatchtowerId(buildingInfo.id) && hoveredBuilding.taxRate !== undefined && (
                                 <p className="text-xs text-purple-400">Налог сектора: {hoveredBuilding.taxRate}%</p>
                             )}
                             {isProtected && (
@@ -5391,8 +6133,9 @@ const App: React.FC = () => {
 
             cameraOffsetRef.current = { x: cameraOffsetRef.current.x + dx, y: cameraOffsetRef.current.y + dy };
             dragStartRef.current = { x: touch.clientX, y: touch.clientY };
+            reportPlayerMovement(false);
         }
-    }, []);
+    }, [reportPlayerMovement]);
 
     const placeBuildingAtTile = useCallback(async (
         building: Building,
@@ -5450,7 +6193,7 @@ const App: React.FC = () => {
                     return TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b);
                 });
                 if (hasTownHallOnServer) {
-                    alert("Р Р€ Р Р†Р В°РЎРѓ РЎС“Р В¶Р Вµ Р ВµРЎРѓРЎвЂљРЎРЉ Р вЂњР С•РЎР‚Р С•Р Т‘РЎРѓР С”Р С•Р в„– РЎвЂ Р ВµР Р…РЎвЂљРЎР‚!");
+                    alert("У вас уже есть Городской центр!");
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                     return null;
                 }
@@ -5500,7 +6243,16 @@ const App: React.FC = () => {
             ? baseBuildingPermits + Math.max(0, extraBuildingPermitsRef.current)
             : maxBuildings;
 
-        if (effectiveBuildingCount >= effectiveLimit && !isTownHallBuild) {
+        const hasOwnFrogHouse = placedBuildings.some(b => isMyBuilding(b) && Number(b.buildingId) === TUTORIAL_FROG_HOUSE_ID);
+        const hasOwnLilyPond = placedBuildings.some(b => isMyBuilding(b) && Number(b.buildingId) === TUTORIAL_LILY_POND_ID);
+
+        const isTutorialFreeBuilding = Boolean(
+            (isTownHallBuild && (!hasTownHall || !townHallTutorialCompleted)) ||
+            (Number(building.id) === TUTORIAL_FROG_HOUSE_ID && (tutorialAutoBuildMode === 'frogHouse' || townHallTutorialStep === 'housePrompt' || (!townHallTutorialCompleted && !hasOwnFrogHouse))) ||
+            (Number(building.id) === TUTORIAL_LILY_POND_ID && (tutorialAutoBuildMode === 'lilyPond' || townHallTutorialStep === 'pondPrompt' || (!townHallTutorialCompleted && !hasOwnLilyPond)))
+        );
+
+        if (effectiveBuildingCount >= effectiveLimit && !isTownHallBuild && !isTutorialFreeBuilding) {
             if (traceId) {
                 recordRuntimeTraceStage('build', traceId, 'building limit decision', {
                     allowed: false,
@@ -5540,11 +6292,11 @@ const App: React.FC = () => {
             });
         }
 
-        if (building.id === CLAN_CASTLE_ID || building.id === WATCHTOWER_ID) {
+        if (building.id === CLAN_CASTLE_ID || isWatchtowerId(building.id)) {
             const zoneX = Math.floor(x / ZONE_SIZE);
             const zoneY = Math.floor(y / ZONE_SIZE);
             const zoneClanBuildings = placedBuildings.filter(b => {
-                const isClanBuilding = BANDIT_CASTLE_IDS.has(Number(b.buildingId)) || b.buildingId === WATCHTOWER_ID;
+                const isClanBuilding = BANDIT_CASTLE_IDS.has(Number(b.buildingId)) || isWatchtowerId(b.buildingId);
                 const bZoneX = Math.floor(b.x / ZONE_SIZE);
                 const bZoneY = Math.floor(b.y / ZONE_SIZE);
                 return isClanBuilding && bZoneX === zoneX && bZoneY === zoneY && !b.isConstructing;
@@ -5553,7 +6305,7 @@ const App: React.FC = () => {
             const ownZoneClanBuildings = zoneClanBuildings.filter(b => isMyBuilding(b));
             const foreignZoneClanBuilding = zoneClanBuildings.find(b => !isMyBuilding(b));
 
-            if (building.id === WATCHTOWER_ID) {
+            if (isWatchtowerId(building.id)) {
                 const hasClanCastle = placedBuildings.some(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && isMyBuilding(b) && !b.isConstructing);
                 if (!hasClanCastle) {
                     alert('Для постройки «Сторожевой башни» требуется «Бандитский замок».');
@@ -5575,7 +6327,7 @@ const App: React.FC = () => {
                     return null;
                 }
 
-                const ownWatchtowerInZone = ownZoneClanBuildings.find(b => b.buildingId === WATCHTOWER_ID);
+                const ownWatchtowerInZone = ownZoneClanBuildings.find(b => isWatchtowerId(b.buildingId));
                 if (ownWatchtowerInZone) {
                     alert('В этом секторе уже построена ваша «Сторожевая башня».');
                     setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
@@ -5600,8 +6352,8 @@ const App: React.FC = () => {
             }
         }
 
-        const rubyCost = building.rubyPrice || 0;
-        const goldCost = building.price || 0;
+        const rubyCost = isTutorialFreeBuilding ? 0 : (building.rubyPrice || 0);
+        const goldCost = isTutorialFreeBuilding ? 0 : (building.price || 0);
 
         if (rubyCost > 0) {
             if (playerRubies < rubyCost) {
@@ -5609,13 +6361,13 @@ const App: React.FC = () => {
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                 return null;
             }
-        } else if (playerGold < goldCost) {
+        } else if (goldCost > 0 && playerGold < goldCost) {
             alert("Недостаточно золота!");
             setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
             return null;
         }
 
-        if (building.constructionRequirements.population && building.type !== BuildingType.TownHall) {
+        if (building.constructionRequirements.population && building.type !== BuildingType.TownHall && !isTutorialFreeBuilding) {
             const requiredPop = building.constructionRequirements.population;
             const availablePop = maxPopulation - currentPopulation;
             if (availablePop < requiredPop) {
@@ -5627,11 +6379,10 @@ const App: React.FC = () => {
 
         const inventoryCostDeltas: Record<number, number> = {};
         if (building.constructionRequirements.resources) {
-            const missingResources = building.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
+            const missingResources = building.constructionRequirements.resources.filter(req => (Number(inventory[req.id]) || 0) < (req.amount || 0));
             if (missingResources.length > 0) {
-                const missingNames = missingResources.map(r => r.name).join(', ');
-                alert(`Недостаточно ресурсов: ${missingNames}`);
-                setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+                setBlackMarketBuilding(building);
+                setShowBlackMarketMissingModal(true);
                 return null;
             }
 
@@ -5662,7 +6413,8 @@ const App: React.FC = () => {
         const tempId = traceId || `temp-${makePlacedEntityId(currentUser?.uid)}`;
         const docId = makePlacedEntityId(currentUser?.uid);
         const nowTs = Date.now();
-        const constructionEndTime = nowTs + (building.stats.constructionTimeSeconds || 0) * 1000;
+        const isInstantTutorialBuild = isTutorialFreeBuilding;
+        const constructionEndTime = isInstantTutorialBuild ? 0 : (nowTs + (building.stats.constructionTimeSeconds || 0) * 1000);
         const newBuilding: PlacedBuilding = {
             id: tempId,
             tempId,
@@ -5676,14 +6428,14 @@ const App: React.FC = () => {
             timestamp: nowTs,
             status: 'pending',
             syncState: 'creating',
-            isConstructing: true,
+            isConstructing: !isInstantTutorialBuild,
             constructionEndTime,
-            ...([...CANNON_IDS, PROTECTED_TOWER_ID, WATCHTOWER_ID].includes(building.id) ? { lastAttackTime: nowTs } : {}),
+            ...([...CANNON_IDS, PROTECTED_TOWER_ID, ...WATCHTOWER_IDS].includes(building.id) ? { lastAttackTime: nowTs } : {}),
             ...(building.type ? { type: building.type } : {}),
             workState: 'idle',
             ...(building.stats.durability !== undefined ? { hp: building.stats.durability, maxHp: building.stats.durability } : {}),
-            ...(building.id === WATCHTOWER_ID ? { taxRate: 0 } : {}),
-            isActive: CANNON_IDS.includes(building.id) || building.id === PROTECTED_TOWER_ID || building.id === WATCHTOWER_ID ? true : false,
+            ...(isWatchtowerId(building.id) ? { taxRate: 0 } : {}),
+            isActive: Boolean(building.stats?.isMonster || building.category === 'Монстры' || CANNON_IDS.includes(building.id) || building.id === PROTECTED_TOWER_ID || isWatchtowerId(building.id)),
             isLocal: true
         };
 
@@ -5725,12 +6477,21 @@ const App: React.FC = () => {
         const priceText = rubyCost > 0 ? `${rubyCost} рубинов` : `${goldCost} монет`;
         addHistoryLogRef.current?.(`Построено здание "${building.name}" в клетке [${x}, ${y}]. Стоимость: ${priceText}.`, 'build');
 
+        setBuildingsBuiltCount(prev => prev + 1);
+        if (currentUser) {
+            updateDoc(doc(db, 'users', currentUser.uid), {
+                buildingsBuilt: increment(1)
+            }).catch(() => {});
+        }
+
         const serverBuilding: PlacedBuilding = {
             ...newBuilding,
             id: docId,
             tempId: undefined,
             status: 'normal',
             syncState: 'synced',
+            isConstructing: !isInstantTutorialBuild,
+            constructionEndTime: isInstantTutorialBuild ? 0 : constructionEndTime,
         };
 
         if (currentAuthReady && currentUser) {
@@ -5840,7 +6601,7 @@ const App: React.FC = () => {
         }
 
         return newBuilding;
-    }, [validatePlacementTarget, user, hasTownHall, maxBuildings, placedBuildings, playerRubies, playerGold, maxPopulation, currentPopulation, inventory, playerName, isMyBuilding, isBuildingDeleting, recordBuildTimingStage]);
+    }, [validatePlacementTarget, user, hasTownHall, maxBuildings, placedBuildings, playerRubies, playerGold, maxPopulation, currentPopulation, inventory, playerName, isMyBuilding, isBuildingDeleting, recordBuildTimingStage, townHallTutorialCompleted, townHallTutorialStep, tutorialAutoBuildMode]);
 
     placeBuildingAtTileRef.current = placeBuildingAtTile;
 
@@ -5918,6 +6679,11 @@ const App: React.FC = () => {
                 const cachedAvatar = readCachedAvatar(currentUser.uid);
                 const cachedProfile = readCachedProfileSettings(currentUser.uid);
                 const cachedLeaderboardStats = readCachedLeaderboardStats(currentUser.uid);
+                const cachedBanEndTime = readCachedBanEndTime(currentUser.uid);
+                if (cachedBanEndTime > Date.now()) {
+                    setBanEndTime(prev => Math.max(prev, cachedBanEndTime));
+                    setActiveChatTab('banya');
+                }
                 if (cachedProfile.gender === 'male' || cachedProfile.gender === 'female') {
                     setPlayerGender(cachedProfile.gender);
                 }
@@ -5973,11 +6739,26 @@ const App: React.FC = () => {
                         console.warn('[App] getDoc failed with non-404 error, skipping user init to protect data:', fetchErr);
                         userSnap = null;
                     }
-                    const displayName = currentUser.displayName || (userSnap?.data()?.name) || ('Р вЂњР С•РЎРѓРЎвЂљРЎРЉ ' + GUEST_ID.slice(-4).toUpperCase());
-                    setPlayerName(repairMojibakeCp1251Utf8(displayName));
+                    const existingDocName = userSnap?.data()?.name;
+                    const existingDocUsername = userSnap?.data()?.username;
+                    const rawDisplayName = (currentUser.displayName && currentUser.displayName.trim())
+                        || (existingDocName && String(existingDocName).trim())
+                        || (existingDocUsername && String(existingDocUsername).trim())
+                        || ('Гость ' + GUEST_ID.slice(-4).toUpperCase());
+                    const displayName = repairMojibakeCp1251Utf8(rawDisplayName);
+                    setPlayerName(displayName);
 
-                    if (userSnap && !userSnap.exists()) {
-                        console.log(`?? Initializing new user record for ${currentUser.uid}...`);
+                    const snapData = userSnap?.data();
+                    const isUserUninitialized = !userSnap || !userSnap.exists() || (
+                        Number(snapData?.level || 0) <= 1 &&
+                        snapData?.tutorialCompleted !== true &&
+                        Number(snapData?.energy || 0) <= 0 &&
+                        Number(snapData?.gold || 0) <= 0 &&
+                        Number(snapData?.rubies || 0) <= 0
+                    );
+
+                    if (isUserUninitialized) {
+                        console.log(`⚡ Initializing new user record for ${currentUser.uid}...`);
                         await setDoc(userDocRef, {
                             name: displayName,
                             gold: 100,
@@ -6001,6 +6782,20 @@ const App: React.FC = () => {
                             tutorialCompleted: false,
                             townHallTutorialCompleted: false
                         });
+                    } else if (userSnap && userSnap.exists()) {
+                        // Auto-heal missing starting resources for new accounts
+                        const updatesToHeal: Record<string, any> = {};
+                        if (!existingDocName || String(existingDocName).trim() === '') {
+                            updatesToHeal.name = displayName;
+                        }
+                        if (Number(snapData?.level || 1) <= 1 && snapData?.tutorialCompleted !== true) {
+                            if (Number(snapData?.energy || 0) <= 0) updatesToHeal.energy = BASE_MAX_ENERGY;
+                            if (Number(snapData?.gold || 0) <= 0 && Number(snapData?.treesChopped || 0) === 0) updatesToHeal.gold = 100;
+                            if (Number(snapData?.rubies || 0) <= 0) updatesToHeal.rubies = 10;
+                        }
+                        if (Object.keys(updatesToHeal).length > 0) {
+                            updateDoc(userDocRef, updatesToHeal).catch(e => console.warn('[App] Failed to auto-heal user defaults:', e));
+                        }
                     }
 
                     // РЎР‚РЎСџРІР‚СњРІР‚С› Migrate guest buildings to the new user's UID
@@ -6076,7 +6871,7 @@ const App: React.FC = () => {
                 tutorialPersistStartedRef.current = false;
                 townHallTutorialPersistStartedRef.current = false;
                 setTownHallTutorialStep(null);
-                setPlayerName(repairMojibakeCp1251Utf8('Р вЂњР С•РЎРѓРЎвЂљРЎРЉ') + ' ' + GUEST_ID.slice(-4).toUpperCase());
+                setPlayerName('Гость ' + GUEST_ID.slice(-4).toUpperCase());
                 setPlayerActiveCurse(null);
                 setActiveCurses({});
                 setVisualEffects([]);
@@ -6169,7 +6964,7 @@ const App: React.FC = () => {
             await updateDoc(userDocRef, updateData);
         } catch (e) {
             handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
-            setSaveError("Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р С—РЎР‚Р С‘ РЎРѓР С•РЎвЂ¦РЎР‚Р В°Р Р…Р ВµР Р…Р С‘Р С‘ Р Т‘Р В°Р Р…Р Р…РЎвЂ№РЎвЂ¦.");
+            setSaveError("Ошибка при сохранении данных.");
         } finally {
             setIsSaving(false);
         }
@@ -6232,22 +7027,28 @@ const App: React.FC = () => {
         // Validate registration inputs
         if (isRegisterMode) {
             if (!regPlayerName.trim()) {
-                setAuthError('Р СџР С•Р В¶Р В°Р В»РЎС“Р в„–РЎРѓРЎвЂљР В°, Р Р†Р Р†Р ВµР Т‘Р С‘РЎвЂљР Вµ Р Р…Р С‘Р С”');
+                setAuthError("Пожалуйста, введите ник");
                 return;
             }
             if (regPlayerName.trim().length < 3) {
-                setAuthError('Р СњР С‘Р С” Р Т‘Р С•Р В»Р В¶Р ВµР Р… Р В±РЎвЂ№РЎвЂљРЎРЉ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 3 РЎРѓР С‘Р СР Р†Р С•Р В»Р С•Р Р†');
+                setAuthError("Ник должен быть не менее 3 символов");
                 return;
             }
 
             // Check nickname uniqueness
             try {
-                const nameSnap = await getDocs(query(collection(db, 'users'), where('name', '==', regPlayerName.trim())));
-                if (nameSnap.docs && nameSnap.docs.length > 0) {
-                    setAuthError('Р В­РЎвЂљР С•РЎвЂљ Р Р…Р С‘Р С” РЎС“Р В¶Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљ, Р Р†РЎвЂ№Р В±Р ВµРЎР‚Р С‘РЎвЂљР Вµ Р Т‘РЎР‚РЎС“Р С–Р С•Р в„–');
+                const cleanName = regPlayerName.trim();
+                const escaped = pbFilterString(cleanName);
+                const existing = await pb.collection('users').getList(1, 1, {
+                    filter: `name = "${escaped}" || username = "${escaped}"`
+                });
+                if (existing.items && existing.items.length > 0) {
+                    setAuthError("Этот ник уже занят, выберите другой");
                     return;
                 }
-            } catch (_) { /* allow if check fails */ }
+            } catch (checkErr) {
+                console.warn('[Register] Nickname check error:', checkErr);
+            }
         }
 
         setIsLoggingIn(true);
@@ -6259,32 +7060,85 @@ const App: React.FC = () => {
 
             if (isRegisterMode) {
                 const chosenName = regPlayerName.trim();
-                const { user: newUser } = await createUserWithEmailAndPassword(authEmail, authPassword);
+                const promo = regPromoCode.trim();
+
+                let referredBy: string | null = null;
+                let referredByName: string | null = null;
+                let promoBonusGold = 0;
+                let promoBonusWood = 0;
+                let promoBonusPetards = 0;
+
+                if (promo) {
+                    try {
+                        const promoUrl = `${pb.baseUrl || 'http://127.0.0.1:8090'}/api/basingse/validate-promo`;
+                        const promoRes = await fetch(promoUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ promoCode: promo, currentName: chosenName })
+                        });
+                        const promoText = await promoRes.text();
+                        let promoJson: any = {};
+                        try {
+                            promoJson = promoText ? JSON.parse(promoText) : {};
+                        } catch {
+                            promoJson = {};
+                        }
+                        if (!promoRes.ok || !promoJson.valid) {
+                            setAuthError(promoJson.message || 'Неверный промокод');
+                            setIsLoggingIn(false);
+                            return;
+                        }
+                        referredBy = promoJson.referrerId;
+                        referredByName = promoJson.referrerName;
+                        promoBonusGold = promoJson.bonus?.gold || 1000;
+                        promoBonusWood = promoJson.bonus?.wood || 30;
+                        promoBonusPetards = promoJson.bonus?.petards || 5;
+                    } catch (_e) {
+                        console.warn('[Promo] Validation request failed, proceeding without promo bonus');
+                    }
+                }
+
+                const initInv: Record<number, number> = {
+                    [FIRECRACKER_ID]: 30 + promoBonusPetards,
+                    [RECOMMENDATION_ID]: 5
+                };
+                if (promoBonusWood > 0) {
+                    initInv[10001] = promoBonusWood;
+                }
+
+                const initialUserData = {
+                    name: chosenName,
+                    gold: 100 + promoBonusGold,
+                    rubies: 10,
+                    extraBuildingPermits: 0,
+                    clanId: null,
+                    level: 1,
+                    glory: 0,
+                    reputation: 0,
+                    treesChopped: 0,
+                    monstersDestroyed: 0,
+                    buildingsDestroyed: 0,
+                    theftsCommitted: 0,
+                    energy: BASE_MAX_ENERGY,
+                    inventory: initInv,
+                    lastSaveTime: Date.now(),
+                    lastX: 0,
+                    lastY: 0,
+                    lastPositionUpdatedAt: 0,
+                    tutorialCompleted: false,
+                    townHallTutorialCompleted: false,
+                    referredBy: referredBy,
+                    referredByName: referredByName,
+                    referralRewardGranted: false
+                };
+
+                const { user: newUser } = await createUserWithEmailAndPassword(authEmail, authPassword, initialUserData);
                 // Save the chosen nickname immediately to the user profile
                 if (newUser) {
                     const userDocRef = doc(db, 'users', newUser.uid);
                     await setDoc(userDocRef, {
-                        name: chosenName,
-                        gold: 100,
-                        rubies: 10,
-                        extraBuildingPermits: 0,
-                        clanId: null,
-                        level: 1,
-                        glory: 0,
-                        reputation: 0,
-                        treesChopped: 0,
-                        monstersDestroyed: 0,
-                        buildingsDestroyed: 0,
-                        theftsCommitted: 0,
-                        energy: BASE_MAX_ENERGY,
-                        inventory: { [FIRECRACKER_ID]: 30, [RECOMMENDATION_ID]: 5 },
-                        lastSaveTime: Date.now(),
-                        gameId: newUser.uid,
-                        lastX: 0,
-                        lastY: 0,
-                        lastPositionUpdatedAt: 0,
-                        tutorialCompleted: false,
-                        townHallTutorialCompleted: false
+                        ...initialUserData,
+                        gameId: newUser.uid
                     });
                     setPlayerName(repairMojibakeCp1251Utf8(chosenName));
                 }
@@ -6294,7 +7148,7 @@ const App: React.FC = () => {
             logStartupStep('auth_success', { mode: isRegisterMode ? 'register' : 'login' });
         } catch (error: any) {
             console.error("Auth error:", error);
-            let msg = "Р С›РЎв‚¬Р С‘Р В±Р С”Р В° Р В°Р Р†РЎвЂљР С•РЎР‚Р С‘Р В·Р В°РЎвЂ Р С‘Р С‘";
+            let msg = "Ошибка авторизации";
             if (error.response?.data?.message) {
                 msg = error.response.data.message;
             } else if (error.message) {
@@ -6302,10 +7156,10 @@ const App: React.FC = () => {
             }
 
             // Translate common PocketBase errors
-            if (msg.includes("Failed to authenticate")) msg = "Р СњР ВµР Р†Р ВµРЎР‚Р Р…РЎвЂ№Р в„– email Р С‘Р В»Р С‘ Р С—Р В°РЎР‚Р С•Р В»РЎРЉ";
-            if (msg.includes("must be unique")) msg = "Р В­РЎвЂљР С•РЎвЂљ email РЎС“Р В¶Р Вµ Р В·Р В°Р Р…РЎРЏРЎвЂљ";
-            if (msg.includes("invalid email")) msg = "Р СњР ВµР С”Р С•РЎР‚РЎР‚Р ВµР С”РЎвЂљР Р…РЎвЂ№Р в„– email";
-            if (msg.includes("8 characters")) msg = "Р СџР В°РЎР‚Р С•Р В»РЎРЉ Р Т‘Р С•Р В»Р В¶Р ВµР Р… Р В±РЎвЂ№РЎвЂљРЎРЉ Р Р…Р Вµ Р СР ВµР Р…Р ВµР Вµ 8 РЎРѓР С‘Р СР Р†Р С•Р В»Р С•Р Р†";
+            if (msg.includes("Failed to authenticate")) msg = "Неверный email или пароль";
+            if (msg.includes("must be unique")) msg = "Этот email уже занят";
+            if (msg.includes("invalid email")) msg = "Некорректный email";
+            if (msg.includes("8 characters")) msg = "Пароль должен быть не менее 8 символов";
 
             setAuthError(msg);
             logStartupStep('auth_error', {
@@ -6347,25 +7201,6 @@ const App: React.FC = () => {
             console.error("Logout error:", error);
             logStartupStep('logout_failed', { error: String(error) });
         }
-    };
-    
-    // Helper function to convert screen to world coordinates (without useCallback dependency)
-    const screenToWorldSimple = (screenX: number, screenY: number, camOffset: {x: number, y: number}, zoom: number): { x: number, y: number } => {
-        const adjustedX = screenX - camOffset.x;
-        const adjustedY = screenY - camOffset.y;
-        const scaledTileWidth = TILE_WIDTH * zoom;
-        const scaledTileHeight = TILE_HEIGHT * zoom;
-        const x = Math.round((adjustedX / (scaledTileWidth / 2) + adjustedY / (scaledTileHeight / 2)) / 2);
-        const y = Math.round((adjustedY / (scaledTileHeight / 2) - adjustedX / (scaledTileWidth / 2)) / 2);
-        if (isWorldWrapped) {
-            return { x: wrapCoord(x, WORLD_WIDTH_TILES), y: wrapCoord(y, WORLD_HEIGHT_TILES) };
-        }
-        return { x, y };
-    };
-
-    const getCurrentWorldCenter = (): { x: number; y: number } => {
-        const zoom = ZOOM_LEVELS[zoomIndexRef.current];
-        return screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
     };
 
     const persistLastPlayerPosition = useCallback(async (force = false) => {
@@ -6471,7 +7306,15 @@ const App: React.FC = () => {
                         // Set peak-level watermark so no future save can write a lower value
                         peakLevelRef.current = loadedLevel;
                         setPlayerGlory(dbGlory);
-                        setPlayerEnergy(Number(data.energy) || BASE_MAX_ENERGY);
+                        let initialServerEnergy = typeof data.energy === 'number'
+                            ? Math.max(0, data.energy)
+                            : (data.energy !== undefined && data.energy !== null ? Math.max(0, Number(data.energy)) : BASE_MAX_ENERGY);
+                        if (initialServerEnergy <= 0 && (Number(data.level) || 1) <= 1 && data.tutorialCompleted !== true) {
+                            console.warn('[App] New player detected with 0 energy. Auto-healing to BASE_MAX_ENERGY.');
+                            initialServerEnergy = BASE_MAX_ENERGY;
+                            updateDoc(userDocRef, { energy: BASE_MAX_ENERGY }).catch(() => {});
+                        }
+                        setPlayerEnergy(initialServerEnergy);
                         
                         // Load player's last position and set camera
                         if (resolvedLastPosition) {
@@ -6501,6 +7344,8 @@ const App: React.FC = () => {
                         }
                         
                         initialLoadDone.current = true;
+                        // Broadcast actual positioned presence immediately upon initial load completion
+                        updatePresenceRef.current();
                 } else {
                     // After initial load: if DB level is HIGHER than local (e.g. leveled up in another tab),
                     // accept the higher level. Never accept a LOWER level from DB.
@@ -6513,12 +7358,30 @@ const App: React.FC = () => {
                     if (dbGlory !== playerGloryRef.current) {
                         setPlayerGlory(dbGlory);
                     }
+                    if (typeof data.energy === 'number') {
+                        let serverEnergy = Math.max(0, data.energy);
+                        if (serverEnergy <= 0 && (Number(data.level) || 1) <= 1 && data.tutorialCompleted !== true) {
+                            serverEnergy = BASE_MAX_ENERGY;
+                        }
+                        setPlayerEnergy(prev => {
+                            if (Math.abs(prev - serverEnergy) > 5) {
+                                return serverEnergy;
+                            }
+                            return prev;
+                        });
+                    }
                 }
                 // Always hydrate banEndTime on every snapshot, not just initial load
                 const hasBanField = Object.prototype.hasOwnProperty.call(data, 'banEndTime');
                 if (hasBanField) {
-                    const normalizedBanEndTime = Number(data.banEndTime || 0) || 0;
-                    setBanEndTime(prev => reconcileBanEndTime(prev, normalizedBanEndTime));
+                    const serverBan = Number(data.banEndTime || 0) || 0;
+                    const cachedBan = readCachedBanEndTime(user.uid);
+                    const effectiveBan = reconcileBanEndTime(cachedBan, serverBan);
+                    setBanEndTime(effectiveBan);
+                    writeCachedBanEndTime(user.uid, effectiveBan);
+                    if (effectiveBan > Date.now()) {
+                        setActiveChatTab('banya');
+                    }
                     setTimeout(() => (window as any).__banReentryProbe?.capture('REENTRY_USER_SNAPSHOT'), 0);
                 }
                 setPlayerActiveCurse(data.activeCurse || null);
@@ -6526,10 +7389,19 @@ const App: React.FC = () => {
                 const mergedLeaderboardStats = mergeLocalUserStatCounters(data, cachedLeaderboardStats);
                 setPlayerLeaderboardStats(mergedLeaderboardStats);
                 writeCachedLeaderboardStats(user.uid, mergedLeaderboardStats);
-                // Fix negative gold bug - ensure gold is never negative
-                const goldValue = Number(data.gold) || 0;
+                // Fix negative gold bug - ensure gold is never negative, and auto-heal new player starting resources
+                let goldValue = Number(data.gold) || 0;
+                let rubiesValue = Number(data.rubies) || 0;
+                if (goldValue <= 0 && (Number(data.level) || 1) <= 1 && data.tutorialCompleted !== true && Number(data.treesChopped || 0) === 0) {
+                    console.warn('[App] New player detected with 0 gold. Auto-healing to 100 gold.');
+                    goldValue = 100;
+                    updateDoc(userDocRef, { gold: 100 }).catch(() => {});
+                }
+                if (rubiesValue <= 0 && (Number(data.level) || 1) <= 1 && data.tutorialCompleted !== true) {
+                    rubiesValue = 10;
+                    updateDoc(userDocRef, { rubies: 10 }).catch(() => {});
+                }
                 setPlayerGold(goldValue < 0 ? 0 : goldValue);
-                const rubiesValue = Number(data.rubies) || 0;
                 setPlayerRubies(rubiesValue < 0 ? 0 : rubiesValue);
                 const serverExtraPermits = Math.max(0, Number(data.extraBuildingPermits ?? data.data?.extraBuildingPermits) || 0);
                 const cachedExtraPermits = readCachedExtraBuildingPermits(user.uid);
@@ -6559,6 +7431,27 @@ const App: React.FC = () => {
                     }).catch(e => console.error("Failed to heal corrupted user data:", e));
                 }
                 setInventory(sanitizeInventoryCounts(data.inventory || {}));
+                const uData = (data.data && typeof data.data === 'object') ? data.data : data;
+                const isTgLinked = Boolean(data.telegramLinked ?? uData.telegramLinked);
+                setTelegramLinked(isTgLinked);
+                const lastClaim = Number(data.lastDailyRewardClaim ?? uData.lastDailyRewardClaim) || 0;
+                setLastDailyRewardClaim(lastClaim);
+                const lastWheelSpin = Number(data.lastLuckyWheelSpin ?? uData.lastLuckyWheelSpin) || 0;
+                if (lastWheelSpin > 0) {
+                    setLastLuckyWheelSpin(prev => Math.max(prev, lastWheelSpin));
+                }
+                const sDays = Number(data.streakDays ?? uData.streakDays) || 1;
+                setStreakDays(sDays);
+
+                // Check pending referral milestone rewards
+                if (Array.isArray(uData.pendingReferralNotifs) && uData.pendingReferralNotifs.length > 0) {
+                    const notifs = uData.pendingReferralNotifs;
+                    const totalGold = notifs.reduce((sum: number, n: any) => sum + (Number(n.gold) || 0), 0);
+                    const totalRubies = notifs.reduce((sum: number, n: any) => sum + (Number(n.rubies) || 0), 0);
+                    const friendNames = notifs.map((n: any) => n.friendName || 'друг').join(', ');
+                    setGameAlertMessage(`🎉 Отличные новости!\nВаш приглашенный друг (${friendNames}) завершил обучение!\nВам начислена награда за приведенного друга: +${totalGold} золота и +${totalRubies} рубина! 💎`);
+                    updateDoc(userDocRef, { pendingReferralNotifs: [] }).catch(console.error);
+                }
                 const cachedProfile = readCachedProfileSettings(user.uid);
                 // Load gender from data.gender (JSON field) or direct gender field
                 const serverGender = data.data?.gender || data.gender || null;
@@ -6626,12 +7519,52 @@ const App: React.FC = () => {
                 // Keep level authoritative locally, but accept server glory so punishments sync instantly.
                 if (user) {
                     const authoritativeLevel = Math.max(playerLevelRef.current, peakLevelRef.current, data.level || 1);
+                    const loadedAchievements = Array.isArray(data.achievements) ? data.achievements : (Array.isArray(data.data?.achievements) ? data.data.achievements : []);
+                    const loadedClaimed = Array.isArray(data.claimedAchievements) ? data.claimedAchievements : (Array.isArray(data.data?.claimedAchievements) ? data.data.claimedAchievements : []);
+                    const loadedTitle = data.selectedTitle || data.data?.selectedTitle || null;
+                    const loadedJoinNumber = Number(data.joinNumber || data.data?.joinNumber || 0) || null;
+                    const loadedLoginDays = Math.max(1, Number(data.totalLoginDays || data.data?.totalLoginDays || 1));
+                    const loadedPlayTime = Number(data.playTimeTodaySeconds || data.data?.playTimeTodaySeconds || 0);
+                    const loadedBuildingsBuilt = Number(data.buildingsBuilt || data.data?.buildingsBuilt || 0);
+                    const loadedPeakGold = Math.max(playerGold, Number(data.peakGold || data.data?.peakGold || data.gold || 0));
+
+                    setPlayerAchievements(loadedAchievements);
+                    setClaimedAchievements(loadedClaimed);
+                    setSelectedTitle(loadedTitle);
+                    if (loadedJoinNumber) setPlayerJoinNumber(loadedJoinNumber);
+                    setTotalLoginDays(loadedLoginDays);
+                    setPlayTimeTodaySeconds(loadedPlayTime);
+                    setBuildingsBuiltCount(loadedBuildingsBuilt);
+                    setPeakGold(loadedPeakGold);
+
+                    // Load or initialize Town Hall contracts
+                    const currentOrdersCycle = getCurrentOrdersCycle();
+                    const rawOrders = data.townHallOrders || data.data?.townHallOrders;
+                    const rawOrdersCycle = Number(data.townHallOrdersCycle ?? data.data?.townHallOrdersCycle) || 0;
+                    const rawSkipTime = Number(data.townHallLastSkipTime ?? data.data?.townHallLastSkipTime) || 0;
+
+                    if (rawOrdersCycle === currentOrdersCycle && Array.isArray(rawOrders) && rawOrders.length === 3) {
+                        const cleanOrders = rawOrders.map(normalizeTownHallOrder);
+                        setTownHallOrders(cleanOrders);
+                        setTownHallOrdersCycle(rawOrdersCycle);
+                        setTownHallLastSkipTime(rawSkipTime);
+                    } else {
+                        const newOrders = generateThreeTownHallOrders(playerTownHallLevel, authoritativeLevel, currentOrdersCycle).map(normalizeTownHallOrder);
+                        setTownHallOrders(newOrders);
+                        setTownHallOrdersCycle(currentOrdersCycle);
+                        setTownHallLastSkipTime(rawSkipTime);
+                        updateDoc(userDocRef, {
+                            townHallOrders: newOrders,
+                            townHallOrdersCycle: currentOrdersCycle,
+                            townHallLastSkipTime: rawSkipTime
+                        }).catch(e => console.warn('[TownHallOrders] Failed to initialize orders on snapshot:', e));
+                    }
                     setAllUsers(prev => ({
                         ...prev,
                         [user.uid]: {
                             ...prev[user.uid],
                             uid: user.uid,
-                            name: data.name || "Р ВР С–РЎР‚Р С•Р С”",
+                            name: data.name || "Игрок",
                             level: authoritativeLevel,
                             glory: dbGlory,
                             reputation: Math.max(0, Number(data.reputation) || 0),
@@ -6644,6 +7577,14 @@ const App: React.FC = () => {
                                         ? (data.banEndTime || 0)
                                         : (prev[selectedPlayerId]?.banEndTime || 0),
                             gender: data.gender || null,
+                            achievements: loadedAchievements,
+                            claimedAchievements: loadedClaimed,
+                            selectedTitle: loadedTitle,
+                            joinNumber: loadedJoinNumber,
+                            totalLoginDays: loadedLoginDays,
+                            playTimeTodaySeconds: loadedPlayTime,
+                            buildingsBuilt: loadedBuildingsBuilt,
+                            peakGold: loadedPeakGold,
                             ...getUserStatCounters(data),
                         }
                     }));
@@ -6685,6 +7626,12 @@ const App: React.FC = () => {
             });
             townHallTutorialDismissedRef.current = true;
             shownTownHallTutorialForSessionRef.current = true;
+            // Notify server to reward referrer if this player was invited by a friend
+            fetch(`${pb.baseUrl || 'http://127.0.0.1:8090'}/api/basingse/complete-referral-tutorial`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.uid })
+            }).catch(err => console.warn('[Referral] complete-referral-tutorial failed:', err));
         } catch (e) {
             townHallTutorialPersistStartedRef.current = false;
             handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
@@ -6830,6 +7777,9 @@ const App: React.FC = () => {
         setShowMainTabletMenu(false);
         playCloseSound();
         await persistTownHallTutorialCompleted();
+        // Immediately show daily reward & telegram link promo modal right after tutorial!
+        setShowDailyRewardModal(true);
+        playOpenSound();
     };
 
     const closeTabletModal = useCallback(() => {
@@ -6850,6 +7800,63 @@ const App: React.FC = () => {
         closeTabletModal();
     }, [closeTabletModal]);
 
+    const isDailyRewardClaimedToday = useMemo(() => {
+        if (!lastDailyRewardClaim) return false;
+        const todayDay = Math.floor(Date.now() / 86400000);
+        const lastClaimDay = Math.floor(lastDailyRewardClaim / 86400000);
+        return todayDay === lastClaimDay;
+    }, [lastDailyRewardClaim]);
+
+    const handleCheckTelegramLink = useCallback(async (): Promise<boolean> => {
+        if (!user) return false;
+        try {
+            const userSnap = await getDoc(doc(db, 'users', user.uid));
+            if (userSnap.exists()) {
+                const uRecord = userSnap.data();
+                const uSubData = (uRecord.data && typeof uRecord.data === 'object') ? uRecord.data : uRecord;
+                const linked = Boolean(uRecord.telegramLinked ?? uSubData.telegramLinked);
+                setTelegramLinked(linked);
+                return linked;
+            }
+        } catch (e) {
+            console.error('[DailyReward] Check link failed:', e);
+        }
+        return false;
+    }, [user]);
+
+    // Auto-sync telegram linked status when returning to the game tab
+    useEffect(() => {
+        if (!user || telegramLinked) return;
+
+        const onFocusOrVisible = () => {
+            if (document.visibilityState === 'visible') {
+                void handleCheckTelegramLink();
+            }
+        };
+
+        window.addEventListener('focus', onFocusOrVisible);
+        document.addEventListener('visibilitychange', onFocusOrVisible);
+
+        return () => {
+            window.removeEventListener('focus', onFocusOrVisible);
+            document.removeEventListener('visibilitychange', onFocusOrVisible);
+        };
+    }, [user, telegramLinked, handleCheckTelegramLink]);
+
+    const handleRewardClaimed = useCallback((result: {
+        gold: number;
+        rubies: number;
+        inventory: Record<string, number>;
+        streakDays: number;
+        reward: any;
+    }) => {
+        setPlayerGold(result.gold);
+        setPlayerRubies(result.rubies);
+        setInventory(sanitizeInventoryCounts(result.inventory));
+        setStreakDays(result.streakDays);
+        setLastDailyRewardClaim(Date.now());
+    }, []);
+
     // Listen to CURRENT USER only for ban/curse updates in real-time (Phase 2 - Gameplay)
     // Other players' data comes from: presence (online), zone building owners (on-demand), profiles (on-demand)
     useEffect(() => {
@@ -6862,9 +7869,12 @@ const App: React.FC = () => {
 
             // Update ban state — 0 means explicit unban (authoritative), all other values are monotonic
             if (data.banEndTime !== undefined) {
-                const normalizedBanEndTime = Number(data.banEndTime || 0) || 0;
-                setBanEndTime(prev => reconcileBanEndTime(prev, normalizedBanEndTime));
-                if (normalizedBanEndTime > Date.now()) {
+                const serverBan = Number(data.banEndTime || 0) || 0;
+                const cachedBan = readCachedBanEndTime(user.uid);
+                const effectiveBan = reconcileBanEndTime(cachedBan, serverBan);
+                setBanEndTime(effectiveBan);
+                writeCachedBanEndTime(user.uid, effectiveBan);
+                if (effectiveBan > Date.now()) {
                     setActiveChatTab('banya');
                 }
             }
@@ -6894,7 +7904,7 @@ const App: React.FC = () => {
                     [user.uid]: {
                         ...existing,
                         uid: user.uid,
-                        name: data.name || existing.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
+                        name: data.name || existing.name || 'Неизвестный',
                         level: resolvedLevel,
                         glory: playerGloryRef.current,
                         reputation: Math.max(0, Number(data.reputation) || 0),
@@ -6997,7 +8007,7 @@ const App: React.FC = () => {
                         updated[uid] = {
                             ...updated[uid],
                             uid: uid,
-                            name: memberData.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
+                            name: memberData.name || 'Неизвестный',
                             level: memberData.level || 1,
                             glory: memberData.glory || 0,
                             reputation: memberData.reputation || 0,
@@ -7156,15 +8166,19 @@ const App: React.FC = () => {
         };
 
         const updatePresence = async () => {
+            if (!initialLoadDone.current) return;
             try {
                 const zoom = ZOOM_LEVELS[zoomIndexRef.current];
                 const worldCenter = screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
                 const myCurse = playerActiveCurse;
+                const effectiveName = (playerName && playerName !== 'Неизвестный')
+                    ? playerName
+                    : (allUsersRef.current[user.uid]?.name || playerName);
 
                 // Update presence with current position
                 await setDoc(presenceDocRef, {
                     uid: user.uid,
-                    name: playerName,
+                    name: effectiveName,
                     activeTab: activeChatTab,
                     clanId: normalizeClanIdValue(playerClanId),
                     lastSeen: Date.now(),
@@ -7179,6 +8193,7 @@ const App: React.FC = () => {
                     monstersDestroyed: playerLeaderboardStatsRef.current.monstersDestroyed || 0,
                     buildingsDestroyed: playerLeaderboardStatsRef.current.buildingsDestroyed || 0,
                     theftsCommitted: playerLeaderboardStatsRef.current.theftsCommitted || 0,
+                    title: selectedTitle || null,
                 });
             } catch (e) {
                 // Ignore presence errors to keep game flow
@@ -7191,13 +8206,14 @@ const App: React.FC = () => {
             }
         };
 
+        updatePresenceRef.current = updatePresence;
         updatePresence();
         const interval = setInterval(updatePresence, 5000); // 5s heartbeat (reduced from 2s to prevent ERR_INSUFFICIENT_RESOURCES)
 
         return () => {
             clearInterval(interval);
         };
-    }, [isAuthReady, user, playerName, activeChatTab, playerClanId, playerLevel, playerGlory, playerReputation, playerAvatar, playerActiveCurse]);
+    }, [isAuthReady, user, playerName, activeChatTab, playerClanId, playerLevel, playerGlory, playerReputation, playerAvatar, playerActiveCurse, selectedTitle]);
 
     const [onlinePlayersData, setOnlinePlayersData] = useState<any[]>([]);
     const [interpolatedPlayers, setInterpolatedPlayers] = useState<Record<string, { x: number, y: number }>>({});
@@ -7216,9 +8232,10 @@ const App: React.FC = () => {
             const loadedUsers = snapshot.docs.map((docSnap) => {
                 const data = docSnap.data() as any;
                 const uid = String(docSnap.id);
+                const rawName = data?.name || data?.username || '';
                 return {
                     uid,
-                    name: repairMojibakeCp1251Utf8(String(data?.name || 'Неизвестный')),
+                    name: rawName ? repairMojibakeCp1251Utf8(String(rawName)) : '',
                     level: Number(data?.level || 1) || 1,
                     glory: Math.max(0, Number(data?.glory || 0) || 0),
                     reputation: Math.max(0, Number(data?.reputation || 0) || 0),
@@ -7239,11 +8256,20 @@ const App: React.FC = () => {
                 const updated = { ...prev };
                 loadedUsers.forEach((entry) => {
                     const current = updated[entry.uid] || {};
+                    const isEntryNameValid = Boolean(entry.name && entry.name !== 'Неизвестный');
+                    const isCurrentNameValid = Boolean(current.name && current.name !== 'Неизвестный');
+                    const resolvedMergedName = isEntryNameValid 
+                        ? entry.name 
+                        : isCurrentNameValid 
+                            ? current.name 
+                            : (entry.name || current.name || 'Неизвестный');
+
                     updated[entry.uid] = {
                         ...current,
                         ...entry,
                         uid: entry.uid,
-                        name: entry.name || current.name || 'Неизвестный',
+                        name: resolvedMergedName,
+                        level: Math.max(Number(entry.level || 1) || 1, Number(current.level || 1) || 1),
                         avatar: entry.avatar || current.avatar || null,
                         clanId: entry.clanId ?? current.clanId ?? null,
                         rank: entry.rank ?? current.rank ?? 0,
@@ -7345,25 +8371,53 @@ const App: React.FC = () => {
             lastTs = ts;
 
             setInterpolatedPlayers(prev => {
+                let hasChanges = false;
                 const next: Record<string, { x: number, y: number }> = { ...prev };
-                const smoothingSpeed = 7;
-                const alpha = 1 - Math.exp(-smoothingSpeed * dtSec);
 
                 onlinePlayersDataRef.current.forEach(player => {
                     if (typeof player.x !== 'number' || typeof player.y !== 'number') return;
                     const current = prev[player.uid] || { x: player.x, y: player.y };
                     const dist = Math.hypot(player.x - current.x, player.y - current.y);
-                    if (dist > 4) {
-                        next[player.uid] = { x: player.x, y: player.y };
+
+                    if (dist > 40) {
+                        // Far jump / map warp — snap immediately
+                        if (current.x !== player.x || current.y !== player.y) {
+                            next[player.uid] = { x: player.x, y: player.y };
+                            hasChanges = true;
+                        }
                         return;
                     }
-                    const dx = (player.x - current.x) * alpha;
-                    const dy = (player.y - current.y) * alpha;
-                    next[player.uid] = {
-                        x: current.x + (isNaN(dx) ? 0 : dx),
-                        y: current.y + (isNaN(dy) ? 0 : dy)
-                    };
+
+                    if (dist < 0.02) {
+                        // At destination — snap cleanly
+                        if (current.x !== player.x || current.y !== player.y) {
+                            next[player.uid] = { x: player.x, y: player.y };
+                            hasChanges = true;
+                        }
+                        return;
+                    }
+
+                    // Adaptive smooth glide:
+                    // speed scales with distance so player moves naturally without lag or stutter
+                    const speed = Math.max(5, Math.min(24, dist * 4.5));
+                    const step = speed * dtSec;
+                    if (step >= dist) {
+                        next[player.uid] = { x: player.x, y: player.y };
+                    } else {
+                        const ratio = step / dist;
+                        next[player.uid] = {
+                            x: current.x + (player.x - current.x) * ratio,
+                            y: current.y + (player.y - current.y) * ratio
+                        };
+                    }
+                    hasChanges = true;
                 });
+
+                // CRITICAL FOR PERFORMANCE: If no player moved, return exact previous state
+                // to avoid re-rendering App component on every RAF frame!
+                if (!hasChanges) {
+                    return prev;
+                }
 
                 return next;
             });
@@ -7391,8 +8445,17 @@ const App: React.FC = () => {
                 const data = doc.data();
                 // Only count as online if seen in last 2 minutes
                 if (data && data.lastSeen && (now - data.lastSeen < 120000)) {
-                    const repairedPresenceName = repairMojibakeCp1251Utf8(String(data.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–"));
                     const uid = String(data.uid || doc.id);
+                    const existingUser = allUsersRef.current[uid];
+                    const existingUserName = existingUser?.name;
+                    const isDataNameValid = Boolean(data.name && data.name !== "Неизвестный");
+                    const isExistingNameValid = Boolean(existingUserName && existingUserName !== "Неизвестный");
+                    const rawPresenceName = isDataNameValid 
+                        ? data.name 
+                        : isExistingNameValid 
+                            ? existingUserName 
+                            : (data.name || existingUserName || "Неизвестный");
+                    const repairedPresenceName = repairMojibakeCp1251Utf8(String(rawPresenceName));
                     const normalizedPresenceClanId = normalizeClanIdValue(data.clanId);
 
                     allOnlineUsers.push({ name: repairedPresenceName, uid });
@@ -7416,11 +8479,15 @@ const App: React.FC = () => {
                     const updated = { ...prev };
                     Object.entries(presencePatch).forEach(([uid, data]) => {
                         const current = updated[uid] || {};
+                        const isPatchNameValid = Boolean(data.name && data.name !== "Неизвестный");
+                        const isCurrentNameValid = Boolean(current.name && current.name !== "Неизвестный");
+                        const finalPresenceName = isPatchNameValid ? data.name : (isCurrentNameValid ? current.name : "Неизвестный");
+
                         updated[uid] = {
                             ...current,
                             uid,
-                            name: repairMojibakeCp1251Utf8(String(data.name || current.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
-                            level: data.level,
+                            name: finalPresenceName,
+                            level: Math.max(Number(data.level || 1) || 1, Number(current.level || 1) || 1),
                             lastSeen: Math.max(Number(current.lastSeen || 0) || 0, Number(data.lastSeen || 0) || 0),
                             // Preserve local glory/reputation values - don't overwrite with stale presence data
                             glory: current.glory ?? data.glory,
@@ -7438,6 +8505,7 @@ const App: React.FC = () => {
                             monstersDestroyed: Math.max(Number(current.monstersDestroyed || 0) || 0, Number(data.monstersDestroyed || 0) || 0),
                             buildingsDestroyed: Math.max(Number(current.buildingsDestroyed || 0) || 0, Number(data.buildingsDestroyed || 0) || 0),
                             theftsCommitted: Math.max(Number(current.theftsCommitted || 0) || 0, Number(data.theftsCommitted || 0) || 0),
+                            selectedTitle: data.title || data.selectedTitle || current.selectedTitle || null,
                         };
                     });
                     return updated;
@@ -7484,7 +8552,7 @@ const App: React.FC = () => {
                             [selectedPlayerId]: {
                                 ...prev[selectedPlayerId],
                                 uid: selectedPlayerId,
-                                name: repairMojibakeCp1251Utf8(String(cachedOnlinePlayer.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
+                                name: repairMojibakeCp1251Utf8(String(cachedOnlinePlayer.name || "Неизвестный")),
                                 level: cachedOnlinePlayer.level || 1,
                                 glory: prev[selectedPlayerId]?.glory ?? cachedOnlinePlayer.glory ?? 0,
                                 reputation: prev[selectedPlayerId]?.reputation ?? cachedOnlinePlayer.reputation ?? 0,
@@ -7504,7 +8572,7 @@ const App: React.FC = () => {
                                 [selectedPlayerId]: {
                                     ...prev[selectedPlayerId],
                                     uid: selectedPlayerId,
-                                    name: repairMojibakeCp1251Utf8(String(data.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
+                                    name: repairMojibakeCp1251Utf8(String(data.name || "Неизвестный")),
                                     level: data.level || 1,
                                     glory: data.glory || 0,
                                     reputation: data.reputation || 0,
@@ -7514,6 +8582,17 @@ const App: React.FC = () => {
                                     rank: data.rank ?? 0,
                                     clanPermissions: data.clanPermissions || { canInvite: false, canGrantStars: false },
                                     gender: data.gender || null,
+                                    achievements: data.achievements || data.data?.achievements || [],
+                                    claimedAchievements: data.claimedAchievements || data.data?.claimedAchievements || [],
+                                    selectedTitle: data.selectedTitle || data.data?.selectedTitle || null,
+                                    joinNumber: data.joinNumber || data.data?.joinNumber || null,
+                                    totalLoginDays: data.totalLoginDays || data.data?.totalLoginDays || 1,
+                                    playTimeTodaySeconds: data.playTimeTodaySeconds || data.data?.playTimeTodaySeconds || 0,
+                                    buildingsBuilt: data.buildingsBuilt || data.data?.buildingsBuilt || 0,
+                                    peakGold: data.peakGold || data.data?.peakGold || data.gold || 0,
+                                    gold: data.gold || 0,
+                                    friends: data.friends || [],
+                                    theftsCommitted: data.theftsCommitted || 0,
                                     ...getUserStatCounters(data),
                                 }
                             }));
@@ -7536,13 +8615,14 @@ const App: React.FC = () => {
                             [selectedPlayerId]: {
                                 ...prev[selectedPlayerId],
                                 uid: selectedPlayerId,
-                                name: prev[selectedPlayerId]?.name || repairMojibakeCp1251Utf8(String(presenceData.name || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–")),
+                                name: prev[selectedPlayerId]?.name || repairMojibakeCp1251Utf8(String(presenceData.name || "Неизвестный")),
                                 level: prev[selectedPlayerId]?.level ?? presenceData.level ?? 1,
                                 lastSeen: Math.max(
                                     Number(prev[selectedPlayerId]?.lastSeen || 0) || 0,
                                     Number(presenceData.lastSeen || 0) || 0
                                 ),
                                 avatar: prev[selectedPlayerId]?.avatar || resolveUserAvatar(presenceData),
+                                selectedTitle: presenceData.title || presenceData.selectedTitle || prev[selectedPlayerId]?.selectedTitle || null,
                             }
                         }));
                     }
@@ -7584,11 +8664,17 @@ const App: React.FC = () => {
             const currentUserId = userRef.current?.uid;
             const findLocalMatchForServerBuilding = (serverBuilding: PlacedBuilding): PlacedBuilding | undefined => {
                 const serverId = String(serverBuilding.id);
+                const serverGameId = serverBuilding.gameId ? String(serverBuilding.gameId) : '';
                 const traceId = String(serverBuilding.clientBuildTraceId || '');
                 return prev.find((localBuilding) => {
-                    if (String(localBuilding.id) === serverId) return true;
+                    const localId = String(localBuilding.id);
+                    const localGameId = localBuilding.gameId ? String(localBuilding.gameId) : '';
+                    if (localId === serverId) return true;
+                    if (serverGameId && localId === serverGameId) return true;
+                    if (localGameId && localGameId === serverId) return true;
+                    if (serverGameId && localGameId && localGameId === serverGameId) return true;
                     if (!traceId) return false;
-                    return String(localBuilding.id) === traceId || String(localBuilding.tempId || '') === traceId;
+                    return localId === traceId || String(localBuilding.tempId || '') === traceId;
                 });
             };
             const activeDeletingBuildingIds = new Set<string>();
@@ -7611,8 +8697,38 @@ const App: React.FC = () => {
                 });
                 visibleBuildings.forEach((b) => {
                     const strId = String(b.id);
-                    const normalized = normalizePlacedBuildingHealth({ ...b, id: strId });
-                    if ((normalized.hp ?? 1) > 0) {
+                    const localMatch = findLocalMatchForServerBuilding(b);
+                    const gameIdStr = b.gameId ? String(b.gameId) : '';
+                    const refAttackTime = Math.max(
+                        monsterAttackTimeRef.current.get(strId) || 0,
+                        gameIdStr ? (monsterAttackTimeRef.current.get(gameIdStr) || 0) : 0
+                    );
+                    const refMoveTime = Math.max(
+                        monsterLastMoveTimeRef.current.get(strId) || 0,
+                        gameIdStr ? (monsterLastMoveTimeRef.current.get(gameIdStr) || 0) : 0
+                    );
+                    const effectiveAttackTime = Math.max(
+                        b.lastAttackTime || 0,
+                        localMatch?.lastAttackTime || 0,
+                        refAttackTime
+                    );
+                    const effectiveMoveTime = Math.max(
+                        b.lastMoveTime || 0,
+                        localMatch?.lastMoveTime || 0,
+                        refMoveTime
+                    );
+                    const normalized = normalizePlacedBuildingHealth({
+                        ...b,
+                        id: strId,
+                        ...(effectiveAttackTime > 0 ? { lastAttackTime: effectiveAttackTime } : {}),
+                        ...(effectiveMoveTime > 0 ? { lastMoveTime: effectiveMoveTime } : {}),
+                    });
+                    const isRelevantAuthority = Boolean(
+                        isAuthReadyRef.current &&
+                        userRef.current &&
+                        (b.initiatorId === userRef.current.uid || b.ownerId === userRef.current.uid)
+                    );
+                    if ((normalized.hp ?? 1) > 0 || isRelevantAuthority) {
                         merged.set(strId, normalized);
                     }
                 });
@@ -7620,6 +8736,32 @@ const App: React.FC = () => {
 
             appendReconnectSnapshotBuildings(serverZoneBuildingsRef.current.values());
             appendReconnectSnapshotBuildings(serverMyBuildingsRef.current.values());
+            appendReconnectSnapshotBuildings(serverInitiatedBuildingsRef.current.values());
+            appendReconnectSnapshotBuildings(serverMonsterBuildingsRef.current.values());
+
+            // Track monster movement direction when positions update
+            merged.forEach((b, id) => {
+                const bInfo = buildingData.find(info => info.id === Number(b.buildingId) || info.id === b.buildingId);
+                if (bInfo?.stats?.isMonster) {
+                    const prevPos = monsterPrevPosRef.current.get(id);
+                    if (prevPos && (prevPos.x !== b.x || prevPos.y !== b.y)) {
+                        const dx = b.x - prevPos.x;
+                        const dy = b.y - prevPos.y;
+                        monsterDirectionRef.current.set(id, { dx, dy });
+                        if (b.lastMoveTime) {
+                            monsterLastMoveTimeRef.current.set(id, b.lastMoveTime);
+                        }
+                        const gId = b.gameId ? String(b.gameId) : '';
+                        if (gId) {
+                            monsterDirectionRef.current.set(gId, { dx, dy });
+                            if (b.lastMoveTime) {
+                                monsterLastMoveTimeRef.current.set(gId, b.lastMoveTime);
+                            }
+                        }
+                    }
+                    monsterPrevPosRef.current.set(id, { x: b.x, y: b.y });
+                }
+            });
 
             // OFFLINE TIMER PROCESSING: Process overdue timers for all buildings
             // This ensures timers progress even when no players are online
@@ -7627,9 +8769,13 @@ const App: React.FC = () => {
             const { updated: processedBuildings, updates } = processOfflineTimers(allBuildings, {
                 resources: mapResources,
                 isWrappedWorld: isWorldWrapped,
+                monsterAttackTimes: monsterAttackTimeRef.current,
                 canApplyDestructionTimer: (building) => {
                     const info = buildingData.find(i => i.id === building.buildingId);
                     if (!info?.stats.isMonster) return true;
+                    if (building.initiatorId) {
+                        return !!userRef.current && building.initiatorId === userRef.current.uid;
+                    }
                     return !!userRef.current && building.hostId === userRef.current.uid;
                 }
             });
@@ -7718,7 +8864,8 @@ const App: React.FC = () => {
             deletingBuildingsRef.current.forEach((_, deletedId) => {
                 const existsInZoneSnapshot = serverZoneBuildingsRef.current.has(deletedId);
                 const existsInMySnapshot = serverMyBuildingsRef.current.has(deletedId);
-                if (!existsInZoneSnapshot && !existsInMySnapshot) {
+                const existsInInitiatedSnapshot = serverInitiatedBuildingsRef.current.has(deletedId);
+                if (!existsInZoneSnapshot && !existsInMySnapshot && !existsInInitiatedSnapshot) {
                     confirmedDeletedRef.current.add(deletedId);
                 }
             });
@@ -7726,12 +8873,19 @@ const App: React.FC = () => {
             // PROTECT: Sticky Interaction Logic (Anti-Jitter & Rollback Fix)
             const finalBuildings = Array.from(merged.values()).map(serverB => {
                 const strId = String(serverB.id);
+                const serverGameId = serverB.gameId ? String(serverB.gameId) : '';
                 const linkedTempId =
                     optimisticBuildTempIdByDocIdRef.current.get(strId) ||
+                    (serverGameId ? optimisticBuildTempIdByDocIdRef.current.get(serverGameId) : undefined) ||
                     String(serverB.clientBuildTraceId || '');
                 const lastIntAt =
                     lastInteractionRef.current.get(strId) ||
+                    (serverGameId ? lastInteractionRef.current.get(serverGameId) || 0 : 0) ||
                     (linkedTempId ? lastInteractionRef.current.get(linkedTempId) || 0 : 0);
+                const lastMoveAt =
+                    recentMoveInteractionRef.current.get(strId) ||
+                    (serverGameId ? recentMoveInteractionRef.current.get(serverGameId) || 0 : 0) ||
+                    (linkedTempId ? recentMoveInteractionRef.current.get(linkedTempId) || 0 : 0);
                 const localB = findLocalMatchForServerBuilding(serverB);
                 const hasActiveLocalDestructionWindow = !!localB &&
                     hasActiveDestructionWindow(localB.destructionEndTime, nowMs);
@@ -7757,7 +8911,7 @@ const App: React.FC = () => {
                     currentUserId,
                     now: nowMs,
                     lastInteractionAt: lastIntAt,
-                    lastMoveAt: recentMoveInteractionRef.current.get(strId) || 0,
+                    lastMoveAt: lastMoveAt,
                     localIsProtectedByCombat,
                     stickyInteractionMs: STICKY_INTERACTION_MS,
                     deletionProtectionMs: DELETION_PROTECTION_MS,
@@ -7816,6 +8970,13 @@ const App: React.FC = () => {
             const getTileScore = (b: PlacedBuilding) => {
                 const info = buildingData.find(i => i.id === b.buildingId);
                 const isMonster = Boolean(info?.stats.isMonster);
+                const idStr = String(b.id);
+                const gameIdStr = b.gameId ? String(b.gameId) : '';
+                const lastMoveTs = Math.max(
+                    recentMoveInteractionRef.current.get(idStr) || 0,
+                    gameIdStr ? recentMoveInteractionRef.current.get(gameIdStr) || 0 : 0
+                );
+                const isRecentMove = (nowMs - lastMoveTs) < STICKY_INTERACTION_MS;
                 const activityTs = Math.max(
                     Number(b.timestamp || 0),
                     Number(b.lastMoveTime || 0),
@@ -7828,6 +8989,7 @@ const App: React.FC = () => {
                     (isMonster ? 1_000_000_000_000 : 0) +
                     ((b.hp ?? 1) > 0 ? 100_000_000_000 : 0) +
                     (!b.isDestroying ? 10_000_000_000 : 0) +
+                    (isRecentMove ? 5_000_000_000 : 0) +
                     (!b.isLocal ? 1_000_000_000 : 0);
             };
             newBuildings.forEach((b) => {
@@ -7882,6 +9044,32 @@ const App: React.FC = () => {
                 });
                 if (thShouldBeRecovered.length > 0) {
                     return [...dedupedBuildings, ...thShouldBeRecovered];
+                }
+            } else if (thInPrev.length > 0 && thInNew.length > 0) {
+                // High-water mark protection: if previous Town Hall was higher level than incoming, keep the higher level
+                const highestPrev = thInPrev.reduce((best, cur) => {
+                    const idxCur = TOWN_HALL_IDS.indexOf(Number(cur.buildingId));
+                    const idxBest = TOWN_HALL_IDS.indexOf(Number(best.buildingId));
+                    return idxCur > idxBest ? cur : best;
+                }, thInPrev[0]);
+                const prevLevelIdx = TOWN_HALL_IDS.indexOf(Number(highestPrev.buildingId));
+
+                for (let i = 0; i < dedupedBuildings.length; i++) {
+                    const b = dedupedBuildings[i];
+                    if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && (currentUserId ? b.ownerId === currentUserId : isMyBuilding(b))) {
+                        const newLevelIdx = TOWN_HALL_IDS.indexOf(Number(b.buildingId));
+                        if (prevLevelIdx > newLevelIdx) {
+                            console.warn(`[TH-PROTECT] Preserving higher local Town Hall ${highestPrev.buildingId} (lvl ${prevLevelIdx + 1}) over stale incoming ${b.buildingId} (lvl ${newLevelIdx + 1})`);
+                            dedupedBuildings[i] = {
+                                ...b,
+                                buildingId: highestPrev.buildingId,
+                                isConstructing: highestPrev.isConstructing,
+                                constructionEndTime: highestPrev.constructionEndTime,
+                                hp: highestPrev.hp ?? b.hp,
+                                maxHp: highestPrev.maxHp ?? b.maxHp,
+                            };
+                        }
+                    }
                 }
             }
             if (thInPrev.length === 0 && thInNew.length === 0 && prev.length > 0) {
@@ -7997,6 +9185,121 @@ const App: React.FC = () => {
 
         return () => unsubscribeMy();
     }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned, logBuildTiming, logStartupStep]);
+
+    // Sync Buildings Initiated By Me (e.g. monsters or buildings placed on timed explosion)
+    useEffect(() => {
+        if (!isAuthReady || !user) return;
+
+        const buildingsCol = collection(db, 'buildings');
+        const qInitiated = query(buildingsCol, where('initiatorId', '==', user.uid));
+
+        const unsubscribeInitiated = onSnapshot(qInitiated, (snapshot) => {
+            const initiatedBuildingsMap = new Map<string, PlacedBuilding>();
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data() as PlacedBuilding;
+                const strId = String(docSnap.id);
+                
+                if (isBuildingTombstoned(strId)) return;
+                // Exclude buildings owned by the user (they are already in serverMyBuildingsRef)
+                if (data.ownerId === user.uid) return;
+
+                initiatedBuildingsMap.set(strId, {
+                    ...data,
+                    id: strId,
+                    isLocal: false,
+                    status: 'normal',
+                    syncState: 'synced'
+                } as PlacedBuilding);
+            });
+
+            serverInitiatedBuildingsRef.current = initiatedBuildingsMap;
+            updatePlacedBuildingsFromServer(((snapshot as any).__auditSource as BuildingTimerTraceSource | undefined) || 'onSnapshot');
+        }, (error) => {
+            handleFirestoreError(error, OperationType.GET, 'buildings_initiated');
+        });
+
+        return () => unsubscribeInitiated();
+    }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
+
+    // Sync All Wild Monsters Globally from PocketBase
+    // Ensures all monsters across the entire map move and stay active even if player is far away
+    useEffect(() => {
+        if (!isAuthReady || !user) return;
+
+        const buildingsCol = collection(db, 'buildings');
+        const qMonsters = query(buildingsCol, where('ownerId', 'in', ['monster', '-1']));
+
+        let monsterSyncTimeout: NodeJS.Timeout | null = null;
+        const unsubscribeMonsters = onSnapshot(qMonsters, (snapshot) => {
+            const monstersMap = new Map<string, PlacedBuilding>();
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data() as PlacedBuilding;
+                const strId = String(docSnap.id);
+
+                if (isBuildingTombstoned(strId)) return;
+
+                monstersMap.set(strId, {
+                    ...data,
+                    id: strId,
+                    isLocal: false,
+                    status: 'normal',
+                    syncState: 'synced'
+                } as PlacedBuilding);
+            });
+
+            serverMonsterBuildingsRef.current = monstersMap;
+
+            // Immediately update placedBuildingsRef so canvas renders new positions on next frame at 60fps
+            const currentRefBuildings = placedBuildingsRef.current;
+            if (currentRefBuildings && currentRefBuildings.length > 0) {
+                let anyMoved = false;
+                const nextRefBuildings = currentRefBuildings.map(b => {
+                    const strId = String(b.id);
+                    const gameIdStr = b.gameId ? String(b.gameId) : '';
+                    const serverMonster = monstersMap.get(strId) || (gameIdStr ? monstersMap.get(gameIdStr) : undefined);
+                    if (serverMonster && (b.x !== serverMonster.x || b.y !== serverMonster.y || b.hp !== serverMonster.hp)) {
+                        anyMoved = true;
+                        const refAttackTime = Math.max(
+                            monsterAttackTimeRef.current.get(strId) || 0,
+                            gameIdStr ? (monsterAttackTimeRef.current.get(gameIdStr) || 0) : 0
+                        );
+                        const refMoveTime = Math.max(
+                            monsterLastMoveTimeRef.current.get(strId) || 0,
+                            gameIdStr ? (monsterLastMoveTimeRef.current.get(gameIdStr) || 0) : 0
+                        );
+                        return {
+                            ...b,
+                            x: serverMonster.x,
+                            y: serverMonster.y,
+                            zoneId: serverMonster.zoneId,
+                            hp: serverMonster.hp,
+                            lastMoveTime: Math.max(b.lastMoveTime || 0, serverMonster.lastMoveTime || 0, refMoveTime),
+                            lastAttackTime: Math.max(b.lastAttackTime || 0, serverMonster.lastAttackTime || 0, refAttackTime)
+                        };
+                    }
+                    return b;
+                });
+                if (anyMoved) {
+                    placedBuildingsRef.current = nextRefBuildings;
+                }
+            }
+
+            // Coalesce full React component re-renders to at most once per 800ms
+            if (!monsterSyncTimeout) {
+                monsterSyncTimeout = setTimeout(() => {
+                    monsterSyncTimeout = null;
+                    updatePlacedBuildingsFromServer(((snapshot as any).__auditSource as BuildingTimerTraceSource | undefined) || 'onSnapshot');
+                }, 800);
+            }
+        }, (error) => {
+            handleFirestoreError(error, OperationType.GET, 'buildings_monsters');
+        });
+
+        return () => {
+            if (monsterSyncTimeout) clearTimeout(monsterSyncTimeout);
+            unsubscribeMonsters();
+        };
+    }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
 
     // Sync Zone Buildings from PocketBase
     useEffect(() => {
@@ -8269,7 +9572,7 @@ const App: React.FC = () => {
                     
                     if (winnerId && winnerVotes > 0) {
                         // Get winner name from allUsers
-                        const winnerName = allUsers[winnerId]?.name || 'Р РЃР ВµРЎР‚Р С‘РЎвЂћ';
+                        const winnerName = allUsers[winnerId]?.name || 'Шериф';
                         
                         // Calculate next election time (30 days from now)
                         const nextElectionTime = Date.now() + 2592000000;
@@ -8290,9 +9593,9 @@ const App: React.FC = () => {
                             // Send system message to police chat
                             const msgId = `sheriff-elected-${Date.now()}`;
                             await setDoc(doc(db, 'chat_messages', msgId), {
-                                sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
+                                sender: '[СИСТЕМА]',
                                 senderId: 'system',
-                                text: `??? Р СџР С•Р В·Р Т‘РЎР‚Р В°Р Р†Р В»РЎРЏР ВµР С! Р СњР С•Р Р†РЎвЂ№Р С РЎв‚¬Р ВµРЎР‚Р С‘РЎвЂћР С•Р С Р С–Р С•РЎР‚Р С•Р Т‘Р В° РЎРѓРЎвЂљР В°Р В» ${winnerName} РЎРѓ ${winnerVotes} Р С–Р С•Р В»Р С•РЎРѓР В°Р СР С‘! Р вЂР В°Р Р…Р С” Р Р†РЎвЂ№Р В±Р С•РЎР‚Р С•Р Р†: ${totalBank.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ.`,
+                                text: `🏆 Поздравляем! Новым шерифом города стал ${winnerName} с ${winnerVotes} голосами! Банк выборов: ${totalBank.toLocaleString()} монет.`,
                                 type: 'system',
                                 timestamp: Date.now(),
                                 tab: 'police'
@@ -8387,8 +9690,8 @@ const App: React.FC = () => {
                     const [queenWinnerId, queenVotes] = femaleCandidates[0] || [null, 0];
                     
                     if (kingWinnerId && kingVotes > 0) {
-                        const kingWinnerName = allUsers[kingWinnerId]?.name || 'Р С™Р С•РЎР‚Р С•Р В»РЎРЉ';
-                        const queenWinnerName = queenWinnerId ? (allUsers[queenWinnerId]?.name || 'Р С™Р С•РЎР‚Р С•Р В»Р ВµР Р†Р В°') : null;
+                        const kingWinnerName = allUsers[kingWinnerId]?.name || 'Король';
+                        const queenWinnerName = queenWinnerId ? (allUsers[queenWinnerId]?.name || 'Королева') : null;
                         
                         // Calculate next election time (30 days from now)
                         const nextElectionTime = Date.now() + 2592000000;
@@ -8410,12 +9713,12 @@ const App: React.FC = () => {
                             
                             // Send system message to general chat
                             const msgId = `royal-elected-${Date.now()}`;
-                            let messageText = `?? Р СџР С•Р В·Р Т‘РЎР‚Р В°Р Р†Р В»РЎРЏР ВµР С! Р СњР С•Р Р†РЎвЂ№Р С Р С™Р С•РЎР‚Р С•Р В»Р ВµР С Р С–Р С•РЎР‚Р С•Р Т‘Р В° РЎРѓРЎвЂљР В°Р В» ${kingWinnerName} РЎРѓ ${kingVotes} Р С–Р С•Р В»Р С•РЎРѓР В°Р СР С‘!`;
+                            let messageText = `👑 Поздравляем! Новым Королем города стал ${kingWinnerName} с ${kingVotes} голосами!`;
                             if (queenWinnerName) {
-                                messageText += ` Р С™Р С•РЎР‚Р С•Р В»Р ВµР Р†Р С•Р в„– РЎРѓРЎвЂљР В°Р В»Р В° ${queenWinnerName} РЎРѓ ${queenVotes} Р С–Р С•Р В»Р С•РЎРѓР В°Р СР С‘!`;
+                                messageText += ` Королевой стала ${queenWinnerName} с ${queenVotes} голосами!`;
                             }
                             await setDoc(doc(db, 'chat_messages', msgId), {
-                                sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
+                                sender: '[СИСТЕМА]',
                                 senderId: 'system',
                                 text: messageText,
                                 type: 'system',
@@ -8592,6 +9895,245 @@ const App: React.FC = () => {
         load();
         return () => { cancelled = true; };
     }, [isAuthReady, user?.uid]);
+
+    // -------------------------------------------------------------
+    // ACHIEVEMENTS SYSTEM & PROGRESSION
+    // -------------------------------------------------------------
+    const achievementStats = useMemo(() => {
+        return {
+            treesChopped: Number(playerLeaderboardStats.treesChopped || 0) || 0,
+            buildingsBuilt: Math.max(Number(buildingsBuiltCount || 0), Number(playerBuildingsCount || 0)),
+            gold: Math.max(Number(playerGold || 0), Number(peakGold || 0)),
+            monstersDestroyed: Number(playerLeaderboardStats.monstersDestroyed || 0) || 0,
+            joinNumber: playerJoinNumber,
+            playTimeTodaySeconds: playTimeTodaySeconds,
+            totalLoginDays: totalLoginDays,
+            buildingsDestroyed: Number(playerLeaderboardStats.buildingsDestroyed || 0) || 0,
+            theftsCommitted: Number(playerLeaderboardStats.theftsCommitted || 0) || 0,
+            level: playerLevel,
+            glory: playerGlory,
+            reputation: playerReputation,
+            friendsCount: Array.isArray(allUsers[user?.uid || '']?.friends) ? allUsers[user?.uid || ''].friends.length : 0,
+            marketTrades: Number(allUsers[user?.uid || '']?.marketTrades || 0) || 0,
+            clanId: playerClanId,
+            isClanLeader: Boolean(currentClan && user && currentClan.leaderUid === user.uid),
+            isClanOfficer: Boolean(allUsers[user?.uid || '']?.clanPermissions?.canInvite || allUsers[user?.uid || '']?.clanPermissions?.canGrantStars),
+        };
+    }, [
+        playerLeaderboardStats,
+        buildingsBuiltCount,
+        playerBuildingsCount,
+        playerGold,
+        peakGold,
+        playerJoinNumber,
+        playTimeTodaySeconds,
+        totalLoginDays,
+        playerLevel,
+        playerGlory,
+        playerReputation,
+        allUsers,
+        user,
+        playerClanId,
+        currentClan
+    ]);
+
+    // Check peak gold update
+    useEffect(() => {
+        if (playerGold > peakGold) {
+            setPeakGold(playerGold);
+            if (user) {
+                updateDoc(doc(db, 'users', user.uid), { peakGold: playerGold }).catch(() => {});
+            }
+        }
+    }, [playerGold, peakGold, user]);
+
+    // Track login days & playtime today
+    useEffect(() => {
+        if (!isAuthReady || !user) return;
+        const currentUtcDay = Math.floor(Date.now() / 86400000);
+        if (lastLoginDay !== currentUtcDay) {
+            setLastLoginDay(currentUtcDay);
+            setTotalLoginDays(prev => {
+                const nextDays = prev + 1;
+                updateDoc(doc(db, 'users', user.uid), {
+                    totalLoginDays: nextDays,
+                    lastLoginDay: currentUtcDay,
+                    playTimeTodaySeconds: 0
+                }).catch(() => {});
+                return nextDays;
+            });
+            setPlayTimeTodaySeconds(0);
+        }
+
+        // Increment active playtime every 10 seconds
+        const playTimeTimer = setInterval(() => {
+            setPlayTimeTodaySeconds(prev => prev + 10);
+        }, 10000);
+
+        // Persist playtime periodically every 60s
+        const savePlayTimeTimer = setInterval(() => {
+            if (!userRef.current) return;
+            updateDoc(doc(db, 'users', userRef.current.uid), {
+                playTimeTodaySeconds: playTimeTodaySecondsRef.current,
+                totalLoginDays: totalLoginDaysRef.current,
+                lastLoginDay: lastLoginDayRef.current
+            }).catch(() => {});
+        }, 60000);
+
+        return () => {
+            clearInterval(playTimeTimer);
+            clearInterval(savePlayTimeTimer);
+        };
+    }, [isAuthReady, user, lastLoginDay]);
+
+    // Fetch pioneer ranking (joinNumber) if not present
+    useEffect(() => {
+        if (!isAuthReady || !user || playerJoinNumber) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch('/api/basingse/player-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.uid })
+                });
+                if (!cancelled && res.ok) {
+                    const data = await res.json();
+                    if (data.success && typeof data.joinNumber === 'number') {
+                        setPlayerJoinNumber(data.joinNumber);
+                        setAllUsers(prev => ({
+                            ...prev,
+                            [user.uid]: {
+                                ...prev[user.uid],
+                                joinNumber: data.joinNumber
+                            }
+                        }));
+                    }
+                }
+            } catch (_e) {}
+        })();
+        return () => { cancelled = true; };
+    }, [isAuthReady, user, playerJoinNumber]);
+
+    // Fetch achievement global percentages
+    const fetchAchievementPercentages = useCallback(async () => {
+        try {
+            const res = await fetch('/api/basingse/achievements-stats');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.percentages) {
+                    setAchievementPercentages(data.percentages);
+                }
+            }
+        } catch (_e) {}
+    }, []);
+
+    useEffect(() => {
+        if (isAuthReady) {
+            fetchAchievementPercentages();
+        }
+    }, [isAuthReady, fetchAchievementPercentages]);
+
+    // Auto-evaluate and unlock newly fulfilled achievement tiers
+    useEffect(() => {
+        if (!isAuthReady || !user) return;
+        const currentCompleted = playerAchievementsRef.current || [];
+        const newlyUnlocked = findNewlyUnlockedTiers(achievementStats, currentCompleted);
+        if (newlyUnlocked.length > 0) {
+            const nextCompleted = Array.from(new Set([...currentCompleted, ...newlyUnlocked.map(t => t.id)]));
+            setPlayerAchievements(nextCompleted);
+            updateDoc(doc(db, 'users', user.uid), {
+                achievements: nextCompleted
+            }).catch(e => console.warn('[Achievements] Error saving achievements:', e));
+
+            setAllUsers(prev => ({
+                ...prev,
+                [user.uid]: {
+                    ...prev[user.uid],
+                    achievements: nextCompleted
+                }
+            }));
+
+            // Announce newly unlocked tiers in history log
+            newlyUnlocked.forEach(tier => {
+                const msg = `🏆 Достижение разблокировано: «${tier.name}»! Получен титул [${tier.prefix}] и награда +${tier.rubies} 💎!`;
+                addHistoryLog(msg, 'social');
+            });
+
+            // Refresh global percentages
+            fetchAchievementPercentages();
+        }
+    }, [achievementStats, isAuthReady, user, fetchAchievementPercentages]);
+
+    // Handler to claim ruby reward for an achievement tier
+    const handleClaimAchievementReward = useCallback((tierId: string, rubies: number) => {
+        if (!user) return;
+        setPlayerRubies(prev => prev + rubies);
+        setClaimedAchievements(prev => {
+            const next = Array.from(new Set([...prev, tierId]));
+            updateDoc(doc(db, 'users', user.uid), {
+                rubies: increment(rubies),
+                claimedAchievements: next
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+            return next;
+        });
+        addHistoryLog(`Забрана награда за очивку: +${rubies} рубинов!`, 'economy');
+    }, [user]);
+
+    // Handler to claim all unclaimed achievement ruby rewards
+    const handleClaimAllAchievementRewards = useCallback(() => {
+        if (!user) return;
+        const unclaimed = playerAchievements.filter(id => !claimedAchievements.includes(id));
+        if (unclaimed.length === 0) return;
+
+        let totalRubies = 0;
+        unclaimed.forEach(id => {
+            const meta = ACHIEVEMENT_TIERS_MAP.get(id);
+            if (meta) totalRubies += meta.tier.rubies;
+        });
+
+        if (totalRubies <= 0) return;
+
+        setPlayerRubies(prev => prev + totalRubies);
+        setClaimedAchievements(prev => {
+            const next = Array.from(new Set([...prev, ...unclaimed]));
+            updateDoc(doc(db, 'users', user.uid), {
+                rubies: increment(totalRubies),
+                claimedAchievements: next
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+            return next;
+        });
+        addHistoryLog(`Забраны все награды за очивки: +${totalRubies} рубинов!`, 'economy');
+    }, [user, playerAchievements, claimedAchievements]);
+
+    // Handler to equip / unequip title/prefix
+    const handleSelectTitle = useCallback((title: string | null) => {
+        if (!user) return;
+        setSelectedTitle(title);
+        updateDoc(doc(db, 'users', user.uid), {
+            selectedTitle: title
+        }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+
+        setAllUsers(prev => ({
+            ...prev,
+            [user.uid]: {
+                ...prev[user.uid],
+                selectedTitle: title
+            }
+        }));
+
+        // Broadcast title to presence
+        const presenceDocRef = doc(db, 'presence', user.uid);
+        updateDoc(presenceDocRef, {
+            title: title
+        }).catch(() => {});
+
+        if (title) {
+            addHistoryLog(`Выбран новый титул: [${title}]`, 'social');
+        } else {
+            addHistoryLog(`Титул снят`, 'social');
+        }
+    }, [user]);
 
     const getUserLevel = useCallback((name: string, uid?: string) => {
         // For current user, always use authoritative local state
@@ -8777,35 +10319,14 @@ const App: React.FC = () => {
         }
     };
     const handleBanPlayer = (cost: number, durationMinutes: number) => {
-        if (playerGold < cost) {
-            alert(`Недостаточно золота! Требуется ${cost.toLocaleString()} монет.`);
-            return;
-        }
-
-        setPlayerGold(prev => prev - cost);
-
-        addHistoryLog(`Игрок ${selectedChatUser} забанен на ${durationMinutes} мин. Потрачено ${cost} монет.`, 'social');
-        alert(`Игрок ${selectedChatUser} успешно забанен на ${durationMinutes} мин!`);
-
-        // Find the target user's UID and update their banEndTime in PocketBase
         const targetUser = Object.values(allUsersRef.current).find((u: any) => u.name === selectedChatUser) as any;
         if (!targetUser) {
             alert('Игрок не найден.');
             return;
         }
-        const targetUid = targetUser.uid;
-        const existingBanEnd = Number(targetUser.banEndTime || 0) || 0;
-        const newBanEndTime = Math.max(existingBanEnd, Date.now()) + durationMinutes * 60 * 1000;
-        updateDoc(doc(db, 'users', targetUid), { banEndTime: newBanEndTime })
-            .catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`));
-
-        // Also update local state if banning self
-        if (targetUid === user.uid) {
-            setBanEndTime(prev => Math.max(prev || 0, newBanEndTime));
-        }
-
         setShowBanMenu(false);
         setSelectedChatUser(null);
+        void handleBanPlayerByUid(targetUser.uid, cost, durationMinutes);
     };
     addHistoryLogRef.current = addHistoryLog;
 
@@ -8850,7 +10371,9 @@ const App: React.FC = () => {
             try {
                 await batch.commit();
                 setPlayerGold(prev => prev - cost);
+                writeCachedBanEndTime(user.uid, newBanEndTime);
                 setBanEndTime(prev => Math.max(prev, newBanEndTime));
+                setActiveChatTab('banya');
 
                 const banNotification: ChatMessage = {
                     id: Date.now(),
@@ -8890,6 +10413,12 @@ const App: React.FC = () => {
             }
 
             setPlayerGold(response.issuerGold);
+            const returnedBanEnd = Number(response.banEndTime) || 0;
+            if (targetUid === user.uid) {
+                writeCachedBanEndTime(user.uid, returnedBanEnd);
+                setBanEndTime(prev => Math.max(prev, returnedBanEnd));
+                setActiveChatTab('banya');
+            }
 
             const targetUser = allUsers[targetUid];
             const targetName = targetUser?.name || 'неизвестный';
@@ -8990,6 +10519,7 @@ const App: React.FC = () => {
         setActivePrivateChat(targetUid);
         setActivePrivateChatId([user?.uid, targetUid].sort().join('_'));
         setIsAnonymousMessage(false);
+        setPrivateChatMode('mail');
         setShowPrivateChatModal(true);
     }, [user?.uid]);
 
@@ -9112,10 +10642,14 @@ const App: React.FC = () => {
             .filter(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isMyBuilding(b)
                       && (b.hp === undefined || b.hp > 0))
             .sort((a, b) => {
-                // Sort by constructionEndTime ascending (oldest first)
+                // Sort by Town Hall level descending (highest level first)
+                const idxA = TOWN_HALL_IDS.indexOf(Number(a.buildingId));
+                const idxB = TOWN_HALL_IDS.indexOf(Number(b.buildingId));
+                if (idxA !== idxB) return idxB - idxA;
+                // Secondary sort: newest first
                 const timeA = a.constructionEndTime || a.timestamp || 0;
                 const timeB = b.constructionEndTime || b.timestamp || 0;
-                return timeA - timeB; // Oldest first
+                return timeB - timeA;
             });
 
         // Track first seen times only for current TH ids to enforce a stabilization window
@@ -9186,7 +10720,10 @@ const App: React.FC = () => {
         if (showPrivateChatModal && activePrivateChatId && user) {
             const unreadMsgs = privateMessages.filter(m => {
                 const isGroupMatch = m.chatId === activePrivateChatId || (!m.chatId && [user.uid, m.senderId === user.uid ? m.receiverId : m.senderId].sort().join('_') === activePrivateChatId);
-                return isGroupMatch && m.receiverId === user.uid && !m.read;
+                const matchesMode = privateChatMode === 'mail'
+                    ? (!m.messageType || m.messageType === 'mail')
+                    : (m.messageType === 'private');
+                return isGroupMatch && matchesMode && m.receiverId === user.uid && !m.read;
             });
 
             if (unreadMsgs.length > 0) {
@@ -9196,7 +10733,7 @@ const App: React.FC = () => {
                 });
             }
         }
-    }, [showPrivateChatModal, activePrivateChatId, privateMessages, user]);
+    }, [showPrivateChatModal, activePrivateChatId, privateChatMode, privateMessages, user]);
 
     // Preload only the assets needed to render the first visible seconds of the world.
     useEffect(() => {
@@ -9246,7 +10783,11 @@ const App: React.FC = () => {
 
         const nearbyDroppedItemUrls = droppedItems
             .filter(item => zoneSet.has(item.zoneId || getZoneId(item.x, item.y)))
-            .map(item => itemData.find(info => info.id === item.itemId)?.imageUrl)
+            .map(item => {
+                const numericItemId = Number(item.itemId);
+                if (numericItemId === 999) return coinImageUrl;
+                return itemData.find(info => Number(info.id) === numericItemId)?.imageUrl;
+            })
             .filter(Boolean) as string[];
 
         const nearbyAnimationUrls = nearbyBuildings.flatMap(getPriorityAnimationUrlsForBuilding);
@@ -9270,11 +10811,11 @@ const App: React.FC = () => {
     const handleAddFriend = async () => {
         if (!selectedChatUser || !user) return;
         if (selectedChatUser === playerName) {
-            alert("Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Т‘Р С•Р В±Р В°Р Р†Р С‘РЎвЂљРЎРЉ РЎРѓР В°Р СР С•Р С–Р С• РЎРѓР ВµР В±РЎРЏ Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ.");
+            alert("Вы не можете добавить самого себя в друзья.");
             return;
         }
         if (friends.some(f => f.name === selectedChatUser)) {
-            alert("Р В­РЎвЂљР С•РЎвЂљ Р С‘Р С–РЎР‚Р С•Р С” РЎС“Р В¶Р Вµ Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР С—Р С‘РЎРѓР С”Р Вµ Р Т‘РЎР‚РЎС“Р В·Р ВµР в„–.");
+            alert("Этот игрок уже в вашем списке друзей.");
             return;
         }
 
@@ -9289,7 +10830,7 @@ const App: React.FC = () => {
             await persistProfileSettings({ friends: updatedFriends });
             setFriends(updatedFriends);
             addHistoryLog(`Пользователь ${selectedChatUser} добавлен в друзья.`, 'social');
-            alert(`Р СџР С•Р В»РЎРЉР В·Р С•Р Р†Р В°РЎвЂљР ВµР В»РЎРЉ ${selectedChatUser} Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р… Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!`);
+            alert(`Пользователь ${selectedChatUser} добавлен в друзья!`);
             setSelectedChatUser(null);
             setSelectedChatUserId(null);
         } catch (e) {
@@ -9376,13 +10917,13 @@ const App: React.FC = () => {
     const handleAddFriendByUid = async (targetUid: string) => {
         if (!user) return;
         if (targetUid === user.uid) {
-            alert("Р СњР ВµР В»РЎРЉР В·РЎРЏ Р Т‘Р С•Р В±Р В°Р Р†Р С‘РЎвЂљРЎРЉ РЎРѓР В°Р СР С•Р С–Р С• РЎРѓР ВµР В±РЎРЏ Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!");
+            alert("Нельзя добавить самого себя в друзья!");
             return;
         }
         
         // Check if already friends
         if (friends.some(f => f.uid === targetUid)) {
-            alert("Р В­РЎвЂљР С•РЎвЂљ Р С‘Р С–РЎР‚Р С•Р С” РЎС“Р В¶Р Вµ Р Р† Р Р†Р В°РЎв‚¬Р ВµР С РЎРѓР С—Р С‘РЎРѓР С”Р Вµ Р Т‘РЎР‚РЎС“Р В·Р ВµР в„–.");
+            alert("Этот игрок уже в вашем списке друзей.");
             return;
         }
 
@@ -9398,7 +10939,7 @@ const App: React.FC = () => {
                     const userData = targetUserDoc.data();
                     console.log('[Friends] User data keys:', Object.keys(userData));
                     console.log('[Friends] User data name:', userData.name);
-                    targetName = userData.name || 'Р ВР С–РЎР‚Р С•Р С”';
+                    targetName = userData.name || 'Игрок';
                 }
             } catch (err) {
                 console.error('[Friends] Failed to fetch user:', err);
@@ -9407,7 +10948,7 @@ const App: React.FC = () => {
 
         console.log('[Friends] Final targetName:', targetName);
         if (!targetName) {
-            alert("Р СњР Вµ РЎС“Р Т‘Р В°Р В»Р С•РЎРѓРЎРЉ Р Р…Р В°Р в„–РЎвЂљР С‘ Р С‘Р С–РЎР‚Р С•Р С”Р В°.");
+            alert("Не удалось найти игрока.");
             return;
         }
 
@@ -9427,7 +10968,7 @@ const App: React.FC = () => {
             setFriends(updatedFriends); // Update local state immediately
             
             addHistoryLog(`Пользователь ${targetName} добавлен в друзья.`, 'social');
-            alert(`${targetName} Р Т‘Р С•Р В±Р В°Р Р†Р В»Р ВµР Р… Р Р† Р Т‘РЎР‚РЎС“Р В·РЎРЉРЎРЏ!`);
+            alert(`${targetName} добавлен в друзья!`);
         } catch (e) {
             console.error('[Friends] Save failed:', e);
             handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
@@ -9483,22 +11024,13 @@ const App: React.FC = () => {
             }));
 
             addHistoryLog(`Вы заколдовали игрока ${selectedChatUser} в "${animalName}". Потрачено ${cost} монет.`, 'social');
-            alert(`Р ВР С–РЎР‚Р С•Р С” ${selectedChatUser} РЎС“РЎРѓР С—Р ВµРЎв‚¬Р Р…Р С• Р В·Р В°Р С”Р С•Р В»Р Т‘Р С•Р Р†Р В°Р Р…!`);
+            alert(`Игрок ${selectedChatUser} успешно заколдован!`);
         }
 
         setShowCurseMenu(false);
     };
 
     // ... (draw function and game loop are unchanged, skipping for brevity in this response) ...
-    // Memoize drawableEntities so it's NOT rebuilt on every camera move (only when data changes)
-    const memoizedDrawableEntities = useMemo(() => {
-        return [
-            ...mapResources.map(r => ({ ...r, entityType: 'resource' as const })),
-            ...droppedItems.map(i => ({ ...i, entityType: 'dropped_item' as const })),
-            ...placedBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => ({ ...b, entityType: 'building' as const }))
-        ];
-    }, [mapResources, droppedItems, placedBuildings]);
-
     const draw = useCallback(() => {
         const [canvas, context] = getCanvasContext();
         if (!canvas || !context) return;
@@ -9576,28 +11108,70 @@ const App: React.FC = () => {
             }
         }
 
-        // Use pre-sorted memoized entities (avoids rebuilding 6000+ element arrays every frame)
-        const drawableEntities = [...memoizedDrawableEntities].sort((a, b) => {
-            const aDisplay = getClosestWrappedWorldCoords(a.x, a.y, renderCenterX, renderCenterY, isWorldWrapped);
-            const bDisplay = getClosestWrappedWorldCoords(b.x, b.y, renderCenterX, renderCenterY, isWorldWrapped);
-            const posDiff = (aDisplay.x + aDisplay.y) - (bDisplay.x + bDisplay.y);
+        // Pre-filter visible entities within RENDER_RADIUS directly from refs (~50-100 items), computing coords once
+        type VisibleDrawableEntity = {
+            entity: any;
+            entityVX: number;
+            entityVY: number;
+            depth: number;
+        };
+        const visibleDrawableEntities: VisibleDrawableEntity[] = [];
+
+        // 1. Resources from ref
+        const resList = mapResourcesRef.current;
+        for (let i = 0; i < resList.length; i++) {
+            const r = resList[i];
+            const coords = getClosestWrappedWorldCoords(r.x, r.y, renderCenterX, renderCenterY, isWorldWrapped);
+            if (Math.abs(coords.x - renderCenterX) <= RENDER_RADIUS && Math.abs(coords.y - renderCenterY) <= RENDER_RADIUS) {
+                visibleDrawableEntities.push({
+                    entity: { ...r, entityType: 'resource' as const },
+                    entityVX: coords.x,
+                    entityVY: coords.y,
+                    depth: coords.x + coords.y
+                });
+            }
+        }
+
+        // 2. Dropped items from ref
+        const itemList = droppedItemsRef.current;
+        for (let i = 0; i < itemList.length; i++) {
+            const item = itemList[i];
+            const coords = getClosestWrappedWorldCoords(item.x, item.y, renderCenterX, renderCenterY, isWorldWrapped);
+            if (Math.abs(coords.x - renderCenterX) <= RENDER_RADIUS && Math.abs(coords.y - renderCenterY) <= RENDER_RADIUS) {
+                visibleDrawableEntities.push({
+                    entity: { ...item, entityType: 'dropped_item' as const },
+                    entityVX: coords.x,
+                    entityVY: coords.y,
+                    depth: coords.x + coords.y
+                });
+            }
+        }
+
+        // 3. Buildings & monsters from ref (skip destroyed)
+        const bList = placedBuildingsRef.current;
+        for (let i = 0; i < bList.length; i++) {
+            const b = bList[i];
+            if (b.hp !== undefined && b.hp <= 0) continue;
+            const coords = getClosestWrappedWorldCoords(b.x, b.y, renderCenterX, renderCenterY, isWorldWrapped);
+            if (Math.abs(coords.x - renderCenterX) <= RENDER_RADIUS && Math.abs(coords.y - renderCenterY) <= RENDER_RADIUS) {
+                visibleDrawableEntities.push({
+                    entity: { ...b, entityType: 'building' as const },
+                    entityVX: coords.x,
+                    entityVY: coords.y,
+                    depth: coords.x + coords.y
+                });
+            }
+        }
+
+        // Sort ONLY the visible entities (~50-100 instead of 6000+), using precalculated depth
+        visibleDrawableEntities.sort((a, b) => {
+            const posDiff = a.depth - b.depth;
             if (posDiff !== 0) return posDiff;
             const typeOrder: Record<string, number> = { 'resource': 0, 'building': 1, 'dropped_item': 2 };
-            return typeOrder[a.entityType] - typeOrder[b.entityType];
+            return (typeOrder[a.entity.entityType] ?? 0) - (typeOrder[b.entity.entityType] ?? 0);
         });
 
-        drawableEntities.forEach(entity => {
-            // For wrapped world, compute virtual position closest to camera center
-            const wrappedCoords = getClosestWrappedWorldCoords(entity.x, entity.y, renderCenterX, renderCenterY, isWorldWrapped);
-            let entityVX = wrappedCoords.x;
-            let entityVY = wrappedCoords.y;
-            // Check distance from render center
-            const distX = Math.abs(entityVX - renderCenterX);
-            const distY = Math.abs(entityVY - renderCenterY);
-            if (distX > RENDER_RADIUS || distY > RENDER_RADIUS) {
-                return;
-            }
-            
+        visibleDrawableEntities.forEach(({ entity, entityVX, entityVY }) => {
             const { screenX, screenY } = worldToScreen(entityVX, entityVY, zoom);
 
             if (
@@ -9634,18 +11208,36 @@ const App: React.FC = () => {
                     return;
                 }
             } else if (entity.entityType === 'dropped_item') {
-                if (entity.itemId === 999) {
+                const numericItemId = Number(entity.itemId);
+                if (numericItemId === 999) {
                     img = images[coinImageUrl];
+                    if (!img && coinImageUrl) {
+                        img = new Image();
+                        img.src = coinImageUrl;
+                        img.onload = () => {
+                            loadedImageElementsRef.current[coinImageUrl] = img!;
+                        };
+                        loadedImageElementsRef.current[coinImageUrl] = img;
+                    }
                     color = 'gold';
                 } else {
-                    const itemInfo = itemData.find(i => i.id === entity.itemId);
+                    const itemInfo = itemData.find(i => Number(i.id) === numericItemId);
                     if (itemInfo && itemInfo.imageUrl) {
-                        img = images[itemInfo.imageUrl];
+                        const url = itemInfo.imageUrl;
+                        img = images[url];
+                        if (!img) {
+                            img = new Image();
+                            img.src = url;
+                            img.onload = () => {
+                                loadedImageElementsRef.current[url] = img!;
+                            };
+                            loadedImageElementsRef.current[url] = img;
+                        }
                     }
                     color = 'yellow';
                 }
             } else if (entity.entityType === 'building' && 'buildingId' in entity) {
-                buildingInfo = buildingData.find(b => b.id === entity.buildingId);
+                buildingInfo = buildingData.find(b => b.id === Number(entity.buildingId) || b.id === entity.buildingId);
                 const isProtected = (entity.shieldHp || 0) > 0 || (entity.protectionEndTime && entity.protectionEndTime > Date.now());
 
                 if (isProtected) {
@@ -9920,22 +11512,35 @@ const App: React.FC = () => {
                             img = images[frameUrl];
                         }
                     } else if (entity.buildingId === KILLING_HUT_ID && buildingInfo?.stats.isMonster) {
-                        // Izbushka animation - idle (standing), directional walk, attack, and attack cancel
+                        // Izbushka animation - idle (standing), directional walk, and directional attack
                         const now = Date.now();
                         const monsterId = String(entity.id);
-                        let lastDir = monsterDirectionRef.current.get(monsterId);
-                        if (!lastDir) { const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}]; lastDir = _dirs[Math.floor(Math.random()*_dirs.length)]; monsterDirectionRef.current.set(monsterId, lastDir); }
-                        const lastMoveTime = Math.max(entity.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
-                        const lastAttackTime = Math.max(entity.lastAttackTime || 0, monsterAttackTimeRef.current.get(monsterId) || 0);
-                        const attackCancelTime = monsterAttackCancelTimeRef.current.get(monsterId) || 0;
+                        const monsterGameId = entity.gameId ? String(entity.gameId) : '';
+                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        if (!lastDir) {
+                            const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+                            lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
+                            monsterDirectionRef.current.set(monsterId, lastDir);
+                            if (monsterGameId) monsterDirectionRef.current.set(monsterGameId, lastDir);
+                        }
+                        const lastMoveTime = Math.max(
+                            entity.lastMoveTime || 0,
+                            monsterLastMoveTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
+                        const lastAttackTime = Math.max(
+                            entity.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
                         
                         let frames: string[] = izbushkaIdleFrames;
                         let playOnce = false;
                         let animStartTime = lastMoveTime;
                         let playbackMultiplier = 1;
                         
-                        // PRIORITY 1: Attack animation (takes precedence over everything)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
+                        // PRIORITY 1: Attack animation (takes precedence over walk)
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -9958,34 +11563,8 @@ const App: React.FC = () => {
                             }
                         }
                         
-                        // PRIORITY 2: Attack cancel animation (plays after walk ends when no target nearby)
-                        if (!playOnce && lastDir && attackCancelTime > 0 && now >= attackCancelTime) {
-                            let cancelFrames: string[];
-                            const absDx = Math.abs(lastDir.dx);
-                            const absDy = Math.abs(lastDir.dy);
-                            if (absDx === 0 && absDy === 0) {
-                                cancelFrames = izbushkaCancelBottomFrames;
-                            } else if (absDx >= absDy) {
-                                cancelFrames = lastDir.dx > 0 ? izbushkaCancelRightFrames : izbushkaCancelLeftFrames;
-                            } else {
-                                cancelFrames = lastDir.dy > 0 ? izbushkaCancelBottomFrames : izbushkaCancelTopFrames;
-                            }
-                            
-                            const cancelDuration = cancelFrames.length * (1000 / 30);
-                            const cancelElapsed = now - attackCancelTime;
-                            
-                            if (cancelElapsed < cancelDuration) {
-                                frames = cancelFrames;
-                                playOnce = true;
-                                animStartTime = attackCancelTime;
-                            } else {
-                                // Cancel animation finished, clear it
-                                monsterAttackCancelTimeRef.current.delete(monsterId);
-                            }
-                        }
-                        
-                        // PRIORITY 3: Walk animation (if not attacking or canceling)
-                        if (!playOnce && lastDir && lastMoveTime > 0) {
+                        // PRIORITY 2: Walk animation (if not attacking, and moved more recently than attack)
+                        if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
                             let walkFrames: string[];
                             const absDx = Math.abs(lastDir.dx);
                             const absDy = Math.abs(lastDir.dy);
@@ -10008,7 +11587,7 @@ const App: React.FC = () => {
                             }
                         }
                         
-                        // PRIORITY 4: Idle/standing animation (default)
+                        // PRIORITY 3: Idle/standing animation (default)
                         let frameIndex: number;
                         if (playOnce) {
                             const elapsed = now - animStartTime;
@@ -10043,10 +11622,24 @@ const App: React.FC = () => {
                         const SANTA_FPS = 20;
                         const now = Date.now();
                         const monsterId = String(entity.id);
-                        let lastDir = monsterDirectionRef.current.get(monsterId);
-                        if (!lastDir) { const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}]; lastDir = _dirs[Math.floor(Math.random()*_dirs.length)]; monsterDirectionRef.current.set(monsterId, lastDir); }
-                        const lastMoveTime = Math.max(entity.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
-                        const lastAttackTime = Math.max(entity.lastAttackTime || 0, monsterAttackTimeRef.current.get(monsterId) || 0);
+                        const monsterGameId = entity.gameId ? String(entity.gameId) : '';
+                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        if (!lastDir) {
+                            const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+                            lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
+                            monsterDirectionRef.current.set(monsterId, lastDir);
+                            if (monsterGameId) monsterDirectionRef.current.set(monsterGameId, lastDir);
+                        }
+                        const lastMoveTime = Math.max(
+                            entity.lastMoveTime || 0,
+                            monsterLastMoveTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
+                        const lastAttackTime = Math.max(
+                            entity.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
                         
                         let frames: string[] = santaIdleFrames;
                         let playOnce = false;
@@ -10056,7 +11649,7 @@ const App: React.FC = () => {
                         let santaAnimState: 'idle' | 'walk' | 'attack' = 'idle';
                         
                         // PRIORITY 1: Attack animation
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -10081,8 +11674,8 @@ const App: React.FC = () => {
                             }
                         }
                         
-                        // PRIORITY 2: Walk animation
-                        if (!playOnce && lastDir && lastMoveTime > 0) {
+                        // PRIORITY 2: Walk animation (if not attacking, and moved more recently than attack)
+                        if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
                             let walkFrames: string[];
                             const absDx = Math.abs(lastDir.dx);
                             const absDy = Math.abs(lastDir.dy);
@@ -10129,10 +11722,24 @@ const App: React.FC = () => {
                         // Bronekur animation - idle, directional walk, and directional attack
                         const now = Date.now();
                         const monsterId = String(entity.id);
-                        let lastDir = monsterDirectionRef.current.get(monsterId);
-                        if (!lastDir) { const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}]; lastDir = _dirs[Math.floor(Math.random()*_dirs.length)]; monsterDirectionRef.current.set(monsterId, lastDir); }
-                        const lastMoveTime = Math.max(entity.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
-                        const lastAttackTime = Math.max(entity.lastAttackTime || 0, monsterAttackTimeRef.current.get(monsterId) || 0);
+                        const monsterGameId = entity.gameId ? String(entity.gameId) : '';
+                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        if (!lastDir) {
+                            const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+                            lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
+                            monsterDirectionRef.current.set(monsterId, lastDir);
+                            if (monsterGameId) monsterDirectionRef.current.set(monsterGameId, lastDir);
+                        }
+                        const lastMoveTime = Math.max(
+                            entity.lastMoveTime || 0,
+                            monsterLastMoveTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
+                        const lastAttackTime = Math.max(
+                            entity.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
                         
                         let frames: string[] = bronekurIdleFrames;
                         let playOnce = false;
@@ -10140,7 +11747,7 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             // Map grid direction to attack animation
@@ -10165,8 +11772,8 @@ const App: React.FC = () => {
                             }
                         }
                         
-                        // PRIORITY 2: Walk animation (if not attacking)
-                        if (!playOnce && lastDir && lastMoveTime > 0) {
+                        // PRIORITY 2: Walk animation (if not attacking, and moved more recently than attack)
+                        if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
                             let walkFrames: string[];
                             const absDx = Math.abs(lastDir.dx);
                             const absDy = Math.abs(lastDir.dy);
@@ -10223,10 +11830,24 @@ const App: React.FC = () => {
                         // Gorynych animation - idle, directional walk, and directional attack
                         const now = Date.now();
                         const monsterId = String(entity.id);
-                        let lastDir = monsterDirectionRef.current.get(monsterId);
-                        if (!lastDir) { const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}]; lastDir = _dirs[Math.floor(Math.random()*_dirs.length)]; monsterDirectionRef.current.set(monsterId, lastDir); }
-                        const lastMoveTime = Math.max(entity.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
-                        const lastAttackTime = Math.max(entity.lastAttackTime || 0, monsterAttackTimeRef.current.get(monsterId) || 0);
+                        const monsterGameId = entity.gameId ? String(entity.gameId) : '';
+                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        if (!lastDir) {
+                            const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+                            lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
+                            monsterDirectionRef.current.set(monsterId, lastDir);
+                            if (monsterGameId) monsterDirectionRef.current.set(monsterGameId, lastDir);
+                        }
+                        const lastMoveTime = Math.max(
+                            entity.lastMoveTime || 0,
+                            monsterLastMoveTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
+                        const lastAttackTime = Math.max(
+                            entity.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
                         
                         let frames: string[] = gorynychIdleFrames;
                         let playOnce = false;
@@ -10234,7 +11855,7 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -10257,8 +11878,8 @@ const App: React.FC = () => {
                             }
                         }
                         
-                        // PRIORITY 2: Walk animation (if not attacking)
-                        if (!playOnce && lastDir && lastMoveTime > 0) {
+                        // PRIORITY 2: Walk animation (if not attacking, and moved more recently than attack)
+                        if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
                             let walkFrames: string[];
                             const absDx = Math.abs(lastDir.dx);
                             const absDy = Math.abs(lastDir.dy);
@@ -10310,10 +11931,24 @@ const App: React.FC = () => {
                         // Kolobok animation - idle, directional walk, and directional attack
                         const now = Date.now();
                         const monsterId = String(entity.id);
-                        let lastDir = monsterDirectionRef.current.get(monsterId);
-                        if (!lastDir) { const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}]; lastDir = _dirs[Math.floor(Math.random()*_dirs.length)]; monsterDirectionRef.current.set(monsterId, lastDir); }
-                        const lastMoveTime = Math.max(entity.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
-                        const lastAttackTime = Math.max(entity.lastAttackTime || 0, monsterAttackTimeRef.current.get(monsterId) || 0);
+                        const monsterGameId = entity.gameId ? String(entity.gameId) : '';
+                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        if (!lastDir) {
+                            const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+                            lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
+                            monsterDirectionRef.current.set(monsterId, lastDir);
+                            if (monsterGameId) monsterDirectionRef.current.set(monsterGameId, lastDir);
+                        }
+                        const lastMoveTime = Math.max(
+                            entity.lastMoveTime || 0,
+                            monsterLastMoveTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
+                        const lastAttackTime = Math.max(
+                            entity.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
                         
                         let frames: string[] = kolobokIdleFrames;
                         let playOnce = false;
@@ -10321,7 +11956,7 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -10344,8 +11979,8 @@ const App: React.FC = () => {
                             }
                         }
                         
-                        // PRIORITY 2: Walk animation (if not attacking)
-                        if (!playOnce && lastDir && lastMoveTime > 0) {
+                        // PRIORITY 2: Walk animation (if not attacking, and moved more recently than attack)
+                        if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
                             let walkFrames: string[];
                             const absDx = Math.abs(lastDir.dx);
                             const absDy = Math.abs(lastDir.dy);
@@ -10395,10 +12030,24 @@ const App: React.FC = () => {
                         // Baba Yaga animation - idle, directional walk, and directional attack
                         const now = Date.now();
                         const monsterId = String(entity.id);
-                        let lastDir = monsterDirectionRef.current.get(monsterId);
-                        if (!lastDir) { const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}]; lastDir = _dirs[Math.floor(Math.random()*_dirs.length)]; monsterDirectionRef.current.set(monsterId, lastDir); }
-                        const lastMoveTime = Math.max(entity.lastMoveTime || 0, monsterLastActionRef.current.get(monsterId) || 0);
-                        const lastAttackTime = Math.max(entity.lastAttackTime || 0, monsterAttackTimeRef.current.get(monsterId) || 0);
+                        const monsterGameId = entity.gameId ? String(entity.gameId) : '';
+                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        if (!lastDir) {
+                            const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+                            lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
+                            monsterDirectionRef.current.set(monsterId, lastDir);
+                            if (monsterGameId) monsterDirectionRef.current.set(monsterGameId, lastDir);
+                        }
+                        const lastMoveTime = Math.max(
+                            entity.lastMoveTime || 0,
+                            monsterLastMoveTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
+                        const lastAttackTime = Math.max(
+                            entity.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
                         
                         let frames: string[] = babaYagaIdleFrames;
                         let playOnce = false;
@@ -10406,7 +12055,7 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -10429,8 +12078,8 @@ const App: React.FC = () => {
                             }
                         }
                         
-                        // PRIORITY 2: Walk animation (if not attacking)
-                        if (!playOnce && lastDir && lastMoveTime > 0) {
+                        // PRIORITY 2: Walk animation (if not attacking, and moved more recently than attack)
+                        if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
                             let walkFrames: string[];
                             const absDx = Math.abs(lastDir.dx);
                             const absDy = Math.abs(lastDir.dy);
@@ -10484,6 +12133,19 @@ const App: React.FC = () => {
                         const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
                         const frameUrl = frames[frameIndex];
                         img = images[frameUrl] || images[buildingInfo.imageUrl];
+                    } else if (FINANCIAL_INTELLIGENCE_ID_SET.has(entity.buildingId)) {
+                        // Financial Intelligence (Финансовая разведка) animation - continuous scanning loop
+                        const now = Date.now();
+                        const animationDuration = 3000; // 3 seconds for full scanning sweep loop
+                        const frames = financialIntelligenceAnimationFrames[entity.buildingId];
+                        if (frames && frames.length > 0) {
+                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                            const frameUrl = frames[frameIndex];
+                            img = images[frameUrl] || images[buildingInfo.imageUrl];
+                        } else {
+                            img = images[buildingInfo.imageUrl];
+                        }
+
                     } else {
                         img = images[buildingInfo.imageUrl];
                     }
@@ -10494,7 +12156,24 @@ const App: React.FC = () => {
 
             // Safety fallback: if an animation frame failed to load, fall back to the building static sprite.
             if (!img && entity.entityType === 'building' && buildingInfo?.imageUrl) {
-                img = images[buildingInfo.imageUrl];
+                const url = buildingInfo.imageUrl;
+                img = images[url];
+                if (!img) {
+                    const normUrl = normalizeAssetUrl(url);
+                    img = images[normUrl];
+                }
+                if (!img && url) {
+                    const normUrl = normalizeAssetUrl(url);
+                    const newImg = new Image();
+                    newImg.src = normUrl;
+                    newImg.onload = () => {
+                        loadedImageElementsRef.current[url] = newImg;
+                        loadedImageElementsRef.current[normUrl] = newImg;
+                    };
+                    loadedImageElementsRef.current[url] = newImg;
+                    loadedImageElementsRef.current[normUrl] = newImg;
+                    img = newImg;
+                }
             }
 
             // Visual anti-flicker fallback:
@@ -10519,30 +12198,21 @@ const App: React.FC = () => {
             const isKolobokMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === KOLOBOK_ID && buildingInfo?.stats.isMonster;
             const isBabaYagaMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === BABA_YAGA_ID && buildingInfo?.stats.isMonster;
             const isWildQuarryBuilding = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === WILD_QUARRY_ID;
+            const isStoneWallCorner = entity.entityType === 'building' && Number((entity as PlacedBuilding).buildingId) === 500032;
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
-            // Evil Santa: idle and walk frames share the same 426x311 canvas with
-            // transparent padding. Apply per-frame crop metadata for both states
-            // so the rendered body matches the idle scale consistently.
-            const SANTA_IDLE_SCALE = 0.90;
-            const SANTA_WALK_SCALE = 0.90;
-            const SANTA_ATTACK_SCALE = 1.06;
-            const santaScale = santaAnimState === 'attack'
-                ? SANTA_ATTACK_SCALE
-                : santaAnimState === 'walk'
-                    ? SANTA_WALK_SCALE
-                    : SANTA_IDLE_SCALE;
+            // Evil Santa: constant scale across idle, walk, and attack like all other monsters.
+            const SANTA_MONSTER_SCALE = 0.90;
             const isSantaCropped = isSantaMonster && (santaAnimState === 'walk' || santaAnimState === 'idle');
             const santaFrameUrl = (entity as any).__santaFrameUrl as string | undefined;
-            const santaCropMeta = isSantaCropped && santaFrameUrl ? SANTA_WALK_FRAME_META[santaFrameUrl] : undefined;
+            const santaCropMeta = isSantaCropped && santaFrameUrl ? (SANTA_WALK_FRAME_META[santaFrameUrl] || { cx: 205.0, feetY: 250 }) : undefined;
             const CROP_W = SANTA_WALK_CROP_WINDOW.w;
             const CROP_H = SANTA_WALK_CROP_WINDOW.h;
-            const specialScale = 1;
-            const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? 1.4 : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : isSantaMonster ? santaScale : 1;
-            const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * specialScale;
+            const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? (364 / 240) : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : isSantaMonster ? SANTA_MONSTER_SCALE : 1;
+            const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * (isStoneWallCorner ? 1.25 : 1);
             const imageScaledHeight = imageScaledWidth * aspectRatio;
 
-            // Santa walk: per-frame source crop, destination matches idle proportions
+            // Santa destination dimensions matching idle/walk proportions
             const santaWalkDestWidth = imageScaledWidth;
             const santaWalkDestHeight = imageScaledWidth * (CROP_H / CROP_W);
 
@@ -10554,11 +12224,10 @@ const App: React.FC = () => {
                 drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight + (scaledTileHeight * 0.75);
             }
             
-            // Izbushka monster: adjust vertical/horizontal position so the sprite is visually centered on the tile
+            // Izbushka monster: scale 364/240 aligns 120x60 Flash step with 128x64 isometric tile grid,
+            // and aligning feet (Y=261/322) centers the monster on the tile without twitching at start/end of walk
             if (isIzbushkaMonster) {
-                drawX += scaledTileWidth * 0.03;
-                drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight + (scaledTileHeight * 0.28);
-                drawY -= 1;
+                drawY = screenY + (scaledTileHeight / 2) - (261 / 322) * imageScaledHeight;
             }
             
             // Santa monster: keep the sprite centered on the same tile anchor across states.
@@ -10571,10 +12240,7 @@ const App: React.FC = () => {
             if (isSantaMonster) {
                 drawX -= scaledTileWidth * 0.19;
                 drawY -= scaledTileHeight * 0.045;
-                if (santaAnimState === 'attack') {
-                    drawX -= scaledTileWidth * 0.09;
-                    drawY -= scaledTileHeight * 0.02;
-                } else if (santaAnimState === 'walk') {
+                if (santaAnimState === 'walk') {
                     drawX -= scaledTileWidth * 0.13;
                     drawY -= scaledTileHeight * 0.02;
                 }
@@ -10598,22 +12264,27 @@ const App: React.FC = () => {
             }
 
             if (entity.entityType === 'dropped_item') {
-                // Make dropped items visible but slightly smaller than buildings
-                const itemScale = 0.6;
-                const itemWidth = imageScaledWidth * itemScale;
-                const itemHeight = imageScaledHeight * itemScale;
+                // Render dropped resource item directly on the tile as an icon
+                const baseItemSize = 36 * zoom;
+                const naturalAspect = (img && img.naturalWidth > 0)
+                    ? (img.naturalHeight / img.naturalWidth)
+                    : 1;
+                const itemWidth = naturalAspect > 1.2 ? baseItemSize / naturalAspect : baseItemSize;
+                const itemHeight = itemWidth * naturalAspect;
 
-                // Generate a pseudo-random offset based on the item's ID so it's consistent
+                // Generate a pseudo-random offset based on the item's ID so multiple dropped items spread out on the tile
                 const safeId = String(entity.id || '');
                 const hash = safeId.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
-                const offsetX = (hash % 20 - 10) * zoom;
+                const offsetX = (hash % 16 - 8) * zoom;
                 const offsetY = ((hash >> 4) % 10 - 5) * zoom;
 
                 drawX = screenX - itemWidth / 2 + offsetX;
-                drawY = screenY + (scaledTileHeight / 2) - itemHeight + offsetY;
+                drawY = screenY + (scaledTileHeight * 0.15) - itemHeight / 2 + offsetY;
 
-                if (img) {
+                if (img && img.complete && img.naturalWidth > 0) {
                     context.drawImage(img, drawX, drawY, itemWidth, itemHeight);
+                } else if (img) {
+                    // Image element exists and is in-flight loading; will draw on subsequent animation frame
                 } else {
                     context.fillStyle = color;
                     context.beginPath();
@@ -10622,18 +12293,22 @@ const App: React.FC = () => {
                 }
 
                 // Draw amount
-                if (entity.amount > 1) {
-                    context.fillStyle = 'white';
+                const amount = Number(entity.amount) || 1;
+                if (amount > 1) {
+                    context.fillStyle = '#FFFFFF';
                     context.font = `bold ${10 * zoom}px sans-serif`;
                     context.textAlign = 'center';
-                    context.strokeStyle = 'black';
-                    context.lineWidth = 2 * zoom;
-                    context.strokeText(`x${entity.amount}`, screenX + offsetX, screenY + offsetY + itemHeight / 2 + 5 * zoom);
-                    context.fillText(`x${entity.amount}`, screenX + offsetX, screenY + offsetY + itemHeight / 2 + 5 * zoom);
+                    context.textBaseline = 'top';
+                    context.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+                    context.lineWidth = 2.5 * zoom;
+                    const amountText = `x${amount}`;
+                    const textY = drawY + itemHeight + 1 * zoom;
+                    context.strokeText(amountText, screenX + offsetX, textY);
+                    context.fillText(amountText, screenX + offsetX, textY);
                 }
             } else {
                 if (img) {
-                    context.globalAlpha = ('isConstructing' in entity && entity.isConstructing) ? 0.6 : 1.0;
+                    context.globalAlpha = ('isConstructing' in entity && entity.isConstructing && (entity.constructionEndTime || 0) > Date.now()) ? 0.6 : 1.0;
                     if (isSantaCropped && santaCropMeta) {
                         const sx = santaCropMeta.cx - CROP_W / 2;
                         const sy = santaCropMeta.feetY - CROP_H;
@@ -10641,6 +12316,19 @@ const App: React.FC = () => {
                         context.drawImage(img,
                             sx, sy, CROP_W, CROP_H,
                             drawX, santaWalkDrawY, santaWalkDestWidth, santaWalkDestHeight);
+                    } else if (isSantaMonster && santaAnimState === 'attack') {
+                        // Render full 426x311 canvas at identical pixel scale and tile anchor as idle/walk so Santa never shrinks or clips
+                        const IDLE_CX = 205.0;
+                        const IDLE_FEET_Y = 250.0;
+                        const IDLE_SX = IDLE_CX - CROP_W / 2;
+                        const IDLE_SY = IDLE_FEET_Y - CROP_H;
+                        const santaPixelScale = santaWalkDestWidth / CROP_W;
+                        const santaWalkDrawY = screenY + (scaledTileHeight / 2) - santaWalkDestHeight;
+                        const santaAttackDrawX = drawX - IDLE_SX * santaPixelScale;
+                        const santaAttackDrawY = santaWalkDrawY - IDLE_SY * santaPixelScale;
+                        const santaAttackWidth = (img.naturalWidth || 426) * santaPixelScale;
+                        const santaAttackHeight = (img.naturalHeight || 311) * santaPixelScale;
+                        context.drawImage(img, santaAttackDrawX, santaAttackDrawY, santaAttackWidth, santaAttackHeight);
                     } else {
                         context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
                     }
@@ -10671,6 +12359,118 @@ const App: React.FC = () => {
                             const flagX = drawX + imageScaledWidth * 0.52; // Move more right to align with flagpole
                             const flagY = drawY + imageScaledHeight * 0.035; // Lower on flagpole
                             context.drawImage(flagImg, flagX, flagY, flagWidth, flagHeight);
+                        }
+                    }
+
+                    // Watchtower clan emblem rendering on tower shield plaque (all 4 levels: 801, 214, 215, 216)
+                    if ('buildingId' in entity && isWatchtowerId(entity.buildingId) && img) {
+                        const clan = getClanForBuilding(entity as PlacedBuilding);
+                        const clanAvatarUrl = clan?.avatarUrl;
+                        if (clanAvatarUrl) {
+                            let avatarImg = images[clanAvatarUrl];
+                            if (!avatarImg) {
+                                avatarImg = new Image();
+                                avatarImg.src = clanAvatarUrl;
+                                avatarImg.onload = () => {
+                                    loadedImageElementsRef.current[clanAvatarUrl] = avatarImg;
+                                };
+                                loadedImageElementsRef.current[clanAvatarUrl] = avatarImg;
+                            }
+                            if (avatarImg && avatarImg.complete && avatarImg.naturalWidth > 0) {
+                                const bId = Number(entity.buildingId);
+                                const shieldMeta = WATCHTOWER_SHIELD_BOXES[bId] || WATCHTOWER_SHIELD_BOXES[801];
+                                const nativeW = img.naturalWidth || 264;
+                                const nativeH = img.naturalHeight || 279;
+                                const scaleX = imageScaledWidth / nativeW;
+                                const scaleY = imageScaledHeight / nativeH;
+
+                                const boxX = drawX + shieldMeta.x * scaleX;
+                                const boxY = drawY + shieldMeta.y * scaleY;
+                                const boxW = shieldMeta.w * scaleX;
+                                const boxH = shieldMeta.h * scaleY;
+
+                                context.save();
+                                if ('isConstructing' in entity && entity.isConstructing && (entity.constructionEndTime || 0) > Date.now()) {
+                                    context.globalAlpha = 0.6;
+                                }
+                                context.beginPath();
+                                context.rect(boxX, boxY, boxW, boxH);
+                                context.clip();
+
+                                const imgAspect = avatarImg.naturalWidth / avatarImg.naturalHeight;
+                                const boxAspect = boxW / boxH;
+                                let dW = boxW;
+                                let dH = boxH;
+                                let dX = boxX;
+                                let dY = boxY;
+
+                                if (imgAspect > boxAspect) {
+                                    dW = boxH * imgAspect;
+                                    dX = boxX - (dW - boxW) / 2;
+                                } else {
+                                    dH = boxW / imgAspect;
+                                    dY = boxY - (dH - boxH) / 2;
+                                }
+
+                                context.drawImage(avatarImg, dX, dY, dW, dH);
+                                context.restore();
+                            }
+                        }
+                    }
+
+                    // Bandit Castle clan emblem rendering on top banner inside golden corner brackets (all 16 levels)
+                    if ('buildingId' in entity && BANDIT_CASTLE_IDS.has(Number(entity.buildingId)) && img) {
+                        const clan = getClanForBuilding(entity as PlacedBuilding);
+                        const clanAvatarUrl = clan?.avatarUrl;
+                        if (clanAvatarUrl) {
+                            let avatarImg = images[clanAvatarUrl];
+                            if (!avatarImg) {
+                                avatarImg = new Image();
+                                avatarImg.src = clanAvatarUrl;
+                                avatarImg.onload = () => {
+                                    loadedImageElementsRef.current[clanAvatarUrl] = avatarImg;
+                                };
+                                loadedImageElementsRef.current[clanAvatarUrl] = avatarImg;
+                            }
+                            if (avatarImg && avatarImg.complete && avatarImg.naturalWidth > 0) {
+                                const bId = Number(entity.buildingId);
+                                const bannerMeta = BANDIT_CASTLE_BANNER_BOXES[bId] || BANDIT_CASTLE_BANNER_BOXES[800];
+                                const nativeW = img.naturalWidth || 175;
+                                const nativeH = img.naturalHeight || 320;
+                                const scaleX = imageScaledWidth / nativeW;
+                                const scaleY = imageScaledHeight / nativeH;
+
+                                const boxX = drawX + bannerMeta.x * scaleX;
+                                const boxY = drawY + bannerMeta.y * scaleY;
+                                const boxW = bannerMeta.w * scaleX;
+                                const boxH = bannerMeta.h * scaleY;
+
+                                context.save();
+                                if ('isConstructing' in entity && entity.isConstructing && (entity.constructionEndTime || 0) > Date.now()) {
+                                    context.globalAlpha = 0.6;
+                                }
+                                context.beginPath();
+                                context.rect(boxX, boxY, boxW, boxH);
+                                context.clip();
+
+                                const imgAspect = avatarImg.naturalWidth / avatarImg.naturalHeight;
+                                const boxAspect = boxW / boxH;
+                                let dW = boxW;
+                                let dH = boxH;
+                                let dX = boxX;
+                                let dY = boxY;
+
+                                if (imgAspect > boxAspect) {
+                                    dW = boxH * imgAspect;
+                                    dX = boxX - (dW - boxW) / 2;
+                                } else {
+                                    dH = boxW / imgAspect;
+                                    dY = boxY - (dH - boxH) / 2;
+                                }
+
+                                context.drawImage(avatarImg, dX, dY, dW, dH);
+                                context.restore();
+                            }
                         }
                     }
                     
@@ -10732,14 +12532,20 @@ const App: React.FC = () => {
                         context.restore();
                     }
                 } else {
-                    context.fillStyle = color;
+                    // Do not draw solid opaque colored squares that block the map.
+                    // Instead, draw a subtle semi-transparent dashed outline while loading.
+                    context.save();
+                    context.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                    context.lineWidth = 1 * zoom;
+                    context.setLineDash([4 * zoom, 4 * zoom]);
                     context.beginPath();
                     context.moveTo(screenX, screenY - scaledTileHeight / 2);
                     context.lineTo(screenX + scaledTileWidth / 2, screenY);
                     context.lineTo(screenX, screenY + scaledTileHeight / 2);
                     context.lineTo(screenX - scaledTileWidth / 2, screenY);
                     context.closePath();
-                    context.fill();
+                    context.stroke();
+                    context.restore();
                 }
             }
 
@@ -10896,7 +12702,7 @@ const App: React.FC = () => {
                     context.fillStyle = 'red';
                     context.fillText(formatTimeRussian(timeRemaining), screenX, barY - (2 * zoom));
 
-                } else if (entity.isConstructing) {
+                } else if (entity.isConstructing && (entity.constructionEndTime || 0) > now) {
                     const timeRemaining = Math.max(0, entity.constructionEndTime - now);
                     const spinnerSize = 20 * zoom;
                     const centerX = screenX;
@@ -10942,23 +12748,14 @@ const App: React.FC = () => {
                         context.strokeText(timeText, centerX + spinnerSize / 2 + (3 * zoom), centerY);
                         context.fillText(timeText, centerX + spinnerSize / 2 + (3 * zoom), centerY);
                     }
-                } else if (entity.workState === 'finished') {
+                } else if (entity.workState === 'finished' && isMyBuilding(entity)) {
                     // Skip coin for cannons - they don't have production
                     const isCannon = CANNON_IDS.includes(Number(entity.buildingId));
                     if (!isCannon && buildingInfo) {
-                        const isMushroomOrLily = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(buildingInfo.id);
-                        const isDirectFactory = DIRECT_INTERACTION_FACTORIES.includes(buildingInfo.id);
-
                         // Skip coin icon for buildings that don't produce coins
                         const NO_COIN_BUILDINGS = [300, 340, 341, 342, 343, 344];
-                        if ((isMushroomOrLily || isDirectFactory) && !NO_COIN_BUILDINGS.includes(buildingInfo.id) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
-                            // Draw animated canvas coin for production buildings
-                            const iconSize = 18 * zoom; // Half size
-                            const iconX = screenX;
-                            const iconY = drawY - iconSize / 2 + (10 * zoom); // Lower position
-                            drawAnimatedCoin(context, iconX, iconY, iconSize, Date.now());
-                        } else if (isMyBuilding(entity) && !NO_COIN_BUILDINGS.includes(buildingInfo.id) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
-                            // Draw animated canvas coin for other finished buildings
+                        if (!NO_COIN_BUILDINGS.includes(buildingInfo.id) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
+                            // Draw animated canvas coin for finished buildings belonging to the local player
                             const iconSize = 18 * zoom; // Half size
                             const iconX = screenX;
                             const iconY = drawY - iconSize / 2 + (10 * zoom); // Lower position
@@ -11057,6 +12854,7 @@ const App: React.FC = () => {
             const isOccupied = placementPreviewState === 'occupied';
             const isSyncingPlacement = placementPreviewState === 'syncing';
             const canPlaceByTownHall = hasTownHall || !!townHallLocation;
+            const hasTreeAtHovered = mapResourcesRef.current.some(r => r.x === hoveredTile.x && r.y === hoveredTile.y && r.type === 'tree');
             const hoverDisplayCoords = getClosestWrappedWorldCoords(
                 hoveredTile.x,
                 hoveredTile.y,
@@ -11071,62 +12869,62 @@ const App: React.FC = () => {
                 const hoveredZoneX = Math.floor(hoveredTile.x / ZONE_SIZE);
                 const hoveredZoneY = Math.floor(hoveredTile.y / ZONE_SIZE);
 
-                // Find a bandit castle that controls this sector.
-                const clanCastle = placedBuildings.find((b) =>
-                    BANDIT_CASTLE_IDS.has(Number(b.buildingId)) &&
+                // Find a bandit castle or watchtower that controls this sector.
+                const sectorClanBuilding = placedBuildings.find((b) =>
+                    (BANDIT_CASTLE_IDS.has(Number(b.buildingId)) || isWatchtowerId(b.buildingId)) &&
                     isBuildingAlive(b) &&
                     !b.isConstructing &&
                     Math.floor(b.x / ZONE_SIZE) === hoveredZoneX &&
                     Math.floor(b.y / ZONE_SIZE) === hoveredZoneY
                 );
 
-                // Resolve clan by leader first, then by owner's clanId as a fallback.
-                const clanCastleOwner = clanCastle ? allUsers[String(clanCastle.ownerId || '')] : null;
-                const clan = clanCastle
-                    ? (
-                        clansRef.current.find(c => c.leaderUid === String(clanCastle.ownerId || '')) ||
-                        clansRef.current.find(c => Number(c.id) === Number(normalizeClanIdValue(clanCastleOwner?.clanId)))
-                    )
-                    : null;
+                const clan = sectorClanBuilding ? getClanForBuilding(sectorClanBuilding) : null;
                 const clanAvatarUrl = clan?.avatarUrl || null;
                 
-                // Base Y position for text (higher than before)
+                // Base Y position for text
                 const textY = screenY + 5 * zoom;
                 
                 // Draw clan avatar if this sector belongs to a clan with an avatar.
-                if (clanAvatarUrl && images[clanAvatarUrl]) {
-                    const avatarSize = 22 * zoom;
-                    const avatarX = screenX - avatarSize / 2;
-                    const avatarY = textY - avatarSize - 8 * zoom;
-                    
-                    // Draw avatar image with cover fit
-                    context.save();
-                    context.beginPath();
-                    context.rect(avatarX, avatarY, avatarSize, avatarSize);
-                    context.clip();
-                    
-                    const img = images[clanAvatarUrl];
-                    const imgAspect = img.width / img.height;
-                    const boxAspect = 1; // Square box
-                    
-                    let drawWidth, drawHeight, drawX, drawY;
-                    
-                    if (imgAspect > boxAspect) {
-                        // Image is wider than tall - fit by height
-                        drawHeight = avatarSize;
-                        drawWidth = avatarSize * imgAspect;
-                        drawX = avatarX - (drawWidth - avatarSize) / 2;
-                        drawY = avatarY;
-                    } else {
-                        // Image is taller than wide - fit by width
-                        drawWidth = avatarSize;
-                        drawHeight = avatarSize / imgAspect;
-                        drawX = avatarX;
-                        drawY = avatarY - (drawHeight - avatarSize) / 2;
+                if (clanAvatarUrl) {
+                    let img = images[clanAvatarUrl];
+                    if (!img) {
+                        img = new Image();
+                        img.src = clanAvatarUrl;
+                        img.onload = () => {
+                            loadedImageElementsRef.current[clanAvatarUrl] = img;
+                        };
+                        loadedImageElementsRef.current[clanAvatarUrl] = img;
                     }
-                    
-                    context.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-                    context.restore();
+                    if (img && img.complete && img.naturalWidth > 0) {
+                        const avatarSize = 22 * zoom;
+                        const avatarX = screenX - avatarSize / 2;
+                        const avatarY = textY - avatarSize - 8 * zoom;
+                        
+                        context.save();
+                        context.beginPath();
+                        context.rect(avatarX, avatarY, avatarSize, avatarSize);
+                        context.clip();
+                        
+                        const imgAspect = img.naturalWidth / img.naturalHeight;
+                        const boxAspect = 1; // Square box
+                        
+                        let drawWidth, drawHeight, drawX, drawY;
+                        
+                        if (imgAspect > boxAspect) {
+                            drawHeight = avatarSize;
+                            drawWidth = avatarSize * imgAspect;
+                            drawX = avatarX - (drawWidth - avatarSize) / 2;
+                            drawY = avatarY;
+                        } else {
+                            drawWidth = avatarSize;
+                            drawHeight = avatarSize / imgAspect;
+                            drawX = avatarX;
+                            drawY = avatarY - (drawHeight - avatarSize) / 2;
+                        }
+                        
+                        context.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+                        context.restore();
+                    }
                 }
                 
                 context.font = `bold ${14 * zoom}px sans-serif`;
@@ -11134,22 +12932,13 @@ const App: React.FC = () => {
                 context.lineWidth = 3 * zoom;
                 context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
 
-                if (isSyncingPlacement) {
-                    const spinnerSize = 12 * zoom;
-                    drawLoadingSpinner(context, screenX - 34 * zoom, textY, spinnerSize, Date.now());
-                    context.textAlign = 'left';
-                    context.fillStyle = 'rgba(186, 230, 253, 0.95)';
-                    context.strokeText('Зона загружается...', screenX - 18 * zoom, textY - 8 * zoom);
-                    context.fillText('Зона загружается...', screenX - 18 * zoom, textY - 8 * zoom);
-                    context.strokeText('Проверяем клетку', screenX - 18 * zoom, textY + 8 * zoom);
-                    context.fillText('Проверяем клетку', screenX - 18 * zoom, textY + 8 * zoom);
-                } else {
+                if (!isSyncingPlacement) {
                     context.textAlign = 'center';
                     context.fillStyle = 'rgba(255, 255, 255, 0.8)';
                     context.strokeText('Построить', screenX, textY);
                     context.fillText('Построить', screenX, textY);
                 }
-            } else if (isOccupied && (canPlaceByTownHall || moveMode.active)) {
+            } else if (isOccupied && !hasTreeAtHovered && (canPlaceByTownHall || moveMode.active)) {
                 const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
                 context.font = `bold ${14 * zoom}px sans-serif`;
                 context.textAlign = 'center';
@@ -11195,7 +12984,7 @@ const App: React.FC = () => {
         }
 
         context.restore();
-    }, [memoizedDrawableEntities, hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
+    }, [hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
 
     const drawRef = useRef(draw);
     const lastDrawAtRef = useRef(0);
@@ -11225,28 +13014,10 @@ const App: React.FC = () => {
                     now >= b.constructionEndTime;
                 if (!isOwner && !isHost && !isInitiator && !canFinalizeConstructionForAnyone) return false;
 
-                // FRESHNESS GUARD: Only auto-complete timers if building was recently seen from server.
-                // This prevents timers from instantly completing after a server lag/reconnect.
-                // If server hasn't sent us data for this building in 15s, skip auto-completion
-                // (the server snapshot will update the real state when it arrives).
-                const strId = String(b.id);
-                const lastSync = lastServerSyncRef.current.get(strId) || 0;
-                const timeSinceSync = now - lastSync;
-                const SERVER_FRESHNESS_MS = 15000; // 15 seconds
-                
-                // Allow timer completion only if server data is fresh OR this is a locally-initiated action
-                const lastIntAt = lastInteractionRef.current.get(strId) || 0;
-                const isLocalAction = (now - lastIntAt) < 20000; // Player recently started this action
-                const isServerFresh = timeSinceSync < SERVER_FRESHNESS_MS;
-                
-                if (!isServerFresh && !isLocalAction && lastSync > 0) {
-                    // Server data is stale - don't auto-complete, wait for fresh sync
-                    return false;
-                }
-
                 return (b.isConstructing && now >= b.constructionEndTime) ||
                     (b.workState === 'working' && b.workEndTime && now >= b.workEndTime) ||
-                    (b.isDestroying && !!getEffectiveDestructionExpiresAt(b) && now >= (getEffectiveDestructionExpiresAt(b) || 0));
+                    (b.isDestroying && !!getEffectiveDestructionExpiresAt(b) && now >= (getEffectiveDestructionExpiresAt(b) || 0)) ||
+                    (b.hp !== undefined && b.hp <= 0 && !TOWN_HALL_IDS.includes(Number(b.buildingId)));
             });
 
             const tryClaimNeutralHost = (b: PlacedBuilding) => {
@@ -11263,12 +13034,15 @@ const App: React.FC = () => {
 
             const getIsMonsterHost = (b: PlacedBuilding) => {
                 if (!isAuthReadyRef.current || !userRef.current) return false;
-                // Player-owned monsters: owner always processes their own monsters
+                // Player-owned monsters: if owner is online, owner processes their own monsters
                 if (b.ownerId !== "monster" && b.ownerId !== "0" && b.ownerId !== "-1") {
-                    return b.ownerId === userRef.current.uid;
+                    if (b.ownerId === userRef.current.uid) return true;
+                    const ownerIsOnline = onlinePlayersDataRef.current.some(p => p.uid === b.ownerId);
+                    if (ownerIsOnline) return false;
+                    // Owner is offline: delegate to neutral host arbitration so the monster never freezes in place
                 }
                 
-                // Neutral buildings (ownerId '0', 'monster', or '-1') are only handled by one host
+                // Neutral buildings or offline-player monsters are only handled by one host
                 // If this user already claimed it, they're the host
                 if (b.hostId === userRef.current.uid) return true;
 
@@ -11370,7 +13144,7 @@ const App: React.FC = () => {
             if (cannonTickReady) {
                 (window as any)[_lastCannonTickKey] = now;
                 cannonsAttacking = placedBuildingsRef.current.filter(b => {
-                    const isDefense = [...CANNON_IDS, PROTECTED_TOWER_ID, WATCHTOWER_ID].includes(Number(b.buildingId));
+                    const isDefense = [...CANNON_IDS, PROTECTED_TOWER_ID, ...WATCHTOWER_IDS].includes(Number(b.buildingId));
                     if (!isDefense) return false;
                     if (b.isConstructing || b.isDestroying) return false;
 
@@ -11441,15 +13215,12 @@ const App: React.FC = () => {
 
                     // Only teleport after being stuck for 3 consecutive checks (15 seconds)
                     if (stuckCount < 3) return;
-                    if (Number(b.buildingId) === BRONEKUR_ID) {
-                        return;
-                    }
 
                     const teleportSpot = findFreeMonsterTeleportSpot(
                         b,
                         allOccupied,
                         blockedResourcePositionsForTeleport,
-                        (x, y) => isAuthReadyRef.current && userRef.current && !isZoneReadyForPlacement(getZoneId(x, y))
+                        undefined
                     );
 
                         if (teleportSpot) {
@@ -11461,6 +13232,7 @@ const App: React.FC = () => {
                         b.y = teleportSpot.y;
                         b.zoneId = teleportSpot.zoneId;
                         b.lastMoveTime = now;
+                        monsterLastMoveTimeRef.current.set(String(b.id), now);
                         monsterTeleportCooldownRef.current.set(b.id || '', now);
                         monsterStuckCountRef.current.delete(b.id || '');
                         lastInteractionRef.current.set(String(b.id), now);
@@ -11519,7 +13291,7 @@ const App: React.FC = () => {
                 const monstersActedThisCycle = new Set<string>();
 
                 monstersReadyToAttack.forEach(monster => {
-                    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+                    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
                     const monsterId = String(monster.id || '');
                     const attackId = `${monsterId}:${now}:${Math.random().toString(36).slice(2, 8)}`;
                     const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
@@ -11573,7 +13345,7 @@ const App: React.FC = () => {
                     monsterTargetLockRef.current.set(monsterId, targetId);
 
                     let dmg = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
-                    const targetInfo = buildingData.find(i => i.id === target.buildingId);
+                    const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
                     if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
                         dmg *= 2;
                     }
@@ -11625,6 +13397,13 @@ const App: React.FC = () => {
                     monsterAttackDirectionRef.current.set(monsterId, attackDir);
                     monsterAttackTimeRef.current.set(monsterId, now);
                     monsterAttackCancelTimeRef.current.delete(monsterId);
+                    const gameIdStr = monster.gameId ? String(monster.gameId) : '';
+                    if (gameIdStr) {
+                        monsterDirectionRef.current.set(gameIdStr, attackDir);
+                        monsterAttackDirectionRef.current.set(gameIdStr, attackDir);
+                        monsterAttackTimeRef.current.set(gameIdStr, now);
+                        monsterAttackCancelTimeRef.current.delete(gameIdStr);
+                    }
 
                     const newMonsterState = { ...monster, lastAttackTime: now, hostId: userRef.current?.uid || null };
                     monsterUpdates.set(String(monster.id), newMonsterState);
@@ -11680,9 +13459,11 @@ const App: React.FC = () => {
                             monsterTargetLockRef.current.delete(monsterId);
                         }
 
+                    const gIdStr = monster.gameId ? String(monster.gameId) : '';
                     const lastAttackTime = Math.max(
                         monster.lastAttackTime || 0,
-                        monsterAttackTimeRef.current.get(monsterId) || 0
+                        monsterAttackTimeRef.current.get(monsterId) || 0,
+                        gIdStr ? (monsterAttackTimeRef.current.get(gIdStr) || 0) : 0
                     );
                     const canAttackNow = lastAttackTime <= now && (now - lastAttackTime) >= MONSTER_ATTACK_INTERVAL_MS;
                     // If a target is adjacent, keep pressure on it instead of wandering away.
@@ -11701,7 +13482,7 @@ const App: React.FC = () => {
                                 move.y,
                                 occupiedPositions,
                                 blockedResourcePositions,
-                                (x, y) => isAuthReadyRef.current && userRef.current && !isZoneReadyForPlacement(getZoneId(x, y)),
+                                undefined,
                                 isWorldWrapped
                             )
                         );
@@ -11720,29 +13501,22 @@ const App: React.FC = () => {
                             if (chaseTarget) {
                                 chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWorldWrapped);
                             } else {
-                                const crowdingMove = getCrowdingEscapeMove(monster, candidateMoves, monsterZoneCounts, isWorldWrapped);
-                                if (crowdingMove) {
-                                    chosenMove = crowdingMove;
-                                } else {
-                                    // No nearby target - zigzag patrol pattern
-                                    // Never repeat the same direction: alternate between forward and turning
-                                    // Get perpendicular directions (left/right turns relative to current facing)
-                                    const lastTurnWasLeft = monsterTurnStateRef.current.get(monsterId) || false;
-                                    const patrolMove = chooseMonsterPatrolMove(
-                                        candidateMoves,
-                                        lastDir!,
-                                        !lastTurnWasLeft,
-                                        monsterId,
-                                        monster.buildingId,
-                                        0,
-                                        monsterPrevPosRef.current.get(monsterId)
-                                    );
-                                    if (patrolMove.chosenMove) {
-                                        if (patrolMove.selectedTurn === 'preferred') {
-                                            monsterTurnStateRef.current.set(monsterId, !lastTurnWasLeft);
-                                        }
-                                        chosenMove = patrolMove.chosenMove;
+                                // Natural patrol wandering (forward with straight paths, smooth turns at obstacles)
+                                const lastTurnWasLeft = monsterTurnStateRef.current.get(monsterId) || false;
+                                const patrolMove = chooseMonsterPatrolMove(
+                                    candidateMoves,
+                                    lastDir!,
+                                    !lastTurnWasLeft,
+                                    monsterId,
+                                    monster.buildingId,
+                                    0,
+                                    monsterPrevPosRef.current.get(monsterId)
+                                );
+                                if (patrolMove.chosenMove) {
+                                    if (patrolMove.selectedTurn === 'preferred') {
+                                        monsterTurnStateRef.current.set(monsterId, !lastTurnWasLeft);
                                     }
+                                    chosenMove = patrolMove.chosenMove;
                                 }
                             }
 
@@ -11761,26 +13535,17 @@ const App: React.FC = () => {
                                 // Save new direction
                                 monsterDirectionRef.current.set(monsterId, {dx: chosenMove.dx, dy: chosenMove.dy});
                                 
-                                // Izbushka: schedule attack cancel animation after walk finishes (no target nearby)
-                                if (monster.buildingId === KILLING_HUT_ID) {
-                                    // Calculate walk duration based on direction to schedule cancel anim after walk ends
-                                    let walkFrameCount = 75; // default
-                                    const absDx = Math.abs(chosenMove.dx);
-                                    const absDy = Math.abs(chosenMove.dy);
-                                    if (absDx === 0 && absDy === 0) walkFrameCount = izbushkaWalkLeftFrames.length;
-                                    else if (absDx >= absDy) walkFrameCount = chosenMove.dx > 0 ? izbushkaWalkRightFrames.length : izbushkaWalkLeftFrames.length;
-                                    else walkFrameCount = chosenMove.dy > 0 ? izbushkaWalkDownFrames.length : izbushkaWalkUpFrames.length;
-                                    const walkDuration = getPlaybackDurationMs(walkFrameCount, 30, MONSTER_WALK_DURATION_MULTIPLIER);
-                                    monsterAttackCancelTimeRef.current.set(monsterId, now + walkDuration);
-                                }
-                                
                                 occupiedPositions.add(`${chosenMove.x},${chosenMove.y}`);
                                 occupiedPositions.delete(`${monster.x},${monster.y}`);
 
                                 const newMoveZoneId = getZoneId(chosenMove.x, chosenMove.y);
                                 const newMonsterState = { ...monster, x: chosenMove.x, y: chosenMove.y, zoneId: newMoveZoneId, lastMoveTime: now, hostId: userRef.current?.uid || null };
                                 monsterUpdates.set(String(monster.id), newMonsterState);
+                                if (serverMonsterBuildingsRef.current.has(String(monster.id))) {
+                                    serverMonsterBuildingsRef.current.set(String(monster.id), newMonsterState);
+                                }
                                 monster.lastMoveTime = now;
+                                monsterLastMoveTimeRef.current.set(monsterId, now);
                                 monsterLastActionRef.current.set(monsterId, now);
 
                                 if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
@@ -11794,20 +13559,13 @@ const App: React.FC = () => {
                                     }, { throttleMonster: true });
                                 }
                             } else {
-                                // Stuck - no valid moves, just update timestamp
+                                // Stuck - no valid moves, record action to throttle re-evaluations without triggering false walk animation
                                 const blockedNeighbors = neighbors
                                     .map(n => `${n.x},${n.y}`)
                                     .filter(pos => occupiedPositions.has(pos))
                                     .join('|');
                                 logMonsterDiag(monster, 'stuck_no_valid_moves', `neighborsBlocked=${blockedNeighbors || 'none'}`);
-                                const newMonsterState = { ...monster, lastMoveTime: now, hostId: userRef.current?.uid || null };
-                                monsterUpdates.set(String(monster.id), newMonsterState);
-                                monster.lastMoveTime = now;
                                 monsterLastActionRef.current.set(monsterId, now);
-                                if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
-                                    const docId = String(monster.id);
-                                    updateBuildingDocSafe(docId, { lastMoveTime: now, hostId: userRef.current?.uid || null }, { throttleMonster: true });
-                                }
                             }
                         }
                     }
@@ -11816,15 +13574,15 @@ const App: React.FC = () => {
                 // Process cannons - attack nearby monsters within defense radius
                 const monsters = currentBuildings.filter(b => {
                     if (b.isConstructing || b.isDestroying) return false;
-                    const info = buildingData.find(i => i.id === b.buildingId);
+                    const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
                     return !!(info && info.stats.isMonster);
                 });
 
                 cannonsAttacking.forEach(cannon => {
-                    const cannonInfo = buildingData.find(i => i.id === cannon.buildingId);
+                    const cannonInfo = buildingData.find(i => Number(i.id) === Number(cannon.buildingId));
 
                     let damage = cannonInfo?.stats.damage ? parseInt(cannonInfo.stats.damage) : 1;
-                    if (cannon.buildingId === CANNON_ID) damage = 5;
+                    if (Number(cannon.buildingId) === CANNON_ID) damage = 5;
 
                     let targetMonster: PlacedBuilding | null = null;
 
@@ -11861,6 +13619,7 @@ const App: React.FC = () => {
                 // Process destructions and damage
                 const nextBuildings: PlacedBuilding[] = [];
                 let stateChanged = false;
+                let structuralStateChanged = false;
 
                 currentBuildings.forEach(b => {
                     let updatedB = { ...b };
@@ -11882,6 +13641,7 @@ const App: React.FC = () => {
                     if (updatedB.isDestroying && !!getEffectiveDestructionExpiresAt(updatedB) && now >= (getEffectiveDestructionExpiresAt(updatedB) || 0)) {
                         const rawServerBuilding =
                             serverMyBuildingsRef.current.get(entityId) ||
+                            serverInitiatedBuildingsRef.current.get(entityId) ||
                             serverZoneBuildingsRef.current.get(entityId);
                         if (rawServerBuilding && shouldPreferServerRevivedBuildingState(updatedB, rawServerBuilding, now)) {
                             lastInteractionRef.current.delete(entityId);
@@ -11890,6 +13650,8 @@ const App: React.FC = () => {
                                 isLocal: false
                             }));
                             stateChanged = true;
+                        structuralStateChanged = true;
+                            structuralStateChanged = true;
                             return;
                         }
                         if (shouldDeferBuildingAuthorityToOwner(updatedB)) {
@@ -11943,6 +13705,7 @@ const App: React.FC = () => {
                             }
                         }
                         stateChanged = true;
+                        structuralStateChanged = true;
                     } else {
                         const constructionCompletionResult = resolveLocalConstructionCompletion({
                             building: updatedB,
@@ -11950,6 +13713,8 @@ const App: React.FC = () => {
                         });
                         if (constructionCompletionResult.completed) {
                             Object.assign(updatedB, constructionCompletionResult.completedBuilding);
+                            b.isConstructing = false;
+                            b.workState = 'idle';
 
                             // Fix: Allow anyone to finalize construction if the timer is up.
                             // This prevents the "0s stuck" bug for observers if the owner is offline.
@@ -11962,12 +13727,16 @@ const App: React.FC = () => {
                                     sourceCode: 'building-state-loop',
                                 });
                             }
-                            const docId = String(updatedB.id);
+                            const rawId = String(updatedB.id);
+                            const docId = optimisticBuildDocIdByTempIdRef.current.get(rawId) || rawId;
                             updateBuildingDocSafe(docId, { isConstructing: false, workState: 'idle' });
 
                             stateChanged = true;
+                        structuralStateChanged = true;
+                            structuralStateChanged = true;
                         } else if (updatedB.workState === 'working' && updatedB.workEndTime && now >= updatedB.workEndTime) {
                             updatedB.workState = 'finished';
+                            b.workState = 'finished';
                             if (RUNTIME_AUDIT_ENABLED) {
                                 recordBuildingTimerTrace('local-tick', updatedB, {
                                     now,
@@ -11978,10 +13747,13 @@ const App: React.FC = () => {
                                 });
                             }
                             if (updatedB.ownerId === "0" || updatedB.ownerId === "monster" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid)) {
-                                const docId = String(updatedB.id);
+                                const rawId = String(updatedB.id);
+                                const docId = optimisticBuildDocIdByTempIdRef.current.get(rawId) || rawId;
                                 updateBuildingDocSafe(docId, { workState: 'finished' });
                             }
                             stateChanged = true;
+                        structuralStateChanged = true;
+                            structuralStateChanged = true;
                         }
                     }
 
@@ -12028,6 +13800,7 @@ const App: React.FC = () => {
                             updatedB.initiatorId = damageInitiatorId || undefined;
                         }
                         stateChanged = true;
+                        structuralStateChanged = true;
 
                         newExplosions.push({
                             id: Date.now() + Math.random(),
@@ -12071,13 +13844,13 @@ const App: React.FC = () => {
                         }
 
                         // COUNTER-ATTACK: towers can answer damage, but only when their 40s cooldown is ready
-                        const isDefenseBuilding = [...CANNON_IDS, PROTECTED_TOWER_ID, WATCHTOWER_ID].includes(Number(updatedB.buildingId));
+                        const isDefenseBuilding = [...CANNON_IDS, PROTECTED_TOWER_ID, ...WATCHTOWER_IDS].includes(Number(updatedB.buildingId));
                         const defenseLastAttackTime = updatedB.lastAttackTime || 0;
                         const defenseCanFire = defenseLastAttackTime <= now && (now - defenseLastAttackTime >= CANNON_ATTACK_INTERVAL_MS);
                             if (isDefenseBuilding && defenseCanFire && (updatedB.hp ?? fullHp) > 0 && !updatedB.isConstructing && !updatedB.isDestroying) {
-                                const cannonInfo = buildingData.find(i => i.id === updatedB.buildingId);
+                                const cannonInfo = buildingData.find(i => Number(i.id) === Number(updatedB.buildingId));
                                 let counterDmg = cannonInfo?.stats.damage ? parseInt(cannonInfo.stats.damage) : 1;
-                                if (updatedB.buildingId === CANNON_ID) counterDmg = 5;
+                                if (Number(updatedB.buildingId) === CANNON_ID) counterDmg = 5;
                                 // Find nearest monster within range to counter-attack
                                 const sourceMonsterId = monsterAttackSourceMap.get(entityDamageKey);
                                 const directAttacker = sourceMonsterId
@@ -12085,19 +13858,30 @@ const App: React.FC = () => {
                                     : null;
                                 const adjMonster = directAttacker || currentBuildings.find(m => {
                                     if (m.ownerId !== 'monster' && m.ownerId !== '-1') return false;
-                                    const mInfo = buildingData.find(i => i.id === m.buildingId);
+                                    const mInfo = buildingData.find(i => Number(i.id) === Number(m.buildingId));
                                     if (!mInfo || !mInfo.stats.isMonster) return false;
                                     if (m.hp !== undefined && m.hp <= 0) return false;
                                     return getWrappedChebyshevDistance(updatedB, m, isWorldWrapped) <= 3;
                                 });
                                 if (adjMonster) {
                                     const counterKey = String(adjMonster.id);
-                                    damageMap.set(counterKey, (damageMap.get(counterKey) || 0) + counterDmg);
+                                    const processedIndex = nextBuildings.findIndex(nb => String(nb.id) === counterKey);
+                                    if (processedIndex !== -1) {
+                                        const targetObj = nextBuildings[processedIndex];
+                                        const targetDurability = buildingData.find(i => Number(i.id) === Number(targetObj.buildingId))?.stats.durability ?? 100;
+                                        const currentHp = targetObj.hp ?? targetDurability;
+                                        const newHp = Math.max(0, currentHp - counterDmg);
+                                        targetObj.hp = newHp;
+                                        lastInteractionRef.current.set(counterKey, now);
+                                        updateBuildingDocSafe(counterKey, { hp: newHp });
+                                    } else {
+                                        damageMap.set(counterKey, (damageMap.get(counterKey) || 0) + counterDmg);
+                                    }
                                     updatedB.lastAttackTime = now;
                                     const docId2 = String(updatedB.id);
-                                updateBuildingDocSafe(docId2, { lastAttackTime: now });
+                                    updateBuildingDocSafe(docId2, { lastAttackTime: now });
+                                }
                             }
-                        }
                     }
 
                         if (updatedB.hp !== undefined && updatedB.hp <= 0) {
@@ -12127,6 +13911,7 @@ const App: React.FC = () => {
 
                     if (isDestroyed) {
                         stateChanged = true;
+                        structuralStateChanged = true;
                         const docId = String(updatedB.id);
                         clearMonsterTargetLocksForBuilding(docId);
                         // If this building is already in delete pipeline, do not process
@@ -12158,32 +13943,11 @@ const App: React.FC = () => {
                             const canFinalizeDelete = isAuthReadyRef.current && Boolean(userRef.current) && (isInitiator || isNeutralMonsterKillHost || !buildingInfo.stats.isMonster);
                             if (canFinalizeDelete) {
                                 removeBuildingFromSnapshotCaches(docId);
-                            }
-                            if (isInitiator) {
-                                gloryGained += buildingInfo.stats.gloryOnExplosion || 0;
-                                if (userRef.current) {
-                                    const destroyedStatKey = buildingInfo.stats.isMonster ? 'monstersDestroyed' : 'buildingsDestroyed';
-                                    updateDoc(doc(db, 'users', userRef.current.uid), {
-                                        [destroyedStatKey]: increment(1)
-                                    }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
-                                    const nextStats = {
-                                        ...playerLeaderboardStatsRef.current,
-                                        [destroyedStatKey]: (playerLeaderboardStatsRef.current[destroyedStatKey as keyof typeof playerLeaderboardStatsRef.current] as number || 0) + 1,
-                                    } as ReturnType<typeof getUserStatCounters>;
-                                    setPlayerLeaderboardStats(nextStats);
-                                    setAllUsers(prev => ({
-                                        ...prev,
-                                        [userRef.current!.uid]: {
-                                            ...prev[userRef.current!.uid],
-                                            ...nextStats
-                                        }
-                                    }));
-                                }
 
                                 if (buildingInfo.drops) {
-                                    const spawnDrops = (dropsList: any[]) => {
+                                    const spawnDrops = (dropsList: any[], defaultChance = 100) => {
                                         dropsList.forEach(drop => {
-                                            const chance = drop.chance !== undefined ? drop.chance : 100;
+                                            const chance = drop.chance !== undefined ? drop.chance : defaultChance;
                                             if (Math.random() * 100 < chance && drop.amount) {
                                                 const droppedItemId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                                                 const newDroppedItem: DroppedItem = {
@@ -12193,7 +13957,7 @@ const App: React.FC = () => {
                                                     zoneId: getZoneId(updatedB.x, updatedB.y),
                                                     itemId: drop.id,
                                                     amount: drop.amount,
-                                                    ownerName: playerName || "Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–"
+                                                    ownerName: updatedB.ownerName || playerName || "Неизвестный"
                                                 };
                                                 setDroppedItems(prev => [...prev, newDroppedItem]);
                                                 if (isAuthReadyRef.current && userRef.current) {
@@ -12204,10 +13968,36 @@ const App: React.FC = () => {
                                     };
 
                                     if (buildingInfo.drops.frequent) {
-                                        spawnDrops(buildingInfo.drops.frequent);
+                                        spawnDrops(buildingInfo.drops.frequent, 100);
                                     }
                                     if (buildingInfo.drops.rare) {
-                                        spawnDrops(buildingInfo.drops.rare);
+                                        spawnDrops(buildingInfo.drops.rare, 35);
+                                    }
+                                }
+
+                                if (isInitiator) {
+                                    const expReward = buildingInfo.stats.gloryOnExplosion || 0;
+                                    gloryGained += expReward;
+                                    if (buildingInfo.stats.isMonster) {
+                                        addHistoryLog(`Монстр "${buildingInfo.name}" уничтожен! Получено +${expReward} опыта.`, 'destroy');
+                                    }
+                                    if (userRef.current) {
+                                        const destroyedStatKey = buildingInfo.stats.isMonster ? 'monstersDestroyed' : 'buildingsDestroyed';
+                                        updateDoc(doc(db, 'users', userRef.current.uid), {
+                                            [destroyedStatKey]: increment(1)
+                                        }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
+                                        const nextStats = {
+                                            ...playerLeaderboardStatsRef.current,
+                                            [destroyedStatKey]: (playerLeaderboardStatsRef.current[destroyedStatKey as keyof typeof playerLeaderboardStatsRef.current] as number || 0) + 1,
+                                        } as ReturnType<typeof getUserStatCounters>;
+                                        setPlayerLeaderboardStats(nextStats);
+                                        setAllUsers(prev => ({
+                                            ...prev,
+                                            [userRef.current!.uid]: {
+                                                ...prev[userRef.current!.uid],
+                                                ...nextStats
+                                            }
+                                        }));
                                     }
                                 }
 
@@ -12254,32 +14044,6 @@ const App: React.FC = () => {
                                         addHistoryLog(`Бандитский замок уничтожен! Клан "${destroyedClan.name}" распущен.`, 'social');
                                     }
                                 }
-                            } else if (canFinalizeDelete) {
-                                removeBuildingFromSnapshotCaches(docId);
-                                const buildingRef = doc(db, 'buildings', docId);
-                                console.log("[BUILDING DELETE PIPELINE START]", {
-                                    buildingId: docId,
-                                    deleting: isBuildingDeleting(docId),
-                                    tombstoned: isBuildingTombstoned(docId),
-                                    timestamp: Date.now(),
-                                });
-                                updateDoc(buildingRef, {
-                                    hp: 0,
-                                    isDestroying: false,
-                                    destructionStartedAt: deleteField(),
-                                    destructionEndTime: deleteField(),
-                                    destructionExpiresAt: deleteField(),
-                                    destructionDurationMs: deleteField(),
-                                    destructionMaxLifetimeMs: deleteField(),
-                                    destructionStatus: 'finished',
-                                    pendingDamage: 0,
-                                    hostId: userRef.current?.uid || null
-                                })
-                                    .then(() => deleteDoc(buildingRef))
-                                    .then(() => {
-                                        removeBuildingFromSnapshotCaches(docId);
-                                    })
-                                    .catch(e => handleGameLoopError(e, OperationType.DELETE, `buildings/${docId}`));
                             } else {
                                 // Not an authorized owner/initiator on this client.
                                 // Do not resurrect entities that are already dead locally.
@@ -12299,7 +14063,16 @@ const App: React.FC = () => {
                 });
 
                 if (stateChanged) {
-                    setPlacedBuildings(prev => {
+                    // Update ref in-memory immediately for smooth 60fps canvas rendering
+                    placedBuildingsRef.current = nextBuildings;
+
+                    // Throttle React state re-renders for pure visual movement (monsters/cannons walking)
+                    // If structuralStateChanged (damage/death/construction), update React immediately
+                    const shouldTriggerReact = structuralStateChanged || (now - lastPlacedBuildingsSetRef.current >= 1200);
+
+                    if (shouldTriggerReact) {
+                        lastPlacedBuildingsSetRef.current = now;
+                        setPlacedBuildings(prev => {
                         // CRITICAL FIX: Use functional update to preserve buildings added to state
                         // AFTER our ref snapshot (e.g. freshly placed Town Hall, new buildings).
                         // Without this, the direct value overwrite would erase them.
@@ -12339,6 +14112,7 @@ const App: React.FC = () => {
                         }
                         return result;
                     });
+                    }
                 }
 
                 if (newExplosions.length > 0) {
@@ -12724,9 +14498,11 @@ const App: React.FC = () => {
                         } else {
                             monsterTargetLockRef.current.delete(monsterId);
                         }
+                        const gIdStr = monster.gameId ? String(monster.gameId) : '';
                         const lastAttackTime = Math.max(
                             monster.lastAttackTime || 0,
-                            monsterAttackTimeRef.current.get(monsterId) || 0
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            gIdStr ? (monsterAttackTimeRef.current.get(gIdStr) || 0) : 0
                         );
                         if (attackTarget && (nowTs - lastAttackTime) >= MONSTER_ATTACK_INTERVAL_MS) {
                             const source = 'background_sweep';
@@ -12843,6 +14619,9 @@ const App: React.FC = () => {
                             }
                             monster.lastAttackTime = nowTs;
                             monsterAttackTimeRef.current.set(monsterId, nowTs);
+                            if (gIdStr) {
+                                monsterAttackTimeRef.current.set(gIdStr, nowTs);
+                            }
                             monsterLastActionRef.current.set(monsterId, nowTs);
 
                             await Promise.all([
@@ -12888,6 +14667,7 @@ const App: React.FC = () => {
                             monster.y = movePlan.chosenMove.y;
                             monster.zoneId = getZoneId(movePlan.chosenMove.x, movePlan.chosenMove.y);
                             monster.lastMoveTime = nowTs;
+                            monsterLastMoveTimeRef.current.set(monsterId, nowTs);
                             await updateWorldMonster(monsterId, {
                                 x: monster.x,
                                 y: monster.y,
@@ -12899,9 +14679,7 @@ const App: React.FC = () => {
                         }
 
                         if ((nowTs - lastMoveTime) >= (moveInterval * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER)) {
-                            const teleportSpot = Number(monster.buildingId) === BRONEKUR_ID
-                                ? null
-                                : findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions);
+                            const teleportSpot = findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions);
                             if (teleportSpot) {
                                 occupied.delete(`${monster.x},${monster.y}`);
                                 occupied.add(`${teleportSpot.x},${teleportSpot.y}`);
@@ -12909,6 +14687,7 @@ const App: React.FC = () => {
                                 monster.y = teleportSpot.y;
                                 monster.zoneId = teleportSpot.zoneId;
                                 monster.lastMoveTime = nowTs;
+                            monsterLastMoveTimeRef.current.set(monsterId, nowTs);
                                 await updateWorldMonster(monsterId, {
                                     x: teleportSpot.x,
                                     y: teleportSpot.y,
@@ -13023,60 +14802,7 @@ const App: React.FC = () => {
                                 String(a.id).localeCompare(String(b.id))
                             );
 
-                        const monstersToDelete: PlacedBuilding[] = [];
-                        const typeSeen = new Map<number, number>();
-                        for (const monster of zoneRegularMonsters) {
-                            const typeId = Number(monster.buildingId);
-                            const desiredCount = desiredTypeCounts.get(typeId) || 0;
-                            const seenCount = typeSeen.get(typeId) || 0;
-                            if (seenCount < desiredCount) {
-                                typeSeen.set(typeId, seenCount + 1);
-                            } else {
-                                monstersToDelete.push(monster);
-                            }
-                        }
-
-                        const excessCount = Math.max(0, zoneRegularMonsters.length - zoneTargetCount);
-                        const monstersMarkedForDeletion = monstersToDelete.slice(0, excessCount);
-                        for (const monster of monstersMarkedForDeletion) {
-                            const localId = String(monster.id);
-                            const source = 'excess_trim';
-                            try {
-                                if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
-                                    console.log("[MONSTER DELETE SKIPPED]", {
-                                        localId,
-                                        source,
-                                        reason: "already_deleting_or_tombstoned",
-                                        timestamp: Date.now(),
-                                    });
-                                    continue;
-                                }
-                                console.log("[MONSTER DELETE REQUEST]", {
-                                    localId,
-                                    source,
-                                    buildingId: monster.buildingId,
-                                    zoneId,
-                                    x: monster.x,
-                                    y: monster.y,
-                                    currentUserId: userRef.current?.uid,
-                                    timestamp: Date.now(),
-                                });
-                                removeBuildingFromSnapshotCaches(localId);
-                                await deleteDoc(doc(db, 'buildings', localId));
-                                console.log("[MONSTER DELETE COMPLETED]", {
-                                    localId,
-                                    source,
-                                    timestamp: Date.now(),
-                                });
-                                occupied.delete(`${monster.x},${monster.y}`);
-                                trimmedExcess++;
-                            } catch (err) {
-                                console.error(`[MonsterSpawn] Failed to trim extra monster ${monster.id} in ${zoneId}:`, err);
-                            }
-                        }
-
-                        const keptMonsterIds = new Set(monstersMarkedForDeletion.map(monster => String(monster.id)));
-                        const remainingMonsters = zoneRegularMonsters.filter(monster => !keptMonsterIds.has(String(monster.id)));
+                        const remainingMonsters = zoneRegularMonsters;
                         const remainingTypeCounts = new Map<number, number>();
                         remainingMonsters.forEach(monster => {
                             const typeId = Number(monster.buildingId);
@@ -13125,7 +14851,7 @@ const App: React.FC = () => {
                                         zoneId,
                                         buildingId: cfg.typeId,
                                         ownerId: "monster",
-                                        ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
+                                        ownerName: "Монстр",
                                         isConstructing: false,
                                         constructionEndTime: 0,
                                         type: BuildingType.Default,
@@ -13158,19 +14884,19 @@ const App: React.FC = () => {
                             try {
                                 await setDoc(doc(db, 'buildings', bossMonsterId), {
                                     id: bossMonsterId, x: pos.x, y: pos.y, zoneId: bossZoneId,
-                                    buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
+                                    buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Монстр",
                                     isConstructing: false, constructionEndTime: 0,
                                     type: BuildingType.Default, workState: 'idle',
                                     hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP,
                                     lastMoveTime: Date.now(), isActive: true,
-                                    monsterType: 'Р В±РЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚', monsterSlot: 1, isBoss: true
+                                    monsterType: 'бронекур', monsterSlot: 1, isBoss: true
                                 });
                                 occupied.add(`${pos.x},${pos.y}`);
                                 spawned++;
                                 try {
                                     await setDoc(doc(db, 'chat_messages', `bronekur-${Date.now()}`), {
-                                        sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°', senderId: 'system',
-                                        text: `?? Р вЂ™Р СњР ВР СљР С’Р СњР ВР вЂў! Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${bzX}.${bzY} Р С—Р С•РЎРЏР Р†Р С‘Р В»РЎРѓРЎРЏ Р вЂРЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚!`,
+                                        sender: 'Система', senderId: 'system',
+                                        text: `⚠️ ВНИМАНИЕ! В секторе ${bzX}.${bzY} появился Бронекур!`,
                                         type: 'system', timestamp: Date.now(), tab: 'general'
                                     });
                                 } catch {
@@ -13206,11 +14932,11 @@ const App: React.FC = () => {
 
             // Monster config: 1 of each regular type per zone
             const monsterConfig = [
-                { typeId: GORYNYCH_ID, count: 1, name: 'Р С–Р С•РЎР‚РЎвЂ№Р Р…РЎвЂ№РЎвЂЎ' },
-                { typeId: KILLING_HUT_ID, count: 1, name: 'Р С‘Р В·Р В±РЎС“РЎв‚¬Р С”Р В°' },
-                { typeId: KIND_SANTA_ID, count: 1, name: 'РЎРѓР В°Р Р…РЎвЂљР В°' },
-                { typeId: KOLOBOK_ID, count: 1, name: 'Р С”Р С•Р В»Р С•Р В±Р С•Р С”' },
-                { typeId: BABA_YAGA_ID, count: 1, name: 'Р В±Р В°Р В±Р В°РЎРЏР С–Р В°' }
+                { typeId: GORYNYCH_ID, count: 1, name: 'горыныч' },
+                { typeId: KILLING_HUT_ID, count: 1, name: 'избушка' },
+                { typeId: KIND_SANTA_ID, count: 1, name: 'санта' },
+                { typeId: KOLOBOK_ID, count: 1, name: 'колобок' },
+                { typeId: BABA_YAGA_ID, count: 1, name: 'бабаяга' }
             ];
 
             // Helper: find free spot in a zone
@@ -13255,7 +14981,7 @@ const App: React.FC = () => {
                             try {
                                 await setDoc(doc(db, 'buildings', monsterId), {
                                     id: monsterId, x: pos.x, y: pos.y, zoneId,
-                                    buildingId: cfg.typeId, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
+                                    buildingId: cfg.typeId, ownerId: "monster", ownerName: "Монстр",
                                     isConstructing: false, constructionEndTime: 0,
                                     type: BuildingType.Default, workState: 'idle',
                                     hp: monsterInfo.stats.durability, maxHp: monsterInfo.stats.durability,
@@ -13290,20 +15016,20 @@ const App: React.FC = () => {
                         try {
                             await setDoc(doc(db, 'buildings', bossMonsterId), {
                                 id: bossMonsterId, x: pos.x, y: pos.y, zoneId: bossZoneId,
-                                buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Р СљР С•Р Р…РЎРѓРЎвЂљРЎР‚",
+                                buildingId: BRONEKUR_ID, ownerId: "monster", ownerName: "Монстр",
                                 isConstructing: false, constructionEndTime: 0,
                                 type: BuildingType.Default, workState: 'idle',
                                 hp: BRONEKUR_BOSS_HP, maxHp: BRONEKUR_BOSS_HP,
                                 lastMoveTime: Date.now(), isActive: true,
-                                monsterType: 'Р В±РЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚', monsterSlot: 1, isBoss: true
+                                monsterType: 'бронекур', monsterSlot: 1, isBoss: true
                             });
                             occupied.add(`${pos.x},${pos.y}`);
                             spawned++;
                             // Chat notification
                             try {
                                 await setDoc(doc(db, 'chat_messages', `bronekur-${Date.now()}`), {
-                                    sender: 'Р РЋР С‘РЎРѓРЎвЂљР ВµР СР В°', senderId: 'system',
-                                    text: `?? Р вЂ™Р СњР ВР СљР С’Р СњР ВР вЂў! Р вЂ™ РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р Вµ ${bzX}.${bzY} Р С—Р С•РЎРЏР Р†Р С‘Р В»РЎРѓРЎРЏ Р вЂРЎР‚Р С•Р Р…Р ВµР С”РЎС“РЎР‚!`,
+                                    sender: 'Система', senderId: 'system',
+                                    text: `⚠️ ВНИМАНИЕ! В секторе ${bzX}.${bzY} появился Бронекур!`,
                                     type: 'system', timestamp: Date.now(), tab: 'general'
                                 });
                             } catch { /* ignore */ }
@@ -13317,7 +15043,7 @@ const App: React.FC = () => {
             if (spawned > 0) console.log(`[MonsterSpawn] Spawned ${spawned} monsters this cycle`);
         };
 
-        monsterSpawnIntervalRef.current = setInterval(runSpawnCycle, 60000);
+        monsterSpawnIntervalRef.current = setInterval(runSpawnCycle, 15000);
 
         // Run once after 5 seconds for initial population
         monsterSpawnInitialTimeoutRef.current = setTimeout(runSpawnCycle, 5000);
@@ -13351,11 +15077,17 @@ const App: React.FC = () => {
         const energyTimer = setInterval(() => {
             setPlayerEnergy(currentEnergy => {
                 if (currentEnergy >= maxEnergy) return currentEnergy;
-                return Math.min(maxEnergy, currentEnergy + ENERGY_REGEN_PER_MINUTE);
+                const nextEnergy = Math.min(maxEnergy, currentEnergy + ENERGY_REGEN_PER_MINUTE);
+                if (user && isAuthReadyRef.current) {
+                    updateDoc(doc(db, 'users', user.uid), {
+                        energy: nextEnergy
+                    }).catch(e => console.warn('[EnergyRegen] Failed to persist energy:', e));
+                }
+                return nextEnergy;
             });
         }, 60000);
         return () => clearInterval(energyTimer);
-    }, [maxEnergy]);
+    }, [maxEnergy, user]);
 
     useEffect(() => {
         if (!initialLoadDone.current) return; // Don't process level-ups before data is loaded
@@ -13384,6 +15116,15 @@ const App: React.FC = () => {
             setPlayerEnergy(prev => Math.max(prev, newMaxEnergy));
             console.log(`[LevelUp] ${playerLevel} > ${currentLevel}, peak=${peakLevelRef.current}, glory remaining=${currentGlory}`);
 
+            // Dopamine firework and fanfare upon Level-Up!
+            const center = getCurrentWorldCenter();
+            triggerLevelUpJuice({
+                type: 'glory_rank',
+                newLevel: currentLevel,
+                worldX: center.x,
+                worldY: center.y,
+            });
+
             // Also update allUsers immediately so map nameplate and other UI stay in sync
             if (user) {
                 setAllUsers(prev => ({
@@ -13401,7 +15142,7 @@ const App: React.FC = () => {
                 }).catch(e => handleGameLoopError(e, OperationType.UPDATE, `users/${user.uid}`));
             }
         }
-    }, [playerGlory, playerLevel, getGloryForLevel, user]);
+    }, [playerGlory, playerLevel, getGloryForLevel, user, triggerLevelUpJuice, getCurrentWorldCenter]);
 
     // Market Handlers
     const handleBuyMarketItem = useCallback((listing: MarketListing) => {
@@ -13599,7 +15340,7 @@ const App: React.FC = () => {
     const handleCancelListing = useCallback((listing: MarketListing) => {
         if (isMarketProcessing) return;
         if (!user || listing.sellerId !== user.uid) {
-            alert("Вы Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ РЎРѓР Р…РЎРЏРЎвЂљРЎРЉ РЎРѓ Р С—РЎР‚Р С•Р Т‘Р В°Р В¶Р С‘ РЎвЂЎРЎС“Р В¶Р С•Р в„– РЎвЂљР С•Р Р†Р В°РЎР‚!");
+            alert("Вы не можете снять с продажи чужой товар!");
             return;
         }
 
@@ -13651,12 +15392,12 @@ const App: React.FC = () => {
 
     const handleShareOil = () => {
         if (isBanned()) {
-            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Т‘Р ВµР В»Р С‘РЎвЂљРЎРЉРЎРѓРЎРЏ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°Р СР С‘!");
+            alert("Вы забанены и не можете делиться ресурсами!");
             return;
         }
         if (!selectedOilDeposit) return;
 
-        const messageText = `Р Р‡ Р Р…Р В°РЎв‚¬Р ВµР В» Р Р…Р ВµРЎвЂћРЎвЂљРЎРЉ! Р вЂќР ВµР В»РЎР‹РЎРѓРЎРЉ РЎРѓР С• Р Р†РЎРѓР ВµР СР С‘ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР С•Р С.`;
+        const messageText = `Я нашел нефть! Делюсь со всеми ресурсом.`;
         const newMessage: ChatMessage = {
             id: Date.now(),
             sender: playerName,
@@ -13674,12 +15415,12 @@ const App: React.FC = () => {
 
     const handleShareQuarry = () => {
         if (isBanned()) {
-            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Т‘Р ВµР В»Р С‘РЎвЂљРЎРЉРЎРѓРЎРЏ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°Р СР С‘!");
+            alert("Вы забанены и не можете делиться ресурсами!");
             return;
         }
         if (!selectedQuarry) return;
 
-        const messageText = `Р Р‡ Р Р…Р В°РЎв‚¬Р ВµР В» Р С”Р В°Р СР ВµР Р…Р С•Р В»Р С•Р СР Р…РЎР‹! Р вЂќР ВµР В»РЎР‹РЎРѓРЎРЉ РЎРѓР С• Р Р†РЎРѓР ВµР СР С‘ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР С•Р С.`;
+        const messageText = `Я нашел каменоломню! Делюсь со всеми ресурсом.`;
         const newMessage: ChatMessage = {
             id: Date.now(),
             sender: playerName,
@@ -13696,13 +15437,20 @@ const App: React.FC = () => {
     };
 
     const handleBuildOilRig = async () => {
-        if (!selectedOilDeposit || !oilRigInfo) return;
+        if (isBuildingActionProcessing || !selectedOilDeposit || !oilRigInfo) return;
 
-        const placementGuard = await validatePlacementTarget(selectedOilDeposit.x, selectedOilDeposit.y, {
-            allowedResourceTypes: ['oil']
-        });
-        if (!placementGuard.ok) {
-            alert(placementGuard.message);
+        const targetDeposit = selectedOilDeposit;
+
+        // Check building permits limit
+        const localBuildingCount = placedBuildingsRef.current
+            .filter(b => isMyBuilding(b) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)))
+            .length;
+        if (localBuildingCount >= maxBuildings) {
+            setBuildingLimitModalData({
+                currentLimit: Math.max(0, maxBuildings),
+                nextLimit: Math.max(1, maxBuildings + 1)
+            });
+            setSelectedOilDeposit(null);
             return;
         }
 
@@ -13720,51 +15468,76 @@ const App: React.FC = () => {
             }
         }
 
-        updatePlayerResources(-(oilRigInfo.price || 0), 0, {});
-        setMapResources(prev => prev.filter(r => r.x !== selectedOilDeposit.x || r.y !== selectedOilDeposit.y));
-
-        const newBuilding: PlacedBuilding = {
-            id: Date.now(),
-            x: selectedOilDeposit.x,
-            y: selectedOilDeposit.y,
-            zoneId: getZoneId(selectedOilDeposit.x, selectedOilDeposit.y),
-            buildingId: OIL_RIG_ID,
-            ownerId: user ? user.uid : "0",
-            ownerName: playerName,
-            isConstructing: true,
-            constructionEndTime: Date.now() + (oilRigInfo.stats.constructionTimeSeconds || 0) * 1000,
-            type: oilRigInfo.type,
-            workState: 'idle',
-            hp: oilRigInfo.stats.durability,
-            maxHp: oilRigInfo.stats.durability,
-            isLocal: true
-        };
-
-        // Optimistic local placement so the rig doesn't "disappear" while waiting for backend sync.
-        setPlacedBuildings(prev => [...prev, newBuilding]);
-
-        if (isAuthReady && user) {
-            const docId = String(newBuilding.id);
-            setDoc(doc(db, 'buildings', docId), newBuilding).catch(e => {
-                // Roll back optimistic building if create failed.
-                setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
-                setMapResources(prev => [...prev, selectedOilDeposit]);
-                handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
-            });
-            deleteDoc(doc(db, 'map_resources', `${selectedOilDeposit.x}_${selectedOilDeposit.y}`)).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${selectedOilDeposit.x}_${selectedOilDeposit.y}`));
-        }
-        addHistoryLog(`Построена нефтяная вышка в [${selectedOilDeposit.x}, ${selectedOilDeposit.y}].`, 'build');
+        setIsBuildingActionProcessing(true);
         setSelectedOilDeposit(null);
+
+        try {
+            const placementGuard = await validatePlacementTarget(targetDeposit.x, targetDeposit.y, {
+                allowedResourceTypes: ['oil']
+            });
+            if (!placementGuard.ok) {
+                alert(placementGuard.message);
+                return;
+            }
+
+            updatePlayerResources(-(oilRigInfo.price || 0), 0, {});
+            setMapResources(prev => prev.filter(r => r.x !== targetDeposit.x || r.y !== targetDeposit.y));
+
+            const docId = makePlacedEntityId(user?.uid);
+            const newBuilding: PlacedBuilding = {
+                id: docId,
+                x: targetDeposit.x,
+                y: targetDeposit.y,
+                zoneId: getZoneId(targetDeposit.x, targetDeposit.y),
+                buildingId: OIL_RIG_ID,
+                ownerId: user ? user.uid : "0",
+                ownerName: playerName,
+                isConstructing: true,
+                constructionEndTime: Date.now() + (oilRigInfo.stats.constructionTimeSeconds || 0) * 1000,
+                type: oilRigInfo.type,
+                workState: 'idle',
+                hp: oilRigInfo.stats.durability,
+                maxHp: oilRigInfo.stats.durability,
+                isLocal: true
+            };
+
+            // Optimistic local placement so the rig doesn't "disappear" while waiting for backend sync.
+            setPlacedBuildings(prev => [...prev, newBuilding]);
+
+            if (isAuthReady && user) {
+                try {
+                    await setDoc(doc(db, 'buildings', docId), newBuilding);
+                    deleteDoc(doc(db, 'map_resources', `${targetDeposit.x}_${targetDeposit.y}`)).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${targetDeposit.x}_${targetDeposit.y}`));
+                } catch (e) {
+                    // Roll back optimistic building if create failed.
+                    setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
+                    setMapResources(prev => [...prev, targetDeposit]);
+                    handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
+                    alert("Ошибка при строительстве вышки.");
+                    return;
+                }
+            }
+            addHistoryLog(`Построена нефтяная вышка в [${targetDeposit.x}, ${targetDeposit.y}].`, 'build');
+        } finally {
+            setIsBuildingActionProcessing(false);
+        }
     };
 
     const handleBuildWildQuarry = async () => {
-        if (!selectedQuarry || !wildQuarryInfo) return;
+        if (isBuildingActionProcessing || !selectedQuarry || !wildQuarryInfo) return;
 
-        const placementGuard = await validatePlacementTarget(selectedQuarry.x, selectedQuarry.y, {
-            allowedResourceTypes: ['quarry']
-        });
-        if (!placementGuard.ok) {
-            alert(placementGuard.message);
+        const targetQuarry = selectedQuarry;
+
+        // Check building permits limit
+        const localBuildingCount = placedBuildingsRef.current
+            .filter(b => isMyBuilding(b) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)))
+            .length;
+        if (localBuildingCount >= maxBuildings) {
+            setBuildingLimitModalData({
+                currentLimit: Math.max(0, maxBuildings),
+                nextLimit: Math.max(1, maxBuildings + 1)
+            });
+            setSelectedQuarry(null);
             return;
         }
 
@@ -13782,41 +15555,59 @@ const App: React.FC = () => {
             }
         }
 
-        updatePlayerResources(-(wildQuarryInfo.price || 0), 0, {});
-        setMapResources(prev => prev.filter(r => r.x !== selectedQuarry.x || r.y !== selectedQuarry.y));
-
-        const newBuilding: PlacedBuilding = {
-            id: Date.now(),
-            x: selectedQuarry.x,
-            y: selectedQuarry.y,
-            zoneId: getZoneId(selectedQuarry.x, selectedQuarry.y),
-            buildingId: WILD_QUARRY_ID,
-            ownerId: user ? user.uid : "0",
-            ownerName: playerName,
-            isConstructing: true,
-            constructionEndTime: Date.now() + (wildQuarryInfo.stats.constructionTimeSeconds || 0) * 1000,
-            type: wildQuarryInfo.type,
-            workState: 'idle',
-            hp: wildQuarryInfo.stats.durability,
-            maxHp: wildQuarryInfo.stats.durability,
-            isLocal: true
-        };
-
-        // Optimistic local placement so the quarry doesn't vanish before realtime sync.
-        setPlacedBuildings(prev => [...prev, newBuilding]);
-
-        if (isAuthReady && user) {
-            const docId = String(newBuilding.id);
-            setDoc(doc(db, 'buildings', docId), newBuilding).catch(e => {
-                // Roll back optimistic building if create failed.
-                setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
-                setMapResources(prev => [...prev, selectedQuarry]);
-                handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
-            });
-            deleteDoc(doc(db, 'map_resources', `${selectedQuarry.x}_${selectedQuarry.y}`)).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${selectedQuarry.x}_${selectedQuarry.y}`));
-        }
-        addHistoryLog(`Построена дикая каменоломня в [${selectedQuarry.x}, ${selectedQuarry.y}].`, 'build');
+        setIsBuildingActionProcessing(true);
         setSelectedQuarry(null);
+
+        try {
+            const placementGuard = await validatePlacementTarget(targetQuarry.x, targetQuarry.y, {
+                allowedResourceTypes: ['quarry']
+            });
+            if (!placementGuard.ok) {
+                alert(placementGuard.message);
+                return;
+            }
+
+            updatePlayerResources(-(wildQuarryInfo.price || 0), 0, {});
+            setMapResources(prev => prev.filter(r => r.x !== targetQuarry.x || r.y !== targetQuarry.y));
+
+            const docId = makePlacedEntityId(user?.uid);
+            const newBuilding: PlacedBuilding = {
+                id: docId,
+                x: targetQuarry.x,
+                y: targetQuarry.y,
+                zoneId: getZoneId(targetQuarry.x, targetQuarry.y),
+                buildingId: WILD_QUARRY_ID,
+                ownerId: user ? user.uid : "0",
+                ownerName: playerName,
+                isConstructing: true,
+                constructionEndTime: Date.now() + (wildQuarryInfo.stats.constructionTimeSeconds || 0) * 1000,
+                type: wildQuarryInfo.type,
+                workState: 'idle',
+                hp: wildQuarryInfo.stats.durability,
+                maxHp: wildQuarryInfo.stats.durability,
+                isLocal: true
+            };
+
+            // Optimistic local placement so the quarry doesn't vanish before realtime sync.
+            setPlacedBuildings(prev => [...prev, newBuilding]);
+
+            if (isAuthReady && user) {
+                try {
+                    await setDoc(doc(db, 'buildings', docId), newBuilding);
+                    deleteDoc(doc(db, 'map_resources', `${targetQuarry.x}_${targetQuarry.y}`)).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${targetQuarry.x}_${targetQuarry.y}`));
+                } catch (e) {
+                    // Roll back optimistic building if create failed.
+                    setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
+                    setMapResources(prev => [...prev, targetQuarry]);
+                    handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
+                    alert("Ошибка при строительстве каменоломни.");
+                    return;
+                }
+            }
+            addHistoryLog(`Построена дикая каменоломня в [${targetQuarry.x}, ${targetQuarry.y}].`, 'build');
+        } finally {
+            setIsBuildingActionProcessing(false);
+        }
     };
 
     const handleNameChange = async () => {
@@ -13835,58 +15626,82 @@ const App: React.FC = () => {
                 }
 
                 addHistoryLog(`Смена имени на "${tempPlayerName}". Стоимость: ${cost} монет.`, 'social');
-                alert("Р ВР СРЎРЏ РЎС“РЎРѓР С—Р ВµРЎв‚¬Р Р…Р С• Р С‘Р В·Р СР ВµР Р…Р ВµР Р…Р С•!");
+                alert("Имя успешно изменено!");
             } else {
-                alert("Р ВР СРЎРЏ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљ Р В±РЎвЂ№РЎвЂљРЎРЉ Р С—РЎС“РЎРѓРЎвЂљРЎвЂ№Р С.");
+                alert("Имя не может быть пустым.");
             }
         } else {
             alert("Недостаточно золота для смены имени!");
         }
     };
 
-    const handleBuyRuby = (amount: number = 1) => {
-        if (isShopProcessing) return;
+    const openRubyWarningModal = useCallback((requiredRubies?: number) => {
+        setRubyModalState({ mode: 'warning', requiredRubies });
+        playOpenSound();
+    }, [playOpenSound]);
+
+    const openRubyShopModal = useCallback(() => {
+        setRubyModalState({ mode: 'shop' });
+        playOpenSound();
+    }, [playOpenSound]);
+
+    const closeRubyModal = useCallback(() => {
+        setRubyModalState(null);
+        playCloseSound();
+    }, [playCloseSound]);
+
+    const handleBuyRuby = useCallback((amount: number = 1) => {
+        if (amount <= 0) return;
+        if (selectedBuilding && Number(selectedBuilding.info.id) === AUCTION_ID && !isMyBuilding(selectedBuilding.building)) {
+            alert("Покупка рубинов доступна только в личном аукционе!");
+            return;
+        }
         const totalCost = amount * 10000;
 
-        if (isAuthReady && user) {
-            setIsShopProcessing(true);
-            const userRef = doc(db, 'users', user.uid);
-
-            runTransaction(db, async (transaction) => {
-                const userDoc = await transaction.get(userRef);
-                if (!userDoc.exists()) throw new Error("User not found");
-
-                const currentGold = Number(userDoc.data().gold) || 0;
-                if (currentGold < totalCost) throw new Error("Insufficient gold");
-
-                const currentRubies = Number(userDoc.data().rubies) || 0;
-
-                transaction.update(userRef, {
-                    gold: currentGold - totalCost,
-                    rubies: currentRubies + amount
-                });
-            })
-                .then(() => {
-                    addHistoryLog(`Куплено ${amount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
-                })
-                .catch(e => {
-                    console.error("Buy ruby failed: ", e);
-                    if (e.message === "Insufficient gold") {
-                        alert("Недостаточно золота!");
-                    } else {
-                        handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`);
-                    }
-                })
-                .finally(() => setIsShopProcessing(false));
-        } else {
-            if (playerGold >= totalCost) {
-                updatePlayerResources(-totalCost, amount, {});
-                addHistoryLog(`Куплено ${amount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
-            } else {
-                alert("Недостаточно золота!");
-            }
+        if (playerGold < totalCost) {
+            alert("Недостаточно золота!");
+            return;
         }
-    };
+
+        updatePlayerResources(-totalCost, amount, {});
+        playCoinSound();
+        addHistoryLog(`Куплено ${amount} рубинов за ${totalCost.toLocaleString()} монет.`, 'economy');
+    }, [selectedBuilding, isMyBuilding, playerGold, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+    const handleSellRuby = useCallback((amount: number = 1) => {
+        if (amount <= 0) return;
+        if (selectedBuilding && Number(selectedBuilding.info.id) === AUCTION_ID && !isMyBuilding(selectedBuilding.building)) {
+            alert("Продажа рубинов доступна только в личном аукционе!");
+            return;
+        }
+        const totalReward = amount * 7777;
+
+        if (playerRubies < amount) {
+            openRubyWarningModal(amount);
+            return;
+        }
+
+        const newGold = Math.min(goldCapacity, playerGold + totalReward);
+        updatePlayerResources(newGold - playerGold, -amount, {});
+        playCoinSound();
+        addHistoryLog(`Продано ${amount} рубинов за ${totalReward.toLocaleString()} монет.`, 'economy');
+    }, [selectedBuilding, isMyBuilding, playerRubies, playerGold, goldCapacity, openRubyWarningModal, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+    const handleOpenMarketForRubies = useCallback(() => {
+        if (selectedBuilding && Number(selectedBuilding.info.id) === AUCTION_ID && !isMyBuilding(selectedBuilding.building)) {
+            return;
+        }
+        setMarketType('general');
+        setActiveMarketTab('sell');
+        setSellItemSelection({
+            itemId: 10014,
+            amount: 1,
+            price: 10000,
+            currency: 'coins'
+        });
+        setSelectedBuilding(null);
+        setShowMarketModal(true);
+    }, [selectedBuilding, isMyBuilding]);
 
     const handleBuyShopItem = useCallback((item: Item, quantity: number = 1) => {
         if (isShopProcessing) return;
@@ -13961,7 +15776,7 @@ const App: React.FC = () => {
                     setShowExchangeModal(false);
                     setExchangeAmount(1);
                     addHistoryLog(`Обменяно ${exchangeAmount} рубинов на ${coins} монет.`, 'economy');
-                    alert(`Р С›Р В±Р СР ВµР Р… РЎС“РЎРѓР С—Р ВµРЎв‚¬Р ВµР Р…! Вы Р С—Р С•Р В»РЎС“РЎвЂЎР С‘Р В»Р С‘ ${coins.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ.`);
+                    alert(`Обмен успешен! Вы получили ${coins.toLocaleString()} монет.`);
                 })
                 .catch(e => {
                     console.error("Ruby exchange failed: ", e);
@@ -13978,7 +15793,7 @@ const App: React.FC = () => {
                 setShowExchangeModal(false);
                 setExchangeAmount(1);
                 addHistoryLog(`Обменяно ${exchangeAmount} рубинов на ${coins} монет.`, 'economy');
-                alert(`Р С›Р В±Р СР ВµР Р… РЎС“РЎРѓР С—Р ВµРЎв‚¬Р ВµР Р…! Вы Р С—Р С•Р В»РЎС“РЎвЂЎР С‘Р В»Р С‘ ${coins.toLocaleString()} Р СР С•Р Р…Р ВµРЎвЂљ.`);
+                alert(`Обмен успешен! Вы получили ${coins.toLocaleString()} монет.`);
             } else {
                 openRubyWarningModal(exchangeAmount);
             }
@@ -14077,6 +15892,48 @@ const App: React.FC = () => {
         }, 1500); // 1.5 second spin animation
     };
 
+    const hasLuckyWheelAvailable = useMemo(() => {
+        if (!lastLuckyWheelSpin) return true;
+        return (Date.now() - lastLuckyWheelSpin) >= 14_400_000; // 4 hours
+    }, [lastLuckyWheelSpin]);
+
+    const handleClaimLuckyWheelPrize = useCallback((prize: LuckyWheelSector) => {
+        const now = Date.now();
+        setLastLuckyWheelSpin(now);
+        try {
+            localStorage.setItem('basingse_last_lucky_wheel_spin', String(now));
+        } catch {}
+
+        if (user?.uid) {
+            updateDoc(doc(db, 'users', user.uid), {
+                lastLuckyWheelSpin: now
+            }).catch(err => console.warn('[LuckyWheel] Failed to save spin timestamp:', err));
+        }
+
+        if (prize.type === 'gold') {
+            updatePlayerResources(prize.amount, 0, {});
+            addHistoryLog(`Колесо Фортуны: выиграно ${prize.amount} монет!`, 'economy');
+        } else if (prize.type === 'ruby' || prize.type === 'jackpot') {
+            updatePlayerResources(0, prize.amount, {});
+            addHistoryLog(`Колесо Фортуны: выиграно ${prize.amount} рубинов!`, 'economy');
+        } else if (prize.type === 'item' && prize.itemId) {
+            updatePlayerResources(0, 0, { [prize.itemId]: prize.amount });
+            addHistoryLog(`Колесо Фортуны: получено ${prize.name}!`, 'economy');
+        }
+
+        if (prize.isJackpot) {
+            const msgId = `lucky-wheel-jackpot-${now}-${user?.uid || 'guest'}`;
+            setDoc(doc(db, 'chat_messages', msgId), {
+                sender: '[КАЗИНО]',
+                senderId: 'system',
+                text: `🎰🎉 Игрок ${playerName || 'Житель'} выиграл джекпот 5 рубинов в Колесе Фортуны! 💎✨`,
+                type: 'system',
+                timestamp: now,
+                tab: 'general'
+            }).catch(err => console.warn('[LuckyWheel] Failed to broadcast jackpot:', err));
+        }
+    }, [user, playerName, updatePlayerResources, addHistoryLog, db]);
+
     const handleUpgrade = () => {
         if (!selectedBuilding) return;
 
@@ -14089,8 +15946,26 @@ const App: React.FC = () => {
         const newBuildingInfo = buildingData.find(b => b.id === upgradeTargetId);
 
         if (!newBuildingInfo || cost === undefined) {
-            alert("Р В­РЎвЂљР С• Р В·Р Т‘Р В°Р Р…Р С‘Р Вµ Р Р…Р ВµР В»РЎРЉР В·РЎРЏ РЎС“Р В»РЎС“РЎвЂЎРЎв‚¬Р С‘РЎвЂљРЎРЉ!");
+            alert("Это здание нельзя улучшить!");
             return;
+        }
+
+        // TOWN HALL DOWNGRADE/DESYNC GUARD:
+        // Ensure that if this is a Town Hall, we are upgrading from the user's HIGHEST known Town Hall level,
+        // and never downgrading or upgrading a stale level 1 if player already reached higher levels!
+        const isTownHallUpgrade = TOWN_HALL_IDS.includes(Number(currentBuildingInfo.id));
+        if (isTownHallUpgrade && playerTownHall) {
+            const currentSelectedLvlIdx = TOWN_HALL_IDS.indexOf(Number(currentBuildingInfo.id));
+            const highestKnownLvlIdx = TOWN_HALL_IDS.indexOf(Number(playerTownHall.buildingId));
+            if (currentSelectedLvlIdx < highestKnownLvlIdx) {
+                console.warn(`[TH-UPGRADE-GUARD] Blocked attempt to upgrade stale Town Hall (lvl ${currentSelectedLvlIdx + 1}) when player has lvl ${highestKnownLvlIdx + 1}`);
+                alert("Городской центр уже улучшен до более высокого уровня! Обновляем данные...");
+                setSelectedBuilding({
+                    building: playerTownHall,
+                    info: buildingData.find(b => b.id === playerTownHall.buildingId) || currentBuildingInfo
+                });
+                return;
+            }
         }
 
         if (playerGold < cost) {
@@ -14108,10 +15983,10 @@ const App: React.FC = () => {
         }
 
         if (newBuildingInfo.constructionRequirements.resources) {
-            const missingResources = newBuildingInfo.constructionRequirements.resources.filter(req => (inventory[req.id] || 0) < (req.amount || 0));
+            const missingResources = newBuildingInfo.constructionRequirements.resources.filter(req => (Number(inventory[req.id]) || 0) < (req.amount || 0));
             if (missingResources.length > 0) {
-                const missingNames = missingResources.map(r => `${r.name} (нужно: ${r.amount}, есть: ${inventory[r.id] || 0})`).join(', ');
-                alert(`Недостаточно ресурсов для улучшения: ${missingNames}`);
+                setBlackMarketBuilding(newBuildingInfo);
+                setShowBlackMarketMissingModal(true);
                 return;
             }
         }
@@ -14176,8 +16051,33 @@ const App: React.FC = () => {
             return newBuildings;
         });
 
+        const buildingDocId = String(selectedBuilding.building.id);
+        if (serverMyBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverMyBuildingsRef.current.get(buildingDocId)!;
+            serverMyBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                buildingId: projectedUpgradeBuilding.buildingId,
+                isConstructing: projectedUpgradeBuilding.isConstructing,
+                constructionEndTime: upgradeConstructionEndTime,
+                hp: projectedUpgradeBuilding.hp,
+                maxHp: projectedUpgradeBuilding.maxHp,
+                type: projectedUpgradeBuilding.type || existing.type,
+            });
+        }
+        if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverZoneBuildingsRef.current.get(buildingDocId)!;
+            serverZoneBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                buildingId: projectedUpgradeBuilding.buildingId,
+                isConstructing: projectedUpgradeBuilding.isConstructing,
+                constructionEndTime: upgradeConstructionEndTime,
+                hp: projectedUpgradeBuilding.hp,
+                maxHp: projectedUpgradeBuilding.maxHp,
+                type: projectedUpgradeBuilding.type || existing.type,
+            });
+        }
+
         if (isAuthReady && user) {
-            const buildingDocId = String(selectedBuilding.building.id);
             updateDoc(doc(db, 'buildings', buildingDocId), {
                 buildingId: projectedUpgradeBuilding.buildingId,
                 isConstructing: projectedUpgradeBuilding.isConstructing,
@@ -14262,8 +16162,19 @@ const App: React.FC = () => {
             });
         }
         setPlacedBuildings(prev => prev.map(b =>
-            b.id === building.id ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
+            String(b.id) === String(building.id) ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
         ));
+        placedBuildingsRef.current = placedBuildingsRef.current.map(b =>
+            String(b.id) === buildingDocId ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
+        );
+        if (serverMyBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverMyBuildingsRef.current.get(buildingDocId)!;
+            serverMyBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
+        }
+        if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverZoneBuildingsRef.current.get(buildingDocId)!;
+            serverZoneBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
+        }
         lastInteractionRef.current.set(buildingDocId, Date.now());
 
         // Sync to backend when authenticated.
@@ -14279,7 +16190,7 @@ const App: React.FC = () => {
         if (!info) return;
         if (isBanditCastleBuildingId(building.buildingId)) return;
 
-        const rewardEligibility = resolveLocalRewardEligibility({ building });
+        const rewardEligibility = resolveLocalRewardEligibility({ building, now: Date.now() });
         if (!rewardEligibility.granted) return;
         const consumedBuilding = rewardEligibility.consumedBuilding ?? building;
 
@@ -14302,9 +16213,6 @@ const App: React.FC = () => {
 
         // Skip coin sound and gold for cannons
         const isCannon = CANNON_IDS.includes(bid);
-        if (!isCannon) {
-            playCoinSound();
-        }
         let actualGold = (info.stats.givesCoins || info.stats.workYieldGold || 0);
 
         // Specific overrides for Mushroom/Lily rewards
@@ -14387,6 +16295,15 @@ const App: React.FC = () => {
         }
         
         updatePlayerResources(actualGold, 0, inventoryDeltas);
+
+        if (!isCannon) {
+            triggerGatherJuice({
+                worldX: building.x,
+                worldY: building.y,
+                gold: actualGold,
+                resources: inventoryDeltas,
+            });
+        }
 
         if (isAuthReady && user) {
             const buildingDocId = String(building.id);
@@ -14560,35 +16477,263 @@ const App: React.FC = () => {
                 buildingId: nextBid
             };
             if (nextInfo) {
-                updates.hp = nextInfo.stats.durability;
-                updates.maxHp = nextInfo.stats.durability;
+                const currentMaxHp = consumedBuilding.maxHp ?? (info?.stats.durability ?? nextInfo.stats.durability);
+                const currentHp = consumedBuilding.hp ?? currentMaxHp;
+                const currentDamage = Math.max(0, currentMaxHp - currentHp);
+                const nextMaxHp = nextInfo.stats.durability ?? currentMaxHp;
+                const nextHp = Math.max(1, nextMaxHp - currentDamage);
+
+                updates.hp = currentDamage > 0 ? nextHp : nextMaxHp;
+                updates.maxHp = nextMaxHp;
                 updates.type = nextInfo.type || building.type;
             }
 
             updateDoc(doc(db, 'buildings', buildingDocId), updates).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
             
             // Optimistic update
-            setPlacedBuildings(prev => prev.map(b => {
-                if (b.id === building.id) {
-                    const newB = { ...consumedBuilding, workState: 'idle' as const, workEndTime: undefined, buildingId: nextBid, isLocal: true };
-                    if (nextInfo) {
-                        newB.hp = nextInfo.stats.durability;
-                        newB.maxHp = nextInfo.stats.durability;
-                        newB.type = nextInfo.type || b.type;
-                    }
-                    return newB;
-                }
-                return b;
-            }));
+            const currentMaxHp = consumedBuilding.maxHp ?? (info?.stats.durability ?? nextInfo?.stats.durability ?? 72);
+            const currentHp = consumedBuilding.hp ?? currentMaxHp;
+            const currentDamage = Math.max(0, currentMaxHp - currentHp);
+            const nextMaxHp = nextInfo?.stats.durability ?? currentMaxHp;
+            const nextHp = Math.max(1, nextMaxHp - currentDamage);
+
+            const newB: PlacedBuilding = {
+                ...consumedBuilding,
+                workState: 'idle' as const,
+                workEndTime: undefined,
+                buildingId: nextBid,
+                isLocal: true
+            };
+            if (nextInfo) {
+                newB.hp = currentDamage > 0 ? nextHp : nextMaxHp;
+                newB.maxHp = nextMaxHp;
+                newB.type = nextInfo.type || building.type;
+            }
+
+            setPlacedBuildings(prev => prev.map(b => (String(b.id) === String(building.id) ? newB : b)));
+            placedBuildingsRef.current = placedBuildingsRef.current.map(b => (String(b.id) === String(building.id) ? newB : b));
+            if (serverMyBuildingsRef.current.has(buildingDocId)) {
+                serverMyBuildingsRef.current.set(buildingDocId, {
+                    ...serverMyBuildingsRef.current.get(buildingDocId)!,
+                    buildingId: nextBid,
+                    workState: 'idle',
+                    workEndTime: undefined,
+                    hp: newB.hp,
+                    maxHp: newB.maxHp,
+                });
+            }
+            if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+                serverZoneBuildingsRef.current.set(buildingDocId, {
+                    ...serverZoneBuildingsRef.current.get(buildingDocId)!,
+                    buildingId: nextBid,
+                    workState: 'idle',
+                    workEndTime: undefined,
+                    hp: newB.hp,
+                    maxHp: newB.maxHp,
+                });
+            }
+            setSelectedBuilding(prev => prev && String(prev.building.id) === buildingDocId ? { building: newB, info: nextInfo || info } : prev);
             lastInteractionRef.current.set(buildingDocId, Date.now());
 
             addHistoryLog(`Сбор: +${actualGold} монет`, 'economy');
         }
     };
 
+    const handleFocusBuildingOnMap = useCallback((b: PlacedBuilding) => {
+        const zoom = ZOOM_LEVELS[zoomIndexRef.current];
+        const isoX = (b.x - b.y) * (TILE_WIDTH * zoom / 2);
+        const isoY = (b.x + b.y) * (TILE_HEIGHT * zoom / 2);
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        cameraOffsetRef.current = {
+            x: centerX - isoX,
+            y: centerY - isoY
+        };
+        const info = buildingData.find(bd => bd.id === b.buildingId);
+        if (info) {
+            setSelectedBuilding({ building: b, info });
+        }
+    }, [buildingData]);
+
+    const handleCollectAllReadyIncome = useCallback(() => {
+        const now = Date.now();
+        const cooldownStatus = getFinancialCollectCooldownStatus(lastFinancialCollectTime, hasEgyptianObelisk, now);
+        if (!cooldownStatus.isReady) {
+            const remainingSec = Math.ceil(cooldownStatus.remainingMs / 1000);
+            const mins = Math.floor(remainingSec / 60);
+            const secs = remainingSec % 60;
+            alert(`Перезарядка сбора! Доступно через ${mins}м ${secs}с. Постройте Египетский обелиск, чтобы снять задержку.`);
+            return;
+        }
+
+        const readyBuildings = placedBuildings.filter(b => {
+            if (!isMyBuilding(b) || b.isConstructing || b.isDestroying) return false;
+            return isBuildingReadyForCollection(b, now);
+        });
+
+        if (readyBuildings.length === 0) {
+            alert('Нет готовых доходов или созревшего урожая для сбора.');
+            return;
+        }
+
+        let totalGold = 0;
+        const accumulatedInventoryDeltas: Record<number, number> = {};
+        const buildingUpdates: {
+            building: PlacedBuilding;
+            nextBid: number;
+            nextInfo?: Building;
+            gold: number;
+            deltas: Record<number, number>;
+        }[] = [];
+
+        for (const b of readyBuildings) {
+            const info = buildingData.find(bd => bd.id === b.buildingId);
+            if (!info) continue;
+
+            const reward = calculateBuildingReward({
+                building: b,
+                info,
+                allBuildings: placedBuildings,
+                zoneSize: 64,
+            });
+
+            totalGold += reward.gold;
+            for (const [itemIdStr, amount] of Object.entries(reward.inventoryDeltas)) {
+                const itemId = Number(itemIdStr);
+                accumulatedInventoryDeltas[itemId] = (accumulatedInventoryDeltas[itemId] || 0) + amount;
+            }
+
+            const nextInfo = buildingData.find(bd => bd.id === reward.nextBuildingId);
+            buildingUpdates.push({
+                building: b,
+                nextBid: reward.nextBuildingId,
+                nextInfo,
+                gold: reward.gold,
+                deltas: reward.inventoryDeltas,
+            });
+        }
+
+        // Apply resource increments to player
+        updatePlayerResources(totalGold, 0, accumulatedInventoryDeltas);
+
+        // Optimistically update placed buildings state
+        const updateMap = new Map(buildingUpdates.map(u => [String(u.building.id), u]));
+        const updatedNewBuildings = placedBuildingsRef.current.map(b => {
+            const u = updateMap.get(String(b.id));
+            if (!u) return b;
+
+            const currentMaxHp = b.maxHp ?? (u.nextInfo?.stats.durability ?? 72);
+            const currentHp = b.hp ?? currentMaxHp;
+            const currentDamage = Math.max(0, currentMaxHp - currentHp);
+            const nextMaxHp = u.nextInfo?.stats.durability ?? currentMaxHp;
+            const nextHp = Math.max(1, nextMaxHp - currentDamage);
+
+            const newB: PlacedBuilding = {
+                ...b,
+                workState: 'idle' as const,
+                workEndTime: undefined,
+                buildingId: u.nextBid,
+                isLocal: true,
+            };
+            if (u.nextInfo) {
+                newB.hp = currentDamage > 0 ? nextHp : nextMaxHp;
+                newB.maxHp = nextMaxHp;
+                newB.type = u.nextInfo.type || b.type;
+            }
+            return newB;
+        });
+
+        placedBuildingsRef.current = updatedNewBuildings;
+        setPlacedBuildings(updatedNewBuildings);
+
+        buildingUpdates.forEach(u => {
+            const buildingDocId = String(u.building.id);
+            if (serverMyBuildingsRef.current.has(buildingDocId)) {
+                serverMyBuildingsRef.current.set(buildingDocId, {
+                    ...serverMyBuildingsRef.current.get(buildingDocId)!,
+                    buildingId: u.nextBid,
+                    workState: 'idle',
+                    workEndTime: undefined,
+                });
+            }
+            if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+                serverZoneBuildingsRef.current.set(buildingDocId, {
+                    ...serverZoneBuildingsRef.current.get(buildingDocId)!,
+                    buildingId: u.nextBid,
+                    workState: 'idle',
+                    workEndTime: undefined,
+                });
+            }
+        });
+
+        // Sync updates to Firestore
+        if (isAuthReady && user) {
+            buildingUpdates.forEach(u => {
+                const buildingDocId = String(u.building.id);
+                const updates: any = {
+                    workState: 'idle',
+                    workEndTime: deleteField(),
+                    buildingId: u.nextBid,
+                };
+                if (u.nextInfo) {
+                    const currentMaxHp = u.building.maxHp ?? (u.nextInfo.stats.durability ?? 72);
+                    const currentHp = u.building.hp ?? currentMaxHp;
+                    const currentDamage = Math.max(0, currentMaxHp - currentHp);
+                    const nextMaxHp = u.nextInfo.stats.durability ?? currentMaxHp;
+                    const nextHp = Math.max(1, nextMaxHp - currentDamage);
+                    updates.hp = currentDamage > 0 ? nextHp : nextMaxHp;
+                    updates.maxHp = nextMaxHp;
+                    updates.type = u.nextInfo.type || u.building.type;
+                }
+                updateDoc(doc(db, 'buildings', buildingDocId), updates).catch(e =>
+                    handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`)
+                );
+                lastInteractionRef.current.set(buildingDocId, Date.now());
+            });
+        }
+
+        // Visual juice and audio feedback
+        const center = getCurrentWorldCenter();
+        const primaryBuilding = readyBuildings[0];
+        triggerGatherJuice({
+            worldX: primaryBuilding?.x ?? center.x,
+            worldY: primaryBuilding?.y ?? center.y,
+            gold: totalGold,
+            resources: accumulatedInventoryDeltas,
+        });
+
+        if (totalGold > 0) {
+            playCoinSound();
+        }
+
+        addHistoryLog(
+            `Финансовая разведка: собрано +${totalGold} монет (${readyBuildings.length} производств)`,
+            'economy'
+        );
+
+        // Update cooldown tracking timestamp
+        updateFinancialCollectTime(now);
+    }, [
+        lastFinancialCollectTime,
+        hasEgyptianObelisk,
+        placedBuildings,
+        isMyBuilding,
+        buildingData,
+        updatePlayerResources,
+        isAuthReady,
+        user,
+        getCurrentWorldCenter,
+        triggerGatherJuice,
+        playCoinSound,
+        addHistoryLog,
+        updateFinancialCollectTime,
+    ]);
+
     const handleStartProduction = () => {
         if (!selectedBuilding) return;
-        const { building, info } = selectedBuilding;
+        const liveBuilding = placedBuildingsRef.current.find(b => String(b.id) === String(selectedBuilding.building.id)) || selectedBuilding.building;
+        const { info } = selectedBuilding;
+        const building = liveBuilding;
         if (isBanditCastleBuildingId(building.buildingId)) return;
 
         // Cannot start production while building is under construction or upgrading
@@ -14613,7 +16758,7 @@ const App: React.FC = () => {
         if (info.stats.consumes) {
             for (const req of info.stats.consumes) {
                 if ((inventory[req.id] || 0) < (req.amount || 0)) {
-                    alert(`Р СњР ВµР Т‘Р С•РЎРѓРЎвЂљР В°РЎвЂљР С•РЎвЂЎР Р…Р С• РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓР В°: ${getCanonicalItemName(req.id, req.name, selectedBuilding?.building.id)}`);
+                    alert(`Недостаточно ресурса: ${getCanonicalItemName(req.id, req.name, selectedBuilding?.building.id)}`);
                     return;
                 }
             }
@@ -14648,8 +16793,19 @@ const App: React.FC = () => {
             });
         }
         setPlacedBuildings(prev => prev.map(b =>
-            b.id === building.id ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
+            String(b.id) === String(building.id) ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
         ));
+        placedBuildingsRef.current = placedBuildingsRef.current.map(b =>
+            String(b.id) === buildingDocId ? { ...b, workState: 'working', workEndTime, isLocal: true } : b
+        );
+        if (serverMyBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverMyBuildingsRef.current.get(buildingDocId)!;
+            serverMyBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
+        }
+        if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverZoneBuildingsRef.current.get(buildingDocId)!;
+            serverZoneBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
+        }
         lastInteractionRef.current.set(buildingDocId, Date.now());
 
         // Sync to backend when authenticated.
@@ -14668,12 +16824,9 @@ const App: React.FC = () => {
         const { building, info } = selectedBuilding;
         if (isBanditCastleBuildingId(building.buildingId)) return;
 
-        const rewardEligibility = resolveLocalRewardEligibility({ building });
+        const rewardEligibility = resolveLocalRewardEligibility({ building, now: Date.now() });
         if (!rewardEligibility.granted) return;
         const consumedBuilding = rewardEligibility.consumedBuilding ?? building;
-
-        // Play coin collection sound
-        playCoinSound();
 
         const bid = Number(building.buildingId);
         const isLilyOrMushroom = [500, 56, 391, 392, 393, 394, 395, 396, 397, 398, 399, 453, 454, 468, 470, 471, 400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 70, 71, 72, 73, 77, 78, 79, 80, 82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94, 102, 103, 104, 105, 106, 107, 109, 110, 111, 112, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 251, 252, 253, 254, 255, 256, 257, 258, 259, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 313, 314, 315, 316, 317, 318, 320, 321, 322, 323, 600, 617, 618, 636, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 632, 633, 634, 635].includes(bid);
@@ -14707,7 +16860,7 @@ const App: React.FC = () => {
             const zoneY = Math.floor(building.y / ZONE_SIZE);
 
             const taxCollector = placedBuildings.find(b =>
-                b.buildingId === WATCHTOWER_ID &&
+                isWatchtowerId(b.buildingId) &&
                 !b.isConstructing &&
                 Math.floor(b.x / ZONE_SIZE) === zoneX &&
                 Math.floor(b.y / ZONE_SIZE) === zoneY
@@ -14720,6 +16873,24 @@ const App: React.FC = () => {
                 playerShare = Math.floor(info.stats.workYieldGold * (1 - taxRate / 100));
                 const taxShare = info.stats.workYieldGold - playerShare;
 
+                // Allocate tax share between Dividend Pool and Clan Castle Bank
+                const ownerClanListing = clanStockListings.find(l => l.leaderUid === taxCollector.ownerId);
+                let actualClanBankShare = taxShare;
+                if (ownerClanListing && ownerClanListing.isIssued) {
+                    const { dividendPoolShare, clanBankShare } = allocateTaxToDividends(taxShare, ownerClanListing.dividendPercent);
+                    actualClanBankShare = clanBankShare;
+                    setClanStockListings(prev => prev.map(l => {
+                        if (l.clanId === ownerClanListing.clanId) {
+                            return {
+                                ...l,
+                                accumulatedDividendPool: l.accumulatedDividendPool + dividendPoolShare,
+                                dailyTaxRevenue: (l.dailyTaxRevenue || 0) + taxShare,
+                            };
+                        }
+                        return l;
+                    }));
+                }
+
                 const banditCastle = placedBuildings.find(b =>
                     BANDIT_CASTLE_IDS.has(Number(b.buildingId)) &&
                     !b.isConstructing &&
@@ -14731,7 +16902,7 @@ const App: React.FC = () => {
                     if (isAuthReady && user) {
                         const buildingDocId = String(banditCastle.id);
                         updateDoc(doc(db, 'buildings', buildingDocId), {
-                            bank: increment(taxShare)
+                            bank: increment(actualClanBankShare)
                         }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
                     }
                 }
@@ -14756,6 +16927,12 @@ const App: React.FC = () => {
         }
 
         updatePlayerResources(playerShareFinal, 0, inventoryDeltas);
+        triggerGatherJuice({
+            worldX: building.x,
+            worldY: building.y,
+            gold: playerShareFinal,
+            resources: inventoryDeltas,
+        });
 
         if (isAuthReady && user) {
             const buildingDocId = String(building.id);
@@ -14832,8 +17009,14 @@ const App: React.FC = () => {
                 buildingId: nextBid
             };
             if (nextInfo) {
-                updatedFields.hp = nextInfo.stats.durability;
-                updatedFields.maxHp = nextInfo.stats.durability;
+                const currentMaxHp = consumedBuilding.maxHp ?? (selectedBuilding?.info?.stats.durability ?? nextInfo.stats.durability);
+                const currentHp = consumedBuilding.hp ?? currentMaxHp;
+                const currentDamage = Math.max(0, currentMaxHp - currentHp);
+                const nextMaxHp = nextInfo.stats.durability ?? currentMaxHp;
+                const nextHp = Math.max(1, nextMaxHp - currentDamage);
+
+                updatedFields.hp = currentDamage > 0 ? nextHp : nextMaxHp;
+                updatedFields.maxHp = nextMaxHp;
                 updatedFields.type = nextInfo.type || building.type;
             }
 
@@ -14841,12 +17024,14 @@ const App: React.FC = () => {
             
             // Optimistic update
             setPlacedBuildings(prev => prev.map(b =>
-                b.id === building.id ? {
+                String(b.id) === String(building.id) ? {
                     ...consumedBuilding,
                     workState: 'idle' as const,
                     workEndTime: undefined,
                     buildingId: nextBid,
-                    hp: nextInfo ? nextInfo.stats.durability : b.hp,
+                    hp: nextInfo ? (
+                        Math.max(1, (nextInfo.stats.durability ?? b.maxHp ?? 100) - Math.max(0, (b.maxHp ?? nextInfo.stats.durability ?? 100) - (b.hp ?? nextInfo.stats.durability ?? 100)))
+                    ) : b.hp,
                     maxHp: nextInfo ? nextInfo.stats.durability : b.maxHp,
                     type: nextInfo ? (nextInfo.type || b.type) : b.type
                 } : b
@@ -14888,7 +17073,7 @@ const App: React.FC = () => {
 
     const handleStealProduction = () => {
         if (isBanned()) {
-            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Р†Р С•РЎР‚Р С•Р Р†Р В°РЎвЂљРЎРЉ!");
+            alert("Вы забанены и не можете воровать!");
             return;
         }
         if (!selectedBuilding) return;
@@ -14896,12 +17081,12 @@ const App: React.FC = () => {
         // Check if player has Den of Thieves (ID 6000)
         const hasDenOfThieves = placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing);
         if (!hasDenOfThieves) {
-            alert("Р вЂќР В»РЎРЏ Р Р†Р С•РЎР‚Р С•Р Р†РЎРѓРЎвЂљР Р†Р В° Р Р…Р ВµР С•Р В±РЎвЂ¦Р С•Р Т‘Р С‘Р СР С• Р С—Р С•РЎРѓРЎвЂљРЎР‚Р С•Р С‘РЎвЂљРЎРЉ Р вЂ™Р С•РЎР‚Р С•Р Р†РЎРѓР С”Р С•Р Вµ Р В»Р С•Р С–Р С•Р Р†Р С•!");
+            alert("Для воровства необходимо построить Воровское логово!");
             return;
         }
 
         if (playerLevel < 2) {
-            alert("Р вЂќР В»РЎРЏ Р Р†Р С•РЎР‚Р С•Р Р†РЎРѓРЎвЂљР Р†Р В° РЎвЂљРЎР‚Р ВµР В±РЎС“Р ВµРЎвЂљРЎРѓРЎРЏ 2 РЎС“РЎР‚Р С•Р Р†Р ВµР Р…РЎРЉ Р В°Р С”Р С”Р В°РЎС“Р Р…РЎвЂљР В°!");
+            alert("Для воровства требуется 2 уровень аккаунта!");
             return;
         }
 
@@ -14947,7 +17132,7 @@ const App: React.FC = () => {
             const zoneY = Math.floor(building.y / ZONE_SIZE);
 
             const taxCollector = placedBuildings.find(b =>
-                b.buildingId === WATCHTOWER_ID &&
+                isWatchtowerId(b.buildingId) &&
                 !b.isConstructing &&
                 Math.floor(b.x / ZONE_SIZE) === zoneX &&
                 Math.floor(b.y / ZONE_SIZE) === zoneY
@@ -14959,6 +17144,24 @@ const App: React.FC = () => {
                 const taxRate = Math.min(50, Math.max(0, taxCollector.taxRate));
                 playerShare = Math.floor(info.stats.workYieldGold * (1 - taxRate / 100));
                 const taxShare = info.stats.workYieldGold - playerShare;
+
+                // Allocate tax share between Dividend Pool and Clan Castle Bank
+                const ownerClanListing = clanStockListings.find(l => l.leaderUid === taxCollector.ownerId);
+                let actualClanBankShare = taxShare;
+                if (ownerClanListing && ownerClanListing.isIssued) {
+                    const { dividendPoolShare, clanBankShare } = allocateTaxToDividends(taxShare, ownerClanListing.dividendPercent);
+                    actualClanBankShare = clanBankShare;
+                    setClanStockListings(prev => prev.map(l => {
+                        if (l.clanId === ownerClanListing.clanId) {
+                            return {
+                                ...l,
+                                accumulatedDividendPool: l.accumulatedDividendPool + dividendPoolShare,
+                                dailyTaxRevenue: (l.dailyTaxRevenue || 0) + taxShare,
+                            };
+                        }
+                        return l;
+                    }));
+                }
 
                 // Find the Bandit Castle in the same zone to add tax to its bank
                 const banditCastle = placedBuildings.find(b =>
@@ -14972,12 +17175,12 @@ const App: React.FC = () => {
                     if (isAuthReady && user) {
                         const buildingDocId = String(banditCastle.id);
                         updateDoc(doc(db, 'buildings', buildingDocId), {
-                            bank: increment(taxShare)
+                            bank: increment(actualClanBankShare)
                         }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
                     } else {
                         // Local update for offline mode
                         setPlacedBuildings(prev => prev.map(b =>
-                            b.id === banditCastle.id ? { ...b, bank: (b.bank || 0) + taxShare } : b
+                            b.id === banditCastle.id ? { ...b, bank: (b.bank || 0) + actualClanBankShare } : b
                         ));
                     }
                 }
@@ -15027,14 +17230,14 @@ const App: React.FC = () => {
                         // Returned to owner - thief gets nothing
                         const itemName = info.stats.produces?.find(p => p.id === id)?.name ||
                                         info.stats.sometimesProduces?.find(p => p.id === id)?.name ||
-                                        'РЎРѓРЎС“Р С—Р ВµРЎР‚ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓ';
+                                        'супер ресурс';
                         superResourcesReturned.push(`${inventoryDeltas[id]} ${itemName}`);
                         inventoryDeltas[id] = 0;
                     } else {
                         // Thief keeps it
                         const itemName = info.stats.produces?.find(p => p.id === id)?.name ||
                                         info.stats.sometimesProduces?.find(p => p.id === id)?.name ||
-                                        'РЎРѓРЎС“Р С—Р ВµРЎР‚ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓ';
+                                        'супер ресурс';
                         superResourcesKept.push(`${inventoryDeltas[id]} ${itemName}`);
                     }
                 } else {
@@ -15044,14 +17247,14 @@ const App: React.FC = () => {
             }
 
             // Send notification about being caught
-            const thiefName = playerName || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„– Р Р†Р С•РЎР‚Р С‘РЎв‚¬Р С”Р В°';
+            const thiefName = playerName || 'Неизвестный воришка';
             const caughtMsgId = `caught-${Date.now()}-${building.ownerId}`;
 
             // Send notification to chat (loot tab)
             const notification = {
-                sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
+                sender: '[ПОЛИЦИЯ]',
                 senderId: 'system',
-                text: `Р ВР С–РЎР‚Р С•Р С” ${thiefName} Р В±РЎвЂ№Р В» Р В·Р В°Р СР ВµРЎвЂЎР ВµР Р… Р Р† Р Р†Р С•РЎР‚Р С•Р Р†РЎРѓРЎвЂљР Р†Р Вµ РЎС“ Р С‘Р С–РЎР‚Р С•Р С”Р В° Р Р…Р В° Р С”Р С•Р С•РЎР‚Р Т‘Р С‘Р Р…Р В°РЎвЂљР В°РЎвЂ¦ (${building.x}, ${building.y})! Р СџР С•Р В»Р С‘РЎвЂ Р ВµР в„–РЎРѓР С”Р С‘Р в„– РЎС“РЎвЂЎР В°РЎРѓРЎвЂљР С•Р С” Р В·Р В°Р Т‘Р ВµРЎР‚Р В¶Р В°Р В» Р Р†Р С•РЎР‚Р В°.`,
+                text: `Игрок ${thiefName} был замечен в воровстве у игрока на координатах (${building.x}, ${building.y})! Полицейский участок задержал вора.`,
                 type: 'system',
                 timestamp: Date.now(),
                 tab: 'loot'
@@ -15069,7 +17272,7 @@ const App: React.FC = () => {
 
             const personalMsgId = `caught-personal-${Date.now()}-${user?.uid}`;
             const personalNotification = {
-                sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
+                sender: '[ПОЛИЦИЯ]',
                 senderId: 'system',
                 text: personalMsg,
                 type: 'system',
@@ -15100,12 +17303,12 @@ const App: React.FC = () => {
                     }
                 }));
             }
-            const thiefName = playerName || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„– Р Р†Р С•РЎР‚Р С‘РЎв‚¬Р С”Р В°';
+            const thiefName = playerName || 'Неизвестный воришка';
             const msgId = `theft-${Date.now()}-${building.ownerId}`;
             const notification = {
-                sender: '[Р РЋР ВР РЋР СћР вЂўР СљР С’]',
+                sender: '[СИСТЕМА]',
                 senderId: 'system',
-                text: `Р ВР С–РЎР‚Р С•Р С” ${thiefName} РЎС“Р С”РЎР‚Р В°Р В» РЎС“ Р Р†Р В°РЎРѓ РЎС“РЎР‚Р С•Р В¶Р В°Р в„– РЎРѓ Р С•Р В±РЎР‰Р ВµР С”РЎвЂљР В° ${info.name} (Р С™Р С•Р С•РЎР‚Р Т‘Р С‘Р Р…Р В°РЎвЂљРЎвЂ№: ${building.x}, ${building.y})!`,
+                text: `Игрок ${thiefName} украл у вас урожай с объекта ${info.name} (Координаты: ${building.x}, ${building.y})!`,
                 type: 'system',
                 timestamp: Date.now(),
                 tab: 'loot'
@@ -15120,7 +17323,7 @@ const App: React.FC = () => {
                 const zoneY = Math.floor(building.y / ZONE_SIZE);
                 const policeMsgId = `police-theft-${Date.now()}`;
                 const policeNotification = {
-                    sender: '[Р СџР С›Р вЂєР ВР В¦Р ВР Р‡]',
+                    sender: '[ПОЛИЦИЯ]',
                     senderId: 'system',
                     text: `RADIO: Theft in sector ${zoneX}.${zoneY}! Player ${thiefName} stole from ${info.name} at coordinates (${building.x}, ${building.y}). 3 minutes to catch!`,
                     type: 'system',
@@ -15203,7 +17406,7 @@ const App: React.FC = () => {
     };
 
     const handleSetTax = (rate: number) => {
-        if (!selectedBuilding || selectedBuilding.info.id !== WATCHTOWER_ID) return;
+        if (!selectedBuilding || !isWatchtowerId(selectedBuilding.info.id)) return;
         const newRate = Math.min(50, Math.max(0, rate));
         const buildingId = String(selectedBuilding.building.id);
 
@@ -15238,9 +17441,9 @@ const App: React.FC = () => {
             }
 
             addHistoryLog(`Снято ${bankAmount} монет из банка клана.`, 'social');
-            alert(`Вы РЎРѓР Р…РЎРЏР В»Р С‘ ${bankAmount} Р СР С•Р Р…Р ВµРЎвЂљ РЎРѓР С• РЎРѓРЎвЂЎР ВµРЎвЂљР В° Р С”Р В»Р В°Р Р…Р В°.`);
+            alert(`Вы сняли ${bankAmount} монет со счета клана.`);
         } else {
-            alert("Р вЂР В°Р Р…Р С” Р С”Р В»Р В°Р Р…Р В° Р С—РЎС“РЎРѓРЎвЂљ.");
+            alert("Банк клана пуст.");
         }
     };
 
@@ -15297,8 +17500,13 @@ const App: React.FC = () => {
 
         const basePrice = info.price || (info.rubyPrice ? info.rubyPrice * 10000 : 100);
         let cost = Math.ceil((missingHp / maxHp) * basePrice * 0.5);
+        cost = Math.max(cost, missingHp);
 
-        return Math.max(cost, missingHp);
+        if (mortarBuffUntil > Date.now()) {
+            cost = Math.max(1, Math.ceil(cost * 0.70));
+        }
+
+        return cost;
     };
 
     const handleToggleActive = () => {
@@ -15328,6 +17536,7 @@ const App: React.FC = () => {
             alert("Вы можете чинить только свои постройки или постройки соклановцев.");
             return;
         }
+        const isMortarActive = mortarBuffUntil > Date.now();
         const cost = calculateRepairCost(building, info);
 
         if (cost <= 0) return;
@@ -15337,7 +17546,7 @@ const App: React.FC = () => {
         }
 
         setPlayerGold(prev => prev - cost);
-        addHistoryLog(`Починено здание "${info.name}". Стоимость: ${cost} монет.`, 'economy');
+        addHistoryLog(`Починено здание "${info.name}". Стоимость: ${cost} монет${isMortarActive ? ' (со скидкой 30% от укрепляющего раствора)' : ''}.`, 'economy');
         lastInteractionRef.current.set(String(building.id), Date.now());
 
         const maxHp = building.maxHp ?? info.stats.durability;
@@ -15480,7 +17689,7 @@ const App: React.FC = () => {
                     setPlayerClanId(null);
                 }
                 
-                addHistoryLog(`Р вЂР В°Р Р…Р Т‘Р С‘РЎвЂљРЎРѓР С”Р С‘Р в„– Р В·Р В°Р СР С•Р С” Р С—РЎР‚Р С•Р Т‘Р В°Р Р…! Р С™Р В»Р В°Р Р… "${soldClan.name}" РЎР‚Р В°РЎРѓР С—РЎС“РЎвЂ°Р ВµР Р….`, 'social');
+                addHistoryLog(`Бандитский замок продан! Клан "${soldClan.name}" распущен.`, 'social');
             }
         }
     };
@@ -15560,16 +17769,16 @@ const App: React.FC = () => {
         if (!selectedBuilding) return;
 
         if (isBanned()) {
-            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р Р…Р С‘РЎвЂЎР ВµР С–Р С• Р Р†Р В·РЎР‚РЎвЂ№Р Р†Р В°РЎвЂљРЎРЉ!");
+            alert("Вы забанены и не можете ничего взрывать!");
             return;
         }
 
         if (selectedBuilding.building.isConstructing) {
-            alert("Р СњР ВµР В»РЎРЉР В·РЎРЏ Р Р†Р В·РЎР‚РЎвЂ№Р Р†Р В°РЎвЂљРЎРЉ РЎРѓРЎвЂљРЎР‚Р С•РЎРЏРЎвЂ°Р ВµР ВµРЎРѓРЎРЏ Р В·Р Т‘Р В°Р Р…Р С‘Р Вµ.");
+            alert("Нельзя взрывать строящееся здание.");
             return;
         }
         if (selectedBuilding.building.isDestroying) {
-            alert("Р вЂ”Р Т‘Р В°Р Р…Р С‘Р Вµ РЎС“Р В¶Р Вµ Р Р…Р В°РЎвЂ¦Р С•Р Т‘Р С‘РЎвЂљРЎРѓРЎРЏ Р Р† Р С—РЎР‚Р С•РЎвЂ Р ВµРЎРѓРЎРѓР Вµ РЎР‚Р В°Р В·РЎР‚РЎС“РЎв‚¬Р ВµР Р…Р С‘РЎРЏ.");
+            alert("Здание уже находится в процессе разрушения.");
             return;
         }
 
@@ -15701,7 +17910,7 @@ const App: React.FC = () => {
                         : localNow;
                 const localExpiresAt = damageToBuilding > 0 ? (localBaseEnd + totalTime * 1000) : undefined;
                 const localDurationMs = localExpiresAt ? Math.max(1000, localExpiresAt - localStartedAt) : undefined;
-                return {
+                const updatedBuildingObject: PlacedBuilding = {
                     ...b,
                     hp: b.hp ?? currentHp,
                     maxHp: b.maxHp ?? maxHp,
@@ -15715,8 +17924,13 @@ const App: React.FC = () => {
                     destructionDurationMs: localDurationMs,
                     destructionMaxLifetimeMs: localDurationMs ? Math.max(localDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS) : undefined,
                     destructionStatus: damageToBuilding > 0 ? 'active' : 'finished',
-                    pendingDamage: (b.pendingDamage || 0) + damageToBuilding
+                    pendingDamage: (b.pendingDamage || 0) + damageToBuilding,
+                    initiatorId: user.uid
                 };
+                if (b.ownerId !== user.uid) {
+                    serverInitiatedBuildingsRef.current.set(buildingDocId, updatedBuildingObject);
+                }
+                return updatedBuildingObject;
             }));
         } else {
             setPlacedBuildings(prev => {
@@ -15802,6 +18016,25 @@ const App: React.FC = () => {
                 workState: 'idle'
             }
         } : null);
+
+        if (serverMyBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverMyBuildingsRef.current.get(buildingDocId)!;
+            serverMyBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                isConstructing: false,
+                constructionEndTime: 0,
+                workState: 'idle',
+            });
+        }
+        if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverZoneBuildingsRef.current.get(buildingDocId)!;
+            serverZoneBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                isConstructing: false,
+                constructionEndTime: 0,
+                workState: 'idle',
+            });
+        }
 
         if (isAuthReady && user) {
             speedUpInFlightRef.current.add(buildingDocId);
@@ -15999,6 +18232,7 @@ const App: React.FC = () => {
         setCasinoBetAmount(1000);
         setCasinoResult(null);
         setCasinoIsSpinning(false);
+        setCasinoInitialTab('slots');
         setShowCasinoModal(true);
     };
 
@@ -16037,6 +18271,300 @@ const App: React.FC = () => {
         setShowCasinoBankModal(false);
     };
 
+    const handleFulfillTownHallOrder = useCallback(async (order: TownHallOrder) => {
+        if (!user) return;
+        if (order.completed) {
+            window.alert('Этот заказ уже выполнен!');
+            return;
+        }
+
+        if (!canFulfillTownHallOrder(order, inventory)) {
+            window.alert('Недостаточно ресурсов на складе для выполнения заказа!');
+            return;
+        }
+
+        // 1. Prepare inventory deltas: deduct required resources
+        const inventoryDeltas: Record<number, number> = {};
+        for (const req of order.requirements) {
+            inventoryDeltas[req.id] = -req.amount;
+        }
+
+        // 2. Add reward items (resources/bombs/etc, strictly non-ruby)
+        for (const item of order.rewardItems) {
+            inventoryDeltas[item.id] = (inventoryDeltas[item.id] || 0) + item.amount;
+        }
+
+        // 3. Mark the order as completed in local state
+        const updatedOrders = townHallOrders.map(o =>
+            o.id === order.id ? { ...o, completed: true, completedAt: Date.now() } : o
+        );
+        setTownHallOrders(updatedOrders);
+
+        // 4. Update resources: gold & inventory
+        updatePlayerResources(order.rewardGold, 0, inventoryDeltas);
+
+        // 5. Update glory
+        const newGlory = Math.max(0, (playerGloryRef.current || playerGlory) + order.rewardGlory);
+        setPlayerGlory(newGlory);
+        setAllUsers(prev => ({
+            ...prev,
+            [user.uid]: {
+                ...prev[user.uid],
+                glory: newGlory
+            }
+        }));
+
+        // 6. Persist townHallOrders and glory to DB
+        try {
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, {
+                townHallOrders: updatedOrders,
+                glory: increment(order.rewardGlory)
+            });
+        } catch (e) {
+            console.error('[TownHallOrders] Failed to save fulfilled order:', e);
+        }
+
+        // 7. Sound & confirmation feedback
+        playCoinSound();
+        addHistoryLog(`Выполнен заказ Ратуши «${order.title}». Награда: +${order.rewardGold.toLocaleString()} монет, +${order.rewardGlory} славы.`, 'economy');
+        const itemsListStr = order.rewardItems.length > 0
+            ? order.rewardItems.map(i => `${i.amount}x ${i.name}`).join(', ')
+            : '';
+        const rewardMsg = `🏛️ Заказ Ратуши успешно сдан!\n\nПолучено:\n💰 +${order.rewardGold.toLocaleString()} монет\n⭐ +${order.rewardGlory} славы${itemsListStr ? `\n📦 ${itemsListStr}` : ''}`;
+        setGameAlertMessage(rewardMsg);
+    }, [user, inventory, townHallOrders, playerGlory, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+    const handleSkipTownHallOrder = useCallback(async (slotIndex: number) => {
+        if (!user) return;
+        const now = Date.now();
+        if (!isOrderSkipAvailable(townHallLastSkipTime, now)) {
+            const skipStatus = getTimeUntilSkipAvailable(townHallLastSkipTime, now);
+            window.alert(`Скип контракта на перезарядке!\nСледующий скип будет доступен через ${skipStatus.formatted}`);
+            return;
+        }
+
+        const currentCycle = getCurrentOrdersCycle(now);
+        const nextSalt = townHallSkipSalt + 1;
+        setTownHallSkipSalt(nextSalt);
+
+        // Generate a new replacement order for this slot
+        const newOrder = normalizeTownHallOrder(generateTownHallOrder(slotIndex, playerTownHallLevel, playerLevel, currentCycle, nextSalt));
+        const updatedOrders = townHallOrders.map((o, idx) => idx === slotIndex ? newOrder : o);
+
+        setTownHallOrders(updatedOrders);
+        setTownHallLastSkipTime(now);
+
+        try {
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, {
+                townHallOrders: updatedOrders,
+                townHallLastSkipTime: now
+            });
+        } catch (e) {
+            console.error('[TownHallOrders] Failed to save skipped order:', e);
+        }
+
+        playCoinSound();
+        addHistoryLog(`Заменен контракт #${slotIndex + 1} в Ратуше. Следующий скип через 24 часа.`, 'social');
+        setGameAlertMessage(`📜 Контракт #${slotIndex + 1} успешно заменён на новый!\nНовое задание готово к сдаче.\n\nСледующий скип контракта станет доступен через 24 часа.`);
+    }, [user, townHallLastSkipTime, townHallSkipSalt, playerTownHallLevel, playerLevel, townHallOrders, playCoinSound, addHistoryLog]);
+
+    // Periodic check for Town Hall orders 4-hour cycle transition
+    useEffect(() => {
+        if (!user) return;
+        const checkCycle = () => {
+            const currentCycle = getCurrentOrdersCycle();
+            if (townHallOrdersCycle > 0 && currentCycle !== townHallOrdersCycle) {
+                console.log(`[TownHallOrders] Cycle changed from ${townHallOrdersCycle} to ${currentCycle}, refreshing orders`);
+                const newOrders = generateThreeTownHallOrders(playerTownHallLevel, playerLevel, currentCycle).map(normalizeTownHallOrder);
+                setTownHallOrders(newOrders);
+                setTownHallOrdersCycle(currentCycle);
+                const userRef = doc(db, 'users', user.uid);
+                updateDoc(userRef, {
+                    townHallOrders: newOrders,
+                    townHallOrdersCycle: currentCycle
+                }).catch(e => console.warn('[TownHallOrders] Failed to sync new cycle orders:', e));
+            }
+        };
+
+        const interval = setInterval(checkCycle, 30000);
+        return () => clearInterval(interval);
+    }, [user, townHallOrdersCycle, playerTownHallLevel, playerLevel]);
+
+    const handleUseInventoryItem = useCallback(async (itemId: number) => {
+        const available = Math.max(0, Number(inventory[itemId]) || 0);
+        if (available <= 0) {
+            setPermitPurchaseToast('Предмет отсутствует в инвентаре');
+            return;
+        }
+
+        if (!isUsableInventoryItem(itemId)) {
+            setPermitPurchaseToast('Этот предмет нельзя использовать напрямую');
+            return;
+        }
+
+        const itemName = itemData.find(i => i.id === itemId)?.name || 'Расходник';
+
+        // 1. Energy consumables (Energy Drink 10046, Pumpkin Pie 10047)
+        const energyBonus = getItemEnergyRestore(itemId);
+        if (energyBonus > 0) {
+            // Update inventory: consume 1 item
+            updatePlayerResources(0, 0, { [itemId]: -1 });
+
+            // Increase energy
+            setPlayerEnergy(prev => prev + energyBonus);
+
+            // Persist energy update to DB
+            if (user) {
+                const userRef = doc(db, 'users', user.uid);
+                updateDoc(userRef, {
+                    energy: increment(energyBonus)
+                }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+            }
+
+            playCoinSound();
+            addHistoryLog(`Использован предмет «${itemName}» (+${energyBonus} энергии).`, 'economy');
+            setPermitPurchaseToast(`+${energyBonus} энергии! ⚡`);
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2000);
+            return;
+        }
+
+        // 2. Lumberjack Elixir (10048) -> +1 extra wood per felled tree trunk for 10 minutes
+        if (itemId === LUMBERJACK_ELIXIR_ID) {
+            updatePlayerResources(0, 0, { [itemId]: -1 });
+
+            const now = Date.now();
+            const newUntil = Math.max(now, lumberjackBuffUntil) + LUMBERJACK_BUFF_DURATION_MS;
+            setLumberjackBuffUntil(newUntil);
+            try {
+                localStorage.setItem('basingse_buff_lumberjack', String(newUntil));
+            } catch (e) {
+                console.warn('Failed to save lumberjack buff to localStorage', e);
+            }
+
+            playCoinSound();
+            addHistoryLog(`Использован «${itemName}»: +1 дерево за каждый срубленный ствол на 10 минут!`, 'economy');
+            setPermitPurchaseToast('🪓 Бафф лесоруба активен (10 мин)!');
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
+            return;
+        }
+
+        // 3. Reinforcing Mortar (10049) -> 30% discount on building repairs
+        if (itemId === REINFORCING_MORTAR_ID) {
+            updatePlayerResources(0, 0, { [itemId]: -1 });
+
+            const now = Date.now();
+            const newUntil = Math.max(now, mortarBuffUntil) + MORTAR_BUFF_DURATION_MS;
+            setMortarBuffUntil(newUntil);
+            try {
+                localStorage.setItem('basingse_buff_mortar', String(newUntil));
+            } catch (e) {
+                console.warn('Failed to save mortar buff to localStorage', e);
+            }
+
+            playCoinSound();
+            addHistoryLog(`Применен «${itemName}»: стоимость ремонта любого здания снижена на 30%!`, 'economy');
+            setPermitPurchaseToast('🧱 Скидка 30% на ремонт зданий!');
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
+            return;
+        }
+    }, [inventory, user, itemData, lumberjackBuffUntil, mortarBuffUntil, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+    const handleCraftInventoryItem = useCallback(async (recipeId: string, count: number = 1) => {
+        const recipe = getCraftingRecipe(recipeId);
+        if (!recipe) {
+            setPermitPurchaseToast('Рецепт крафта не найден');
+            return;
+        }
+
+        if (count <= 0 || !canCraftRecipe(recipe, inventory, count)) {
+            setPermitPurchaseToast('Недостаточно ингредиентов для крафта');
+            return;
+        }
+
+        const result = craftRecipe(recipe, inventory, count);
+        if (!result.success) {
+            setPermitPurchaseToast(result.error || 'Ошибка крафта');
+            return;
+        }
+
+        // 1. Prepare inventory deltas for updatePlayerResources
+        const inventoryDeltas: Record<number, number> = {};
+        for (const ing of result.consumedIngredients) {
+            inventoryDeltas[ing.itemId] = (inventoryDeltas[ing.itemId] || 0) - ing.amount;
+        }
+        inventoryDeltas[result.producedItems.itemId] = (inventoryDeltas[result.producedItems.itemId] || 0) + result.producedItems.amount;
+
+        // 2. Update local state and DB via updatePlayerResources
+        updatePlayerResources(0, 0, inventoryDeltas);
+
+        // 3. Sound & Feedback
+        playCoinSound();
+        addHistoryLog(`Создан предмет: ${recipe.name} x${result.producedItems.amount}.`, 'economy');
+        setPermitPurchaseToast(`+${result.producedItems.amount} шт. ${recipe.name}`);
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 2000);
+    }, [inventory, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+    const handleQuickSellInventoryItem = useCallback(async (itemId: number, amount: number) => {
+        if (!user) return;
+        const available = Math.max(0, Number(inventory[itemId]) || 0);
+        if (amount <= 0 || available < amount) {
+            setPermitPurchaseToast('Недостаточно предметов в наличии');
+            return;
+        }
+
+        const itemInfo = itemData.find(i => i.id === itemId);
+        const unitPrice = getItemQuickSellPrice(itemInfo || itemId);
+        const totalGold = unitPrice * amount;
+
+        // Check storage capacity
+        if (playerGold >= goldCapacity) {
+            setGameAlertMessage('⚠️ Ваше хранилище золота переполнено! Постройте или улучшите склады, чтобы получать монеты от продажи.');
+            return;
+        }
+
+        // 1. Update player gold and inventory via updatePlayerResources
+        updatePlayerResources(totalGold, 0, { [itemId]: -amount });
+
+        // 2. Sound & Feedback
+        playCoinSound();
+        const itemName = itemInfo?.name || `Предмет #${itemId}`;
+        addHistoryLog(`Быстрая продажа из инвентаря: ${itemName} x${amount} за ${totalGold.toLocaleString()} монет.`, 'economy');
+        setPermitPurchaseToast(`+${totalGold.toLocaleString()} монет!`);
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 2000);
+    }, [user, inventory, itemData, playerGold, goldCapacity, updatePlayerResources, playCoinSound, addHistoryLog]);
+
     const cleanupGhostBuildingsForCurrentUser = useCallback(async () => {
         const currentUser = userRef.current;
         if (!currentUser?.uid) return;
@@ -16062,14 +18590,19 @@ const App: React.FC = () => {
                 }
             }
 
-            // Keep only one Town Hall (the newest valid one), remove stale extras.
+            // Keep only one Town Hall (highest level first, then newest valid one), remove stale extras.
             const validTownHalls = rows
                 .filter(row =>
                     !toDelete.has(row.docId) &&
                     TOWN_HALL_IDS.includes(Number(row.b.buildingId)) &&
                     isBuildingAlive(row.b)
                 )
-                .sort((a, b) => (Number(b.b.timestamp || 0) - Number(a.b.timestamp || 0)));
+                .sort((a, b) => {
+                    const idxA = TOWN_HALL_IDS.indexOf(Number(a.b.buildingId));
+                    const idxB = TOWN_HALL_IDS.indexOf(Number(b.b.buildingId));
+                    if (idxA !== idxB) return idxB - idxA; // Highest level first!
+                    return (Number(b.b.timestamp || 0) - Number(a.b.timestamp || 0));
+                });
             for (let i = 1; i < validTownHalls.length; i++) {
                 toDelete.add(validTownHalls[i].docId);
             }
@@ -16117,7 +18650,7 @@ const App: React.FC = () => {
         if (!user || !activePrivateChat || !privateMessageText.trim()) return;
 
         if (isBanned()) {
-            alert("Вы Р В·Р В°Р В±Р В°Р Р…Р ВµР Р…РЎвЂ№ Р С‘ Р Р…Р Вµ Р СР С•Р В¶Р ВµРЎвЂљР Вµ Р С—Р С‘РЎРѓР В°РЎвЂљРЎРЉ Р В»Р С‘РЎвЂЎР Р…РЎвЂ№Р Вµ РЎРѓР С•Р С•Р В±РЎвЂ°Р ВµР Р…Р С‘РЎРЏ!");
+            alert("Вы забанены и не можете писать личные сообщения!");
             return;
         }
 
@@ -16149,7 +18682,8 @@ const App: React.FC = () => {
             read: false,
             participants: [user.uid, activePrivateChat],
             senderName: isAnonymousMessage ? undefined : playerName,
-            senderAvatar: isAnonymousMessage ? undefined : (playerAvatar || undefined)
+            senderAvatar: isAnonymousMessage ? undefined : (playerAvatar || undefined),
+            messageType: privateChatMode,
         };
 
         try {
@@ -16229,7 +18763,8 @@ const App: React.FC = () => {
             type: type,
             timestamp: Date.now(),
             tab: activeChatTab,
-            clanId: activeChatTab === 'clan' ? (playerClanId || null) : null
+            clanId: activeChatTab === 'clan' ? (playerClanId || null) : null,
+            title: selectedTitle || null
         };
 
         const msgId = `${Date.now()}-${playerName}`;
@@ -16272,11 +18807,13 @@ const App: React.FC = () => {
         const newMessage: ChatMessage = {
             id: Date.now(),
             sender: senderName,
+            senderId: user?.uid,
             text: messageText,
             type: 'shout',
             timestamp: Date.now(),
             tab: 'all',
-            clanId: null
+            clanId: null,
+            title: selectedTitle || null
         };
 
         const msgId = `${Date.now()}-${playerName}-shout`;
@@ -16351,12 +18888,14 @@ const App: React.FC = () => {
         const newMessage: ChatMessage = {
             id: Date.now(),
             sender: playerName,
+            senderId: user?.uid,
             text: 'Посмотрите сюда',
             type: 'normal',
             timestamp: Date.now(),
             tab: activeChatTab,
             teleportCoordinates: { x: Math.floor(x), y: Math.floor(y) },
-            clanId: activeChatTab === 'clan' ? (playerClanId || null) : null
+            clanId: activeChatTab === 'clan' ? (playerClanId || null) : null,
+            title: selectedTitle || null
         };
 
         const msgId = `${Date.now()}-${playerName}-loc`;
@@ -16371,14 +18910,15 @@ const App: React.FC = () => {
 
     const renderMessageText = (text: string) => {
         const safeText = repairMojibakeCp1251Utf8(String(text || ''));
-        const regex = new RegExp(`(${KOLOBOK_EMOJIS.map(e => e.code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g');
+        const sortedEmojis = [...KOLOBOK_EMOJIS].sort((a, b) => b.code.length - a.code.length);
+        const regex = new RegExp(`(${sortedEmojis.map(e => e.code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'g');
 
         const parts = safeText.split(regex);
 
         return parts.map((part, index) => {
             const emoji = KOLOBOK_EMOJIS.find(e => e.code === part);
             if (emoji) {
-                return <img key={index} src={emoji.url} alt={emoji.code} className="inline-block w-6 h-6 align-middle mx-0.5" title={emoji.code} />;
+                return <img key={index} src={emoji.url} alt={emoji.code} className="inline-block w-6 h-6 align-middle mx-0.5 object-contain" title={emoji.code} />;
             }
             return <span key={index}>{part}</span>;
         });
@@ -16436,22 +18976,320 @@ const App: React.FC = () => {
     const closeEnergyModal = useCallback(() => {
         setEnergyModalState(null);
         playCloseSound();
-    }, []);
+    }, [playCloseSound]);
 
-    const openRubyWarningModal = useCallback((requiredRubies?: number) => {
-        setRubyModalState({ mode: 'warning', requiredRubies });
-        playOpenSound();
-    }, []);
+    const handleBuyBlackMarketResource = useCallback(async (itemId: number, count: number, rubiesCost: number) => {
+        if (!user) return;
+        if (count <= 0 || rubiesCost <= 0) return;
 
-    const openRubyShopModal = useCallback(() => {
-        setRubyModalState({ mode: 'shop' });
-        playOpenSound();
-    }, []);
+        if (playerRubies < rubiesCost) {
+            openRubyWarningModal(rubiesCost);
+            return;
+        }
 
-    const closeRubyModal = useCallback(() => {
-        setRubyModalState(null);
-        playCloseSound();
-    }, []);
+        // Deduct rubies, add resource to inventory
+        updatePlayerResources(0, -rubiesCost, { [itemId]: count });
+
+        // Feedback & sound
+        playCoinSound();
+        const itemName = itemData.find(i => i.id === itemId)?.name || `Предмет #${itemId}`;
+        addHistoryLog(`Черный рынок: куплено ${count}x ${itemName} за ${rubiesCost} рубинов.`, 'economy');
+        setPermitPurchaseToast(`+${count} ${itemName} (-${rubiesCost} 💎)`);
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 2000);
+    }, [user, playerRubies, itemData, updatePlayerResources, playCoinSound, addHistoryLog, openRubyWarningModal]);
+
+    const handleBuyAllBlackMarketMissing = useCallback(async (missingList: MissingResource[], totalRubies: number) => {
+        if (!user) return;
+        if (!missingList || missingList.length === 0 || totalRubies <= 0) return;
+
+        if (playerRubies < totalRubies) {
+            openRubyWarningModal(totalRubies);
+            return;
+        }
+
+        const inventoryDeltas: Record<number, number> = {};
+        for (const res of missingList) {
+            inventoryDeltas[res.id] = (inventoryDeltas[res.id] || 0) + res.itemsToReceive;
+        }
+
+        // Deduct total rubies, add all needed resources
+        updatePlayerResources(0, -totalRubies, inventoryDeltas);
+
+        // Feedback & sound
+        playCoinSound();
+        addHistoryLog(`Черный рынок: куплены все недостающие ресурсы (${missingList.length} видов) за ${totalRubies} рубинов.`, 'economy');
+        setPermitPurchaseToast(`Все ресурсы куплены! (-${totalRubies} 💎)`);
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 2000);
+    }, [user, playerRubies, updatePlayerResources, playCoinSound, addHistoryLog, openRubyWarningModal]);
+
+    // ============================================================
+    // CLAN STOCK MARKET & EQUITY SYSTEM HANDLERS
+    // ============================================================
+    const handleLaunchClanIpo = useCallback(async (params: {
+        ticker: string;
+        totalShares: number;
+        ipoPrice: number;
+        dividendPercent: number;
+    }) => {
+        if (!user || !currentClan) return;
+        if (currentClan.leaderUid !== user.uid) {
+            alert('Только лидер клана может выпустить акции!');
+            return;
+        }
+
+        const newListing = createClanStockListing({
+            clanId: currentClan.id,
+            clanName: currentClan.name,
+            leaderUid: currentClan.leaderUid,
+            leaderName: currentClan.leaderName,
+            ticker: params.ticker,
+            totalShares: params.totalShares,
+            ipoPrice: params.ipoPrice,
+            dividendPercent: params.dividendPercent,
+            controlledSectorsCount: controlledWatchtowersCount,
+        });
+
+        setClanStockListings(prev => {
+            const exists = prev.some(l => l.clanId === newListing.clanId);
+            return exists ? prev.map(l => l.clanId === newListing.clanId ? newListing : l) : [...prev, newListing];
+        });
+
+        playCoinSound();
+        addHistoryLog(`Клан [${newListing.ticker}] ${newListing.clanName} запустил IPO на Бирже акций (${newListing.totalShares.toLocaleString()} акций по ${newListing.ipoPrice} 💰)!`, 'economy');
+        alert(`🎉 Клан [${newListing.ticker}] успешно выпустил ${newListing.totalShares.toLocaleString()} акций по курсу ${newListing.ipoPrice} 💰 на Бирже!`);
+    }, [user, currentClan, controlledWatchtowersCount, playCoinSound, addHistoryLog]);
+
+    const handleBuyClanShares = useCallback(async (clanId: number, sharesCount: number) => {
+        if (!user) return;
+        const listing = clanStockListings.find(l => l.clanId === clanId);
+        if (!listing) return;
+
+        const costCalc = calculateSharePurchaseCost(listing, sharesCount);
+        if (!costCalc.canFulfill) {
+            alert(costCalc.error || 'Невозможно купить акции');
+            return;
+        }
+
+        if (playerGold < costCalc.totalGoldCost) {
+            alert(`Недостаточно золота для покупки акций (нужно: ${costCalc.totalGoldCost.toLocaleString()} 💰)!`);
+            return;
+        }
+
+        // 1. Deduct gold from player
+        updatePlayerResources(-costCalc.totalGoldCost, 0, {});
+
+        // 2. Add investment capital directly to Clan Castle Bank
+        setPlacedBuildings(prev => prev.map(b => {
+            if (BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && b.ownerId === listing.leaderUid) {
+                return { ...b, bank: (b.bank || 0) + costCalc.totalGoldCost };
+            }
+            return b;
+        }));
+        if (isAuthReady && listing.leaderUid) {
+            const castle = placedBuildings.find(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && b.ownerId === listing.leaderUid);
+            if (castle) {
+                updateDoc(doc(db, 'buildings', String(castle.id)), {
+                    bank: increment(costCalc.totalGoldCost)
+                }).catch(() => {});
+            }
+        }
+
+        // 3. Update listing circulation & dynamic price
+        setClanStockListings(prev => prev.map(l => {
+            if (l.clanId === clanId) {
+                const nextCirculating = l.circulatingShares + sharesCount;
+                const nextAvailable = Math.max(0, l.availableIpoShares - sharesCount);
+                const updated: ClanStockListing = {
+                    ...l,
+                    circulatingShares: nextCirculating,
+                    availableIpoShares: nextAvailable,
+                };
+                updated.currentPrice = calculateDynamicSharePrice(updated);
+                return updated;
+            }
+            return l;
+        }));
+
+        // 4. Update player's portfolio
+        setPlayerStockPortfolio(prev => {
+            const currentHolding = prev[clanId] || {
+                clanId,
+                clanName: listing.clanName,
+                ticker: listing.ticker,
+                sharesCount: 0,
+                totalInvestedGold: 0,
+                unclaimedDividends: 0,
+                lastClaimTimestamp: Date.now(),
+            };
+
+            return {
+                ...prev,
+                [clanId]: {
+                    ...currentHolding,
+                    sharesCount: currentHolding.sharesCount + sharesCount,
+                    totalInvestedGold: (currentHolding.totalInvestedGold || 0) + costCalc.totalGoldCost,
+                }
+            };
+        });
+
+        playCoinSound();
+        addHistoryLog(`Биржа акций: куплено ${sharesCount} акций [${listing.ticker}] ${listing.clanName} за ${costCalc.totalGoldCost.toLocaleString()} 💰.`, 'economy');
+    }, [user, clanStockListings, playerGold, updatePlayerResources, placedBuildings, isAuthReady, playCoinSound, addHistoryLog]);
+
+    const handleSellClanShares = useCallback(async (clanId: number, sharesCount: number) => {
+        if (!user) return;
+        const listing = clanStockListings.find(l => l.clanId === clanId);
+        const holding = playerStockPortfolio[clanId];
+        if (!listing || !holding) return;
+
+        const sellCalc = calculateShareSellProceeds(holding, listing, sharesCount);
+        if (!sellCalc.canFulfill) {
+            alert(sellCalc.error || 'Невозможно продать акции');
+            return;
+        }
+
+        // 1. Give net gold to player
+        updatePlayerResources(sellCalc.netGold, 0, {});
+
+        // 2. Update listing circulation & dynamic price
+        setClanStockListings(prev => prev.map(l => {
+            if (l.clanId === clanId) {
+                const nextCirculating = Math.max(0, l.circulatingShares - sharesCount);
+                const nextAvailable = l.availableIpoShares + sharesCount;
+                const updated: ClanStockListing = {
+                    ...l,
+                    circulatingShares: nextCirculating,
+                    availableIpoShares: nextAvailable,
+                };
+                updated.currentPrice = calculateDynamicSharePrice(updated);
+                return updated;
+            }
+            return l;
+        }));
+
+        // 3. Update player portfolio
+        setPlayerStockPortfolio(prev => {
+            const currentHolding = prev[clanId];
+            if (!currentHolding) return prev;
+            const remaining = currentHolding.sharesCount - sharesCount;
+            const avgInvestedPerShare = currentHolding.sharesCount > 0 ? currentHolding.totalInvestedGold / currentHolding.sharesCount : 0;
+            return {
+                ...prev,
+                [clanId]: {
+                    ...currentHolding,
+                    sharesCount: remaining,
+                    totalInvestedGold: Math.max(0, Math.round(remaining * avgInvestedPerShare)),
+                }
+            };
+        });
+
+        playCoinSound();
+        addHistoryLog(`Биржа акций: продано ${sharesCount} акций [${listing.ticker}] ${listing.clanName} за ${sellCalc.netGold.toLocaleString()} 💰 (комиссия: ${sellCalc.feeGold} 💰).`, 'economy');
+    }, [user, clanStockListings, playerStockPortfolio, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+    const handleClaimClanDividends = useCallback(async (clanId: number) => {
+        if (!user) return;
+        const listing = clanStockListings.find(l => l.clanId === clanId);
+        const holding = playerStockPortfolio[clanId];
+        if (!listing || !holding) return;
+
+        const claimable = calculateClaimableDividends(holding, listing);
+        if (claimable <= 0) {
+            alert('Нет накопленных дивидендов для выплаты.');
+            return;
+        }
+
+        // Give dividend payout to player
+        updatePlayerResources(claimable, 0, {});
+
+        // Reset unclaimed dividends in portfolio
+        setPlayerStockPortfolio(prev => ({
+            ...prev,
+            [clanId]: {
+                ...holding,
+                unclaimedDividends: 0,
+                lastClaimTimestamp: Date.now(),
+            }
+        }));
+
+        // Deduct from listing accumulated pool
+        setClanStockListings(prev => prev.map(l => {
+            if (l.clanId === clanId) {
+                return {
+                    ...l,
+                    accumulatedDividendPool: Math.max(0, l.accumulatedDividendPool - claimable),
+                    totalDividendsPaid: (l.totalDividendsPaid || 0) + claimable,
+                };
+            }
+            return l;
+        }));
+
+        playCoinSound();
+        addHistoryLog(`Дивиденды: получено ${claimable.toLocaleString()} 💰 по акциям [${listing.ticker}] ${listing.clanName}.`, 'economy');
+    }, [user, clanStockListings, playerStockPortfolio, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+    const handleAdjustDividendPercent = useCallback((clanId: number, newPercent: number) => {
+        if (!user || !currentClan || currentClan.id !== clanId || currentClan.leaderUid !== user.uid) return;
+        const safe = Math.max(MIN_DIVIDEND_PERCENT, Math.min(MAX_DIVIDEND_PERCENT, Math.floor(newPercent)));
+        setClanStockListings(prev => prev.map(l => l.clanId === clanId ? { ...l, dividendPercent: safe } : l));
+    }, [user, currentClan]);
+
+    const handleBuybackClanShares = useCallback(async (clanId: number, sharesCount: number) => {
+        if (!user || !currentClan || currentClan.id !== clanId || currentClan.leaderUid !== user.uid) return;
+        const listing = clanStockListings.find(l => l.clanId === clanId);
+        if (!listing) return;
+
+        const totalCost = sharesCount * listing.currentPrice;
+        const castle = placedBuildings.find(b => BANDIT_CASTLE_IDS.has(Number(b.buildingId)) && b.ownerId === listing.leaderUid);
+        const bank = castle?.bank || 0;
+
+        if (bank < totalCost) {
+            alert(`В казне клана недостаточно золота для выкупа ${sharesCount} акций (нужно: ${totalCost.toLocaleString()} 💰, в казне: ${bank.toLocaleString()} 💰)!`);
+            return;
+        }
+
+        // Deduct gold from clan castle
+        if (castle) {
+            setPlacedBuildings(prev => prev.map(b => b.id === castle.id ? { ...b, bank: Math.max(0, (b.bank || 0) - totalCost) } : b));
+            if (isAuthReady) {
+                updateDoc(doc(db, 'buildings', String(castle.id)), {
+                    bank: increment(-totalCost)
+                }).catch(() => {});
+            }
+        }
+
+        // Decrease circulating, increase available
+        setClanStockListings(prev => prev.map(l => {
+            if (l.clanId === clanId) {
+                const nextCirculating = Math.max(0, l.circulatingShares - sharesCount);
+                const nextAvailable = l.availableIpoShares + sharesCount;
+                const updated: ClanStockListing = {
+                    ...l,
+                    circulatingShares: nextCirculating,
+                    availableIpoShares: nextAvailable,
+                };
+                updated.currentPrice = calculateDynamicSharePrice(updated);
+                return updated;
+            }
+            return l;
+        }));
+
+        playCoinSound();
+        addHistoryLog(`Клан [${listing.ticker}] произвел обратный выкуп ${sharesCount} акций за ${totalCost.toLocaleString()} 💰 из казны клана.`, 'economy');
+        alert(`Клан [${listing.ticker}] успешно выкупил ${sharesCount} акций из обращения!`);
+    }, [user, currentClan, clanStockListings, placedBuildings, isAuthReady, playCoinSound, addHistoryLog]);
 
     const closeBuildingLimitModal = useCallback(() => {
         setBuildingLimitModalData(null);
@@ -16852,7 +19690,7 @@ const App: React.FC = () => {
                                 ...prev2,
                                 [memberUid]: {
                                     uid: memberUid,
-                                    name: data.name || 'Р СњР ВµР С‘Р В·Р Р†Р ВµРЎРѓРЎвЂљР Р…РЎвЂ№Р в„–',
+                                    name: data.name || 'Неизвестный',
                                     level: data.level || 1,
                                     glory: data.glory || 0,
                                     reputation: data.reputation || 0,
@@ -16880,10 +19718,6 @@ const App: React.FC = () => {
     const safePlayerGlory = Math.max(0, playerGlory);
     const xpPercentage = playerLevel >= MAX_LEVEL ? 100 : (safePlayerGlory / gloryToNextLevel) * 100;
 
-    const playerBuildingsCount = placedBuildings
-        .filter(b => isMyBuilding(b) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)))
-        .length;
-
     // Get clan members from users in the same clan
     // Clan member profiles are resolved by a dedicated fetch (not derived from allUsers).
     // The fetch runs when the Clan tab opens and the activeClanId is known.
@@ -16909,7 +19743,8 @@ const App: React.FC = () => {
 
     // Derived HUD visibility rules — Personal Cabinet, Construction Menu,
     // and Building Details modal have different requirements.
-    const shouldHideResourceBar = showProfileModal || !!selectedBuilding;
+    const isAuctionSelected = selectedBuilding && Number(selectedBuilding.info.id) === AUCTION_ID && isMyBuilding(selectedBuilding.building);
+    const shouldHideResourceBar = showProfileModal || (!!selectedBuilding && !isAuctionSelected);
     const shouldHideWorldControls = showProfileModal || buildMenu.visible || !!selectedBuilding;
     const shouldHideTabletButton = showProfileModal || buildMenu.visible || !!selectedBuilding;
 
@@ -17385,7 +20220,7 @@ const App: React.FC = () => {
     const isAdmin = user && user.email === "goldwasdodessabibi@gmail.com";
 
     const resetMap = async () => {
-        if (!isAdmin || !window.confirm("Вы РЎС“Р Р†Р ВµРЎР‚Р ВµР Р…РЎвЂ№, РЎвЂЎРЎвЂљР С• РЎвЂ¦Р С•РЎвЂљР С‘РЎвЂљР Вµ РЎРѓР В±РЎР‚Р С•РЎРѓР С‘РЎвЂљРЎРЉ Р С”Р В°РЎР‚РЎвЂљРЎС“? Р В­РЎвЂљР С• РЎС“Р Т‘Р В°Р В»Р С‘РЎвЂљ Р Р†РЎРѓР Вµ РЎР‚Р ВµРЎРѓРЎС“РЎР‚РЎРѓРЎвЂ№ Р С‘ Р В·Р Т‘Р В°Р Р…Р С‘РЎРЏ!")) return;
+        if (!isAdmin || !window.confirm("Вы уверены, что хотите сбросить карту? Это удалит все ресурсы и здания!")) return;
 
         try {
             // Delete map status to trigger regeneration
@@ -17402,10 +20237,38 @@ const App: React.FC = () => {
         }
     };
 
+    const mailChats = useMemo(() => {
+        const chats: Record<string, { otherUserId: string, lastMessage: PrivateMessage, unreadCount: number }> = {};
+
+        privateMessages.forEach(msg => {
+            if (msg.messageType === 'private') return;
+            const otherUserId = msg.senderId === user?.uid ? msg.receiverId : msg.senderId;
+
+            // Hide anonymous messages from the Mail tab
+            if (msg.senderId === 'anonymous' || msg.receiverId === 'anonymous' || msg.chatId?.endsWith('_anon')) return;
+
+            const groupKey = msg.chatId || [user?.uid || '', otherUserId].sort().join('_');
+
+            if (!chats[groupKey] || chats[groupKey].lastMessage.timestamp < msg.timestamp) {
+                chats[groupKey] = {
+                    otherUserId,
+                    lastMessage: msg,
+                    unreadCount: chats[groupKey]?.unreadCount || 0
+                };
+            }
+            if (msg.receiverId === user?.uid && !msg.read) {
+                if (chats[groupKey]) chats[groupKey].unreadCount++;
+            }
+        });
+
+        return Object.values(chats).sort((a, b) => b.lastMessage.timestamp - a.lastMessage.timestamp);
+    }, [privateMessages, user]);
+
     const privateChats = useMemo(() => {
         const chats: Record<string, { otherUserId: string, lastMessage: PrivateMessage, unreadCount: number }> = {};
 
         privateMessages.forEach(msg => {
+            if (msg.messageType !== 'private') return;
             const otherUserId = msg.senderId === user?.uid ? msg.receiverId : msg.senderId;
 
             // Hide anonymous messages from the Mail tab
@@ -17451,10 +20314,11 @@ const App: React.FC = () => {
         setClans(prev => prev.map(c => c.id === clanId ? { ...c, description } : c));
     }, [currentClan?.id, playerClanId]);
 
-    const handleOpenChatFromProfile = useCallback((otherUserId: string, chatId: string, isAnon: boolean) => {
+    const handleOpenChatFromProfile = useCallback((otherUserId: string, chatId: string, isAnon: boolean, initialMode: 'mail' | 'private' = 'mail') => {
         setActivePrivateChat(otherUserId);
         setActivePrivateChatId(chatId);
         setIsAnonymousMessage(isAnon);
+        setPrivateChatMode(initialMode);
         setShowPrivateChatModal(true);
         setShowProfileModal(false);
     }, []);
@@ -17870,6 +20734,8 @@ const App: React.FC = () => {
                     setAuthPassword={setAuthPassword}
                     regPlayerName={regPlayerName}
                     setRegPlayerName={setRegPlayerName}
+                    regPromoCode={regPromoCode}
+                    setRegPromoCode={setRegPromoCode}
                     authError={authError}
                     isLoggingIn={isLoggingIn}
                     isRegisterMode={isRegisterMode}
@@ -17970,12 +20836,13 @@ const App: React.FC = () => {
 
                             <button
                                 onClick={handleBuildOilRig}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex flex-col items-center justify-center transition-colors"
+                                disabled={isBuildingActionProcessing}
+                                className={`bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex flex-col items-center justify-center transition-colors ${isBuildingActionProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 {oilRigInfo && (
                                     <>
                                         <img src={oilRigInfo.imageUrl} alt="Rig" className="w-8 h-8 mb-1 object-contain" />
-                                        <span className="text-sm mb-1">Построить</span>
+                                        <span className="text-sm mb-1">{isBuildingActionProcessing ? 'Строительство...' : 'Построить'}</span>
                                         <div className="flex items-center text-yellow-300 text-sm">
                                             <img src={coinImageUrl} className="w-3 h-3 mr-1" />
                                             {oilRigInfo.price?.toLocaleString()}
@@ -18011,12 +20878,13 @@ const App: React.FC = () => {
 
                             <button
                                 onClick={handleBuildWildQuarry}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex flex-col items-center justify-center transition-colors"
+                                disabled={isBuildingActionProcessing}
+                                className={`bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex flex-col items-center justify-center transition-colors ${isBuildingActionProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 {wildQuarryInfo && (
                                     <>
                                         <img src={wildQuarryInfo.imageUrl} alt="Wild Quarry" className="w-8 h-8 mb-1 object-contain" />
-                                        <span className="text-sm mb-1">Построить</span>
+                                        <span className="text-sm mb-1">{isBuildingActionProcessing ? 'Строительство...' : 'Построить'}</span>
                                         <div className="flex items-center text-yellow-300 text-sm">
                                             <img src={coinImageUrl} className="w-3 h-3 mr-1" />
                                             {wildQuarryInfo.price?.toLocaleString()}
@@ -18057,6 +20925,10 @@ const App: React.FC = () => {
                 handleSetTax={handleSetTax}
                 handleWithdrawBank={handleWithdrawBank}
                 handleBuyRuby={handleBuyRuby}
+                handleSellRuby={handleSellRuby}
+                onOpenMarketForRubies={handleOpenMarketForRubies}
+                onOpenTownHallOrders={() => setShowTownHallOrdersModal(true)}
+                townHallAvailableOrdersCount={townHallAvailableOrdersCount}
                 handleOpenCasinoModal={handleOpenCasinoModal}
                 handleOpenCasinoBankModal={handleOpenCasinoBankModal}
                 handleUpgrade={handleUpgrade}
@@ -18070,6 +20942,74 @@ const App: React.FC = () => {
                 handleApplyProtection={handleApplyProtection}
                 onOpenMarket={(type) => { setMarketType(type); setShowMarketModal(true); }}
                 onSelectPlayer={(playerId) => { setSelectedPlayerId(playerId); setShowPlayerProfile(true); }}
+                onOpenClanStockExchange={() => setShowClanStockExchangeModal(true)}
+                isMortarActive={mortarBuffUntil > currentTime}
+                onUseItem={handleUseInventoryItem}
+                onCollectAllReadyIncome={handleCollectAllReadyIncome}
+                onOpenFinancialProductionModal={() => setShowFinancialProductionModal(true)}
+                lastFinancialCollectTime={lastFinancialCollectTime}
+                hasEgyptianObelisk={hasEgyptianObelisk}
+            />
+
+            <FinancialProductionModal
+                isOpen={showFinancialProductionModal}
+                onClose={() => {
+                    setShowFinancialProductionModal(false);
+                    playCloseSound();
+                }}
+                placedBuildings={myPlacedBuildings}
+                buildingData={buildingData}
+                inventory={inventory}
+                maxPopulation={maxPopulation}
+                currentPopulation={currentPopulation}
+                playerGold={playerGold}
+                hasEgyptianObelisk={hasEgyptianObelisk}
+                lastFinancialCollectTime={lastFinancialCollectTime}
+                onCollectAll={handleCollectAllReadyIncome}
+                onCollectSingle={handleCollectProductionFromWorld}
+                onStartSingle={handleStartProductionFromWorld}
+                onFocusBuilding={handleFocusBuildingOnMap}
+                coinImageUrl={coinImageUrl}
+                playCloseSound={playCloseSound}
+            />
+
+            <TownHallOrdersModal
+                isOpen={showTownHallOrdersModal}
+                onClose={() => {
+                    setShowTownHallOrdersModal(false);
+                    playCloseSound();
+                }}
+                orders={townHallOrders}
+                inventory={inventory}
+                townHallLevel={playerTownHallLevel}
+                playerLevel={playerLevel}
+                lastSkipTime={townHallLastSkipTime}
+                onFulfillOrder={handleFulfillTownHallOrder}
+                onSkipOrder={handleSkipTownHallOrder}
+                coinImageUrl={coinImageUrl}
+                playCloseSound={playCloseSound}
+            />
+
+            <ClanStockExchangeModal
+                isOpen={showClanStockExchangeModal}
+                onClose={() => {
+                    setShowClanStockExchangeModal(false);
+                    playCloseSound();
+                }}
+                listings={clanStockListings}
+                playerPortfolio={playerStockPortfolio}
+                playerGold={playerGold}
+                userUid={user ? user.uid : null}
+                currentClan={currentClan}
+                isClanLeader={isClanLeader}
+                clanBank={currentClanBank}
+                controlledWatchtowersCount={controlledWatchtowersCount}
+                onLaunchIpo={handleLaunchClanIpo}
+                onBuyShares={handleBuyClanShares}
+                onSellShares={handleSellClanShares}
+                onClaimDividends={handleClaimClanDividends}
+                onAdjustDividendPercent={handleAdjustDividendPercent}
+                onBuybackShares={handleBuybackClanShares}
             />
 
             {/* MARKET MODAL ... */}
@@ -18113,6 +21053,11 @@ const App: React.FC = () => {
                 coinImageUrl={coinImageUrl}
                 playCloseSound={playCloseSound}
                 enqueueImagePreload={enqueueImagePreload}
+                getIsBuildingFree={(buildingId) => Boolean(
+                    (buildingId === TOWN_HALL_ID && (!hasTownHall || !townHallTutorialCompleted)) ||
+                    (buildingId === TUTORIAL_FROG_HOUSE_ID && (!townHallTutorialCompleted && !placedBuildings.some(b => isMyBuilding(b) && Number(b.buildingId) === TUTORIAL_FROG_HOUSE_ID))) ||
+                    (buildingId === TUTORIAL_LILY_POND_ID && (!townHallTutorialCompleted && !placedBuildings.some(b => isMyBuilding(b) && Number(b.buildingId) === TUTORIAL_LILY_POND_ID)))
+                )}
             />
 
             <BuildConfirmationModal
@@ -18122,6 +21067,12 @@ const App: React.FC = () => {
                 onClose={closeBuildConfirmation}
                 onBackToMenu={backToBuildMenu}
                 onConfirmBuild={handleConfirmBuild}
+                onOpenBlackMarket={() => {
+                    if (buildConfirmation.building) {
+                        setBlackMarketBuilding(buildConfirmation.building);
+                        setShowBlackMarketMissingModal(true);
+                    }
+                }}
                 isBuildingActionProcessing={isBuildingActionProcessing}
                 inventory={inventory}
                 rubyImageUrl={rubyImageUrl}
@@ -18129,12 +21080,48 @@ const App: React.FC = () => {
                 populationImageUrl={populationImageUrl}
                 recordRuntimeTraceStage={recordRuntimeTraceStage}
                 getCanonicalItemName={getCanonicalItemName}
+                isTutorialFree={Boolean(
+                    buildConfirmation.building && (
+                        (buildConfirmation.building.id === TOWN_HALL_ID && (!hasTownHall || !townHallTutorialCompleted)) ||
+                        (buildConfirmation.building.id === TUTORIAL_FROG_HOUSE_ID && (tutorialAutoBuildMode === 'frogHouse' || townHallTutorialStep === 'housePrompt' || (!townHallTutorialCompleted && !placedBuildings.some(b => isMyBuilding(b) && Number(b.buildingId) === TUTORIAL_FROG_HOUSE_ID)))) ||
+                        (buildConfirmation.building.id === TUTORIAL_LILY_POND_ID && (tutorialAutoBuildMode === 'lilyPond' || townHallTutorialStep === 'pondPrompt' || (!townHallTutorialCompleted && !placedBuildings.some(b => isMyBuilding(b) && Number(b.buildingId) === TUTORIAL_LILY_POND_ID))))
+                    )
+                )}
+            />
+
+            <BlackMarketMissingModal
+                isOpen={showBlackMarketMissingModal}
+                onClose={() => {
+                    setShowBlackMarketMissingModal(false);
+                    setBlackMarketBuilding(null);
+                }}
+                building={blackMarketBuilding || buildConfirmation.building}
+                inventory={inventory}
+                itemData={itemData}
+                playerRubies={playerRubies}
+                rubyImageUrl={rubyImageUrl}
+                onBuyResource={handleBuyBlackMarketResource}
+                onBuyAllMissing={handleBuyAllBlackMarketMissing}
+                onReadyToBuild={() => {
+                    setShowBlackMarketMissingModal(false);
+                    setBlackMarketBuilding(null);
+                    if (buildConfirmation.visible && buildConfirmation.building) {
+                        handleConfirmBuild();
+                    }
+                }}
+                playCloseSound={playCloseSound}
             />
             <InventoryModal
                 isOpen={showInventory}
                 onClose={closeInventoryModal}
                 inventory={inventory}
                 itemData={itemData}
+                playerEnergy={playerEnergy}
+                maxEnergy={maxEnergy}
+                coinImageUrl={coinImageUrl}
+                onUseItem={handleUseInventoryItem}
+                onCraftItem={handleCraftInventoryItem}
+                onQuickSellItem={handleQuickSellInventoryItem}
                 playCloseSound={playCloseSound}
             />
 
@@ -18173,6 +21160,10 @@ const App: React.FC = () => {
                 casinoIsSpinning={casinoIsSpinning}
                 casinoResult={casinoResult}
                 onGamble={handleCasinoGamble}
+                initialTab={casinoInitialTab}
+                lastLuckyWheelSpin={lastLuckyWheelSpin}
+                onClaimLuckyWheelPrize={handleClaimLuckyWheelPrize}
+                rubyImageUrl={rubyImageUrl}
             />
 
             <CasinoBankModal
@@ -18194,6 +21185,10 @@ const App: React.FC = () => {
                 placedBuildings={placedBuildings}
                 buildingData={buildingData}
                 playCloseSound={playCloseSound}
+                clans={clans}
+                allUsers={allUsers}
+                currentClan={currentClan}
+                currentUserUid={user?.uid}
             />
 
             <TopPlayersModal
@@ -18290,6 +21285,8 @@ const App: React.FC = () => {
                 privateMessageText={privateMessageText}
                 setPrivateMessageText={setPrivateMessageText}
                 onSendPrivateMessage={handleSendPrivateMessage}
+                chatMode={privateChatMode}
+                onToggleChatMode={setPrivateChatMode}
             />
 
             <OtherPlayerProfileModal
@@ -18310,6 +21307,9 @@ const App: React.FC = () => {
                 selectedPlayerBuildings={selectedPlayerBuildings}
                 buildingData={buildingData}
                 playerStatusMeta={getPlayerStatusMeta(selectedPlayerId)}
+                achievementPercentages={achievementPercentages}
+                onSelectTitle={handleSelectTitle}
+                onClaimReward={handleClaimAchievementReward}
                 onPraisePlayer={handlePraisePlayer}
                 onComplainPlayer={handleComplainPlayer}
                 onVoteKing={handleVoteKingFromProfile}
@@ -18320,12 +21320,21 @@ const App: React.FC = () => {
                 onBanPlayer={handleBanPlayerByUid}
                 onPunishPlayer={handlePunishPlayerByUid}
                 onCursePlayer={handleCursePlayerByUid}
+                onBuyRubies={openRubyShopModal}
             />
             <ProfileModal
                 isOpen={showProfileModal}
                 onClose={() => { setShowProfileModal(false); playCloseSound(); }}
                 activeProfileTab={activeProfileTab}
                 setActiveProfileTab={setActiveProfileTab}
+                completedAchievements={playerAchievements}
+                claimedAchievements={claimedAchievements}
+                selectedTitle={selectedTitle}
+                achievementStats={achievementStats}
+                achievementPercentages={achievementPercentages}
+                onClaimAchievementReward={handleClaimAchievementReward}
+                onClaimAllAchievementRewards={handleClaimAllAchievementRewards}
+                onSelectTitle={handleSelectTitle}
                 playerAvatar={playerAvatar}
                 tempPlayerName={tempPlayerName}
                 setTempPlayerName={setTempPlayerName}
@@ -18368,6 +21377,7 @@ const App: React.FC = () => {
                 getUserGlory={getUserGlory}
                 onRemoveFriend={handleRemoveFriend}
                 onSelectChatUser={(name, uid, e) => handleChatUserClick(name, uid, e)}
+                mailChats={mailChats}
                 privateChats={privateChats}
                 onOpenChat={handleOpenChatFromProfile}
                 musicEnabled={musicEnabled}
@@ -18413,7 +21423,11 @@ const App: React.FC = () => {
                 onTouchEnd={handleTouchEnd}
                 onWheel={handleWheel}
                 onMouseLeave={() => {
+                    if (isDraggingRef.current && hasDraggedRef.current) {
+                        reportPlayerMovement(true);
+                    }
                     isDraggingRef.current = false;
+                    hasDraggedRef.current = false;
                     setTooltip({ visible: false, x: 0, y: 0, content: null });
                     setHoveredTile(null);
                 }}
@@ -18422,7 +21436,7 @@ const App: React.FC = () => {
             />
 
 
-            {/* Р СњР С‘Р С”Р Р…Р ВµР в„–Р СРЎвЂ№ Р С‘Р С–РЎР‚Р С•Р С”Р С•Р Р† Р Р…Р В° Р С”Р В°РЎР‚РЎвЂљР Вµ */}
+            {/* Никнеймы игроков на карте */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 {onlinePlayersData.map(player => {
                     if (typeof player.x !== 'number' || typeof player.y !== 'number') return null;
@@ -18437,22 +21451,45 @@ const App: React.FC = () => {
                         return null;
                     }
 
-                    const displayLevel = (user && player.uid === user.uid) ? playerLevel : (allUsers[player.uid]?.level || 1);
+                    const displayLevel = (user && player.uid === user.uid)
+                        ? playerLevel
+                        : Math.max(Number(player.level || 1) || 1, Number(allUsers[player.uid]?.level || 1) || 1);
+
+                    const playerNameDisplay = (player.name && player.name !== 'Неизвестный')
+                        ? player.name
+                        : (allUsers[player.uid]?.name && allUsers[player.uid]?.name !== 'Неизвестный')
+                            ? allUsers[player.uid]?.name
+                            : (user && player.uid === user.uid)
+                                ? playerName
+                                : player.name || 'Неизвестный';
+
+                    const playerTitle = (user && player.uid === user.uid)
+                        ? selectedTitle
+                        : (player.title || allUsers[player.uid]?.selectedTitle || allUsers[player.uid]?.data?.selectedTitle || null);
 
                     return (
                         <div
                             key={player.uid}
                             className="absolute transform -translate-x-1/2 -translate-y-full pointer-events-auto cursor-pointer group z-10"
-                            style={{ left: finalX, top: finalY - 120 }}
+                            style={{ left: finalX, top: finalY - 120, willChange: 'left, top' }}
                             onClick={() => {
                                 setSelectedPlayerId(player.uid);
                                 setShowPlayerProfile(true);
                             }}
                         >
+                            {/* Title prefix badge over player avatar */}
+                            {playerTitle && (
+                                <div className="flex justify-center mb-1">
+                                    <span className="bg-black/80 text-yellow-300 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full border border-yellow-400/50 shadow-lg whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] tracking-wide">
+                                        [{playerTitle}]
+                                    </span>
+                                </div>
+                            )}
+
                             {/* Player nickname tag with level icon */}
                             <div className="bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-full border border-blue-400/50 shadow-lg group-hover:bg-blue-600/80 group-hover:scale-110 transition-all duration-200 flex items-center gap-2">
                                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                                <span className="font-bold text-sm whitespace-nowrap drop-shadow-md">{player.name}</span>
+                                <span className="font-bold text-sm whitespace-nowrap drop-shadow-md">{playerNameDisplay}</span>
                                 {/* Level icon inside nickname tag */}
                                 <img 
                                     src={LEVEL_ICON_URLS[displayLevel] || LEVEL_ICON_URLS[1]}
@@ -18476,6 +21513,17 @@ const App: React.FC = () => {
                     );
                 })}
             </div>
+
+            {/* Combo & Gathering Juice Overlay (Floating numbers, combo badges, combo streak HUD, and Level-Up Fireworks/Confetti) */}
+            <ComboJuiceOverlay
+                floatingItems={floatingJuiceItems}
+                comboState={comboState}
+                worldToScreen={worldToScreen}
+                getCameraOffset={() => cameraOffsetRef.current}
+                zoomIndex={zoomIndex}
+                levelUpCelebration={levelUpCelebration}
+                onDismissCelebration={() => setLevelUpCelebration(null)}
+            />
 
             {/* Resources - Top Center (glass panel) — hidden when Personal Cabinet is open */}
             {shouldHideResourceBar ? null : (
@@ -18649,6 +21697,57 @@ const App: React.FC = () => {
                             Энергия: {playerEnergy} / {displayedEnergyCapacity}
                         </div>
                     </div>
+
+                    {/* Active Buffs Pill Displays */}
+                    {(lumberjackBuffUntil > currentTime || mortarBuffUntil > currentTime) && (
+                        <div className="flex flex-col gap-1 mt-1 z-30">
+                            {lumberjackBuffUntil > currentTime && (() => {
+                                const remainingSec = Math.max(0, Math.ceil((lumberjackBuffUntil - currentTime) / 1000));
+                                const mins = Math.floor(remainingSec / 60);
+                                const secs = remainingSec % 60;
+                                const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                                return (
+                                    <div
+                                        className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-md backdrop-blur-md"
+                                        style={{
+                                            background: 'rgba(5, 150, 105, 0.55)',
+                                            border: '1px solid rgba(52, 211, 153, 0.75)',
+                                            color: '#d1fae5',
+                                            textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                                        }}
+                                        title="Эликсир дровосека: +1 дерево за каждый срубленный ствол"
+                                    >
+                                        <span>🪓</span>
+                                        <span>Лесоруб: +1</span>
+                                        <span className="text-emerald-200 font-mono font-bold">({formatted})</span>
+                                    </div>
+                                );
+                            })()}
+
+                            {mortarBuffUntil > currentTime && (() => {
+                                const remainingSec = Math.max(0, Math.ceil((mortarBuffUntil - currentTime) / 1000));
+                                const mins = Math.floor(remainingSec / 60);
+                                const secs = remainingSec % 60;
+                                const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                                return (
+                                    <div
+                                        className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-md backdrop-blur-md"
+                                        style={{
+                                            background: 'rgba(2, 132, 199, 0.55)',
+                                            border: '1px solid rgba(56, 189, 248, 0.75)',
+                                            color: '#e0f2fe',
+                                            textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                                        }}
+                                        title="Каменный укрепляющий раствор: -30% стоимость ремонта зданий"
+                                    >
+                                        <span>🧱</span>
+                                        <span>Раствор: -30%</span>
+                                        <span className="text-sky-200 font-mono font-bold">({formatted})</span>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -18716,10 +21815,10 @@ const App: React.FC = () => {
                             }
                         }}
                         className="flex items-center justify-center cursor-pointer hover:scale-110 transition-transform game-button max-md:order-1"
-                        title="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘"
+                        title="Настройки"
                         style={{ width: '36px', height: '36px' }}
                     >
-                        <img src="/Gui/Front/значек настроек/Qw5jz.webp" alt="Р СњР В°РЎРѓРЎвЂљРЎР‚Р С•Р в„–Р С”Р С‘" className="w-[36px] h-[36px] object-contain" />
+                        <img src="/Gui/Front/значек настроек/Qw5jz.webp" alt="Настройки" className="w-[36px] h-[36px] object-contain" />
                     </button>
                     </div>
                 </div>
@@ -18756,6 +21855,30 @@ const App: React.FC = () => {
                 onOpenMap={() => { setShowMainTabletMenu(false); setShowMap(true); playOpenSound(); }}
                 onTeleportToTownHall={() => { setShowMainTabletMenu(false); handleTeleportToTownHall(); }}
                 onOpenInventory={() => { setShowMainTabletMenu(false); setShowInventory(true); playOpenSound(); }}
+                onOpenDailyReward={() => { setShowMainTabletMenu(false); setShowDailyRewardModal(true); playOpenSound(); }}
+                hasDailyRewardAvailable={!isDailyRewardClaimedToday}
+                onOpenLuckyWheel={() => {
+                    setShowMainTabletMenu(false);
+                    setCasinoInitialTab('wheel');
+                    setShowCasinoModal(true);
+                    playOpenSound();
+                }}
+                hasLuckyWheelAvailable={hasLuckyWheelAvailable}
+            />
+
+            {/* Daily Streak Reward & Telegram Modal */}
+            <DailyRewardModal
+                isOpen={showDailyRewardModal}
+                onClose={closeDailyRewardModal}
+                userId={user?.uid || ''}
+                playerName={playerName}
+                telegramLinked={telegramLinked}
+                lastDailyRewardClaim={lastDailyRewardClaim}
+                streakDays={streakDays}
+                onRewardClaimed={handleRewardClaimed}
+                onCheckTelegramLink={handleCheckTelegramLink}
+                playOpenSound={playOpenSound}
+                playCloseSound={playCloseSound}
             />
 
             {tooltip.visible && (

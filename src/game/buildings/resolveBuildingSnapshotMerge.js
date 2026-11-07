@@ -30,6 +30,25 @@
  * @property {boolean} shouldStickHealthState
  */
 
+export const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
+
+function preserveTownHallTier(targetBuilding, localBuilding) {
+    if (!localBuilding || !targetBuilding) return targetBuilding;
+    const localThIdx = TOWN_HALL_IDS.indexOf(Number(localBuilding.buildingId));
+    const targetThIdx = TOWN_HALL_IDS.indexOf(Number(targetBuilding.buildingId));
+    if (localThIdx >= 0 && targetThIdx >= 0 && targetThIdx < localThIdx) {
+        return {
+            ...targetBuilding,
+            buildingId: localBuilding.buildingId,
+            hp: localBuilding.hp ?? targetBuilding.hp,
+            maxHp: localBuilding.maxHp ?? targetBuilding.maxHp,
+            isConstructing: localBuilding.isConstructing,
+            constructionEndTime: localBuilding.constructionEndTime,
+        };
+    }
+    return targetBuilding;
+}
+
 /**
  * @param {unknown} value
  * @param {number} now
@@ -90,9 +109,14 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
         deletionProtectionMs,
     } = input;
 
+    const isRecentlyMoved = Number.isFinite(lastMoveAt) && (now - lastMoveAt) < stickyInteractionMs;
     const localInteractionAllowed = !!localBuilding && (
         !!localBuilding.isLocal ||
-        (!!currentUserId && localBuilding.ownerId === currentUserId)
+        isRecentlyMoved ||
+        (!!currentUserId && localBuilding.ownerId === currentUserId) ||
+        localBuilding.ownerId === '0' ||
+        localBuilding.ownerId === 'guest' ||
+        String(localBuilding.ownerId || '').startsWith('guest_')
     );
 
     if (localIsProtectedByCombat && localBuilding) {
@@ -112,7 +136,8 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
         localBuilding && localBuilding.isConstructing === false && serverBuilding.isConstructing === true
             ? Math.max(stickyInteractionMs, deletionProtectionMs)
             : stickyInteractionMs;
-    const timeSinceInt = now - lastInteractionAt;
+    const effectiveInteractionAt = Math.max(Number(lastInteractionAt || 0), Number(lastMoveAt || 0));
+    const timeSinceInt = now - effectiveInteractionAt;
 
     if (timeSinceInt < constructionStickyMs && localInteractionAllowed && localBuilding) {
         if (serverBuilding.hp !== undefined && serverBuilding.hp <= 0) {
@@ -200,7 +225,11 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
         }
 
         return {
-            mergedBuilding: serverBuilding,
+            mergedBuilding: preserveTownHallTier({
+                ...serverBuilding,
+                lastAttackTime: Math.max(serverBuilding.lastAttackTime || 0, localBuilding.lastAttackTime || 0),
+                lastMoveTime: Math.max(serverBuilding.lastMoveTime || 0, localBuilding.lastMoveTime || 0),
+            }, localBuilding),
             decision: 'accepted_server_matches_local',
             clearLastInteraction: true,
             shouldStickPosition: false,
@@ -208,8 +237,42 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
         };
     }
 
+    const effectiveLastAttack = Math.max(serverBuilding.lastAttackTime || 0, localBuilding?.lastAttackTime || 0);
+    const effectiveLastMove = Math.max(serverBuilding.lastMoveTime || 0, localBuilding?.lastMoveTime || 0);
+
+    // Protect active production timer from stale server snapshots that lack workEndTime
+    // or haven't registered that production started yet.
+    const isActivelyWorkingLocally = localBuilding &&
+        localBuilding.workState === 'working' &&
+        typeof localBuilding.workEndTime === 'number' &&
+        localBuilding.workEndTime > now;
+
+    if (isActivelyWorkingLocally && localInteractionAllowed) {
+        const serverWorkEndTime = typeof serverBuilding.workEndTime === 'number' ? serverBuilding.workEndTime : 0;
+        const effectiveWorkEndTime = Math.max(localBuilding.workEndTime, serverWorkEndTime);
+
+        return {
+            mergedBuilding: preserveTownHallTier({
+                ...serverBuilding,
+                workState: 'working',
+                workEndTime: effectiveWorkEndTime,
+                ...(effectiveLastAttack > 0 ? { lastAttackTime: effectiveLastAttack } : {}),
+                ...(effectiveLastMove > 0 ? { lastMoveTime: effectiveLastMove } : {}),
+                isLocal: false,
+            }, localBuilding),
+            decision: 'accept_server_update',
+            clearLastInteraction: false,
+            shouldStickPosition: false,
+            shouldStickHealthState: false,
+        };
+    }
+
     return {
-        mergedBuilding: serverBuilding,
+        mergedBuilding: preserveTownHallTier({
+            ...serverBuilding,
+            ...(effectiveLastAttack > 0 ? { lastAttackTime: effectiveLastAttack } : {}),
+            ...(effectiveLastMove > 0 ? { lastMoveTime: effectiveLastMove } : {}),
+        }, localBuilding),
         decision: 'accept_server_update',
         clearLastInteraction: false,
         shouldStickPosition: false,

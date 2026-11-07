@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Building, PlacedBuilding, Item } from '../../../types';
+import { BuildingType, type Building, type PlacedBuilding, type Item } from '../../../types';
 import {
     CloseIcon,
     DefenseIcon,
@@ -12,14 +12,25 @@ import {
 import { PROTECTION_OPTIONS } from '../../game/ui/actionOptions';
 import { isGeneralMarketBuilding, isMilitaryMarketBuilding } from '../../game/market/marketLogic';
 import { generateDestructionInfo } from '../../../data/destructionWeapons';
+import {
+    FINANCIAL_INTELLIGENCE_IDS,
+    EGYPTIAN_OBELISK_IDS,
+    getFinancialCollectCooldownStatus,
+    isBuildingReadyForCollection,
+} from '../../game/economy/productionCollectLogic';
+import { TaxiDepotModal } from './TaxiDepotModal';
+import { TownHallModal } from './TownHallModal';
 
-const WATCHTOWER_ID = 50;
-const MOUNTAIN_ID = 500;
-const RIVER_ID = 501;
-const AUCTION_ID = 700;
-const CANNON_IDS = [40, 41, 42, 43, 44];
-const PROTECTED_TOWER_ID = 55;
-const CASINO_IDS = [450, 451, 452, 453];
+const WATCHTOWER_ID = 801;
+export const WATCHTOWER_IDS = [801, 214, 215, 216];
+export const isWatchtowerId = (id: number | string | undefined | null) => id != null && WATCHTOWER_IDS.includes(Number(id));
+const MOUNTAIN_ID = 50005;
+const RIVER_ID = 50004;
+const AUCTION_ID = 311;
+const CANNON_IDS = [700, 701, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385];
+const PROTECTED_TOWER_ID = 702;
+const CASINO_IDS = [328, 329];
+const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
 const BANDIT_CASTLE_IDS = new Set([200, 201, 202, 203]);
 const DIRECT_INTERACTION_FACTORIES = [304, 305, 306, 307];
 const MOUNTAIN_MOVE_COST = 10;
@@ -29,16 +40,21 @@ const SUPER_DETONATOR_ID = 10045;
 
 const isBanditCastleBuildingId = (buildingId: number) => BANDIT_CASTLE_IDS.has(Number(buildingId));
 
-export const calculateRepairCost = (building: PlacedBuilding, info: Building): number => {
+export const calculateRepairCost = (building: PlacedBuilding, info: Building, discountMultiplier: number = 1): number => {
     const currentHp = building.hp ?? info.stats.durability;
     const maxHp = building.maxHp ?? info.stats.durability;
     const missingHp = maxHp - currentHp;
     if (missingHp <= 0) return 0;
 
     const basePrice = info.price || (info.rubyPrice ? info.rubyPrice * 10000 : 100);
-    const cost = Math.ceil((missingHp / maxHp) * basePrice * 0.5);
+    let cost = Math.ceil((missingHp / maxHp) * basePrice * 0.5);
+    cost = Math.max(cost, missingHp);
 
-    return Math.max(cost, missingHp);
+    if (discountMultiplier < 1) {
+        cost = Math.max(1, Math.ceil(cost * discountMultiplier));
+    }
+
+    return cost;
 };
 
 interface ConstructionTimerProps {
@@ -120,6 +136,10 @@ export interface SelectedBuildingModalProps {
     handleSetTax: (rate: number) => void;
     handleWithdrawBank: () => void;
     handleBuyRuby: (amount: number) => void;
+    handleSellRuby?: (amount: number) => void;
+    onOpenMarketForRubies?: () => void;
+    onOpenTownHallOrders?: () => void;
+    townHallAvailableOrdersCount?: number;
     handleOpenCasinoModal: (building: PlacedBuilding) => void;
     handleOpenCasinoBankModal: (building: PlacedBuilding) => void;
     handleUpgrade: () => void;
@@ -133,6 +153,13 @@ export interface SelectedBuildingModalProps {
     handleApplyProtection: (cost: number, duration: number) => void;
     onOpenMarket: (type: 'general' | 'military') => void;
     onSelectPlayer: (playerId: string) => void;
+    onOpenClanStockExchange?: () => void;
+    isMortarActive?: boolean;
+    onUseItem?: (itemId: number) => void;
+    onCollectAllReadyIncome?: () => void;
+    onOpenFinancialProductionModal?: () => void;
+    lastFinancialCollectTime?: number;
+    hasEgyptianObelisk?: boolean;
 }
 
 export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps> = ({
@@ -162,6 +189,10 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     handleSetTax,
     handleWithdrawBank,
     handleBuyRuby,
+    handleSellRuby,
+    onOpenMarketForRubies,
+    onOpenTownHallOrders,
+    townHallAvailableOrdersCount,
     handleOpenCasinoModal,
     handleOpenCasinoBankModal,
     handleUpgrade,
@@ -174,7 +205,14 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     handleExplode,
     handleApplyProtection,
     onOpenMarket,
-    onSelectPlayer
+    onSelectPlayer,
+    onOpenClanStockExchange,
+    isMortarActive = false,
+    onUseItem,
+    onCollectAllReadyIncome,
+    onOpenFinancialProductionModal,
+    lastFinancialCollectTime = 0,
+    hasEgyptianObelisk = false
 }) => {
     const [taxRateDraft, setTaxRateDraft] = useState<number | null>(null);
     const [showExplosionMenu, setShowExplosionMenu] = useState(false);
@@ -184,6 +222,8 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     const [useSuperDetonator, setUseSuperDetonator] = useState(false);
     const [showProtectionMenu, setShowProtectionMenu] = useState(false);
     const [buyRubyAmount, setBuyRubyAmount] = useState(1);
+    const [sellRubyAmount, setSellRubyAmount] = useState(1);
+    const [auctionMode, setAuctionMode] = useState<'buy' | 'sell'>('buy');
 
     // Reset sub-menus when selected building changes
     useEffect(() => {
@@ -199,9 +239,11 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
 
     if (!selectedBuilding) return null;
 
-    const { building, info } = selectedBuilding;
+    const liveBuilding = placedBuildings.find(b => String(b.id) === String(selectedBuilding.building.id)) || selectedBuilding.building;
+    const building = liveBuilding;
+    const { info } = selectedBuilding;
     const isMine = isMyBuilding(building);
-    const repairCost = calculateRepairCost(building, info);
+    const repairCost = calculateRepairCost(building, info, isMortarActive ? 0.7 : 1);
 
     const destructionInfo = generateDestructionInfo({
         ...info,
@@ -209,26 +251,120 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
         stats: { ...info.stats }
     });
 
+    const isUnderConstruction = Boolean(building.isConstructing && (!building.constructionEndTime || building.constructionEndTime > Date.now()));
+    const isTownHall = TOWN_HALL_IDS.includes(Number(info.id)) || info.type === BuildingType.TownHall;
+    const isAuction = Number(info.id) === AUCTION_ID;
+    const isOwnAuction = isAuction && isMine;
+    const isFinancialIntelligence = FINANCIAL_INTELLIGENCE_IDS.includes(Number(info.id));
+    const isEgyptianObelisk = EGYPTIAN_OBELISK_IDS.includes(Number(info.id));
+
+    const readyBuildingsCount = (isFinancialIntelligence && isMine)
+        ? placedBuildings.filter(b => isMyBuilding(b) && isBuildingReadyForCollection(b, Date.now())).length
+        : 0;
+
+    const financialCooldown = (isFinancialIntelligence && isMine)
+        ? getFinancialCollectCooldownStatus(lastFinancialCollectTime, hasEgyptianObelisk, Date.now())
+        : { isReady: false, remainingMs: 0, hasObeliskPerk: false, cooldownMs: 0 };
+
+    const cooldownMinutes = Math.floor(financialCooldown.remainingMs / 60000);
+    const cooldownSeconds = Math.floor((financialCooldown.remainingMs % 60000) / 1000);
+    const financialCooldownFormatted = `${cooldownMinutes}:${cooldownSeconds.toString().padStart(2, '0')}`;
+
     const handleClose = () => {
         setShowExplosionMenu(false);
         setShowProtectionMenu(false);
         onClose();
     };
 
+    const isTaxiDepot = Number(info.id) === 7980020;
+
+    if (isTaxiDepot && !showExplosionMenu && !showProtectionMenu) {
+        return (
+            <TaxiDepotModal
+                building={building}
+                info={info}
+                onClose={handleClose}
+                playerGold={playerGold}
+                playerLevel={playerLevel}
+                inventory={inventory}
+                coinImageUrl={coinImageUrl}
+                rubyImageUrl={rubyImageUrl}
+                populationImageUrl={populationImageUrl}
+                isMine={isMine}
+                canRepair={canRepairBuilding(building) && repairCost > 0}
+                repairCost={repairCost}
+                handleStartProduction={handleStartProduction}
+                handleCollectProduction={handleCollectProduction}
+                handleRepair={handleRepair}
+                handleMoveClick={handleMoveClick}
+                handleSell={handleSell}
+                handleExplode={handleExplode}
+                handleApplyProtection={handleApplyProtection}
+                handleUpgrade={handleUpgrade}
+                onOpenExplosionMenu={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
+                onOpenProtectionMenu={() => setShowProtectionMenu(true)}
+                getCanonicalItemName={getCanonicalItemName}
+            />
+        );
+    }
+
+    const isOwnTownHall = isTownHall && isMine;
+
+    if (isOwnTownHall && !showExplosionMenu && !showProtectionMenu) {
+        return (
+            <TownHallModal
+                building={building}
+                info={info}
+                onClose={handleClose}
+                playerGold={playerGold}
+                playerEnergy={playerEnergy}
+                playerLevel={playerLevel}
+                currentPopulation={currentPopulation}
+                maxPopulation={maxPopulation}
+                inventory={inventory}
+                coinImageUrl={coinImageUrl}
+                rubyImageUrl={rubyImageUrl}
+                playerRubies={playerRubies}
+                populationImageUrl={populationImageUrl}
+                canRepair={canRepairBuilding(building) && repairCost > 0}
+                repairCost={repairCost}
+                handleRepair={handleRepair}
+                handleMoveClick={handleMoveClick}
+                handleSell={handleSell}
+                handleUpgrade={handleUpgrade}
+                handleSpeedUp={handleSpeedUp}
+                onOpenExplosionMenu={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
+                onOpenProtectionMenu={() => setShowProtectionMenu(true)}
+                onOpenTownHallOrders={onOpenTownHallOrders}
+                townHallAvailableOrdersCount={townHallAvailableOrdersCount}
+                buildingData={buildingData}
+                isMortarActive={isMortarActive}
+            />
+        );
+    }
+
     return (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={handleClose}>
-            <div className="bg-gray-800/90 w-96 rounded-xl border border-gray-600 flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b border-gray-700">
-                    <h2 className="text-xl font-bold text-white">{info.name}</h2>
-                    <button onClick={handleClose} className="text-gray-400 hover:text-white">
-                        <CloseIcon className="w-7 h-7" />
+        <div className={`absolute inset-0 bg-black/80 backdrop-blur-sm flex ${isOwnAuction ? 'items-start sm:items-center pt-16 sm:pt-14' : 'items-center'} justify-center z-40 p-3 sm:p-4 animate-fade-in`} onClick={handleClose}>
+            <div
+                className={`w-full max-w-md bg-gradient-to-b from-gray-900 via-gray-950 to-black border-2 border-purple-500/50 rounded-2xl shadow-[0_0_50px_rgba(168,85,247,0.3)] flex flex-col overflow-hidden text-white ${isOwnAuction ? 'max-h-[86vh]' : 'max-h-[92vh]'} animate-scale-up`}
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="p-4 sm:p-5 border-b border-purple-500/30 bg-purple-950/30 flex items-center justify-between">
+                    <h2 className="text-xl sm:text-2xl font-black building-title-shimmer">
+                        {info.name}
+                    </h2>
+                    <button
+                        onClick={handleClose}
+                        className="w-9 h-9 rounded-full bg-gray-800 hover:bg-red-600/80 border border-white/10 hover:border-red-500 flex items-center justify-center text-gray-300 hover:text-white transition-all duration-200"
+                    >
+                        ✕
                     </button>
                 </div>
                 {!showExplosionMenu && !showProtectionMenu ? (
-                    <div className="p-4">
+                    <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1">
                         {/* Casino Under Construction Banner */}
-                        {CASINO_IDS.includes(info.id) && building.isConstructing && (
-                            <div className="bg-yellow-900/50 p-4 rounded-lg border border-yellow-500/50 mb-4">
+                        {CASINO_IDS.includes(info.id) && isUnderConstruction && (
+                            <div className="bg-gradient-to-br from-yellow-950/40 via-gray-900 to-black p-4 rounded-xl border border-yellow-500/40 mb-4 shadow-lg">
                                 <h3 className="text-lg font-bold text-yellow-400 mb-2 text-center">Идет строительство</h3>
                                 <p className="text-yellow-200 text-sm text-center mb-3">Казино будет доступно после завершения строительства</p>
                                 <ConstructionTimer
@@ -241,9 +377,9 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             </div>
                         )}
 
-                        {info.stats.workTimeSeconds && info.category !== 'Защита' && !isBanditCastleBuildingId(info.id) && isMine && !building.isConstructing && (
-                            <div className="bg-gray-900/50 p-4 rounded-lg border border-blue-500/30 mb-4">
-                                <h3 className="text-lg font-bold text-blue-300 mb-2">Производство</h3>
+                        {info.stats.workTimeSeconds && info.category !== 'Защита' && !isBanditCastleBuildingId(info.id) && isMine && !isUnderConstruction && (
+                            <div className="bg-gray-900/60 p-4 rounded-xl border border-purple-500/30 mb-4 shadow-md">
+                                <h3 className="text-lg font-black text-purple-300 mb-2">Производство</h3>
 
                                 {/* For direct interaction factories (like lilies/mushrooms), only show menu during production */}
                                 {DIRECT_INTERACTION_FACTORIES.includes(info.id) ? (
@@ -259,7 +395,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                             <div>
                                                 <div className="flex flex-wrap gap-2 mb-3">
                                                     {info.stats.takesPopulation && (
-                                                        <div className={`px-2 py-1 rounded text-sm flex items-center ${maxPopulation - currentPopulation >= info.stats.takesPopulation ? 'text-green-400 bg-green-900/30' : 'text-red-400 bg-red-900/30'}`}>
+                                                        <div className={`px-2.5 py-1 rounded-lg text-sm font-bold flex items-center ${maxPopulation - currentPopulation >= info.stats.takesPopulation ? 'text-green-400 bg-green-950/50 border border-green-500/30' : 'text-red-400 bg-red-950/50 border border-red-500/30'}`}>
                                                             <img src={populationImageUrl} className="w-4 h-4 mr-1" alt="pop" />
                                                             {info.stats.takesPopulation} чел.
                                                         </div>
@@ -267,13 +403,13 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                                     {info.stats.consumes?.map(req => {
                                                         const has = (inventory[req.id] || 0) >= (req.amount || 0);
                                                         return (
-                                                            <div key={req.id} className={`px-2 py-1 rounded text-sm flex items-center ${has ? 'text-green-400 bg-green-900/30' : 'text-red-400 bg-red-900/30'}`}>
-                                                                <span>{getCanonicalItemName(req.id, req.name, building.id)}: {req.amount}</span>
+                                                            <div key={req.id} className={`px-2.5 py-1 rounded-lg text-sm font-bold flex items-center ${has ? 'text-green-400 bg-green-950/50 border border-green-500/30' : 'text-red-400 bg-red-950/50 border border-red-500/30'}`}>
+                                                                 <span>{getCanonicalItemName(req.id, req.name, building.id)}: {req.amount}</span>
                                                             </div>
                                                         );
                                                     })}
                                                 </div>
-                                                <button onClick={handleStartProduction} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded">
+                                                <button onClick={handleStartProduction} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black py-2.5 rounded-xl shadow-md transition-all">
                                                     Начать работу ({Math.floor((info.stats.workTimeSeconds || 0) / 60)}м {String((info.stats.workTimeSeconds || 0) % 60).padStart(2, '0')}с)
                                                 </button>
                                             </div>
@@ -288,16 +424,10 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
 
                                         {building.workState === 'finished' && (
                                             <div className="text-center py-2">
-                                                {[400, 401, 402, 403, 404, 406, 407, 408].includes(info.id) ? (
-                                                    <button onClick={handleStartProduction} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded flex items-center justify-center">
-                                                        <img src={builderIconUrl} className="w-6 h-6 mr-2" alt="worker" />
-                                                        Отправить рабочего
-                                                    </button>
-                                                ) : (
-                                                    <button onClick={handleCollectProduction} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded animate-bounce">
-                                                        Забрать продукцию
-                                                    </button>
-                                                )}
+                                                <button onClick={handleCollectProduction} className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-black py-2.5 rounded-xl animate-bounce shadow-lg transition-all flex items-center justify-center">
+                                                    <img src={coinImageUrl} className="w-5 h-5 mr-2" alt="coin" />
+                                                    Собрать урожай
+                                                </button>
                                             </div>
                                         )}
                                     </>
@@ -305,50 +435,64 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             </div>
                         )}
 
-                        {/* Watchtower Tax Settings */}
-                        {info.id === WATCHTOWER_ID && isMine && (
-                            <div className="bg-gray-900/50 p-4 rounded-lg border border-purple-500/30 mb-4">
-                                <h3 className="text-lg font-bold text-purple-300 mb-2">Налог сектора</h3>
-                                <p className="text-sm text-gray-400 mb-2">Установите налог (0-50%) для этого сектора.</p>
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="50"
-                                        value={taxRateDraft ?? (building.taxRate || 0)}
-                                        onChange={(e) => setTaxRateDraft(parseInt(e.target.value, 10))}
-                                        onMouseUp={(e) => {
-                                            const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
-                                            if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
-                                            if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
-                                        }}
-                                        onKeyUp={(e) => {
-                                            const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
-                                            if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
-                                        }}
-                                        className="w-full"
-                                    />
-                                    <span className="font-bold text-white w-12 text-right">{taxRateDraft ?? (building.taxRate || 0)}%</span>
-                                </div>
+                        {/* Watchtower Tax Settings & Stock Market */}
+                        {isWatchtowerId(info.id) && (
+                            <div className="bg-gray-900/60 p-4 rounded-xl border border-purple-500/30 mb-4 space-y-3 shadow-md">
+                                {isMine && (
+                                    <>
+                                        <h3 className="text-lg font-black text-purple-300 mb-1">Налог сектора</h3>
+                                        <p className="text-sm text-gray-400 mb-2">Установите налог (0-50%) для этого сектора.</p>
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="50"
+                                                value={taxRateDraft ?? (building.taxRate || 0)}
+                                                onChange={(e) => setTaxRateDraft(parseInt(e.target.value, 10))}
+                                                onMouseUp={(e) => {
+                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
+                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
+                                                }}
+                                                onTouchEnd={(e) => {
+                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
+                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
+                                                }}
+                                                onKeyUp={(e) => {
+                                                    const nextRate = parseInt((e.target as HTMLInputElement).value, 10);
+                                                    if (!Number.isNaN(nextRate)) handleSetTax(nextRate);
+                                                }}
+                                                className="w-full accent-purple-500"
+                                            />
+                                            <span className="font-extrabold text-white w-12 text-right">{taxRateDraft ?? (building.taxRate || 0)}%</span>
+                                        </div>
+                                    </>
+                                )}
+
+                                {onOpenClanStockExchange && (
+                                    <button
+                                        onClick={onOpenClanStockExchange}
+                                        className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 hover:from-purple-500 hover:to-amber-500 text-white font-black text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01]"
+                                    >
+                                        <span className="text-lg">📈</span>
+                                        <span>Биржа акций</span>
+                                    </button>
+                                )}
                             </div>
                         )}
 
                         {/* Clan Castle Bank */}
                         {BANDIT_CASTLE_IDS.has(Number(info.id)) && isMine && (
-                            <div className="bg-gray-900/50 p-4 rounded-lg border border-yellow-500/30 mb-4 text-center">
-                                <h3 className="text-lg font-bold text-yellow-400 mb-2">Банк клана</h3>
+                            <div className="bg-gradient-to-br from-yellow-950/40 via-gray-900 to-black p-4 rounded-xl border border-yellow-500/40 mb-4 text-center shadow-lg">
+                                <h3 className="text-lg font-black text-yellow-400 mb-1">Банк клана</h3>
                                 <p className="text-sm text-gray-400 mb-3">Накопленная прибыль с налога.</p>
-                                <div className="text-2xl font-bold text-white mb-3 flex items-center justify-center">
+                                <div className="text-2xl font-black text-white mb-3 flex items-center justify-center">
                                     <img src={coinImageUrl} className="w-6 h-6 mr-2 object-contain" alt="coin" />
-                                    {building.bank || 0}
+                                    {(building.bank || 0).toLocaleString()}
                                 </div>
                                 <button
                                     onClick={handleWithdrawBank}
                                     disabled={(building.bank || 0) <= 0}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                    className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black py-2.5 rounded-xl shadow-md transition-all disabled:from-gray-700 disabled:to-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed"
                                 >
                                     Забрать прибыль
                                 </button>
@@ -381,6 +525,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                 })()
                             )}
                             {info.stats.populationBonus && <p>Дает населения: <span className="font-bold text-white">{info.stats.populationBonus}</span></p>}
+                            {info.stats.damage && <p>Урон: <span className="font-bold text-red-400">{info.stats.damage}</span></p>}
                             {info.stats.givesCoins && !isBanditCastleBuildingId(info.id) && <p>Дает монет: <span className="font-bold text-white">{info.stats.givesCoins}</span></p>}
                             {info.stats.increasesGoldCapacity && (
                                 <p className="flex items-center">
@@ -395,6 +540,16 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     const nextInfo = buildingData.find(b => b.id === info.upgradesTo);
                                     return (
                                         <>
+                                            {nextInfo?.stats?.damage ? (
+                                                <p className="text-yellow-400 mt-1 flex items-center">
+                                                    Урон следующего уровня: <span className="font-bold text-red-400 ml-1">{nextInfo.stats.damage}</span>
+                                                    {info.stats?.damage && (
+                                                        <span className="text-emerald-400 text-xs ml-1 font-semibold">
+                                                            (+{Number(nextInfo.stats.damage) - Number(info.stats.damage)})
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            ) : null}
                                             {nextInfo?.stats?.increasesGoldCapacity ? (
                                                 <p className="text-yellow-400 mt-1 flex items-center">
                                                     Если улучшить:
@@ -414,7 +569,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                 })()
                             )}
 
-                            {building.isConstructing && (
+                            {isUnderConstruction && (
                                 <ConstructionTimer
                                     endTime={building.constructionEndTime}
                                     cost={info.stats.accelerationCost || 0}
@@ -426,62 +581,346 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                         </div>
 
                         {info.id === AUCTION_ID && isMine && (
-                            <div className="mt-4 p-3 bg-gray-900/50 rounded border border-yellow-500/30">
-                                <h4 className="text-yellow-400 font-bold mb-2 text-center">Обмен валюты</h4>
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center text-sm text-gray-300">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max="1000"
-                                            value={buyRubyAmount}
-                                            onChange={e => setBuyRubyAmount(Math.max(1, parseInt(e.target.value) || 0))}
-                                            className="w-16 bg-gray-800 text-white text-center rounded border border-gray-700 p-1 mr-2"
-                                        />
-                                        <img src={coinImageUrl} className="w-4 h-4 mx-1 object-contain" alt="coin" />
-                                        <span>{'>'}</span>
-                                        <img src={rubyImageUrl} className="w-4 h-4 ml-1 object-contain" alt="ruby" />
+                            <div className="mt-4 p-3.5 bg-gray-900/80 rounded-xl border border-yellow-500/40 shadow-inner">
+                                <div className="flex items-center justify-between mb-2.5 border-b border-gray-700/60 pb-2">
+                                    <h4 className="text-yellow-400 font-extrabold text-sm flex items-center gap-1.5">
+                                        <span>🏛️</span> Торговля рубинами
+                                    </h4>
+                                    <span className="text-[11px] text-gray-400 font-medium">
+                                        {auctionMode === 'buy' ? '1 💎 = 10 000 🪙' : '1 💎 = 7 777 🪙'}
+                                    </span>
+                                </div>
+
+                                {/* Live user balance */}
+                                <div className="flex items-center justify-between bg-black/50 px-3 py-1.5 rounded-lg border border-purple-500/20 mb-3 text-xs">
+                                    <span className="text-gray-400 font-medium">Ваш баланс:</span>
+                                    <div className="flex items-center gap-3 font-extrabold">
+                                        <span className="text-yellow-300 flex items-center gap-1">
+                                            <span>{playerGold.toLocaleString()}</span>
+                                            <img src={coinImageUrl} className="w-3.5 h-3.5 object-contain" alt="coin" />
+                                        </span>
+                                        <span className="text-purple-300 flex items-center gap-1">
+                                            <span>{playerRubies.toLocaleString()}</span>
+                                            <img src={rubyImageUrl} className="w-3.5 h-3.5 object-contain" alt="ruby" />
+                                        </span>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-[10px] text-gray-400 mb-1">Стоимость: {(buyRubyAmount * 10000).toLocaleString()}</div>
+                                </div>
+
+                                {/* Tab switcher: Купить / Продать */}
+                                <div className="grid grid-cols-2 gap-1.5 mb-3 bg-gray-800/90 p-1 rounded-md">
+                                    <button
+                                        type="button"
+                                        onClick={() => setAuctionMode('buy')}
+                                        className={`py-1 text-xs font-bold rounded transition-all active:scale-95 ${auctionMode === 'buy' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                                    >
+                                        Купить рубины
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAuctionMode('sell')}
+                                        className={`py-1 text-xs font-bold rounded transition-all active:scale-95 ${auctionMode === 'sell' ? 'bg-amber-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                                    >
+                                        Продать рубины
+                                    </button>
+                                </div>
+
+                                {auctionMode === 'buy' ? (
+                                    <div className="space-y-2.5">
+                                        <div className="flex items-center justify-between bg-black/40 p-2 rounded-lg border border-gray-700/50">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-400">Кол-во:</span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={Math.max(1000, Math.floor(playerGold / 10000))}
+                                                    value={buyRubyAmount}
+                                                    onChange={e => setBuyRubyAmount(Math.max(1, parseInt(e.target.value) || 0))}
+                                                    className="w-20 bg-gray-800 text-white text-center rounded border border-gray-600 p-1 text-xs font-bold"
+                                                />
+                                                <div className="flex items-center gap-1">
+                                                    <img src={rubyImageUrl} className="w-4 h-4 object-contain" alt="ruby" />
+                                                    <span className="text-xs text-purple-300 font-bold">+{buyRubyAmount}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[10px] text-gray-400">К оплате:</div>
+                                                <div className="flex items-center justify-end gap-1 text-xs text-yellow-300 font-extrabold">
+                                                    <span>{(buyRubyAmount * 10000).toLocaleString()}</span>
+                                                    <img src={coinImageUrl} className="w-3.5 h-3.5 object-contain" alt="coin" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Quick amount buttons */}
+                                        <div className="flex gap-1 justify-between">
+                                            {[1, 5, 10, 50].map(val => (
+                                                <button
+                                                    key={val}
+                                                    type="button"
+                                                    onClick={() => setBuyRubyAmount(val)}
+                                                    className="flex-1 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 py-1 rounded text-[11px] font-medium border border-gray-700 transition-all"
+                                                >
+                                                    +{val}
+                                                </button>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => setBuyRubyAmount(Math.max(1, Math.floor(playerGold / 10000)))}
+                                                className="flex-1 bg-gray-800 hover:bg-gray-700 active:scale-95 text-yellow-400 py-1 rounded text-[11px] font-bold border border-gray-700 transition-all"
+                                            >
+                                                Макс
+                                            </button>
+                                        </div>
+
                                         <button
                                             onClick={() => handleBuyRuby(buyRubyAmount)}
                                             disabled={playerGold < (buyRubyAmount * 10000)}
-                                            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded text-xs disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                            className="w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 active:from-purple-700 active:to-indigo-700 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed text-white font-extrabold py-2.5 rounded-xl text-xs transition-all duration-150 transform active:scale-95 shadow-lg active:shadow-inner flex items-center justify-center gap-1.5 cursor-pointer"
                                         >
-                                            Купить
+                                            <img src={rubyImageUrl} className="w-4 h-4 object-contain" alt="ruby" />
+                                            <span>Купить за {(buyRubyAmount * 10000).toLocaleString()} монет</span>
                                         </button>
                                     </div>
+                                ) : (
+                                    <div className="space-y-2.5">
+                                        <div className="flex items-center justify-between bg-black/40 p-2 rounded-lg border border-gray-700/50">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-400">Кол-во:</span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={Math.max(1, playerRubies)}
+                                                    value={sellRubyAmount}
+                                                    onChange={e => setSellRubyAmount(Math.max(1, parseInt(e.target.value) || 0))}
+                                                    className="w-20 bg-gray-800 text-white text-center rounded border border-gray-600 p-1 text-xs font-bold"
+                                                />
+                                                <div className="flex items-center gap-1">
+                                                    <img src={rubyImageUrl} className="w-4 h-4 object-contain" alt="ruby" />
+                                                    <span className="text-xs text-gray-300 font-medium">из {playerRubies}</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[10px] text-gray-400">Получите:</div>
+                                                <div className="flex items-center justify-end gap-1 text-xs text-yellow-300 font-extrabold">
+                                                    <span>+{(sellRubyAmount * 7777).toLocaleString()}</span>
+                                                    <img src={coinImageUrl} className="w-3.5 h-3.5 object-contain" alt="coin" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Quick amount buttons */}
+                                        <div className="flex gap-1 justify-between">
+                                            {[1, 5, 10, 50].map(val => (
+                                                <button
+                                                    key={val}
+                                                    type="button"
+                                                    onClick={() => setSellRubyAmount(Math.min(playerRubies, val))}
+                                                    className="flex-1 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 py-1 rounded text-[11px] font-medium border border-gray-700 transition-all"
+                                                >
+                                                    {val}
+                                                </button>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => setSellRubyAmount(Math.max(1, playerRubies))}
+                                                className="flex-1 bg-gray-800 hover:bg-gray-700 active:scale-95 text-amber-400 py-1 rounded text-[11px] font-bold border border-gray-700 transition-all"
+                                            >
+                                                Все
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            onClick={() => handleSellRuby && handleSellRuby(sellRubyAmount)}
+                                            disabled={playerRubies < sellRubyAmount || sellRubyAmount <= 0}
+                                            className="w-full bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-600 hover:from-amber-500 hover:to-yellow-500 active:from-amber-700 active:to-yellow-700 disabled:from-gray-700 disabled:to-gray-800 disabled:cursor-not-allowed text-white font-extrabold py-2.5 rounded-xl text-xs transition-all duration-150 transform active:scale-95 shadow-lg active:shadow-inner flex items-center justify-center gap-1.5 cursor-pointer"
+                                        >
+                                            <img src={coinImageUrl} className="w-4 h-4 object-contain" alt="coin" />
+                                            <span>Продать за {(sellRubyAmount * 7777).toLocaleString()} монет</span>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Shortcut to list rubies on player-to-player market */}
+                                {onOpenMarketForRubies && (
+                                    <div className="mt-3 pt-2.5 border-t border-gray-700/60">
+                                        <button
+                                            type="button"
+                                            onClick={onOpenMarketForRubies}
+                                            className="w-full bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-white font-bold py-1.5 px-3 rounded text-xs flex items-center justify-center gap-1.5 transition-all shadow-md"
+                                        >
+                                            <span>🏷️ Выставить рубины на рынок игрокам</span>
+                                        </button>
+                                        <p className="text-[10px] text-gray-400 text-center mt-1">
+                                            Продажа другим игрокам по свободной цене (на бирже рынка)
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {info.id === AUCTION_ID && !isMine && (
+                            <div className="mt-4 p-3.5 bg-gray-900/80 rounded-xl border border-gray-700/60 text-center shadow-inner">
+                                <div className="flex items-center justify-center gap-1.5 text-yellow-500 font-bold text-xs mb-1">
+                                    <span>🔒</span>
+                                    <span>Торговля рубинами недоступна</span>
                                 </div>
+                                <p className="text-[11px] text-gray-400">
+                                    Покупка и продажа рубинов доступна только в вашем личном аукционе.
+                                </p>
                             </div>
                         )}
 
                         {CASINO_IDS.includes(info.id) && (
-                            <div className="mt-4 space-y-2">
+                            <div className="mt-4 p-3.5 bg-gradient-to-r from-purple-950/70 via-gray-900/90 to-yellow-950/60 rounded-lg border border-yellow-500/50 shadow-lg space-y-2.5">
+                                <div className="text-center">
+                                    <h4 className="text-yellow-400 font-extrabold text-sm flex items-center justify-center gap-1.5">
+                                        <span>🎰</span> Казино удачи
+                                    </h4>
+                                    <p className="text-[11px] text-gray-300 mt-0.5">
+                                        Делайте ставки в монетах, выигрывайте призы и джекпоты в рубинах!
+                                    </p>
+                                </div>
                                 <button
                                     onClick={() => handleOpenCasinoModal(building)}
-                                    className="w-full bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 px-3 rounded text-sm"
+                                    className="w-full bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 hover:from-yellow-400 hover:to-yellow-300 text-black font-extrabold py-2.5 px-4 rounded-lg text-sm shadow-md flex items-center justify-center gap-2 transition-all transform active:scale-95"
                                 >
-                                    Войти в казино
+                                    <span className="text-base">🎰</span>
+                                    <span>Войти и играть</span>
                                 </button>
                                 {isMine && (
                                     <button
                                         onClick={() => handleOpenCasinoBankModal(building)}
-                                        className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 px-3 rounded text-sm"
+                                        className="w-full bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold py-1.5 px-3 rounded text-xs flex items-center justify-center gap-1.5 border border-emerald-500/40 transition-colors"
                                     >
-                                        Банк казино
+                                        <span>🏦</span>
+                                        <span>Банк казино</span>
                                     </button>
                                 )}
+                            </div>
+                        )}
+
+                        {/* Town Hall Orders / Bounties */}
+                        {isTownHall && isMine && !isUnderConstruction && (
+                            <div className="mt-4 p-3.5 bg-gradient-to-r from-blue-950/80 via-slate-900/90 to-amber-950/70 rounded-lg border border-yellow-500/50 shadow-lg space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl">🏛️</span>
+                                        <div>
+                                            <h4 className="text-yellow-400 font-extrabold text-sm">
+                                                Заказы Ратуши
+                                            </h4>
+                                            <p className="text-[11px] text-gray-300">
+                                                Городские контракты на поставку ресурсов
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {townHallAvailableOrdersCount !== undefined && townHallAvailableOrdersCount > 0 && (
+                                        <span className="bg-yellow-500 text-black font-extrabold text-xs px-2.5 py-0.5 rounded-full shadow animate-pulse">
+                                            {townHallAvailableOrdersCount} доступно
+                                        </span>
+                                    )}
+                                </div>
+
+                                <button
+                                    onClick={onOpenTownHallOrders}
+                                    className="w-full bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-yellow-400 text-black font-extrabold py-2.5 px-4 rounded-lg text-sm shadow-md flex items-center justify-center gap-2 transition-all transform active:scale-95"
+                                >
+                                    <span>📜</span>
+                                    <span>Открыть заказы Ратуши</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Financial Intelligence Controls */}
+                        {isFinancialIntelligence && isMine && !isUnderConstruction && (
+                            <div className="mt-4 p-3.5 bg-gradient-to-r from-amber-950/70 via-gray-900/90 to-yellow-950/60 rounded-xl border border-amber-500/50 shadow-lg space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl">📡</span>
+                                        <div>
+                                            <h4 className="text-amber-300 font-extrabold text-sm">
+                                                Финансовая разведка
+                                            </h4>
+                                            <p className="text-[11px] text-gray-300">
+                                                Управление доходами и производствами базы
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {hasEgyptianObelisk ? (
+                                        <span className="bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                                            ✨ Без перезарядки
+                                        </span>
+                                    ) : financialCooldown.isReady ? (
+                                        <span className="bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+                                            ✅ Сбор готов
+                                        </span>
+                                    ) : (
+                                        <span className="bg-black/60 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">
+                                            ⏳ {financialCooldownFormatted}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <button
+                                        onClick={onCollectAllReadyIncome}
+                                        disabled={readyBuildingsCount === 0 || !financialCooldown.isReady}
+                                        className={`w-full py-2.5 px-4 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-2 transition-all transform active:scale-95 ${
+                                            readyBuildingsCount > 0 && financialCooldown.isReady
+                                                ? 'bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 hover:from-yellow-400 hover:to-amber-300 text-black shadow-amber-500/20 border border-yellow-300'
+                                                : 'bg-gray-800 text-gray-500 border border-gray-700/50 cursor-not-allowed opacity-75'
+                                        }`}
+                                        title={
+                                            readyBuildingsCount === 0
+                                                ? 'Нет созревших доходов для сбора'
+                                                : !financialCooldown.isReady
+                                                ? `Перезарядка сбора: еще ${financialCooldownFormatted}`
+                                                : 'Собрать весь готовый доход базы в 1 клик'
+                                        }
+                                    >
+                                        <span className="text-sm">⚡</span>
+                                        <span>
+                                            {readyBuildingsCount === 0
+                                                ? 'Нет созревших доходов'
+                                                : !financialCooldown.isReady
+                                                ? `Сбор через ${financialCooldownFormatted}`
+                                                : `Собрать весь готовый доход (${readyBuildingsCount} готово)`}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        onClick={onOpenFinancialProductionModal}
+                                        className="w-full bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-blue-400/30 transition-all shadow-md"
+                                    >
+                                        <span>🏭</span>
+                                        <span>Управление производствами</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Egyptian Obelisk Perk Banner */}
+                        {isEgyptianObelisk && isMine && !isUnderConstruction && (
+                            <div className="mt-4 p-3 bg-gradient-to-r from-emerald-950/70 via-gray-900 to-teal-950/60 rounded-xl border border-emerald-500/40 shadow-inner">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-base">✨</span>
+                                    <h4 className="text-emerald-300 font-extrabold text-xs">
+                                        Благословение Египетского обелиска
+                                    </h4>
+                                </div>
+                                <p className="text-[11px] text-gray-300 leading-relaxed">
+                                    Полностью снимает 30-минутную перезарядку сбора доходов в «Финансовой разведке». Экспресс-сбор со всех предприятий и грядок базы в 1 клик доступен без задержек!
+                                </p>
                             </div>
                         )}
 
                         {info.upgradesTo && Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && isMine && (
                             <button
                                 onClick={handleUpgrade}
-                                disabled={playerGold < (info.upgradeCost || 0) || building.isConstructing}
-                                className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded text-xs disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                disabled={playerGold < (info.upgradeCost || 0) || isUnderConstruction}
+                                className="w-full mt-4 bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-950/40 border border-emerald-400/30 disabled:from-gray-800 disabled:to-gray-800 disabled:border-transparent disabled:text-gray-500 disabled:cursor-not-allowed text-xs transition-all flex items-center justify-center gap-2"
                             >
-                                <span>Улучшить ({info.upgradeCost})</span>
+                                <span>⚡ Улучшить ({info.upgradeCost} 💰)</span>
                             </button>
                         )}
 
@@ -489,9 +928,9 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                         {info.id >= 689 && info.id <= 696 && isMine && (
                             <button
                                 onClick={() => setShowMonsterAcademyModal(true)}
-                                className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded text-xs"
+                                className="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md border border-purple-400/30 transition-all flex items-center justify-center gap-1.5"
                             >
-                                <span>Войти в академию</span>
+                                <span>🎓 Войти в академию</span>
                             </button>
                         )}
 
@@ -499,7 +938,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             {(CANNON_IDS.includes(info.id) || info.id === PROTECTED_TOWER_ID) && isMine && (
                                 <button
                                     onClick={handleToggleActive}
-                                    className={`col-span-3 ${building.isActive ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 hover:bg-gray-700'} text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 transition-colors`}
+                                    className={`col-span-3 ${building.isActive ? 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 border border-emerald-400/30' : 'bg-gray-800 hover:bg-gray-700 border border-white/10'} text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 mb-1 shadow-md transition-all`}
                                 >
                                     <DefenseIcon className="w-5 h-5 mb-1" />
                                     <span>{building.isActive ? 'Активировано' : 'Активировать'}</span>
@@ -508,7 +947,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             {isGeneralMarketBuilding(info) && isMine && (
                                 <button
                                     onClick={() => onOpenMarket('general')}
-                                    className="col-span-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2"
+                                    className="col-span-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 mb-1 shadow-md border border-emerald-400/30 transition-all"
                                 >
                                     <TradeIcon className="w-5 h-5 mb-1" />
                                     <span>Торговля</span>
@@ -518,7 +957,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             {isMilitaryMarketBuilding(info) && isMine && (
                                 <button
                                     onClick={() => onOpenMarket('military')}
-                                    className="col-span-3 bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mb-2 border border-red-500"
+                                    className="col-span-3 bg-gradient-to-r from-red-800 to-rose-900 hover:from-red-700 hover:to-rose-800 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 mb-1 shadow-md border border-red-500/40 transition-all"
                                 >
                                     <TradeIcon className="w-5 h-5 mb-1" />
                                     <span>Купить/Продать</span>
@@ -531,14 +970,21 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                         <button
                                             onClick={handleRepair}
                                             disabled={playerGold < repairCost}
-                                            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                                            title={`Починить за ${repairCost} золота`}
+                                            className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-amber-400/30 transition-all disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:border-transparent disabled:cursor-not-allowed relative"
+                                            title={isMortarActive ? `Починить за ${repairCost} золота (со скидкой 30% от укрепляющего раствора)` : `Починить за ${repairCost} золота`}
                                         >
                                             <RepairIcon className="w-4 h-4 mb-1" />
-                                            <span>{repairCost}</span>
+                                            <div className="flex items-center gap-1">
+                                                <span>{repairCost}</span>
+                                                {isMortarActive && (
+                                                    <span className="text-[9px] bg-sky-950 text-sky-300 border border-sky-400/50 px-1 rounded font-black">
+                                                        -30%
+                                                    </span>
+                                                )}
+                                            </div>
                                         </button>
                                     ) : canRepairBuilding(building) && Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
-                                        <button disabled className="bg-gray-700 text-gray-500 font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 cursor-not-allowed">
+                                        <button disabled className="bg-gray-800/80 text-gray-500 font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 border border-white/5 cursor-not-allowed">
                                             <RepairIcon className="w-4 h-4 mb-1" />
                                             <span>Починить</span>
                                         </button>
@@ -547,7 +993,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     {isMine && Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
                                         <button
                                             onClick={() => setShowProtectionMenu(true)}
-                                            className="bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-blue-400/30 transition-all"
                                         >
                                             <ShieldIcon className="w-4 h-4 mb-1" />
                                             <span>Защитить</span>
@@ -557,7 +1003,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     {isMine && (
                                         <button
                                             onClick={handleMoveClick}
-                                            className={`${(Number(building.buildingId) === MOUNTAIN_ID || Number(building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:grayscale disabled:cursor-not-allowed`}
+                                            className={`${(Number(building.buildingId) === MOUNTAIN_ID || Number(building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-purple-400/30 transition-all disabled:from-gray-800 disabled:to-gray-800 disabled:grayscale disabled:cursor-not-allowed`}
                                             title={`Переместить за ${(Number(building.buildingId) === MOUNTAIN_ID || Number(building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии`}
                                         >
                                             <MoveIcon className="w-4 h-4 mb-1" />
@@ -568,7 +1014,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     {isMine && Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
                                         <button
                                             onClick={handleSell}
-                                            className="bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                                            className="bg-gradient-to-r from-rose-900 to-red-950 hover:from-rose-800 hover:to-red-900 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-rose-500/30 transition-all disabled:from-gray-800 disabled:to-gray-800 disabled:cursor-not-allowed"
                                             title="Продать за 50% стоимости"
                                         >
                                             <SellIcon className="w-4 h-4 mb-1" />
@@ -581,7 +1027,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             {Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
                                 <button
                                     onClick={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
-                                    className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 disabled:bg-gray-600 disabled:cursor-not-allowed ${!isMine ? 'col-span-3' : ''}`}
+                                    className={`bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md shadow-red-950/40 border border-red-500/30 transition-all ${!isMine ? 'col-span-3' : ''}`}
                                 >
                                     <span>Взорвать</span>
                                 </button>
@@ -590,7 +1036,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             {!isMine && building.workState === 'finished' && placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing) && playerLevel >= 2 && (
                                 <button
                                     onClick={handleStealProduction}
-                                    className="col-span-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-2 rounded text-xs flex flex-col items-center justify-center h-12 mt-2"
+                                    className="col-span-3 bg-gradient-to-r from-purple-700 to-pink-700 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 mt-2 shadow-md border border-purple-400/40 transition-all"
                                 >
                                     <span>Украсть</span>
                                 </button>
@@ -598,10 +1044,10 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                         </div>
 
                         {/* Owner Info */}
-                        <div className="mt-4 pt-3 border-t border-gray-700 text-center">
-                            <span className="text-gray-400 text-xs uppercase tracking-wider">Владелец</span>
-                            <div
-                                className={`mt-1 font-bold ${(building.ownerId !== "-1" && building.ownerId !== "monster") ? 'text-blue-400 hover:text-blue-300 cursor-pointer underline decoration-dotted underline-offset-4' : 'text-gray-200'} transition-colors`}
+                        <div className="mt-4 pt-3 border-t border-purple-500/20 text-center bg-purple-950/20 rounded-xl py-2 px-3">
+                            <span className="text-purple-300/70 text-xs uppercase tracking-wider font-semibold">Владелец: </span>
+                            <span
+                                className={`font-bold ${(building.ownerId !== "-1" && building.ownerId !== "monster") ? 'text-purple-300 hover:text-purple-100 cursor-pointer underline decoration-dotted underline-offset-4' : 'text-gray-300'} transition-colors ml-1`}
                                 onClick={() => {
                                     if (building.ownerId !== "-1" && building.ownerId !== "monster") {
                                         onSelectPlayer(building.ownerId as string);
@@ -614,16 +1060,18 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                         (allUsers[building.ownerId as string]?.name ||
                                             building.ownerName ||
                                             "Неизвестный игрок")}
-                            </div>
+                            </span>
                         </div>
                     </div>
                 ) : showExplosionMenu ? (
-                    <div className="p-4">
-                        <button onClick={() => setShowExplosionMenu(false)} className="mb-4 text-blue-400 hover:text-blue-300 text-sm flex items-center">
-                            {'< Назад'}
+                    <div className="p-4 sm:p-5">
+                        <button onClick={() => setShowExplosionMenu(false)} className="mb-4 text-purple-300 hover:text-purple-100 text-sm font-semibold flex items-center gap-1.5 transition-colors">
+                            <span>← Назад</span>
                         </button>
-                        <h3 className="text-lg font-bold text-white mb-3">Чем взрываем?</h3>
-                        <div className="space-y-3 max-h-60 overflow-y-auto">
+                        <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-red-200 via-rose-200 to-orange-200 mb-3">
+                            💥 Чем взрываем?
+                        </h3>
+                        <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
                             {destructionInfo.length > 0 ? (
                                 destructionInfo.map((option, idx) => {
                                     const item = itemData.find(i => i.id === option.resourceId);
@@ -635,51 +1083,51 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     const hasEnergy = playerEnergy >= option.energyCost * qty;
 
                                     return (
-                                        <div key={idx} onClick={() => { if (invCount >= 1) { setSelectedExplosionOption(idx); setExplosionQuantity(1); } }} className={`bg-gray-700/50 p-3 rounded border ${isSelected ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-600'} ${invCount >= 1 ? 'cursor-pointer hover:border-yellow-400/50' : 'opacity-60'}`}>
+                                        <div key={idx} onClick={() => { if (invCount >= 1) { setSelectedExplosionOption(idx); setExplosionQuantity(1); } }} className={`bg-gray-900/70 p-3 rounded-xl border transition-all ${isSelected ? 'border-purple-400 bg-purple-950/40 ring-1 ring-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.2)]' : 'border-purple-500/20 hover:border-purple-500/40'} ${invCount >= 1 ? 'cursor-pointer' : 'opacity-60'}`}>
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center">
-                                                    <div className="w-8 h-8 mr-2">
+                                                    <div className="w-8 h-8 mr-2 flex items-center justify-center bg-black/40 rounded-lg p-1 border border-white/5">
                                                         {item && <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />}
                                                     </div>
-                                                    <span className="font-bold">{option.weaponName}</span>
+                                                    <span className="font-bold text-sm text-gray-100">{option.weaponName}</span>
                                                 </div>
-                                                <span className={`${invCount >= qty ? 'text-green-400' : 'text-red-400'} text-sm`}>
+                                                <span className={`${invCount >= qty ? 'text-emerald-400' : 'text-rose-400'} text-xs font-bold px-2 py-0.5 rounded-full bg-black/40`}>
                                                     {invCount} / {option.amount}
                                                 </span>
                                             </div>
                                             {isSelected && maxQty > 1 && (
-                                                <div className="flex items-center justify-center mb-3 gap-2">
-                                                    <span className="text-xs text-gray-300">Количество:</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.max(1, prev - 1)); }} className="w-7 h-7 bg-gray-600 hover:bg-gray-500 text-white rounded font-bold text-lg flex items-center justify-center">-</button>
-                                                    <span className="text-white font-bold min-w-[40px] text-center">{explosionQuantity}</span>
-                                                    <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.min(maxQty, prev + 1)); }} className="w-7 h-7 bg-gray-600 hover:bg-gray-500 text-white rounded font-bold text-lg flex items-center justify-center">+</button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(maxQty); }} className="text-xs bg-gray-600 hover:bg-gray-500 text-yellow-400 rounded px-2 py-1">Макс</button>
+                                                <div className="flex items-center justify-center mb-3 gap-2 bg-black/40 p-1.5 rounded-lg border border-purple-500/20">
+                                                    <span className="text-xs text-purple-200">Количество:</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.max(1, prev - 1)); }} className="w-7 h-7 bg-purple-900/60 hover:bg-purple-800 text-white rounded font-bold text-lg flex items-center justify-center">-</button>
+                                                    <span className="text-white font-extrabold min-w-[40px] text-center">{explosionQuantity}</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(prev => Math.min(maxQty, prev + 1)); }} className="w-7 h-7 bg-purple-900/60 hover:bg-purple-800 text-white rounded font-bold text-lg flex items-center justify-center">+</button>
+                                                    <button onClick={(e) => { e.stopPropagation(); setExplosionQuantity(maxQty); }} className="text-xs bg-purple-800 hover:bg-purple-700 text-yellow-300 font-bold rounded px-2 py-1">Макс</button>
                                                 </div>
                                             )}
-                                            <div className="text-xs text-gray-300 space-y-1 mb-3">
+                                            <div className="text-xs text-gray-300 space-y-1 mb-3 bg-black/30 p-2 rounded-lg">
                                                 <div className="flex justify-between">
                                                     <span>Стоимость:</span>
                                                     <div className="flex items-center">
-                                                        <span className={hasGold ? 'text-yellow-400' : 'text-red-400'}>{option.goldCost * qty}</span>
-                                                        <img src={coinImageUrl} className="w-3 h-3 ml-1 object-contain" alt="gold" />
+                                                        <span className={hasGold ? 'text-yellow-400 font-bold' : 'text-red-400 font-bold'}>{option.goldCost * qty}</span>
+                                                        <img src={coinImageUrl} className="w-3.5 h-3.5 ml-1 object-contain" alt="gold" />
                                                     </div>
                                                 </div>
-                                                <div className="flex justify-between"><span>Энергия:</span> <span className={hasEnergy ? 'text-blue-400' : 'text-red-400'}>{option.energyCost * qty}</span></div>
+                                                <div className="flex justify-between"><span>Энергия:</span> <span className={hasEnergy ? 'text-blue-400 font-bold' : 'text-red-400 font-bold'}>{option.energyCost * qty}</span></div>
                                                 <div className="flex justify-between"><span>Время:</span> <span>{option.timeSeconds * qty} сек</span></div>
-                                                <div className="flex justify-between"><span>Урон:</span> <span className="text-red-400">{(option.damage || 0) * qty}</span></div>
+                                                <div className="flex justify-between"><span>Урон:</span> <span className="text-red-400 font-bold">{(option.damage || 0) * qty}</span></div>
                                             </div>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); if (invCount >= 1) { setSelectedExplosionOption(idx); setExplosionQuantity(1); } }}
                                                 disabled={invCount < 1}
-                                                className={`w-full font-bold py-2 rounded ${isSelected ? 'bg-yellow-600 text-white' : 'bg-gray-600 hover:bg-gray-500 text-white'} disabled:bg-gray-600 disabled:cursor-not-allowed`}
+                                                className={`w-full font-bold py-2 rounded-xl text-xs transition-all ${isSelected ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-white/10'} disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed`}
                                             >
-                                                {isSelected ? 'Выбрано' : `Выбрать`}
+                                                {isSelected ? '✓ Выбрано' : `Выбрать`}
                                             </button>
                                         </div>
                                     );
                                 })
                             ) : (
-                                <p className="text-gray-400 text-center">Это здание нельзя взорвать известными способами.</p>
+                                <p className="text-gray-400 text-center py-4">Это здание нельзя взорвать известными способами.</p>
                             )}
                         </div>
 
@@ -708,10 +1156,10 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
 
                             return (
                                 <div className="mt-4 space-y-3">
-                                    <div className="bg-gray-700/50 rounded-lg p-3 space-y-2">
-                                        <div className="text-xs text-gray-400 mb-1">Бонусы детонатора (опционально):</div>
+                                    <div className="bg-purple-950/30 rounded-xl p-3 border border-purple-500/20 space-y-2">
+                                        <div className="text-xs text-purple-300 font-bold mb-1">Бонусы детонатора (опционально):</div>
                                         <label className="flex items-center gap-2 cursor-pointer group" onClick={() => setUseRegularDetonator(prev => !prev)}>
-                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${useRegularDetonator ? 'bg-orange-500 border-orange-500' : 'border-gray-500 bg-gray-800 group-hover:border-orange-400'}`}>
+                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${useRegularDetonator ? 'bg-orange-500 border-orange-500' : 'border-purple-500/40 bg-gray-900 group-hover:border-orange-400'}`}>
                                                 {useRegularDetonator && (
                                                     <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -720,11 +1168,11 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                             </div>
                                             <span className="text-sm text-white flex items-center gap-1">
                                                 💣 Детонатор
-                                                <span className={`text-xs ${detonatorCount > 0 ? 'text-green-400' : 'text-red-400'}`}>({detonatorCount})</span>
+                                                <span className={`text-xs ${detonatorCount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>({detonatorCount})</span>
                                             </span>
                                         </label>
                                         <label className="flex items-center gap-2 cursor-pointer group" onClick={() => setUseSuperDetonator(prev => !prev)}>
-                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${useSuperDetonator ? 'bg-purple-500 border-purple-500' : 'border-gray-500 bg-gray-800 group-hover:border-purple-400'}`}>
+                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${useSuperDetonator ? 'bg-purple-500 border-purple-500' : 'border-purple-500/40 bg-gray-900 group-hover:border-purple-400'}`}>
                                                 {useSuperDetonator && (
                                                     <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -733,11 +1181,11 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                             </div>
                                             <span className="text-sm text-white flex items-center gap-1">
                                                 ⚡ Супер детонатор
-                                                <span className={`text-xs ${superDetonatorCount > 0 ? 'text-green-400' : 'text-red-400'}`}>({superDetonatorCount})</span>
+                                                <span className={`text-xs ${superDetonatorCount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>({superDetonatorCount})</span>
                                             </span>
                                         </label>
                                         {selOption && (
-                                            <div className="text-xs text-gray-400 mt-1">
+                                            <div className="text-xs text-purple-200/80 mt-1">
                                                 Время: {getTimeLabel()}
                                             </div>
                                         )}
@@ -749,7 +1197,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                             }
                                         }}
                                         disabled={!canExplode}
-                                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg disabled:bg-gray-600 disabled:cursor-not-allowed text-sm"
+                                        className="w-full bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-black py-3 rounded-xl shadow-lg shadow-red-950/50 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-sm transition-all"
                                     >
                                         💥 Взорвать
                                     </button>
@@ -758,11 +1206,13 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                         })()}
                     </div>
                 ) : (
-                    <div className="p-4">
-                        <button onClick={() => setShowProtectionMenu(false)} className="mb-4 text-blue-400 hover:text-blue-300 text-sm flex items-center">
-                            {'< Назад'}
+                    <div className="p-4 sm:p-5">
+                        <button onClick={() => setShowProtectionMenu(false)} className="mb-4 text-purple-300 hover:text-purple-100 text-sm font-semibold flex items-center gap-1.5 transition-colors">
+                            <span>← Назад</span>
                         </button>
-                        <h3 className="text-lg font-bold text-white mb-4 text-center">Защитить здание</h3>
+                        <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-200 mb-4 text-center">
+                            🛡️ Защитить здание
+                        </h3>
 
                         <div className="flex flex-col space-y-3">
                             {PROTECTION_OPTIONS.map((option, index) => (
@@ -770,17 +1220,17 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     key={index}
                                     onClick={() => handleApplyProtection(option.cost, option.duration)}
                                     disabled={playerRubies < option.cost}
-                                    className="bg-gray-700 hover:bg-blue-700 disabled:bg-gray-800 disabled:cursor-not-allowed text-white p-3 rounded-lg border border-gray-600 flex items-center justify-between transition-colors"
+                                    className="bg-gray-900/80 hover:bg-purple-950/60 disabled:bg-gray-900/40 disabled:cursor-not-allowed text-white p-3.5 rounded-xl border border-purple-500/30 hover:border-purple-400 flex items-center justify-between transition-all shadow-md"
                                 >
                                     <div className="flex items-center font-bold">
                                         <img src={rubyImageUrl} alt="Ruby" className="w-6 h-6 mr-2 object-contain" />
-                                        <span className="text-xl text-pink-400">{option.cost}</span>
+                                        <span className="text-xl text-pink-400 font-extrabold">{option.cost}</span>
                                     </div>
-                                    <span className="text-lg font-semibold">{option.label}</span>
+                                    <span className="text-base font-semibold text-purple-100">{option.label}</span>
                                 </button>
                             ))}
                         </div>
-                        <p className="mt-4 text-xs text-center text-gray-500">Щит получает урон первым. Когда броня щита падает до 0, урон начинает проходить в здание.</p>
+                        <p className="mt-4 text-xs text-center text-purple-300/70">Щит получает урон первым. Когда броня щита падает до 0, урон начинает проходить в здание.</p>
                     </div>
                 )}
             </div>
@@ -819,7 +1269,8 @@ const arePropsEqual = (prevProps: SelectedBuildingModalProps, nextProps: Selecte
         prevProps.currentPopulation !== nextProps.currentPopulation ||
         prevProps.inventory !== nextProps.inventory ||
         prevProps.allUsers !== nextProps.allUsers ||
-        prevProps.placedBuildings !== nextProps.placedBuildings
+        prevProps.placedBuildings !== nextProps.placedBuildings ||
+        prevProps.townHallAvailableOrdersCount !== nextProps.townHallAvailableOrdersCount
     ) {
         return false;
     }

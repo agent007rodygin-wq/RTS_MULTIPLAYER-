@@ -105,8 +105,8 @@ export const ResourceShopModal: React.FC<ResourceShopModalProps> = memo(({
                         onClick={handleClose}
                         className="absolute"
                         style={{
-                            right: '-23px',
-                            top: '3px',
+                            right: '-19.5px',
+                            top: '7.5px',
                             width: '34px',
                             height: '34px',
                             display: 'flex',

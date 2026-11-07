@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tablet</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:14px system-ui,sans-serif}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px}
+.controls label{display:flex;align-items:center;gap:6px}
+.controls input{width:90px;padding:6px}
+#preview{padding:12px;overflow:auto}
+#tablet{position:relative;width:640px;height:1000px;max-width:none;padding:clamp(7px,1.5%,16px);border-radius:clamp(24px,4%,42px);background:linear-gradient(145deg,#a8a9b0,#42434d 7%,#20212a 13%,#777983 17%,#292a33 23%,#14151c 75%,#777983 94%,#252630);box-shadow:inset 0 2px 2px #ffffff99,inset 0 -3px 4px #000,0 5px 14px #0005}
+#tablet:before{content:"";position:absolute;inset:3px;border:1px solid #ffffff25;border-radius:inherit;pointer-events:none}
+#screen{width:100%;height:100%;border-radius:clamp(15px,2.5%,27px);border:1px solid #29384a;background-color:#07182a;background-image:radial-gradient(ellipse at 90% 8%,#347bb45c,transparent 32%),radial-gradient(ellipse at 5% 55%,#1b56813b,transparent 40%),repeating-linear-gradient(0deg,transparent 0 31px,#70b9ff0b 32px),repeating-linear-gradient(90deg,transparent 0 31px,#70b9ff0b 32px),linear-gradient(135deg,#102b49,#061629 58%,#0c2741);box-shadow:inset 0 0 0 2px #0008,inset 0 0 28px #0009}
+</style>
+</head>
+<body>
+<div class="controls">
+<label>ширина <input id="w" type="number" min="280" max="1800" value="640"></label>
+<label>высота <input id="h" type="number" min="360" max="2400" value="1000"></label>
+<button id="make">сгенерировать</button>
+</div>
+<div id="preview"><div id="tablet"><div id="screen"></div></div></div>
+<script>
+function generateTablet(){
+ const width=Math.max(280,Math.min(1800,Number(document.getElementById('w').value)||640));
+ const height=Math.max(360,Math.min(2400,Number(document.getElementById('h').value)||1000));
+ document.getElementById('tablet').style.width=width+'px';
+ document.getElementById('tablet').style.height=height+'px';
+}
+document.getElementById('make').addEventListener('click',generateTablet);
+generateTablet();
+</script>
+</body>
+</html>

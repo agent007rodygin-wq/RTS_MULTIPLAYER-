@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <!-- Stone & Steel Fortifying Aura -->
+    <radialGradient id="mortarAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#64748b" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#1e293b" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Stone Texture Gradient -->
+    <linearGradient id="stoneBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="40%" stop-color="#64748b"/>
+      <stop offset="80%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+
+    <!-- Steel Reinforcing Bands -->
+    <linearGradient id="steelBand" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e2e8f0"/>
+      <stop offset="35%" stop-color="#94a3b8"/>
+      <stop offset="70%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+
+    <!-- Glowing Mortar Paste Liquid -->
+    <radialGradient id="mortarPaste" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#e0f2fe"/>
+      <stop offset="40%" stop-color="#38bdf8"/>
+      <stop offset="80%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </radialGradient>
+
+    <!-- Pestle/Trowel Wood -->
+    <linearGradient id="trowelHandle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+
+    <filter id="mortarGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Ambient Glow -->
+  <circle cx="64" cy="68" r="56" fill="url(#mortarAura)"/>
+
+  <!-- Base Shadow -->
+  <ellipse cx="64" cy="112" rx="42" ry="10" fill="rgba(0,0,0,0.45)"/>
+
+  <!-- Heavy Stone Mortar Bowl (Outer) -->
+  <path d="M26 62 Q24 94 44 108 Q64 114 84 108 Q104 94 102 62 Z"
+        fill="url(#stoneBody)" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Steel Reinforcing Band Around Center -->
+  <path d="M25 76 Q64 88 103 76 Q102 84 84 94 Q64 98 44 94 Q26 84 25 76 Z"
+        fill="url(#steelBand)" stroke="#0f172a" stroke-width="1.2"/>
+
+  <!-- Steel Rivets on Band -->
+  <circle cx="38" cy="83" r="2.2" fill="#0f172a"/>
+  <circle cx="38" cy="83" r="1.5" fill="#f8fafc"/>
+  <circle cx="64" cy="87" r="2.2" fill="#0f172a"/>
+  <circle cx="64" cy="87" r="1.5" fill="#f8fafc"/>
+  <circle cx="90" cy="83" r="2.2" fill="#0f172a"/>
+  <circle cx="90" cy="83" r="1.5" fill="#f8fafc"/>
+
+  <!-- Stone Rim Edge (Top ellipse) -->
+  <ellipse cx="64" cy="62" rx="38" ry="16" fill="#475569" stroke="#1e293b" stroke-width="1.8"/>
+
+  <!-- Mortar Inner Opening (Paste surface) -->
+  <ellipse cx="64" cy="62" rx="32" ry="12" fill="url(#mortarPaste)" stroke="#0284c7" stroke-width="1.2"/>
+
+  <!-- Swirls / Paste Surface Texture -->
+  <path d="M42 62 Q52 56 64 62 Q76 68 86 62" fill="none" stroke="#bae6fd" stroke-width="2" opacity="0.8"/>
+  <ellipse cx="56" cy="61" rx="4" ry="2" fill="#ffffff" opacity="0.6"/>
+  <circle cx="72" cy="64" r="2" fill="#ffffff" opacity="0.7"/>
+
+  <!-- Brick Masonry / Reinforcing Shield Rune -->
+  <g filter="url(#mortarGlow)">
+    <path d="M64 48 L76 54 V66 C76 74 64 80 64 80 C64 80 52 74 52 66 V54 Z"
+          fill="rgba(56, 189, 248, 0.25)" stroke="#38bdf8" stroke-width="2" stroke-linejoin="round"/>
+    <!-- Shield Cross / Repair Hammer -->
+    <path d="M64 54 V72 M58 60 H70" stroke="#f0f9ff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Mason's Trowel / Pestle sticking out -->
+  <g transform="rotate(-30 76 46)">
+    <!-- Wooden Handle -->
+    <rect x="74" y="16" width="6" height="24" rx="2" fill="url(#trowelHandle)" stroke="#451a03" stroke-width="1"/>
+    <ellipse cx="77" cy="16" rx="4" ry="2" fill="#d97706"/>
+    <!-- Steel Shank -->
+    <rect x="75.5" y="40" width="3" height="10" fill="#cbd5e1" stroke="#334155" stroke-width="0.8"/>
+    <!-- Steel Trowel Blade with Mortar Paste -->
+    <polygon points="77,50 67,68 87,68" fill="url(#steelBand)" stroke="#334155" stroke-width="1"/>
+    <circle cx="77" cy="62" r="3" fill="#38bdf8" opacity="0.9"/>
+  </g>
+
+  <!-- Sparkles of Fortification -->
+  <circle cx="34" cy="48" r="1.8" fill="#7dd3fc"/>
+  <circle cx="96" cy="46" r="2.2" fill="#38bdf8"/>
+  <circle cx="86" cy="28" r="1.5" fill="#bae6fd"/>
+</svg>

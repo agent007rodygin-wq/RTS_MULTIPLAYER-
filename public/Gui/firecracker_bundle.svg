@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
+  <defs>
+    <!-- Explosive Fire Aura -->
+    <radialGradient id="boomAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.6"/>
+      <stop offset="40%" stop-color="#f97316" stop-opacity="0.3"/>
+      <stop offset="80%" stop-color="#eab308" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#7f1d1d" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Red Firecracker Paper Body -->
+    <linearGradient id="crackerRed" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="30%" stop-color="#dc2626"/>
+      <stop offset="70%" stop-color="#b91c1c"/>
+      <stop offset="100%" stop-color="#7f1d1d"/>
+    </linearGradient>
+
+    <!-- Golden Bands -->
+    <linearGradient id="goldRibbon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="50%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#a16207"/>
+    </linearGradient>
+
+    <!-- Wooden Plank Base -->
+    <linearGradient id="woodPlank" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706"/>
+      <stop offset="50%" stop-color="#92400e"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+
+    <filter id="sparkFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Ambient Glow -->
+  <circle cx="64" cy="68" r="56" fill="url(#boomAura)"/>
+
+  <!-- Shadow -->
+  <ellipse cx="64" cy="116" rx="38" ry="8" fill="rgba(0,0,0,0.45)"/>
+
+  <!-- Wooden Plank Platform / Backing Board -->
+  <rect x="24" y="98" width="80" height="12" rx="3" fill="url(#woodPlank)" stroke="#451a03" stroke-width="1.5"/>
+  <line x1="30" y1="102" x2="98" y2="102" stroke="#fde68a" stroke-width="1" opacity="0.4"/>
+  <line x1="28" y1="106" x2="88" y2="106" stroke="#451a03" stroke-width="0.8"/>
+
+  <!-- Bundle of 5 Firecrackers Standing Together -->
+
+  <!-- Cracker 1 (Left Back) -->
+  <g transform="rotate(-12 44 80)">
+    <rect x="38" y="44" width="12" height="48" rx="2" fill="url(#crackerRed)" stroke="#7f1d1d" stroke-width="1"/>
+    <rect x="38" y="50" width="12" height="6" fill="url(#goldRibbon)"/>
+    <rect x="38" y="80" width="12" height="6" fill="url(#goldRibbon)"/>
+    <!-- Fuse -->
+    <path d="M44 44 Q42 32 46 26" fill="none" stroke="#e2e8f0" stroke-width="1.8"/>
+  </g>
+
+  <!-- Cracker 5 (Right Back) -->
+  <g transform="rotate(12 84 80)">
+    <rect x="78" y="44" width="12" height="48" rx="2" fill="url(#crackerRed)" stroke="#7f1d1d" stroke-width="1"/>
+    <rect x="78" y="50" width="12" height="6" fill="url(#goldRibbon)"/>
+    <rect x="78" y="80" width="12" height="6" fill="url(#goldRibbon)"/>
+    <!-- Fuse -->
+    <path d="M84 44 Q86 32 82 26" fill="none" stroke="#e2e8f0" stroke-width="1.8"/>
+  </g>
+
+  <!-- Cracker 2 (Left Mid) -->
+  <rect x="42" y="48" width="14" height="50" rx="3" fill="url(#crackerRed)" stroke="#450a0a" stroke-width="1.2"/>
+  <rect x="42" y="54" width="14" height="6" fill="url(#goldRibbon)"/>
+  <rect x="42" y="86" width="14" height="6" fill="url(#goldRibbon)"/>
+  <path d="M49 48 Q46 36 52 28" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+
+  <!-- Cracker 4 (Right Mid) -->
+  <rect x="72" y="48" width="14" height="50" rx="3" fill="url(#crackerRed)" stroke="#450a0a" stroke-width="1.2"/>
+  <rect x="72" y="54" width="14" height="6" fill="url(#goldRibbon)"/>
+  <rect x="72" y="86" width="14" height="6" fill="url(#goldRibbon)"/>
+  <path d="M79 48 Q82 36 76 28" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+
+  <!-- Cracker 3 (Center Front - Main) -->
+  <rect x="56" y="42" width="16" height="56" rx="3" fill="url(#crackerRed)" stroke="#450a0a" stroke-width="1.5"/>
+  <rect x="56" y="48" width="16" height="7" fill="url(#goldRibbon)"/>
+  <rect x="56" y="84" width="16" height="7" fill="url(#goldRibbon)"/>
+  <path d="M64 42 Q63 28 64 20" fill="none" stroke="#f1f5f9" stroke-width="2.2"/>
+
+  <!-- Center Firecracker Golden Character / Symbol -->
+  <circle cx="64" cy="68" r="5" fill="none" stroke="#fef08a" stroke-width="1.2"/>
+  <line x1="61" y1="68" x2="67" y2="68" stroke="#fef08a" stroke-width="1.2"/>
+  <line x1="64" y1="65" x2="64" y2="71" stroke="#fef08a" stroke-width="1.2"/>
+
+  <!-- Hemp Rope / Golden Binding Tie -->
+  <rect x="36" y="68" width="56" height="8" rx="2" fill="url(#goldRibbon)" stroke="#78350f" stroke-width="1.5"/>
+  <line x1="38" y1="72" x2="90" y2="72" stroke="#451a03" stroke-width="1" stroke-dasharray="2,2"/>
+  <!-- Knot in front -->
+  <ellipse cx="64" cy="72" rx="5" ry="6" fill="#fde68a" stroke="#78350f" stroke-width="1.2"/>
+  <circle cx="64" cy="72" r="2" fill="#b45309"/>
+
+  <!-- Sparks & Flame on Center Fuse Top -->
+  <g filter="url(#sparkFilter)">
+    <!-- Outer Glow Flame -->
+    <circle cx="64" cy="18" r="8" fill="#f97316" opacity="0.6"/>
+    <circle cx="64" cy="18" r="4.5" fill="#fef08a"/>
+    <circle cx="64" cy="18" r="2" fill="#ffffff"/>
+
+    <!-- Sparks Flying -->
+    <line x1="64" y1="18" x2="52" y2="10" stroke="#fef08a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="64" y1="18" x2="76" y2="8" stroke="#fef08a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="64" y1="18" x2="70" y2="28" stroke="#f97316" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="64" y1="18" x2="48" y2="24" stroke="#f97316" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="64" y1="18" x2="64" y2="4" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+
+    <circle cx="50" cy="8" r="1.5" fill="#ffffff"/>
+    <circle cx="78" cy="6" r="1.8" fill="#fef08a"/>
+    <circle cx="82" cy="18" r="1.2" fill="#f97316"/>
+  </g>
+</svg>

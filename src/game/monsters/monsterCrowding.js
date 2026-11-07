@@ -6,6 +6,7 @@ import { getZoneId, ZONE_SIZE, ZONES_X, ZONES_Y, wrapCoord } from '../../world.j
 
 export const WILD_MONSTER_CROWDING_SOFT_CAP = 5;
 export const WILD_MONSTER_CROWDING_HARD_CAP = 6;
+export const TARGET_WILD_MONSTERS_PER_ZONE = 4;
 
 /**
  * Returns the zone ID for a monster, preferring the cached monster.zoneId
@@ -51,7 +52,6 @@ export function getCrowdingEscapeMove(monster, validMoves, zoneCounts, isWrapped
 
     const currentZoneId = getMonsterZoneId(monster);
     const currentCount = zoneCounts.get(currentZoneId) || 0;
-    if (currentCount < WILD_MONSTER_CROWDING_SOFT_CAP) return null;
 
     const zoneX = Math.floor(monster.x / ZONE_SIZE);
     const zoneY = Math.floor(monster.y / ZONE_SIZE);
@@ -67,6 +67,10 @@ export function getCrowdingEscapeMove(monster, validMoves, zoneCounts, isWrapped
         isWrappedWorld || (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y)
     );
 
+    const isCrowded = currentCount >= WILD_MONSTER_CROWDING_SOFT_CAP;
+    // Don't abandon a zone that is already sparse (<= 2) unless neighbor is completely empty and we have at least 2.
+    const isSparseZone = currentCount <= 2;
+
     let bestDirection = null;
     let bestScore = -Infinity;
     const pressureMultiplier = currentCount >= WILD_MONSTER_CROWDING_HARD_CAP ? 2 : 1;
@@ -76,9 +80,24 @@ export function getCrowdingEscapeMove(monster, validMoves, zoneCounts, isWrapped
         const wrappedY = isWrappedWorld ? wrapCoord(ny, ZONES_Y) : ny;
         const neighborZoneId = `${wrappedX}_${wrappedY}`;
         const neighborCount = zoneCounts.get(neighborZoneId) || 0;
+
+        if (isSparseZone && (neighborCount >= currentCount || currentCount <= 1)) {
+            return;
+        }
+
+        const hasScarcityDeficit = neighborCount < TARGET_WILD_MONSTERS_PER_ZONE && currentCount > neighborCount;
+        if (!isCrowded && !hasScarcityDeficit) {
+            return;
+        }
+
         const scarcityScore = currentCount - neighborCount;
+        let urgencyBonus = 0;
+        if (neighborCount === 0) urgencyBonus = 400;
+        else if (neighborCount === 1) urgencyBonus = 250;
+        else if (neighborCount === 2) urgencyBonus = 120;
+
         const borderBonus = Math.max(0, ZONE_SIZE - borderDist);
-        const score = scarcityScore * 100 * pressureMultiplier + borderBonus;
+        const score = (scarcityScore * 100 * pressureMultiplier) + urgencyBonus + borderBonus;
         if (score > bestScore) {
             bestScore = score;
             bestDirection = { dx, dy };

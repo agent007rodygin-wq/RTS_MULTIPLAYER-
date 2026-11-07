@@ -9,7 +9,7 @@ import {
 export type ChatTab = 'general' | 'banya' | 'loot' | 'clan' | 'police';
 
 export interface ChatMessage {
-    id: number;
+    id: number | string;
     sender: string;
     senderId?: string;
     text: string;
@@ -19,6 +19,7 @@ export interface ChatMessage {
     teleportCoordinates?: { x: number; y: number };
     clanId?: number | null;
     localOnly?: boolean;
+    title?: string | null;
 }
 
 export interface ChatPanelProps {
@@ -170,11 +171,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                                             const senderText = msg.type === 'system' ? 'Система' : uiText(msg.sender);
                                             const senderLower = senderText.toLowerCase();
                                             const isSystemMessage = msg.type === 'system' || senderLower.includes('система');
+                                            const msgTitle = !isSystemMessage
+                                                ? (msg.title || (msg.senderId ? (allUsers[msg.senderId]?.selectedTitle || allUsers[msg.senderId]?.data?.selectedTitle) : null))
+                                                : null;
                                             return (
                                                 <div key={msg.id} className="text-sm break-words">
                                                     <span className="text-gray-500 text-xs mr-2">[{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span>
                                                     {!isSystemMessage && (
                                                         <img src={getLevelIcon(getUserLevel(msg.sender, msg.senderId))} className="w-5 h-5 inline-block mr-1 align-middle object-contain translate-y-[1%]" alt="Level" />
+                                                    )}
+                                                    {msgTitle && (
+                                                        <span className="text-yellow-400 font-extrabold text-xs mr-1 bg-yellow-500/10 border border-yellow-500/30 px-1.5 py-0.5 rounded shadow-sm inline-block">
+                                                            [{msgTitle}]
+                                                        </span>
                                                     )}
                                                     <span
                                                         onClick={(e) => { if (!isSystemMessage) handleChatUserClick(msg.sender, msg.senderId || '', e); }}
@@ -207,27 +216,33 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                                 <div className="w-1/4 border-l border-white/10 bg-black/30 flex flex-col chat-players-sidebar">
                                     <div className="p-1 text-xs font-bold text-gray-300 text-center border-b border-white/10">{uiText('Игроки')}</div>
                                     <div className="overflow-y-auto flex-grow p-2 space-y-1">
-                                        {(onlineUsers[activeChatTab] || []).map((u, idx) => (
-                                            <div key={idx} className={`text-sm truncate flex items-center ${u.name === playerName ? 'text-green-400 font-bold' : 'text-gray-300'}`}>
-                                                <span onClick={(e) => handleChatUserClick(u.name, u.uid, e)} className="cursor-pointer hover:text-white hover:underline">{uiText(u.name)}</span>
-                                                <img src={getLevelIcon(allUsers[u.uid]?.level || 1)} className="w-5 h-5 ml-1 object-contain translate-y-[1%]" alt="Level" />
-                                            </div>
-                                        ))}
+                                        {(onlineUsers[activeChatTab] || []).map((u, idx) => {
+                                            const uTitle = allUsers[u.uid]?.selectedTitle || allUsers[u.uid]?.data?.selectedTitle;
+                                            return (
+                                                <div key={idx} className={`text-sm truncate flex items-center ${u.name === playerName ? 'text-green-400 font-bold' : 'text-gray-300'}`}>
+                                                    {uTitle && (
+                                                        <span className="text-yellow-400 font-extrabold text-[10px] mr-1 truncate">[{uTitle}]</span>
+                                                    )}
+                                                    <span onClick={(e) => handleChatUserClick(u.name, u.uid, e)} className="cursor-pointer hover:text-white hover:underline truncate">{uiText(u.name)}</span>
+                                                    <img src={getLevelIcon(allUsers[u.uid]?.level || 1)} className="w-5 h-5 ml-1 object-contain translate-y-[1%] shrink-0" alt="Level" />
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
 
                             <div className="p-2 bg-black/40 border-t border-white/10 flex gap-2 shrink-0 relative chat-input-area">
                                 {showEmojiPicker && (
-                                    <div className="absolute bottom-full left-0 mb-2 ml-2 bg-black/80 border border-white/20 rounded-lg p-2 shadow-xl grid grid-cols-6 gap-2 w-64 z-50">
+                                    <div className="absolute bottom-full left-0 mb-2 ml-2 bg-black/90 backdrop-blur-md border border-purple-500/30 rounded-xl p-2.5 shadow-2xl grid grid-cols-6 gap-2 w-72 max-h-64 overflow-y-auto z-50">
                                         {KOLOBOK_EMOJIS.map((emoji, idx) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => handleEmojiClick(emoji.code)}
-                                                className="hover:bg-white/20 p-1 rounded flex items-center justify-center"
+                                                className="hover:bg-purple-500/20 active:scale-90 p-1.5 rounded-lg flex items-center justify-center transition-all"
                                                 title={emoji.code}
                                             >
-                                                <img src={emoji.url} alt={emoji.code} className="w-6 h-6" />
+                                                <img src={emoji.url} alt={emoji.code} className="w-6 h-6 object-contain" />
                                             </button>
                                         ))}
                                     </div>

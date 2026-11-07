@@ -10,12 +10,14 @@ import {
     MonstersIcon,
     ClanIcon,
     GiftsIcon,
-    ShieldIcon
+    ShieldIcon,
+    SparklesIcon,
+    AntiquityIcon
 } from '../../../components/IconComponents';
 import type { Building } from '../../../types';
 import { repairMojibakeCp1251Utf8 } from '../../game/utils/mojibake.js';
 
-export type BuildMenuTab = 'Грядки' | 'Жилье' | 'Бизнес' | 'Буквы' | 'Декор' | 'Дороги и стены' | 'Заводы' | 'Монстры' | 'Клан' | 'Подарки' | 'Защита' | 'Статуи';
+export type BuildMenuTab = 'Грядки' | 'Жилье' | 'Бизнес' | 'Буквы' | 'Декор' | 'Дороги и стены' | 'Заводы' | 'Монстры' | 'Клан' | 'Подарки' | 'Защита' | 'Статуи' | 'Спецальное' | 'Античность';
 export type LetterSubTab = 'english' | 'russian' | 'numbers';
 export type GiftSubTab = 'main' | 'castles' | 'babies' | 'march8' | 'halloween' | 'valentine' | 'spring';
 export type DecorSubTab = 'flags' | 'other';
@@ -29,6 +31,7 @@ export interface BuildMenuModalProps {
     coinImageUrl: string;
     playCloseSound: () => void;
     enqueueImagePreload?: (urls: string[], options?: { batchSize?: number }) => void;
+    getIsBuildingFree?: (buildingId: number) => boolean;
 }
 
 const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
@@ -46,15 +49,20 @@ const buildTabs: { name: BuildMenuTab; icon: React.ReactNode; label?: string }[]
     { name: 'Клан', icon: <ClanIcon className="w-6 h-6" /> },
     { name: 'Подарки', icon: <GiftsIcon className="w-6 h-6" /> },
     { name: 'Статуи', icon: <ShieldIcon className="w-6 h-6" /> },
+    { name: 'Спецальное', icon: <SparklesIcon className="w-6 h-6" /> },
+    { name: 'Античность', icon: <AntiquityIcon className="w-6 h-6" /> },
 ];
 
 const gryadkiSortOrder: number[] = [400, 70, 82, 102, 240, 274, 313, 600];
 const zavodySortOrder: number[] = [577, 430, 874, 55, 307, 668, 615, 689, 620, 330, 60332, 262, 266, 601, 853, 273, 640, 602];
-const zhilyeSortOrder: number[] = [1, 5, 7, 1002, 39, 64, 146, 205];
-const biznesSortOrder: number[] = [2, 27, 11, 6000, 31532, 66, 8, 4, 340, 31612, 3, 12, 36, 310, 60, 308, 57, 311, 328];
+const zhilyeSortOrder: number[] = [1, 5, 7, 1002, 39, 64, 146, 205, 7980022];
+const biznesSortOrder: number[] = [2, 27, 11, 6000, 31532, 66, 8, 4, 340, 31612, 3, 12, 36, 310, 60, 308, 57, 311, 328, 7980020, 7980021];
 
 const buildTabCategoryAliases: Record<string, string[]> = {
-    'Жилье': ['Жилые'],
+    'Жилье': ['Жилые', 'Жилье'],
+    'Спецальное': ['Спецальное', 'спецальное', 'Специальное', 'специальное'],
+    'Специальное': ['Спецальное', 'спецальное', 'Специальное', 'специальное'],
+    'Античность': ['Античность', 'античность'],
 };
 
 const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
@@ -65,7 +73,8 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
     rubyImageUrl,
     coinImageUrl,
     playCloseSound,
-    enqueueImagePreload
+    enqueueImagePreload,
+    getIsBuildingFree
 }) => {
     const [activeBuildTab, setActiveBuildTab] = useState<BuildMenuTab>('Жилье');
     const [buildMenuSearch, setBuildMenuSearch] = useState('');
@@ -88,7 +97,8 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
             if (b.buildable === false) return false;
             if (normalizedBuildMenuSearch) {
                 const normalizedBuildingName = repairMojibakeCp1251Utf8(String(b.name || '')).toLowerCase();
-                return normalizedBuildingName.includes(normalizedBuildMenuSearch);
+                const normalizedId = String(b.id || '');
+                return normalizedBuildingName.includes(normalizedBuildMenuSearch) || normalizedId.includes(normalizedBuildMenuSearch);
             }
             const normalizedCategory = repairMojibakeCp1251Utf8(String(b.category || ''));
             const allowedCategories = buildTabCategoryAliases[normalizedActiveBuildTab] || [normalizedActiveBuildTab];
@@ -325,9 +335,14 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
                                     <div style={{ width: '100%', height: '68px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3px' }}>
                                         <img src={building.imageUrl} alt={building.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '2px' }} />
                                     </div>
-                                    <p style={{ fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 700, color: '#d0d8e0', marginBottom: '2px' }}>{building.name}</p>
+                                    <p className="building-title-shimmer" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 800, marginBottom: '2px', lineHeight: 1.2 }}>{building.name}</p>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', marginBottom: '1px' }}>
-                                        {building.rubyPrice ? (
+                                        {getIsBuildingFree?.(building.id) ? (
+                                            <>
+                                                <img src={coinImageUrl} alt="Gold" style={{ width: '14px', height: '14px', marginRight: '4px', objectFit: 'contain' }} />
+                                                <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, color: '#34d399' }}>0 (Бесплатно)</span>
+                                            </>
+                                        ) : building.rubyPrice ? (
                                             <>
                                                 <img src={rubyImageUrl} alt="Ruby" style={{ width: '14px', height: '14px', marginRight: '4px', objectFit: 'contain' }} />
                                                 <span style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, color: '#f472b6' }}>{building.rubyPrice}</span>
@@ -356,5 +371,6 @@ export const BuildMenuModal = memo(BuildMenuModalComponent, (prev, next) => {
     if (prev.buildingData !== next.buildingData) return false;
     if (prev.rubyImageUrl !== next.rubyImageUrl) return false;
     if (prev.coinImageUrl !== next.coinImageUrl) return false;
+    if (prev.getIsBuildingFree !== next.getIsBuildingFree) return false;
     return true;
 });

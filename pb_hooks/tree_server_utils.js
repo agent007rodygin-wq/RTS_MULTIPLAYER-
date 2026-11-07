@@ -151,10 +151,59 @@ function parseResourceCoords(resourceId) {
   return { x: x, y: y };
 }
 
+function parseDataField(record) {
+  if (!record) return {};
+  var raw = record.get("data");
+  if (!raw) return {};
+
+  if (Array.isArray(raw) || isByteArrayLike(raw)) {
+    try {
+      var decoded = decodeUtf8Bytes(raw);
+      var parsedBytes = JSON.parse(decoded);
+      if (parsedBytes && typeof parsedBytes === "object" && !Array.isArray(parsedBytes)) {
+        return parsedBytes;
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  if (typeof raw === "string") {
+    try {
+      var parsedString = JSON.parse(raw);
+      if (parsedString && typeof parsedString === "object" && !Array.isArray(parsedString)) {
+        return parsedString;
+      }
+      return {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw;
+  }
+
+  return {};
+}
+
+function setDataField(record, obj) {
+  record.set("data", JSON.stringify(obj));
+}
+
 function getTreeCurrentHp(treeRecord) {
-  var hp = toInt(treeRecord.get("hp"), TREE_MAX_HP);
-  if (hp <= 0) {
-    var maxHp = toInt(treeRecord.get("maxHp"), TREE_MAX_HP);
+  if (!treeRecord) return TREE_MAX_HP;
+  var data = parseDataField(treeRecord);
+  var hp = data && data.hp !== undefined ? toInt(data.hp, NaN) : NaN;
+  if (isNaN(hp)) {
+    hp = toInt(treeRecord.get("hp"), NaN);
+  }
+  if (isNaN(hp) || hp <= 0) {
+    var maxHp = data && data.maxHp !== undefined ? toInt(data.maxHp, NaN) : NaN;
+    if (isNaN(maxHp)) {
+      maxHp = toInt(treeRecord.get("maxHp"), TREE_MAX_HP);
+    }
     hp = maxHp > 0 ? maxHp : TREE_MAX_HP;
   }
   return hp;
@@ -236,17 +285,18 @@ function addInventoryItem(userRecord, itemId, amount) {
 
 function getTreeRecordSnapshot(treeRecord) {
   if (!treeRecord) return null;
+  var data = parseDataField(treeRecord);
   return {
     id: normalizeString(treeRecord.id, ""),
-    gameId: normalizeString(treeRecord.get("gameId"), ""),
-    x: toInt(treeRecord.get("x"), NaN),
-    y: toInt(treeRecord.get("y"), NaN),
-    zoneId: normalizeString(treeRecord.get("zoneId"), ""),
-    sectorId: normalizeString(treeRecord.get("sectorId"), ""),
-    type: normalizeString(treeRecord.get("type"), ""),
-    hp: toInt(treeRecord.get("hp"), TREE_MAX_HP),
-    maxHp: toInt(treeRecord.get("maxHp"), TREE_MAX_HP),
-    state: normalizeString(treeRecord.get("state"), "alive"),
+    gameId: normalizeString(treeRecord.get("gameId"), normalizeString(data.gameId, "")),
+    x: toInt(treeRecord.get("x"), toInt(data.x, NaN)),
+    y: toInt(treeRecord.get("y"), toInt(data.y, NaN)),
+    zoneId: normalizeString(treeRecord.get("zoneId"), normalizeString(data.zoneId, "")),
+    sectorId: normalizeString(treeRecord.get("sectorId"), normalizeString(data.sectorId, "")),
+    type: normalizeString(treeRecord.get("type"), normalizeString(data.type, "")),
+    hp: data && data.hp !== undefined ? toInt(data.hp, TREE_MAX_HP) : toInt(treeRecord.get("hp"), TREE_MAX_HP),
+    maxHp: data && data.maxHp !== undefined ? toInt(data.maxHp, TREE_MAX_HP) : toInt(treeRecord.get("maxHp"), TREE_MAX_HP),
+    state: normalizeString(data && data.state ? data.state : treeRecord.get("state"), "alive"),
   };
 }
 
@@ -356,22 +406,27 @@ function resolveTreeRecord(app, resourceId) {
 }
 
 function buildRespawnJob(txApp, treeRecord, logicalResourceId, nowMs) {
-  var respawnCollection = txApp.findCollectionByNameOrId("tree_respawns");
-  var respawnJob = new Record(respawnCollection);
-  var sectorId = normalizeString(treeRecord.get("sectorId"), normalizeString(treeRecord.get("zoneId"), ""));
+  try {
+    var respawnCollection = txApp.findCollectionByNameOrId("tree_respawns");
+    if (!respawnCollection) return;
+    var respawnJob = new Record(respawnCollection);
+    var sectorId = normalizeString(treeRecord.get("sectorId"), normalizeString(treeRecord.get("zoneId"), ""));
 
-  respawnJob.set("resourceType", "tree");
-  respawnJob.set("oldResourceId", logicalResourceId);
-  respawnJob.set("oldX", toInt(treeRecord.get("x"), 0));
-  respawnJob.set("oldY", toInt(treeRecord.get("y"), 0));
-  respawnJob.set("zoneId", normalizeString(treeRecord.get("zoneId"), sectorId));
-  respawnJob.set("sectorId", sectorId);
-  respawnJob.set("respawnAt", nowMs + TREE_RESPAWN_DELAY_MS);
-  respawnJob.set("status", "pending");
-  respawnJob.set("attempts", 0);
-  respawnJob.set("createdAt", nowMs);
+    respawnJob.set("resourceType", "tree");
+    respawnJob.set("oldResourceId", logicalResourceId);
+    respawnJob.set("oldX", toInt(treeRecord.get("x"), 0));
+    respawnJob.set("oldY", toInt(treeRecord.get("y"), 0));
+    respawnJob.set("zoneId", normalizeString(treeRecord.get("zoneId"), sectorId));
+    respawnJob.set("sectorId", sectorId);
+    respawnJob.set("respawnAt", nowMs + TREE_RESPAWN_DELAY_MS);
+    respawnJob.set("status", "pending");
+    respawnJob.set("attempts", 0);
+    respawnJob.set("createdAt", nowMs);
 
-  txApp.save(respawnJob);
+    txApp.save(respawnJob);
+  } catch (err) {
+    debugLog("buildRespawnJob.error", String(err));
+  }
 }
 
 function processTreeHit(app, authRecord, resourceId) {
@@ -449,7 +504,8 @@ function processTreeHit(app, authRecord, resourceId) {
         return;
       }
 
-      var treeState = normalizeString(treeRecord.get("state"), "alive");
+      var currentTreeData = parseDataField(treeRecord);
+      var treeState = normalizeString(currentTreeData.state || treeRecord.get("state"), "alive");
       if (treeState !== "alive") {
         result = buildErrorResponse(409, "TREE_NOT_ALIVE", {
           resourceId: logicalResourceId,
@@ -517,13 +573,23 @@ function processTreeHit(app, authRecord, resourceId) {
       txApp.save(userRecord);
 
       if (nextHp > 0) {
-        treeRecord.set("hp", nextHp);
-        treeRecord.set("maxHp", TREE_MAX_HP);
-        treeRecord.set("state", "alive");
-        treeRecord.set("sectorId", normalizeString(treeRecord.get("sectorId"), normalizeString(treeRecord.get("zoneId"), "")));
-        treeRecord.set("respawnAt", 0);
+        var updatedTreeData = parseDataField(treeRecord);
+        updatedTreeData.hp = nextHp;
+        updatedTreeData.maxHp = TREE_MAX_HP;
+        updatedTreeData.state = "alive";
+        updatedTreeData.x = toInt(treeRecord.get("x"), updatedTreeData.x);
+        updatedTreeData.y = toInt(treeRecord.get("y"), updatedTreeData.y);
+        updatedTreeData.type = "tree";
+        updatedTreeData.gameId = normalizeString(treeRecord.get("gameId"), updatedTreeData.gameId);
+        updatedTreeData.zoneId = normalizeString(treeRecord.get("zoneId"), updatedTreeData.zoneId);
+        setDataField(treeRecord, updatedTreeData);
+        try { treeRecord.set("hp", nextHp); } catch (_) {}
+        try { treeRecord.set("maxHp", TREE_MAX_HP); } catch (_) {}
+        try { treeRecord.set("state", "alive"); } catch (_) {}
+        try { treeRecord.set("sectorId", normalizeString(treeRecord.get("sectorId"), normalizeString(treeRecord.get("zoneId"), ""))); } catch (_) {}
+        try { treeRecord.set("respawnAt", 0); } catch (_) {}
         if (toInt(treeRecord.get("createdAt"), 0) <= 0) {
-          treeRecord.set("createdAt", nowMs);
+          try { treeRecord.set("createdAt", nowMs); } catch (_) {}
         }
         txApp.save(treeRecord);
       } else {
@@ -599,9 +665,21 @@ function buildFreeTreeCell(txApp, zoneId, oldX, oldY) {
   var resources = txApp.findRecordsByFilter("map_resources", "zoneId = {:zoneId}", "", 5000, 0, {
     zoneId: zoneId,
   });
-  var buildings = txApp.findRecordsByFilter("buildings", "zoneId = {:zoneId}", "", 5000, 0, {
-    zoneId: zoneId,
-  });
+  var minX = zoneX * ZONE_SIZE;
+  var maxX = minX + ZONE_SIZE - 1;
+  var minY = zoneY * ZONE_SIZE;
+  var maxY = minY + ZONE_SIZE - 1;
+  var buildings = [];
+  try {
+    buildings = txApp.findRecordsByFilter("buildings", "x >= {:minX} && x <= {:maxX} && y >= {:minY} && y <= {:maxY}", "", 5000, 0, {
+      minX: minX,
+      maxX: maxX,
+      minY: minY,
+      maxY: maxY,
+    });
+  } catch (_bErr) {
+    buildings = [];
+  }
 
   var occupied = collectOccupiedCells(resources);
   var buildingOccupied = collectOccupiedCells(buildings);
@@ -630,45 +708,61 @@ function buildFreeTreeCell(txApp, zoneId, oldX, oldY) {
 }
 
 function respawnSingleTree(app, respawnRecord) {
-  app.runInTransaction(function (txApp) {
-    var status = normalizeString(respawnRecord.get("status"), "pending");
-    if (status !== "pending") return;
+  try {
+    app.runInTransaction(function (txApp) {
+      var status = normalizeString(respawnRecord.get("status"), "pending");
+      if (status !== "pending") return;
 
-    var zoneId = normalizeString(respawnRecord.get("zoneId"), normalizeString(respawnRecord.get("sectorId"), ""));
-    var oldX = toInt(respawnRecord.get("oldX"), NaN);
-    var oldY = toInt(respawnRecord.get("oldY"), NaN);
-    var respawnAt = toInt(respawnRecord.get("respawnAt"), 0);
-    var nowMs = Date.now();
+      var zoneId = normalizeString(respawnRecord.get("zoneId"), normalizeString(respawnRecord.get("sectorId"), ""));
+      var oldX = toInt(respawnRecord.get("oldX"), NaN);
+      var oldY = toInt(respawnRecord.get("oldY"), NaN);
+      var respawnAt = toInt(respawnRecord.get("respawnAt"), 0);
+      var nowMs = Date.now();
 
-    if (!zoneId || respawnAt > nowMs) return;
+      if (!zoneId || respawnAt > nowMs) return;
 
-    var freeCell = buildFreeTreeCell(txApp, zoneId, oldX, oldY);
-    if (!freeCell) {
-      respawnRecord.set("respawnAt", nowMs + TREE_RESPAWN_RETRY_MS);
-      respawnRecord.set("attempts", toInt(respawnRecord.get("attempts"), 0) + 1);
-      txApp.save(respawnRecord);
-      return;
-    }
+      var freeCell = buildFreeTreeCell(txApp, zoneId, oldX, oldY);
+      if (!freeCell) {
+        respawnRecord.set("respawnAt", nowMs + TREE_RESPAWN_RETRY_MS);
+        respawnRecord.set("attempts", toInt(respawnRecord.get("attempts"), 0) + 1);
+        txApp.save(respawnRecord);
+        return;
+      }
 
-    var resourcesCollection = txApp.findCollectionByNameOrId("map_resources");
-    var treeRecord = new Record(resourcesCollection);
-    var logicalResourceId = freeCell.x + "_" + freeCell.y;
+      var resourcesCollection = txApp.findCollectionByNameOrId("map_resources");
+      var treeRecord = new Record(resourcesCollection);
+      var logicalResourceId = freeCell.x + "_" + freeCell.y;
 
-    treeRecord.set("type", "tree");
-    treeRecord.set("x", freeCell.x);
-    treeRecord.set("y", freeCell.y);
-    treeRecord.set("zoneId", zoneId);
-    treeRecord.set("sectorId", zoneId);
-    treeRecord.set("gameId", logicalResourceId);
-    treeRecord.set("hp", TREE_MAX_HP);
-    treeRecord.set("maxHp", TREE_MAX_HP);
-    treeRecord.set("state", "alive");
-    treeRecord.set("createdAt", nowMs);
-    treeRecord.set("respawnAt", 0);
+      treeRecord.set("type", "tree");
+      treeRecord.set("x", freeCell.x);
+      treeRecord.set("y", freeCell.y);
+      treeRecord.set("zoneId", zoneId);
+      treeRecord.set("sectorId", zoneId);
+      treeRecord.set("gameId", logicalResourceId);
+      try { treeRecord.set("hp", TREE_MAX_HP); } catch (_) {}
+      try { treeRecord.set("maxHp", TREE_MAX_HP); } catch (_) {}
+      try { treeRecord.set("state", "alive"); } catch (_) {}
+      try { treeRecord.set("createdAt", nowMs); } catch (_) {}
+      try { treeRecord.set("respawnAt", 0); } catch (_) {}
 
-    txApp.save(treeRecord);
-    txApp.delete(respawnRecord);
-  });
+      var treeData = {
+        gameId: logicalResourceId,
+        hp: TREE_MAX_HP,
+        maxHp: TREE_MAX_HP,
+        type: "tree",
+        x: freeCell.x,
+        y: freeCell.y,
+        zoneId: zoneId,
+        state: "alive",
+      };
+      setDataField(treeRecord, treeData);
+
+      txApp.save(treeRecord);
+      txApp.delete(respawnRecord);
+    });
+  } catch (error) {
+    debugLog("respawnSingleTree.error", String(error));
+  }
 }
 
 function processDueTreeRespawns(app) {

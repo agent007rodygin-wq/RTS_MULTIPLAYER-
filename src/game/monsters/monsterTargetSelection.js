@@ -5,11 +5,11 @@ import { isBuildingAlive } from '../buildings/isBuildingAlive.js';
 
 export function isMonsterAttackTargetCandidate(monster, target, buildingData, options) {
     const targetId = String(target.id);
-    const targetInfo = buildingData.find(i => i.id === target.buildingId);
+    const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
     const riverId = options?.riverId ?? 50004;
     const mountainId = options?.mountainId ?? 50005;
     if (target.ownerId === monster.ownerId) return false;
-    if (target.buildingId === riverId || target.buildingId === mountainId) return false;
+    if (Number(target.buildingId) === Number(riverId) || Number(target.buildingId) === Number(mountainId)) return false;
     if (targetInfo?.stats.isMonster) return false;
     if (options?.blockedTargetIds?.has(targetId)) return false;
     if (options?.pendingDestroyedIds?.has(targetId)) return false;
@@ -20,11 +20,11 @@ export function isMonsterAttackTargetCandidate(monster, target, buildingData, op
 
 export function isMonsterHoldTargetCandidate(monster, target, buildingData, options) {
     const targetId = String(target.id);
-    const targetInfo = buildingData.find(i => i.id === target.buildingId);
+    const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
     const riverId = options?.riverId ?? 50004;
     const mountainId = options?.mountainId ?? 50005;
     if (target.ownerId === monster.ownerId) return false;
-    if (target.buildingId === riverId || target.buildingId === mountainId) return false;
+    if (Number(target.buildingId) === Number(riverId) || Number(target.buildingId) === Number(mountainId)) return false;
     if (targetInfo?.stats.isMonster) return false;
     if (options?.blockedTargetIds?.has(targetId)) return false;
     if (options?.pendingDestroyedIds?.has(targetId)) return false;
@@ -33,7 +33,7 @@ export function isMonsterHoldTargetCandidate(monster, target, buildingData, opti
 }
 
 export function getMonsterAdjacentAttackTarget(monster, buildings, buildingData, options) {
-    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
     const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
 
     const candidates = buildings.filter(target =>
@@ -50,14 +50,14 @@ export function getMonsterAdjacentAttackTarget(monster, buildings, buildingData,
 
     const hates = monsterInfo?.stats.hates;
     const hatedTarget = candidates.find((t) => {
-        const info = buildingData.find(i => i.id === t.buildingId);
+        const info = buildingData.find(i => Number(i.id) === Number(t.buildingId));
         return hates && info?.category === hates;
     });
     return hatedTarget || candidates[0];
 }
 
 export function getMonsterAdjacentHoldTarget(monster, buildings, buildingData, options) {
-    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
     const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
 
     const candidates = buildings.filter(target =>
@@ -74,15 +74,15 @@ export function getMonsterAdjacentHoldTarget(monster, buildings, buildingData, o
 
     const hates = monsterInfo?.stats.hates;
     const hatedTarget = candidates.find((t) => {
-        const info = buildingData.find(i => i.id === t.buildingId);
+        const info = buildingData.find(i => Number(i.id) === Number(t.buildingId));
         return hates && info?.category === hates;
     });
     return hatedTarget || candidates[0];
 }
 
 export function getMonsterChaseTarget(monster, buildings, buildingData, options) {
-    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
-    const searchRadius = options?.searchRadius ?? (monster.buildingId === options?.bronekurId ? 10 : 5);
+    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
+    const searchRadius = options?.searchRadius ?? (Number(monster.buildingId) === Number(options?.bronekurId) ? 10 : 5);
     let nearestTarget = null;
 
     buildings.forEach((target) => {
@@ -90,7 +90,7 @@ export function getMonsterChaseTarget(monster, buildings, buildingData, options)
         if (!isMonsterAttackTargetCandidate(monster, target, buildingData, options)) return;
         const dist = getWrappedManhattanDistance(monster, target, !!options?.isWrappedWorld);
         if (dist > searchRadius) return;
-        const targetInfo = buildingData.find(i => i.id === target.buildingId);
+        const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
         const hated = Boolean(monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates);
         if (
             !nearestTarget ||

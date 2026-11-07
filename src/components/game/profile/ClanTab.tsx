@@ -317,25 +317,39 @@ export const ClanTab: React.FC<ClanTabProps> = ({
 
                     {/* Clan Settings Modal */}
                     {showClanSettings && (
-                        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-                            <div className="bg-gray-800 rounded-lg border-2 border-green-500 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                                <div className="p-6">
-                                    <h2 className="text-2xl font-bold text-green-400 mb-6">Настройки клана</h2>
+                        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => { setShowClanSettings(false); setNewClanAvatar(null); }}>
+                            <div className="bg-gradient-to-b from-gray-900 via-gray-950 to-black rounded-2xl border-2 border-purple-500/50 shadow-[0_0_50px_rgba(168,85,247,0.3)] max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col text-white animate-scale-up" onClick={e => e.stopPropagation()}>
+                                {/* Header */}
+                                <div className="p-5 border-b border-purple-500/30 bg-purple-950/30 flex items-center justify-between">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="text-xl">⚙️</span>
+                                        <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-pink-200 to-yellow-200">
+                                            Настройки клана
+                                        </h2>
+                                    </div>
+                                    <button
+                                        onClick={() => { setShowClanSettings(false); setNewClanAvatar(null); }}
+                                        className="w-9 h-9 rounded-full bg-gray-800 hover:bg-red-600/80 border border-white/10 hover:border-red-500 flex items-center justify-center text-gray-300 hover:text-white transition-all duration-200"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
 
+                                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
                                     {/* Clan Avatar */}
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-bold text-gray-300 mb-2">Изображение клана</label>
+                                    <div className="mb-6 bg-gray-900/60 p-4 rounded-xl border border-purple-500/20 shadow-md">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-purple-300 mb-3">Изображение клана</label>
                                         <div className="flex items-center gap-4">
                                             {newClanAvatar || currentClan?.avatarUrl ? (
-                                                <img src={newClanAvatar || currentClan!.avatarUrl!} className="w-24 h-24 rounded-lg border-2 border-yellow-500 object-cover" />
+                                                <img src={newClanAvatar || currentClan!.avatarUrl!} className="w-20 h-20 rounded-xl border border-purple-400/50 object-cover shadow-inner" />
                                             ) : (
-                                                <div className="w-24 h-24 rounded-lg border-2 border-yellow-500 bg-gray-700 flex items-center justify-center">
-                                                    <ClanIcon className="w-12 h-12 text-yellow-500" />
+                                                <div className="w-20 h-20 rounded-xl border border-purple-500/40 bg-black/40 flex items-center justify-center">
+                                                    <ClanIcon className="w-10 h-10 text-purple-400" />
                                                 </div>
                                             )}
                                             <div>
                                                 <input type="file" id="clanAvatarSettings" className="hidden" accept="image/*" onChange={handleClanAvatarChange} />
-                                                <label htmlFor="clanAvatarSettings" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-sm">
+                                                <label htmlFor="clanAvatarSettings" className="cursor-pointer bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md border border-purple-400/30 transition-all inline-block">
                                                     Загрузить новое
                                                 </label>
                                             </div>
@@ -343,27 +357,27 @@ export const ClanTab: React.FC<ClanTabProps> = ({
                                     </div>
 
                                     {/* Clan Description */}
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-bold text-gray-300 mb-2">Описание клана</label>
+                                    <div className="mb-6 bg-gray-900/60 p-4 rounded-xl border border-purple-500/20 shadow-md">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">Описание клана</label>
                                         <textarea
                                             value={currentClan?.description || ''}
                                             onChange={(e) => onUpdateClanDescription(e.target.value.slice(0, 500))}
-                                            className="w-full bg-gray-900 border border-gray-700 rounded p-3 text-white h-24 resize-none"
+                                            className="w-full bg-black/60 border border-purple-500/30 rounded-xl p-3 text-white text-sm h-24 resize-none focus:border-purple-400 focus:outline-none"
                                             maxLength={500}
                                         />
                                     </div>
 
                                     {/* Clan Access */}
-                                    <div className="mb-6 space-y-4">
-                                        <h3 className="text-lg font-bold text-yellow-400">Доступ к клану</h3>
-                                        <div className="flex items-center justify-between bg-gray-900/50 p-3 rounded">
+                                    <div className="mb-6 space-y-2 bg-gray-900/60 p-4 rounded-xl border border-purple-500/20 shadow-md">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">Доступ к клану</h3>
+                                        <div className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-purple-500/10">
                                             <div>
-                                                <p className="text-white font-bold">{clanSettings.isPublic ? 'Клан открыт' : 'Клан закрыт'}</p>
-                                                <p className="text-xs text-gray-400">{clanSettings.isPublic ? 'Любой игрок может вступить' : 'Вступление запрещено'}</p>
+                                                <p className="text-white font-bold text-sm">{clanSettings.isPublic ? 'Клан открыт' : 'Клан закрыт'}</p>
+                                                <p className="text-xs text-purple-300/70">{clanSettings.isPublic ? 'Любой игрок может вступить' : 'Вступление только по приглашению'}</p>
                                             </div>
                                             <button
                                                 onClick={() => setClanSettings(prev => ({ ...prev, isPublic: !prev.isPublic }))}
-                                                className={`px-4 py-2 rounded font-bold text-sm ${clanSettings.isPublic ? 'bg-green-600 hover:bg-green-500' : 'bg-red-600 hover:bg-red-500'} text-white`}
+                                                className={`px-4 py-2 rounded-xl font-bold text-xs shadow-md transition-all ${clanSettings.isPublic ? 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 border border-emerald-400/30' : 'bg-gradient-to-r from-rose-800 to-red-900 hover:from-rose-700 hover:to-red-800 border border-rose-500/30'} text-white`}
                                             >
                                                 {clanSettings.isPublic ? 'Закрыть' : 'Открыть'}
                                             </button>
@@ -371,14 +385,14 @@ export const ClanTab: React.FC<ClanTabProps> = ({
                                     </div>
 
                                     {/* Permissions */}
-                                    <div className="mb-6 space-y-4">
-                                        <h3 className="text-lg font-bold text-yellow-400">Права участников</h3>
-                                        <div className="bg-gray-900/50 p-3 rounded">
-                                            <label className="block text-sm text-gray-300 mb-2">Уровень для приглашения в клан</label>
+                                    <div className="mb-6 space-y-3 bg-gray-900/60 p-4 rounded-xl border border-purple-500/20 shadow-md">
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">Права участников</h3>
+                                        <div className="bg-black/40 p-3 rounded-xl border border-purple-500/10">
+                                            <label className="block text-xs font-medium text-purple-300/80 mb-1.5">Уровень для приглашения в клан</label>
                                             <select
                                                 value={clanSettings.invitePermissionLevel}
                                                 onChange={(e) => setClanSettings(prev => ({ ...prev, invitePermissionLevel: Number(e.target.value) }))}
-                                                className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"
+                                                className="w-full bg-gray-900 border border-purple-500/30 rounded-xl p-2 text-white text-xs focus:border-purple-400 focus:outline-none"
                                             >
                                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
                                                     <option key={level} value={level}>{level} уровень</option>
@@ -386,12 +400,12 @@ export const ClanTab: React.FC<ClanTabProps> = ({
                                             </select>
                                         </div>
 
-                                        <div className="bg-gray-900/50 p-3 rounded">
-                                            <label className="block text-sm text-gray-300 mb-2">Уровень для выдачи звезд</label>
+                                        <div className="bg-black/40 p-3 rounded-xl border border-purple-500/10">
+                                            <label className="block text-xs font-medium text-purple-300/80 mb-1.5">Уровень для выдачи звезд</label>
                                             <select
                                                 value={clanSettings.starGrantPermissionLevel}
                                                 onChange={(e) => setClanSettings(prev => ({ ...prev, starGrantPermissionLevel: Number(e.target.value) }))}
-                                                className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"
+                                                className="w-full bg-gray-900 border border-purple-500/30 rounded-xl p-2 text-white text-xs focus:border-purple-400 focus:outline-none"
                                             >
                                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
                                                     <option key={level} value={level}>{level} уровень</option>
@@ -401,11 +415,11 @@ export const ClanTab: React.FC<ClanTabProps> = ({
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="flex gap-3 mt-6">
-                                        <button onClick={handleSaveSettings} className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded">
+                                    <div className="flex gap-3 mt-4">
+                                        <button onClick={handleSaveSettings} className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black py-3 rounded-xl text-xs shadow-lg shadow-emerald-950/40 border border-emerald-400/30 transition-all">
                                             Сохранить
                                         </button>
-                                        <button onClick={() => { setShowClanSettings(false); setNewClanAvatar(null); }} className="flex-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded">
+                                        <button onClick={() => { setShowClanSettings(false); setNewClanAvatar(null); }} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-bold py-3 rounded-xl text-xs border border-white/10 transition-all">
                                             Отмена
                                         </button>
                                     </div>

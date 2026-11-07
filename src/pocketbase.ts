@@ -4,9 +4,17 @@ import PocketBase, { RecordModel } from 'pocketbase';
 type AnyRecord = Record<string, any>;
 
 // ─── PocketBase Client ──────────────────────────────────────────────────────
-// Google OAuth requires a real domain, so we use the explicitly provided
-// PocketBase host. Do not swap this to localhost/127 in production.
-const RESOLVED_PB_URL = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_PB_URL || 'http://127.0.0.1:8090';
+// Dynamically resolves to window.location.origin so any client (LAN, WAN, or tunnel)
+// seamlessly accesses PocketBase via Vite's proxy without needing multiple ports.
+const getInitialPbUrl = (): string => {
+  const envUrl = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_PB_URL;
+  if (envUrl) return envUrl;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return 'http://127.0.0.1:8090';
+};
+const RESOLVED_PB_URL = getInitialPbUrl();
 export const pb = new PocketBase(RESOLVED_PB_URL);
 // Keep auth token alive automatically
 pb.autoCancellation(false);
@@ -199,24 +207,111 @@ const queuedGetList = async <T>(collection: string, page: number, perPage: numbe
 // ─── Auth helpers (mirrors Firebase auth exports) ───────────────────────────
 export const auth = pb.authStore;
 /**
- * Sign in with email and password
+ * Sign in with email or nickname (login) and password
  */
-export async function signInWithEmailAndPassword(email: string, password: string): Promise<{ user: PBUser }> {
-  const authData = await pb.collection('users').authWithPassword(email, password);
-  return { user: toPBUser(authData.record)! };
+export async function signInWithEmailAndPassword(identity: string, password: string): Promise<{ user: PBUser }> {
+  const trimmed = identity.trim();
+  let resolvedIdentity = trimmed;
+
+  // If the entered identity does not look like an email:
+  // Lookup PocketBase users by `name` or `username`
+  if (!trimmed.includes('@')) {
+    try {
+      const escaped = pbFilterString(trimmed);
+      const userMatch = await pb.collection('users').getFirstListItem(`name = "${escaped}" || username = "${escaped}"`);
+      if (userMatch?.email) {
+        resolvedIdentity = userMatch.email;
+      } else if (userMatch?.username) {
+        resolvedIdentity = userMatch.username;
+      }
+    } catch {
+      // User not found by name, continue with original trimmed string
+    }
+  }
+
+  try {
+    const authData = await pb.collection('users').authWithPassword(resolvedIdentity, password);
+    return { user: toPBUser(authData.record)! };
+  } catch (err) {
+    // If auth failed and we haven't checked by name yet (e.g. name happens to contain @ or fallback):
+    if (resolvedIdentity === trimmed) {
+      try {
+        const escaped = pbFilterString(trimmed);
+        const userMatch = await pb.collection('users').getFirstListItem(`name = "${escaped}" || username = "${escaped}"`);
+        if (userMatch?.email && userMatch.email !== resolvedIdentity) {
+          const authData = await pb.collection('users').authWithPassword(userMatch.email, password);
+          return { user: toPBUser(authData.record)! };
+        }
+      } catch {}
+    }
+    throw err;
+  }
 }
 
 /**
  * Create a new user with email and password, then sign in
  */
-export async function createUserWithEmailAndPassword(email: string, password: string): Promise<{ user: PBUser }> {
-  // Create the account (PocketBase needs passwordConfirm)
-  await pb.collection('users').create({
+export async function createUserWithEmailAndPassword(
+  email: string,
+  password: string,
+  initialData?: AnyRecord
+): Promise<{ user: PBUser }> {
+  const initGold = typeof initialData?.gold === 'number' ? initialData.gold : 100;
+  const initRubies = typeof initialData?.rubies === 'number' ? initialData.rubies : 10;
+  const initEnergy = typeof initialData?.energy === 'number' ? initialData.energy : 500;
+  const initLevel = typeof initialData?.level === 'number' ? initialData.level : 1;
+  const initInventory = initialData?.inventory || { 10013: 30, 10032: 5 };
+  const initName = (initialData?.name && String(initialData.name).trim()) || '';
+
+  // Try to set username to chosen name if it matches PocketBase username rules:
+  // Regex: /^[a-zA-Z0-9_]{3,150}$/
+  let desiredUsername: string | undefined = undefined;
+  if (/^[a-zA-Z0-9_]{3,150}$/.test(initName)) {
+    desiredUsername = initName;
+  }
+
+  const createPayload: Record<string, any> = {
     email,
     password,
     passwordConfirm: password,
     emailVisibility: true,
-  });
+    name: initName,
+    gold: initGold,
+    rubies: initRubies,
+    energy: initEnergy,
+    level: initLevel,
+    inventory: initInventory,
+    data: {
+      name: initName,
+      gold: initGold,
+      rubies: initRubies,
+      energy: initEnergy,
+      level: initLevel,
+      inventory: initInventory,
+      tutorialCompleted: false,
+      townHallTutorialCompleted: false,
+      extraBuildingPermits: 0,
+      clanId: null,
+      glory: 0,
+      reputation: 0,
+      treesChopped: 0,
+      monstersDestroyed: 0,
+      buildingsDestroyed: 0,
+      theftsCommitted: 0,
+      lastSaveTime: Date.now(),
+      lastX: 0,
+      lastY: 0,
+      lastPositionUpdatedAt: 0,
+      ...(initialData || {})
+    }
+  };
+
+  if (desiredUsername) {
+    createPayload.username = desiredUsername;
+  }
+
+  // Create the account directly with initial resources in PocketBase
+  await pb.collection('users').create(createPayload);
 
   // Log in immediately
   return signInWithEmailAndPassword(email, password);
@@ -249,7 +344,7 @@ function toPBUser(model: RecordModel | null): PBUser | null {
   }
   
   const nextEmail = model.email ?? null;
-  const nextDisplayName = model.name ?? model.username ?? null;
+  const nextDisplayName = (model.name && String(model.name).trim()) ? String(model.name).trim() : (model.username || null);
   const nextPhotoURL = model.avatarUrl ?? null;
 
   // CRITICAL FIX: Detect user change and clear cache
@@ -292,7 +387,30 @@ export async function signInWithPopup(
 
   // Ensure user doc exists in 'users' collection with game fields
   try {
-    await pb.collection('users').getOne(user.id);
+    const existing = await pb.collection('users').getOne(user.id);
+    const uninitialized = (
+      (Number(existing.gold || 0) === 0 && Number(existing.rubies || 0) === 0 && Number(existing.energy || 0) === 0) ||
+      (!existing.lastSaveTime || Number(existing.lastSaveTime) === 0)
+    );
+    if (uninitialized) {
+      await pb.collection('users').update(user.id, {
+        gold: 100,
+        rubies: 10,
+        energy: 500,
+        level: 1,
+        inventory: { 10013: 30, 10032: 5 },
+        data: {
+          gold: 100,
+          rubies: 10,
+          energy: 500,
+          level: 1,
+          inventory: { 10013: 30, 10032: 5 },
+          tutorialCompleted: false,
+          townHallTutorialCompleted: false,
+          lastSaveTime: Date.now()
+        }
+      });
+    }
   } catch {
     // New user — initial data will be created in App.tsx onSnapshot equivalent
   }
@@ -380,13 +498,15 @@ export interface QuerySnapshot {
 
 // ─── Data transformation helpers ─────────────────────────────────────────────
 
+const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
+
 /**
  * PocketBase requires all fields to be defined in the schema.
  * To handle arbitrary game data, we keep "filterable" fields at the top level
  * and move everything else into the 'data' JSON field.
  */
 const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
-  users: ['name', 'gameId', 'data', 'gold', 'rubies', 'level', 'glory', 'energy', 'reputation', 'inventory', 'clanId', 'lastSaveTime', 'friends', 'gender', 'tutorialCompleted', 'tutorialCompletedAt', 'townHallTutorialCompleted', 'townHallTutorialCompletedAt'],
+  users: ['name', 'gameId', 'data', 'gold', 'rubies', 'level', 'glory', 'energy', 'reputation', 'inventory', 'clanId', 'lastSaveTime', 'friends', 'gender', 'tutorialCompleted', 'tutorialCompletedAt', 'townHallTutorialCompleted', 'townHallTutorialCompletedAt', 'banEndTime'],
   // IMPORTANT: All fields that exist as top-level PocketBase schema fields MUST be listed here.
   // If a field is listed here, wrapData stores it at the top level of the PB record.
   // If it's NOT listed, wrapData puts it in the `data` JSON field.
@@ -394,8 +514,8 @@ const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
   // Top-level PB schema fields (verified 2026-05-23): buildingId, constructionEndTime, data,
   // destructionEndTime, gameId, hostId, hp, initiatorId, isActive, isConstructing,
   // isDestroying, lastAttackTime, lastMoveTime, maxHp, ownerId, pendingDamage,
-  // type, workState, x, y, zoneId
-  buildings: ['ownerId', 'zoneId', 'x', 'y', 'data', 'gameId', 'buildingId', 'hp', 'maxHp', 'isConstructing', 'constructionEndTime', 'isActive', 'lastMoveTime', 'lastAttackTime', 'type', 'workState', 'hostId', 'isDestroying', 'destructionEndTime', 'pendingDamage', 'initiatorId'],
+  // type, workState, workEndTime, x, y, zoneId
+  buildings: ['ownerId', 'zoneId', 'x', 'y', 'data', 'gameId', 'buildingId', 'hp', 'maxHp', 'isConstructing', 'constructionEndTime', 'isActive', 'lastMoveTime', 'lastAttackTime', 'type', 'workState', 'workEndTime', 'hostId', 'isDestroying', 'destructionEndTime', 'pendingDamage', 'initiatorId'],
   map_resources: ['type', 'x', 'y', 'zoneId', 'data', 'gameId'],
   dropped_items: ['itemId', 'zoneId', 'data', 'gameId'],
   map_state: ['data', 'gameId'],
@@ -412,7 +532,23 @@ const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
 
 // Fields that should be stored in the data JSON field even though they're not in KNOWN_FIELDS
 const DATA_FIELDS_BY_COLLECTION: Record<string, string[]> = {
-  users: ['banEndTime', 'activeCurse', 'lastX', 'lastY', 'timestamp', 'rank', 'clanPermissions', 'avatar', 'extraBuildingPermits', 'treesChopped', 'monstersDestroyed', 'buildingsDestroyed', 'theftsCommitted'],
+  users: [
+    'banEndTime', 'activeCurse', 'lastX', 'lastY', 'timestamp', 'rank',
+    'clanPermissions', 'avatar', 'extraBuildingPermits', 'treesChopped',
+    'monstersDestroyed', 'buildingsDestroyed', 'theftsCommitted',
+    'achievements', 'selectedTitle', 'claimedAchievements',
+    'totalLoginDays', 'lastLoginDay', 'playTimeTodaySeconds', 'lastPlayDay',
+    'joinNumber', 'buildingsBuilt', 'peakGold', 'marketTrades',
+    'townHallOrders', 'townHallOrdersCycle', 'townHallLastSkipTime'
+  ],
+  presence: [
+    'title', 'level', 'glory', 'reputation', 'avatar', 'activeCurse', 'clanId',
+    'treesChopped', 'monstersDestroyed', 'buildingsDestroyed', 'theftsCommitted',
+    'activeTab', 'x', 'y'
+  ],
+  chat_messages: [
+    'sender', 'senderId', 'channel', 'tab', 'clanId', 'teleportCoordinates', 'type', 'title'
+  ],
 };
 
 // Collections that do NOT have a `data` JSON field in the PocketBase schema.
@@ -468,6 +604,13 @@ function wrapData(collectionName: string, docData: any): any {
       // Force string conversion for fields that are Text in PB schema but might be numbers in game logic
       if (key === 'buildingId' || (key === 'type' && collectionName === 'map_resources')) {
         result[key] = String(value);
+      } else if (key === 'banEndTime') {
+        const numVal = Number(value || 0) || 0;
+        result[key] = numVal;
+        if (collectionName === 'users') {
+          if (!result.data) result.data = {};
+          result.data.banEndTime = numVal;
+        }
       } else {
         result[key] = value;
       }
@@ -485,20 +628,48 @@ function wrapData(collectionName: string, docData: any): any {
   }
   
   
+  if (collectionName === 'presence') {
+    const rawUid = docData.uid || docData.userId;
+    if (rawUid && !result.userId) result.userId = String(rawUid);
+    if (rawUid && !result.uid) result.uid = String(rawUid);
+    const rawName = docData.name || docData.userName;
+    if (rawName && !result.userName) result.userName = String(rawName);
+  }
+
+  if (collectionName === 'buildings' || collectionName === 'map_resources' || collectionName === 'dropped_items') {
+    const effX = Number(result.x !== undefined ? result.x : docData?.x);
+    const effY = Number(result.y !== undefined ? result.y : docData?.y);
+    if (Number.isFinite(effX) && Number.isFinite(effY)) {
+      const computedZoneId = `${Math.floor(effX / 40)}_${Math.floor(effY / 40)}`;
+      if (!result.data) result.data = {};
+      result.data.zoneId = computedZoneId;
+      result.zoneId = computedZoneId;
+    }
+  }
+
   return result;
 }
 
 function unwrapData(record: RecordModel): AnyRecord {
   const data = { ...record };
-  const extra = (record as AnyRecord).data;
+  let extra = (record as AnyRecord).data;
+  if (typeof extra === 'string') {
+    try {
+      extra = JSON.parse(extra);
+    } catch {
+      extra = null;
+    }
+  }
 
   // Presence alias: PB schema uses userId/userName; frontend expects uid/name.
   if (record.collectionName === 'presence') {
-    if ((record as AnyRecord).userId !== undefined && (record as AnyRecord).uid === undefined) {
-      data.uid = (record as AnyRecord).userId;
+    const rawUid = (record as AnyRecord).uid || (record as AnyRecord).userId || record.id;
+    if (rawUid && (!data.uid || data.uid === '')) {
+      data.uid = String(rawUid);
     }
-    if ((record as AnyRecord).userName !== undefined && (record as AnyRecord).name === undefined) {
-      data.name = (record as AnyRecord).userName;
+    const rawName = (record as AnyRecord).userName || (record as AnyRecord).name;
+    if (rawName && (!data.name || data.name === '')) {
+      data.name = String(rawName);
     }
   }
   
@@ -563,9 +734,24 @@ function unwrapData(record: RecordModel): AnyRecord {
     delete data.isLocal;
   }
 
+  // Authoritative ban reconciliation: ensure banEndTime never drops to 0 if either top-level or data.json has it active
+  if (record.collectionName === 'users') {
+    const topLevelBan = Number((record as AnyRecord).banEndTime || 0) || 0;
+    const dataBan = Number((extra as AnyRecord)?.banEndTime || 0) || 0;
+    data.banEndTime = Math.max(topLevelBan, dataBan);
+  }
+
   // Restore types that Pocketbase stores as string
   if (data.buildingId !== undefined && data.buildingId !== null) {
       data.buildingId = Number(data.buildingId);
+  }
+  if (record.collectionName === 'buildings' && data.workEndTime !== undefined && data.workEndTime !== null) {
+      const weNum = Number(data.workEndTime);
+      data.workEndTime = isNaN(weNum) || weNum <= 0 ? undefined : weNum;
+  }
+  if (record.collectionName === 'buildings' && data.constructionEndTime !== undefined && data.constructionEndTime !== null) {
+      const ceNum = Number(data.constructionEndTime);
+      data.constructionEndTime = isNaN(ceNum) || ceNum <= 0 ? undefined : ceNum;
   }
   if (record.collectionName === 'map_resources' && data.type !== undefined && data.type !== null) {
       const typeNum = Number(data.type);
@@ -577,6 +763,15 @@ function unwrapData(record: RecordModel): AnyRecord {
   // Map PocketBase 'created' to 'timestamp' if timestamp is missing
   if (!data.timestamp && record.created) {
       data.timestamp = Date.parse(record.created);
+  }
+
+  // Ensure zoneId is populated if coordinates exist
+  if ((record.collectionName === 'buildings' || record.collectionName === 'map_resources' || record.collectionName === 'dropped_items') && (!data.zoneId || data.zoneId === '')) {
+    const effX = Number(data.x);
+    const effY = Number(data.y);
+    if (Number.isFinite(effX) && Number.isFinite(effY)) {
+      data.zoneId = `${Math.floor(effX / 40)}_${Math.floor(effY / 40)}`;
+    }
   }
   
   // Debug log for users disabled - was causing excessive console noise for all 200 users
@@ -737,7 +932,7 @@ function hashToBase36(input: string): string {
   return (hash >>> 0).toString(36);
 }
 
-function pbFilterString(value: string | number): string {
+export function pbFilterString(value: string | number): string {
   return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
@@ -1094,26 +1289,29 @@ export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
         }
       }
       let currentRawDataJson: AnyRecord | null = null;
+      let currentRecordModel: RecordModel | null = null;
       try {
         const currentRecord = await queuedGetOne(ref.collectionName, pbId);
+        currentRecordModel = currentRecord as RecordModel;
         const rawJson = (currentRecord as AnyRecord).data;
         if (rawJson && typeof rawJson === 'object') {
           currentRawDataJson = { ...rawJson };
+        } else if (typeof rawJson === 'string') {
+          try { currentRawDataJson = JSON.parse(rawJson); } catch {}
         }
       } catch {
         // If we can't read current data, proceed with caution but don't block
       }
-      if (typeof data.level === 'number') {
-        try {
-          const currentRecord = await queuedGetOne(ref.collectionName, pbId);
-          const currentData = unwrapData(currentRecord as RecordModel);
-          const dbLevel = typeof currentData.level === 'number' ? currentData.level : 0;
-          if (data.level < dbLevel) {
-            console.warn(`[PB] setDoc LEVEL PROTECTION: refusing to downgrade level ${dbLevel} в†’ ${data.level} for user ${ref.id}`);
-            payload = wrapData(ref.collectionName, { ...data, level: dbLevel, gameId: ref.id });
-          }
-        } catch {
-          // If we can't read current level, proceed with caution but don't block
+      // Ban preservation: never drop an active ban on setDoc unless explicitly passed in data
+      if (!('banEndTime' in data)) {
+        const activeBan = Math.max(
+          Number((currentRecordModel as AnyRecord)?.banEndTime || 0) || 0,
+          Number(currentRawDataJson?.banEndTime || 0) || 0
+        );
+        if (activeBan > Date.now()) {
+          payload.banEndTime = activeBan;
+          if (!payload.data) payload.data = {};
+          payload.data.banEndTime = activeBan;
         }
       }
       const knownFields = KNOWN_FIELDS_BY_COLLECTION[ref.collectionName] || [];
@@ -1207,6 +1405,18 @@ export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
       if (list.items.length > 0) {
         const rawRecord = list.items[0] as RecordModel;
         const rawJson = (rawRecord as AnyRecord).data;
+        const currentData = unwrapData(rawRecord);
+
+        // ─── TOWN HALL DOWNGRADE PROTECTION in setDoc: never overwrite higher tier Town Hall ───
+        if (ref.collectionName === 'buildings' && payload.buildingId !== undefined) {
+          const currentThIdx = TOWN_HALL_IDS.indexOf(Number(currentData.buildingId));
+          const newThIdx = TOWN_HALL_IDS.indexOf(Number(payload.buildingId));
+          if (currentThIdx >= 0 && newThIdx >= 0 && newThIdx < currentThIdx) {
+            console.warn(`[PB] setDoc TOWN HALL PROTECTION: refusing to downgrade Town Hall ${currentData.buildingId} (lvl ${currentThIdx + 1}) → ${payload.buildingId} (lvl ${newThIdx + 1}) for building ${ref.id}`);
+            payload.buildingId = String(currentData.buildingId);
+          }
+        }
+
         const knownFields = KNOWN_FIELDS_BY_COLLECTION[ref.collectionName] || [];
         if (NO_DATA_FIELD_COLLECTIONS.has(ref.collectionName)) {
           delete payload.data;
@@ -1509,6 +1719,16 @@ export async function updateDoc(
     }
   }
 
+  // ─── TOWN HALL DOWNGRADE PROTECTION: never allow writing a lower Town Hall level than what DB has ───
+  if (ref.collectionName === 'buildings' && resolved.buildingId !== undefined) {
+    const currentThIdx = TOWN_HALL_IDS.indexOf(Number(current.buildingId));
+    const newThIdx = TOWN_HALL_IDS.indexOf(Number(resolved.buildingId));
+    if (currentThIdx >= 0 && newThIdx >= 0 && newThIdx < currentThIdx) {
+      console.warn(`[PB] updateDoc TOWN HALL PROTECTION: refusing to downgrade Town Hall ${current.buildingId} (lvl ${currentThIdx + 1}) → ${resolved.buildingId} (lvl ${newThIdx + 1}) for building ${ref.id}`);
+      resolved.buildingId = current.buildingId; // keep the higher DB value
+    }
+  }
+
   let payload: AnyRecord = {};
   try {
     // Build the payload from only the fields we're updating (+ gameId for lookup)
@@ -1540,6 +1760,29 @@ export async function updateDoc(
     // Now merge with existing raw data.json
     if (currentRawDataJson) {
       payload.data = { ...currentRawDataJson, ...payload.data };
+    }
+    // Ensure spatial entities always maintain an up-to-date zoneId in data JSON
+    if (ref.collectionName === 'buildings' || ref.collectionName === 'map_resources' || ref.collectionName === 'dropped_items') {
+      const effX = Number(payload.x !== undefined ? payload.x : (resolved.x !== undefined ? resolved.x : (current.x !== undefined ? current.x : currentRawDataJson?.x)));
+      const effY = Number(payload.y !== undefined ? payload.y : (resolved.y !== undefined ? resolved.y : (current.y !== undefined ? current.y : currentRawDataJson?.y)));
+      if (Number.isFinite(effX) && Number.isFinite(effY)) {
+        const computedZone = `${Math.floor(effX / 40)}_${Math.floor(effY / 40)}`;
+        if (!payload.data) payload.data = {};
+        payload.data.zoneId = computedZone;
+        payload.zoneId = computedZone;
+      }
+    }
+    // Authoritative ban preservation: never drop an active ban on users during partial updates
+    if (ref.collectionName === 'users' && !('banEndTime' in data)) {
+      const activeBan = Math.max(
+        Number(current.banEndTime || 0) || 0,
+        Number(currentRawDataJson?.banEndTime || 0) || 0
+      );
+      if (activeBan > Date.now()) {
+        payload.banEndTime = activeBan;
+        if (!payload.data) payload.data = {};
+        payload.data.banEndTime = activeBan;
+      }
     }
     if (PB_WRITE_DIAGNOSTICS && ref.collectionName === 'users' && payload.data) {
       console.log('[StartupUserWrite]', {
@@ -1781,7 +2024,9 @@ export function query(
             (v) => v !== undefined && v !== null && String(v).trim() !== ''
           );
           if (cleanValues.length > 0) {
-            const parts = cleanValues.map((v) => `${c.field} = ${pbFilterValue(v)}`);
+            const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId');
+            const targetField = isDataField ? `data.${c.field}` : c.field;
+            const parts = cleanValues.map((v) => `${targetField} = ${pbFilterValue(v)}`);
             filter = filter ? `(${filter}) && (${parts.join(' || ')})` : `(${parts.join(' || ')})`;
           }
         }
@@ -1791,7 +2036,8 @@ export function query(
         const clause = `${c.field} ?~ ${valWithQuotes}`;
         filter = filter ? `(${filter}) && (${clause})` : clause;
       } else {
-        const fieldName = c.field;
+        const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId');
+        const fieldName = isDataField ? `data.${c.field}` : c.field;
         const pbOp =
           c.op === '=='
             ? '='
@@ -1921,12 +2167,13 @@ async function fetchQueryRecords(desc: QueryDescriptor): Promise<RecordModel[]> 
       .filter(Boolean);
 
     const perZonePageSize = ZONE_QUERY_PAGE_SIZE[desc.col] || 200;
+    const zoneField = (desc.col === 'buildings' || desc.col === 'dropped_items') ? 'data.zoneId' : 'zoneId';
     const zoneResults = await Promise.all(zoneIds.map(async (zoneId) => {
       return fetchPagedRecords(
         desc.col,
         perZonePageSize,
         {
-          filter: `zoneId = ${JSON.stringify(zoneId)}`,
+          filter: `${zoneField} = ${JSON.stringify(zoneId)}`,
           sort: desc.sort || undefined,
         },
         `${desc.col} zoneId=${zoneId}`
@@ -2221,20 +2468,49 @@ export function onSnapshot(
 
   const buildSnapshot = (records: RecordModel[]): QuerySnapshot => buildSnapshotFromDocs(records.map(toDocSnapshot));
 
-  const buildIncrementalZoneSnapshot = (event: any): QuerySnapshot | null => {
-    if (!initialSnapshotReady || !queriedZoneIds) return null;
+  const checkRecordMatchesQuery = (record: RecordModel | undefined): boolean => {
+    if (!record) return false;
+
+    // Check where constraints if present
+    if (desc.whereField && desc.whereOp) {
+      const recVal = (record as any)[desc.whereField] ?? (record as any).data?.[desc.whereField];
+      const strRecVal = recVal !== undefined && recVal !== null ? String(recVal).trim() : '';
+
+      if (desc.whereOp === '==' || desc.whereOp === '===') {
+        if (strRecVal !== String(desc.whereValue ?? '').trim()) {
+          return false;
+        }
+      } else if (desc.whereOp === 'in') {
+        if (Array.isArray(desc.whereValue)) {
+          const allowed = new Set(desc.whereValue.map((v) => String(v ?? '').trim()));
+          if (!allowed.has(strRecVal)) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
+  const buildIncrementalSnapshot = (event: any): QuerySnapshot | null => {
+    if (!initialSnapshotReady) return null;
 
     const record = event?.record as RecordModel | undefined;
     const recordId = String(record?.id || '').trim();
     if (!recordId) return null;
 
     const nextDocs = [...prevDocs];
-    const existingIndex = nextDocs.findIndex((doc) => doc.id === recordId);
-    const zoneId = String((record as any)?.zoneId || '').trim();
-    const matchesZone = queriedZoneIds.has(zoneId);
-    const action = String(event?.action || '').toLowerCase();
+    const gameId = String((record as any)?.gameId || (record as any)?.data?.gameId || '').trim();
+    const existingIndex = nextDocs.findIndex((doc) => doc.id === recordId || (Boolean(gameId) && doc.id === gameId));
 
-    if (action === 'delete' || !matchesZone) {
+    const action = String(event?.action || '').toLowerCase();
+    const isDelete = action === 'delete';
+    const matches = !isDelete && checkRecordMatchesQuery(record);
+
+    if (isDelete || !matches) {
       if (existingIndex === -1) return null;
       nextDocs.splice(existingIndex, 1);
       return buildSnapshotFromDocs(nextDocs);
@@ -2244,6 +2520,9 @@ export function onSnapshot(
     if (existingIndex >= 0) {
       nextDocs[existingIndex] = nextDoc;
     } else {
+      if (typeof desc.maxItems === 'number' && nextDocs.length >= desc.maxItems) {
+        return null;
+      }
       nextDocs.push(nextDoc);
     }
 
@@ -2352,33 +2631,33 @@ export function onSnapshot(
       eventRecordId,
       source: 'realtime-event',
     });
-    if (queriedZoneIds) {
-      const nextSnapshot = buildIncrementalZoneSnapshot(event);
-      if (nextSnapshot) {
-        const auditedSnapshot = attachAuditMeta(nextSnapshot, {
-          __auditSource: 'realtime-event',
-          __auditIncrementalMerge: true,
-          __auditFullRefetch: false,
-          __auditRefetchMs: 0,
-          __auditEventAction: eventAction || null,
-          __auditEventRecordId: eventRecordId,
-        });
-        logPbAudit('onSnapshot-incremental', {
-          ...querySummary,
-          action: eventAction || null,
-          eventRecordId,
-          refetchMode: 'incremental-merge',
-          ...summarizeQuerySnapshotForAudit(auditedSnapshot),
-        });
-        callback(auditedSnapshot);
-        return;
-      }
+    const nextSnapshot = buildIncrementalSnapshot(event);
+    if (nextSnapshot) {
+      const auditedSnapshot = attachAuditMeta(nextSnapshot, {
+        __auditSource: 'realtime-event',
+        __auditIncrementalMerge: true,
+        __auditFullRefetch: false,
+        __auditRefetchMs: 0,
+        __auditEventAction: eventAction || null,
+        __auditEventRecordId: eventRecordId,
+      });
+      logPbAudit('onSnapshot-incremental', {
+        ...querySummary,
+        action: eventAction || null,
+        eventRecordId,
+        refetchMode: 'incremental-merge',
+        ...summarizeQuerySnapshotForAudit(auditedSnapshot),
+      });
+      callback(auditedSnapshot);
+      return;
+    }
 
-      const eventZoneId = String(event?.record?.zoneId || '').trim();
-      const wasTracked = eventRecordId ? prevDocs.some((doc) => doc.id === eventRecordId) : false;
-      if (eventZoneId && !queriedZoneIds.has(eventZoneId) && !wasTracked) {
-        return;
-      }
+    // If nextSnapshot is null:
+    // If the record does not match our query criteria and was not tracked, ignore it safely without refetch!
+    const matches = checkRecordMatchesQuery(event?.record);
+    const wasTracked = eventRecordId ? prevDocs.some((doc) => doc.id === eventRecordId) : false;
+    if (!matches && !wasTracked) {
+      return;
     }
 
     handleUpdate({

@@ -12,7 +12,7 @@ export interface Item {
   name: string;
   englishName?: string;
   description: string;
-  category: 'Ресурсы';
+  category: 'Ресурсы' | 'Расходники';
   requiredFor?: ResourceInfo[];
   usedInWork?: ResourceInfo[];
   producedBy?: ResourceInfo[];
@@ -112,6 +112,7 @@ export interface DroppedItem {
 }
 
 export interface MapResource {
+  id?: string;
   x: number;
   y: number;
   zoneId?: string;
@@ -121,6 +122,7 @@ export interface MapResource {
 
 export interface PlacedBuilding {
   id: string | number;
+  gameId?: string;
   tempId?: string;
   clientBuildTraceId?: string;
   x: number;
@@ -219,6 +221,7 @@ export interface PrivateMessage {
   senderName?: string;
   senderAvatar?: string;
   isAnonymous?: boolean;
+  messageType?: 'mail' | 'private';
 }
 
 export interface Friend {

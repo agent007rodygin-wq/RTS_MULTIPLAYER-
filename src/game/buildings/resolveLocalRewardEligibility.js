@@ -7,6 +7,7 @@
 /**
  * @typedef {Object} LocalRewardEligibilityInput
  * @property {PlacedBuilding | undefined} [building]
+ * @property {number} [now]
  */
 
 /**
@@ -62,7 +63,13 @@ export function resolveLocalRewardEligibility(input) {
         };
     }
 
-    if (building.workState !== 'finished') {
+    const isFinished = building.workState === 'finished';
+    const isTimerElapsed = building.workState === 'working' &&
+        Boolean(building.workEndTime) &&
+        typeof input?.now === 'number' &&
+        input.now >= Number(building.workEndTime);
+
+    if (!isFinished && !isTimerElapsed) {
         return {
             consumedBuilding: { ...building },
             decision: 'no_reward',
