@@ -329,6 +329,10 @@ const NUM_TREES = TREES_PER_ZONE * ZONES_X * ZONES_Y; // 6075 total trees (243 ?
 const MAX_OIL_DEPOSITS = 8;
 const MAX_CHESTS = 15;
 const MAX_QUARRIES = 6;
+// WASD camera panning speed (pixels per second in screen space)
+// 30% slower than typical mouse drag (~1000 px/sec): 1000 * 0.70 = 700 px/sec.
+const WASD_PAN_SPEED_NORMAL = 700;
+const WASD_PAN_SPEED_SPRINT = 1000;
 const BASE_WILD_MONSTERS_PER_ZONE = 5;
 const WILD_MONSTER_EXTRA_ZONE_COUNT = 4;
 const TARGET_WILD_MONSTERS_TOTAL = 129;
@@ -2707,6 +2711,10 @@ const App: React.FC = () => {
         }
     });
     const [isLoadingScreen, setIsLoadingScreen] = useState(true);
+    const isLoadingScreenRef = useRef(isLoadingScreen);
+    useEffect(() => {
+        isLoadingScreenRef.current = isLoadingScreen;
+    }, [isLoadingScreen]);
     const [loadingReady, setLoadingReady] = useState(false);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [tempPlayerName, setTempPlayerName] = useState(playerName);
@@ -3035,6 +3043,16 @@ const App: React.FC = () => {
     const hasDraggedRef = useRef(false);
     const dragStartRef = useRef({ x: 0, y: 0 });
     const lastTouchEndRef = useRef(0); // Track last touch end time to prevent ghost clicks
+    // WASD keyboard movement state
+    const wasdKeysRef = useRef({
+        up: false,
+        down: false,
+        left: false,
+        right: false,
+        sprint: false
+    });
+    const isWasdMovingRef = useRef(false);
+    const lastWasdFrameTimeRef = useRef(performance.now());
     const [allUsers, setAllUsers] = useState<Record<string, any>>({});
     const allUsersRef = useRef<Record<string, any>>({});
 
@@ -3892,6 +3910,11 @@ const App: React.FC = () => {
             }, Math.max(50, delay));
         }
     }, [isAuthReady, user, getCurrentWorldCenter]);
+
+    const reportPlayerMovementRef = useRef(reportPlayerMovement);
+    useEffect(() => {
+        reportPlayerMovementRef.current = reportPlayerMovement;
+    }, [reportPlayerMovement]);
 
     const triggerLevelUpJuice = useCallback((params: {
         type: 'town_hall' | 'glory_rank';
@@ -4909,6 +4932,110 @@ const App: React.FC = () => {
 
         window.addEventListener('keydown', handleHotkey);
         return () => window.removeEventListener('keydown', handleHotkey);
+    }, []);
+
+    // Keyboard WASD & Arrow movement listener (screen-space panning, 30% slower than mouse)
+    useEffect(() => {
+        const isTextInput = (target: EventTarget | null): boolean => {
+            if (!target || !(target instanceof HTMLElement)) return false;
+            const tag = target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+            if (target.isContentEditable) return true;
+            if (target.closest('input, textarea, select, [contenteditable="true"]')) return true;
+            return false;
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isLoadingScreenRef.current || isTextInput(e.target)) return;
+
+            const code = e.code;
+            const key = e.key ? e.key.toLowerCase() : '';
+            let handled = false;
+
+            // W / Up (Latin W, Cyrillic Ц, Up arrow, Numpad 8)
+            if (code === 'KeyW' || code === 'ArrowUp' || code === 'Numpad8' || key === 'w' || key === 'ц') {
+                wasdKeysRef.current.up = true;
+                handled = true;
+            }
+            // S / Down (Latin S, Cyrillic Ы, Down arrow, Numpad 2)
+            if (code === 'KeyS' || code === 'ArrowDown' || code === 'Numpad2' || key === 's' || key === 'ы') {
+                wasdKeysRef.current.down = true;
+                handled = true;
+            }
+            // A / Left (Latin A, Cyrillic Ф, Left arrow, Numpad 4)
+            if (code === 'KeyA' || code === 'ArrowLeft' || code === 'Numpad4' || key === 'a' || key === 'ф') {
+                wasdKeysRef.current.left = true;
+                handled = true;
+            }
+            // D / Right (Latin D, Cyrillic В, Right arrow, Numpad 6)
+            if (code === 'KeyD' || code === 'ArrowRight' || code === 'Numpad6' || key === 'd' || key === 'в') {
+                wasdKeysRef.current.right = true;
+                handled = true;
+            }
+            if (e.shiftKey) {
+                wasdKeysRef.current.sprint = true;
+            }
+
+            // Prevent default page scroll for arrow keys and WASD when not in text input
+            if (handled && (code.startsWith('Arrow') || code.startsWith('Key') || code.startsWith('Numpad'))) {
+                e.preventDefault();
+            }
+        };
+
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (isTextInput(e.target)) return;
+
+            const code = e.code;
+            const key = e.key ? e.key.toLowerCase() : '';
+
+            if (code === 'KeyW' || code === 'ArrowUp' || code === 'Numpad8' || key === 'w' || key === 'ц') {
+                wasdKeysRef.current.up = false;
+            }
+            if (code === 'KeyS' || code === 'ArrowDown' || code === 'Numpad2' || key === 's' || key === 'ы') {
+                wasdKeysRef.current.down = false;
+            }
+            if (code === 'KeyA' || code === 'ArrowLeft' || code === 'Numpad4' || key === 'a' || key === 'ф') {
+                wasdKeysRef.current.left = false;
+            }
+            if (code === 'KeyD' || code === 'ArrowRight' || code === 'Numpad6' || key === 'd' || key === 'в') {
+                wasdKeysRef.current.right = false;
+            }
+            if (!e.shiftKey) {
+                wasdKeysRef.current.sprint = false;
+            }
+        };
+
+        const handleReset = () => {
+            wasdKeysRef.current = {
+                up: false,
+                down: false,
+                left: false,
+                right: false,
+                sprint: false
+            };
+            if (isWasdMovingRef.current) {
+                isWasdMovingRef.current = false;
+                reportPlayerMovementRef.current?.(true);
+            }
+        };
+
+        const handleFocusIn = (e: FocusEvent) => {
+            if (isTextInput(e.target)) {
+                handleReset();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', handleReset);
+        window.addEventListener('focusin', handleFocusIn);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', handleReset);
+            window.removeEventListener('focusin', handleFocusIn);
+        };
     }, []);
 
     useEffect(() => {
@@ -14145,6 +14272,42 @@ const App: React.FC = () => {
                 if (next.length === prev.length) return prev;
                 return next;
             });
+
+            // WASD & Arrow Camera Panning (screen-space, 30% slower than mouse)
+            if (!isLoadingScreenRef.current) {
+                const wasdNow = performance.now();
+                const dt = Math.min((wasdNow - lastWasdFrameTimeRef.current) / 1000, 0.1);
+                lastWasdFrameTimeRef.current = wasdNow;
+
+                const keys = wasdKeysRef.current;
+                let moveX = 0;
+                let moveY = 0;
+                if (keys.left) moveX += 1;
+                if (keys.right) moveX -= 1;
+                if (keys.up) moveY += 1;
+                if (keys.down) moveY -= 1;
+
+                if (moveX !== 0 || moveY !== 0) {
+                    if (moveX !== 0 && moveY !== 0) {
+                        const invSqrt2 = 0.70710678;
+                        moveX *= invSqrt2;
+                        moveY *= invSqrt2;
+                    }
+                    const speed = keys.sprint ? WASD_PAN_SPEED_SPRINT : WASD_PAN_SPEED_NORMAL;
+                    const dx = moveX * speed * dt;
+                    const dy = moveY * speed * dt;
+
+                    cameraOffsetRef.current = {
+                        x: cameraOffsetRef.current.x + dx,
+                        y: cameraOffsetRef.current.y + dy
+                    };
+                    isWasdMovingRef.current = true;
+                    reportPlayerMovementRef.current?.(false);
+                } else if (isWasdMovingRef.current) {
+                    isWasdMovingRef.current = false;
+                    reportPlayerMovementRef.current?.(true);
+                }
+            }
 
             drawRef.current();
             lastDrawAtRef.current = Date.now();
