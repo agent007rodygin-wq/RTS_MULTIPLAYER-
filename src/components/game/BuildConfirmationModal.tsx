@@ -75,11 +75,11 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
             }}
         >
             <div
-                className="w-full max-w-sm bg-gradient-to-b from-gray-900 via-gray-950 to-black border-2 border-purple-500/50 rounded-2xl shadow-[0_0_50px_rgba(168,85,247,0.3)] flex flex-col overflow-hidden text-white animate-scale-up"
+                className="w-full max-w-sm max-h-[calc(100vh-20px)] bg-gradient-to-b from-gray-900 via-gray-950 to-black border-2 border-purple-500/50 rounded-2xl shadow-[0_0_50px_rgba(168,85,247,0.3)] flex flex-col overflow-hidden text-white animate-scale-up"
                 onClick={e => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-4 border-b border-purple-500/30 bg-purple-950/30 flex justify-between items-center">
+                <div className="p-3 sm:p-4 border-b border-purple-500/30 bg-purple-950/30 flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-2">
                         <span className="text-xl">🏗️</span>
                         <h2 className="text-lg font-black building-title-shimmer">
@@ -97,7 +97,7 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
                         ✕
                     </button>
                 </div>
-                <div className="p-4 sm:p-5">
+                <div className="p-3 sm:p-5 overflow-y-auto flex-1 min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
                     <div className="w-full h-40 bg-black/50 border border-purple-500/30 rounded-xl mb-4 flex items-center justify-center p-3 shadow-inner">
                         <img src={building.imageUrl} alt={building.name} className="max-w-full max-h-full object-contain filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]" />
                     </div>

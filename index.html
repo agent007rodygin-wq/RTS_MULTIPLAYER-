@@ -49,8 +49,188 @@
         }
       }
 
+      /* Compact landscape mobile viewports */
+      @media (max-height: 540px) {
+        :root {
+          --ui-modal-width: min(880px, calc(100vw - 16px));
+          --ui-modal-height: calc(100vh - 12px);
+          --ui-modal-padding-top: 6px;
+          --ui-modal-padding-right: 28px;
+          --ui-modal-padding-bottom: 10px;
+          --ui-modal-padding-left: 18px;
+          --chat-width: min(340px, 42vw);
+          --chat-height: clamp(120px, 34vh, 165px);
+        }
+
+        /* BuildMenuModal compact scaling */
+        .build-menu-header {
+          margin-top: 2px !important;
+          margin-bottom: 2px !important;
+          padding: 0 4px !important;
+        }
+        .build-menu-title {
+          font-size: 13px !important;
+        }
+        .build-menu-title-wrap {
+          padding: 3px 18px !important;
+          border-radius: 10px !important;
+        }
+        .build-menu-search-wrap {
+          width: 140px !important;
+          right: 32px !important;
+          top: 0px !important;
+        }
+        .build-menu-search {
+          height: 26px !important;
+          font-size: 11px !important;
+          padding: 2px 8px !important;
+        }
+        .build-menu-close-btn {
+          width: 28px !important;
+          height: 28px !important;
+          top: 0px !important;
+          right: -12px !important;
+        }
+        .build-menu-sidebar {
+          width: 88px !important;
+          padding-right: 2px !important;
+        }
+        .build-menu-tab-btn {
+          padding: 4px 6px !important;
+          font-size: 10px !important;
+          margin-bottom: 2px !important;
+          gap: 4px !important;
+        }
+        .build-menu-tab-btn svg {
+          width: 14px !important;
+          height: 14px !important;
+        }
+        .build-menu-content {
+          padding-left: 6px !important;
+        }
+        .building-card-item {
+          padding: 2px !important;
+          border-width: 1.5px !important;
+        }
+        .building-card-img-wrap {
+          height: 44px !important;
+          margin-bottom: 1px !important;
+        }
+        .building-card-title {
+          font-size: 9.5px !important;
+          margin-bottom: 1px !important;
+        }
+        .building-card-cost {
+          font-size: 9.5px !important;
+          margin-bottom: 0px !important;
+        }
+        .building-card-cost img {
+          width: 12px !important;
+          height: 12px !important;
+          margin-right: 2px !important;
+        }
+
+        /* ProfileModal compact scaling */
+        .profile-modal-header {
+          margin-top: 2px !important;
+          margin-bottom: 2px !important;
+        }
+        .profile-modal-header h2 {
+          font-size: 13px !important;
+        }
+        .profile-modal-header > div {
+          padding: 3px 18px !important;
+        }
+        .profile-modal-close-btn {
+          width: 28px !important;
+          height: 28px !important;
+          top: 5% !important;
+          right: 5% !important;
+        }
+        .profile-tabs-row {
+          margin-bottom: 4px !important;
+          padding-bottom: 2px !important;
+        }
+        .profile-tab-btn {
+          padding: 3px 8px !important;
+          font-size: 10px !important;
+        }
+        .profile-content-scroll {
+          padding: 4px !important;
+        }
+
+        /* Chat compact scaling */
+        .chat-window {
+          width: min(340px, 42vw) !important;
+          height: clamp(120px, 34vh, 165px) !important;
+          bottom: 8px !important;
+          left: 8px !important;
+        }
+        .chat-tabs {
+          height: 28px !important;
+        }
+        .chat-tabs button {
+          font-size: 10.5px !important;
+          padding: 0 6px !important;
+        }
+        .chat-input-area {
+          padding: 2px 4px !important;
+        }
+        .chat-input-area input {
+          font-size: 11px !important;
+          padding: 2px 6px !important;
+        }
+        .chat-input-area button {
+          font-size: 10px !important;
+          padding: 2px 6px !important;
+        }
+
+        /* DailyRewardModal compact scaling */
+        .daily-reward-gift-img {
+          width: 44px !important;
+          height: 44px !important;
+        }
+        .daily-reward-title {
+          font-size: 13px !important;
+          line-height: 1.15 !important;
+        }
+        .daily-reward-desc {
+          font-size: 10px !important;
+          margin-top: 3px !important;
+          margin-bottom: 4px !important;
+          line-height: 1.25 !important;
+        }
+        .daily-reward-code-box {
+          padding: 3px 8px !important;
+          max-width: 360px !important;
+        }
+        .daily-reward-btn {
+          padding: 4px 14px !important;
+          font-size: 11px !important;
+        }
+        .daily-reward-card {
+          min-height: 52px !important;
+          padding: 2px 4px !important;
+        }
+        .daily-reward-card-img {
+          width: 22px !important;
+          height: 22px !important;
+        }
+        .daily-reward-card-amt {
+          font-size: 9px !important;
+        }
+        .daily-reward-streak-badge {
+          padding: 2px 8px !important;
+          font-size: 10px !important;
+        }
+        .daily-reward-claim-btn {
+          padding: 5px 20px !important;
+          font-size: 12px !important;
+        }
+      }
+
       /* Mobile optimizations - Rise of Kingdoms style */
-      @media (max-width: 768px) {
+      @media (max-width: 768px), (max-height: 540px) {
         html, body {
           overscroll-behavior: none;
         }
@@ -71,8 +251,14 @@
         
         /* Chat - minimal on mobile, not half screen */
         .chat-window {
-          width: 100% !important;
-          max-height: 20vh !important;
+          width: min(var(--chat-width, 360px), calc(100vw - 16px)) !important;
+          max-height: 28vh !important;
+        }
+        @media (orientation: portrait) {
+          .chat-window {
+            width: calc(100vw - 16px) !important;
+            max-height: 20vh !important;
+          }
         }
         .chat-window.chat-collapsed {
           max-height: 32px !important;

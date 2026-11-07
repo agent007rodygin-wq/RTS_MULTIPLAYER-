@@ -105,8 +105,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
     return (
         <div
-            className={`fixed bottom-2 left-2 bg-black/70 backdrop-blur-sm border border-white/10 shadow-2xl transition-all duration-300 flex flex-col rounded-xl overflow-hidden chat-window ${chatCollapseState === 'open' ? '' : 'w-auto h-10 chat-collapsed'}`}
-            style={chatCollapseState === 'open' ? { width: 'min(560px, calc(100vw - 16px))', height: 'clamp(200px, 28vh, 310px)' } : undefined}
+            className={`fixed bottom-2 left-2 bg-black/70 backdrop-blur-sm border border-white/10 shadow-2xl transition-all duration-300 flex flex-col rounded-xl overflow-hidden chat-window ${chatCollapseState === 'open' ? 'chat-window-open' : 'w-auto h-10 chat-collapsed'}`}
+            style={chatCollapseState === 'open' ? { width: 'min(var(--chat-width, 560px), calc(100vw - 16px))', height: 'var(--chat-height, clamp(200px, 28vh, 310px))' } : undefined}
         >
             <div className="flex items-center bg-black/50 border-b border-white/10 h-10 shrink-0 chat-tabs">
                 <button

@@ -177,19 +177,20 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-40" onClick={handleClose}>
-            <div className="relative flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 32px))', height: 'min(var(--ui-modal-height), calc(100vh - 32px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)' }}>
+        <div className="absolute inset-0 bg-black/75 flex items-center justify-center z-50 backdrop-blur-sm" onClick={handleClose}>
+            <div className="relative flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 20px))', height: 'min(var(--ui-modal-height), calc(100vh - 12px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)' }}>
                 {/* Title centered + close button */}
-                <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
-                        <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню строительства</h2>
+                <div className="flex items-center justify-center relative build-menu-header" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
+                    <div className="build-menu-title-wrap" style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
+                        <h2 className="build-menu-title" style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>Меню строительства</h2>
                     </div>
-                    <div className="absolute" style={{ right: '42px', top: '1px', width: '220px' }}>
+                    <div className="absolute build-menu-search-wrap" style={{ right: '42px', top: '1px', width: '220px' }}>
                         <input
                             type="text"
                             value={buildMenuSearch}
                             onChange={(e) => setBuildMenuSearch(e.target.value)}
                             placeholder="Поиск..."
+                            className="build-menu-search"
                             style={{
                                 width: '100%',
                                 height: '34px',
@@ -206,20 +207,20 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
                             }}
                         />
                     </div>
-                    <button onClick={handleClose} className="absolute" style={{ right: '-19.5px', top: '7.5px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
+                    <button onClick={handleClose} className="absolute build-menu-close-btn" style={{ right: '-19.5px', top: '7.5px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)', boxShadow: '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)', border: '1px solid rgba(96,165,250,0.4)', color: 'rgba(200,225,255,0.9)', transition: 'all 0.2s ease' }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 18px 6px rgba(96,165,250,0.55), 0 0 36px 12px rgba(96,165,250,0.25), inset 0 0 12px rgba(150,200,255,0.35)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.4) 0%, rgba(60,130,220,0.2) 60%, transparent 100%)'; e.currentTarget.style.color = '#fff'; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35), 0 0 24px 8px rgba(96,165,250,0.15), inset 0 0 8px rgba(150,200,255,0.2)'; e.currentTarget.style.background = 'radial-gradient(circle, rgba(100,180,255,0.25) 0%, rgba(60,130,220,0.10) 60%, transparent 100%)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                     >
                     </button>
                 </div>
-                <div className="flex flex-grow overflow-hidden" style={{ padding: '0 0 0 0' }}>
+                <div className="flex flex-grow overflow-hidden" style={{ minHeight: 0 }}>
                     {/* Left sidebar tabs */}
-                    <div className="build-menu-scroll" style={{ width: '120px', paddingRight: '4px', overflowY: 'auto', flexShrink: 0 }}>
+                    <div className="build-menu-scroll build-menu-sidebar" style={{ width: '120px', paddingRight: '4px', overflowY: 'auto', flexShrink: 0, WebkitOverflowScrolling: 'touch' }}>
                         {buildTabs.map(tab => (
                             <button
                                 key={tab.name}
                                 onClick={() => { setActiveBuildTab(tab.name); setBuildMenuSearch(''); }}
-                                className="w-full flex items-center space-x-2 transition-colors"
+                                className="w-full flex items-center space-x-2 transition-colors build-menu-tab-btn"
                                 style={{
                                     padding: '7px 10px',
                                     marginBottom: '3px',
@@ -238,7 +239,7 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
                         ))}
                     </div>
                     {/* Right content area */}
-                    <div className="build-menu-scroll" style={{ flex: 1, paddingLeft: '12px', overflowY: 'auto' }}>
+                    <div className="build-menu-scroll build-menu-content" style={{ flex: 1, paddingLeft: '12px', overflowY: 'auto', minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
                         {/* Letter sub-tabs */}
                         {activeBuildTab === 'Буквы' && (
                             <div className="flex space-x-2 mb-4">
@@ -328,15 +329,15 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
                         )}
                         <div className="grid grid-cols-3 gap-2">
                             {buildingsInCurrentTab.map(building => (
-                                <div key={building.id} onClick={() => onSelectBuilding(building)} className="cursor-pointer transition-all" style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '4px 4px 3px 4px', border: '2px solid rgba(255,255,255,0.07)', textAlign: 'center' }}
+                                <div key={building.id} onClick={() => onSelectBuilding(building)} className="cursor-pointer transition-all building-card-item" style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '4px 4px 3px 4px', border: '2px solid rgba(255,255,255,0.07)', textAlign: 'center' }}
                                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)'; e.currentTarget.style.borderColor = 'rgba(96,165,250,0.4)'; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.25)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
                                 >
-                                    <div style={{ width: '100%', height: '68px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3px' }}>
+                                    <div className="building-card-img-wrap" style={{ width: '100%', height: '68px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3px' }}>
                                         <img src={building.imageUrl} alt={building.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '2px' }} />
                                     </div>
-                                    <p className="building-title-shimmer" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 800, marginBottom: '2px', lineHeight: 1.2 }}>{building.name}</p>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', marginBottom: '1px' }}>
+                                    <p className="building-title-shimmer building-card-title" style={{ fontFamily: 'Nunito, sans-serif', fontSize: '11px', fontWeight: 800, marginBottom: '2px', lineHeight: 1.2 }}>{building.name}</p>
+                                    <div className="building-card-cost" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', marginBottom: '1px' }}>
                                         {getIsBuildingFree?.(building.id) ? (
                                             <>
                                                 <img src={coinImageUrl} alt="Gold" style={{ width: '14px', height: '14px', marginRight: '4px', objectFit: 'contain' }} />

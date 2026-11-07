@@ -220,8 +220,8 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                     backgroundImage: 'url(/Gui/build_menu_bg.webp)',
                     backgroundSize: '100% 100%',
                     backgroundRepeat: 'no-repeat',
-                    width: 'min(var(--ui-modal-width), calc(100vw - 32px))',
-                    height: 'min(var(--ui-modal-height), calc(100vh - 32px))',
+                    width: 'min(var(--ui-modal-width), calc(100vw - 20px))',
+                    height: 'min(var(--ui-modal-height), calc(100vh - 12px))',
                     padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)',
                     overflow: 'hidden'
                 }}
@@ -229,7 +229,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                 {/* Close button aligned with background texture X */}
                 <button
                     onClick={onClose}
-                    className="absolute z-10 cursor-pointer"
+                    className="absolute z-10 cursor-pointer profile-modal-close-btn"
                     style={{
                         right: '6.8%',
                         top: '8.8%',
@@ -259,7 +259,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                 />
 
                 {/* Title centered */}
-                <div className="flex items-center justify-center relative" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
+                <div className="flex items-center justify-center relative profile-modal-header" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
                     <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '7px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)' }}>
                         <h2 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 800, fontSize: '15px', color: '#e0e8f0', letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.5)', margin: 0 }}>
                             Личный кабинет
@@ -275,7 +275,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                     const unreadPrivateCount = effectivePrivateChats.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
                     return (
-                        <div className="flex space-x-1 mb-4 overflow-x-auto pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div className="flex space-x-1 mb-4 overflow-x-auto pb-2 profile-tabs-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', WebkitOverflowScrolling: 'touch' }}>
                             {[
                                 { id: 'info', label: 'Информация' },
                                 { id: 'clan', label: 'Клан' },
@@ -290,7 +290,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveProfileTab(tab.id as ProfileTab)}
-                                    className="transition-colors whitespace-nowrap"
+                                    className="transition-colors whitespace-nowrap profile-tab-btn"
                                     style={{
                                         padding: '7px 14px',
                                         borderRadius: '8px',
@@ -310,7 +310,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                 })()}
 
                 {/* Tab Content */}
-                <div className="build-menu-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+                <div className="build-menu-scroll profile-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px', minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
                     {activeProfileTab === 'info' && (
                         <div className="flex flex-col items-center max-w-md mx-auto">
                             <div className="flex flex-col items-center mb-6">
@@ -712,7 +712,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                     })()}
 
                     {activeProfileTab === 'settings' && (
-                        <div className="flex flex-col h-full space-y-4">
+                        <div className="flex flex-col min-h-0 space-y-4">
                             <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', padding: '8px 16px' }}>
                                 <h3 style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '15px', color: '#e0e8f0', margin: 0 }}>Настройки</h3>
                             </div>

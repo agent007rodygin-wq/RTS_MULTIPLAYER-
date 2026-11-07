@@ -207,10 +207,11 @@
 
 /* ── responsive ── */
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (max-height: 540px) {
   .bar {
+    top: 4px;
     gap: 4px;
-    padding: 3px 8px;
+    padding: 2px 8px;
     border-radius: 8px;
   }
 
@@ -220,8 +221,8 @@
 
   .icon,
   .iconRuby {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
 
   .text {

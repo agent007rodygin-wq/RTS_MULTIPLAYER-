@@ -3098,6 +3098,20 @@ const App: React.FC = () => {
         }
     }, [allUsers, deputies, kingId, kingName, playerEnergy, playerGold, queenId, queenName, royalCandidates, royalElectionEndTime, royalVotesTotal, sheriffId]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        (window as any).__testHelpers = {
+            openBuildMenu: () => setBuildMenu({ visible: true, x: 0, y: 0 }),
+            closeBuildMenu: () => setBuildMenu({ visible: false, x: 0, y: 0 }),
+            openProfileModal: () => setShowProfileModal(true),
+            closeProfileModal: () => setShowProfileModal(false),
+            openDailyReward: () => setShowDailyRewardModal(true),
+            closeDailyReward: () => setShowDailyRewardModal(false),
+            openTabletTutorial: () => setActiveTabletTutorial('intro'),
+            closeTabletTutorial: () => setActiveTabletTutorial(null),
+        };
+    }, []);
+
     const handlePoliceVoteAction = useCallback(async (candidateUid: string, policeVoteCount: number) => {
         const totalCost = policeVoteCount * 1000;
         const energyCost = policeVoteCount * 100;
@@ -19906,9 +19920,22 @@ const App: React.FC = () => {
     // Derived HUD visibility rules — Personal Cabinet, Construction Menu,
     // and Building Details modal have different requirements.
     const isAuctionSelected = selectedBuilding && Number(selectedBuilding.info.id) === AUCTION_ID && isMyBuilding(selectedBuilding.building);
-    const shouldHideResourceBar = showProfileModal || (!!selectedBuilding && !isAuctionSelected);
-    const shouldHideWorldControls = showProfileModal || buildMenu.visible || !!selectedBuilding;
-    const shouldHideTabletButton = showProfileModal || buildMenu.visible || !!selectedBuilding;
+    const isAnyBigModalOpen = Boolean(
+        showProfileModal ||
+        buildMenu.visible ||
+        buildConfirmation.visible ||
+        showBlackMarketMissingModal ||
+        showDailyRewardModal ||
+        showMainTabletMenu ||
+        showInventory ||
+        showShop ||
+        showTopPlayers ||
+        showExchangeModal ||
+        (selectedBuilding && !isAuctionSelected)
+    );
+    const shouldHideResourceBar = isAnyBigModalOpen;
+    const shouldHideWorldControls = isAnyBigModalOpen;
+    const shouldHideTabletButton = isAnyBigModalOpen;
 
     useEffect(() => {
         if (currentClan && playerClanId !== currentClan.id) {

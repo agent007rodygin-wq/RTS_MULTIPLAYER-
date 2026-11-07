@@ -305,9 +305,9 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
         className="relative flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 'min(680px, calc(100vw - 32px))',
+          width: 'min(680px, calc(100vw - 20px))',
           aspectRatio: '1256 / 897',
-          maxHeight: 'calc(100vh - 32px)'
+          maxHeight: 'calc(100vh - 16px)'
         }}
       >
         {/* Tablet background image */}
@@ -350,12 +350,12 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
 
         {/* Content Area */}
         <div
-          className="relative z-[1] flex flex-col items-center justify-between"
-          style={{ width: '88%', height: '84%', padding: '6px 16px 12px' }}
+          className="relative z-[1] flex flex-col items-center justify-between daily-reward-content"
+          style={{ width: '88%', height: '84%', padding: '6px 16px 12px', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}
         >
           {!localLinked ? (
             /* VIEW 1: TELEGRAM NOT LINKED - ONBOARDING PROMPT */
-            <div className="w-full h-full flex flex-col items-center justify-between py-2">
+            <div className="w-full h-full flex flex-col items-center justify-between py-1 min-h-0 daily-reward-view">
               {/* Header Title */}
               <div
                 style={{
@@ -384,16 +384,17 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
 
               {/* Graphic + Message */}
               <div className="flex flex-col items-center text-center max-w-[460px] my-auto">
-                <div className="relative mb-2">
+                <div className="relative mb-1">
                   <img
                     src="/Gui/daily_gift_icon.svg"
                     alt="Gift Box"
-                    className="w-20 h-20 animate-bounce"
+                    className="w-20 h-20 animate-bounce daily-reward-gift-img"
                     style={{ animationDuration: '2.5s' }}
                   />
                 </div>
 
                 <h3
+                  className="daily-reward-title"
                   style={{
                     margin: 0,
                     color: '#38bdf8',
@@ -408,6 +409,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                 </h3>
 
                 <p
+                  className="daily-reward-desc"
                   style={{
                     marginTop: '8px',
                     marginBottom: '10px',
@@ -424,6 +426,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                 </p>
 
                 <div
+                  className="daily-reward-code-box"
                   style={{
                     background: 'rgba(15, 23, 42, 0.75)',
                     border: '1px solid rgba(56, 189, 248, 0.35)',
@@ -475,7 +478,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                   href={botLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  className="hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 daily-reward-btn"
                   style={{
                     background: 'linear-gradient(180deg, #38bdf8 0%, #0284c7 100%)',
                     color: '#ffffff',
@@ -496,7 +499,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                 <button
                   onClick={handleManualCheckLink}
                   disabled={isCheckingLink}
-                  className="hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 daily-reward-btn"
                   style={{
                     background: 'rgba(255,255,255,0.08)',
                     color: '#cbd5e1',
@@ -515,7 +518,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
             </div>
           ) : (
             /* VIEW 2: TELEGRAM LINKED - 7-DAY STREAK CALENDAR */
-            <div className="w-full h-full flex flex-col justify-between py-1">
+            <div className="w-full h-full flex flex-col justify-between py-1 min-h-0 daily-reward-view">
               {/* Header Title & Streak Counter */}
               <div className="flex items-center justify-between w-full px-2 mb-1">
                 <div
@@ -544,6 +547,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                 </div>
 
                 <div
+                  className="daily-reward-streak-badge"
                   style={{
                     background: 'rgba(245, 158, 11, 0.15)',
                     border: '1px solid rgba(245, 158, 11, 0.35)',
@@ -571,7 +575,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                   return (
                     <div
                       key={dayCfg.day}
-                      className={dayCfg.day === 7 ? 'col-span-2' : 'col-span-1'}
+                      className={`daily-reward-card ${dayCfg.day === 7 ? 'col-span-2' : 'col-span-1'}`}
                       style={{
                         position: 'relative',
                         background: isCurrent
@@ -621,6 +625,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                             <img
                               src={item.icon}
                               alt={item.name}
+                              className="daily-reward-card-img"
                               style={{
                                 width: dayCfg.day === 7 ? '38px' : '30px',
                                 height: dayCfg.day === 7 ? '38px' : '30px',
@@ -628,6 +633,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                               }}
                             />
                             <span
+                              className="daily-reward-card-amt"
                               style={{
                                 fontFamily: 'Nunito, sans-serif',
                                 fontWeight: 800,
@@ -665,7 +671,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
 
               {/* Referral Invite Block */}
               <div
-                className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs my-1"
+                className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs my-1 daily-reward-ref-box"
                 style={{
                   background: 'rgba(15, 23, 42, 0.7)',
                   border: '1px solid rgba(245, 158, 11, 0.35)'
@@ -704,7 +710,7 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
                   <button
                     onClick={handleClaim}
                     disabled={isClaiming}
-                    className="hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                    className="hover:scale-105 active:scale-95 transition-all cursor-pointer daily-reward-claim-btn"
                     style={{
                       background: 'linear-gradient(180deg, #4ade80 0%, #16a34a 100%)',
                       color: '#ffffff',

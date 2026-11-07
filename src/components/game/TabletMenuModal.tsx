@@ -63,16 +63,22 @@ const ProceduralTutorialTablet: React.FC<ProceduralTutorialTabletProps> = ({
     useEffect(() => {
         const updateScale = () => {
             if (typeof window === 'undefined') return;
-            const availableW = window.innerWidth - 24;
-            const availableH = window.innerHeight - 24;
+            const vpW = window.visualViewport?.width ?? window.innerWidth;
+            const vpH = window.visualViewport?.height ?? window.innerHeight;
+            const availableW = vpW - 28;
+            const availableH = vpH - 24;
             const baseW = 660;
             const baseH = 430;
             const s = Math.min(1, availableW / baseW, availableH / baseH);
-            setScale(Math.max(0.42, s));
+            setScale(Math.max(0.38, s));
         };
         updateScale();
         window.addEventListener('resize', updateScale);
-        return () => window.removeEventListener('resize', updateScale);
+        window.visualViewport?.addEventListener('resize', updateScale);
+        return () => {
+            window.removeEventListener('resize', updateScale);
+            window.visualViewport?.removeEventListener('resize', updateScale);
+        };
     }, []);
 
     const isIntro = activeTabletTutorial === 'intro';
