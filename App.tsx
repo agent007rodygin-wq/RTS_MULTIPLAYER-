@@ -5488,7 +5488,7 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const handleCanvasPointerUp = useCallback(async (clientX: number, clientY: number, skipGhostClickProtection = false) => {
+    const handleCanvasPointerUp = useCallback(async (clientX: number, clientY: number, skipGhostClickProtection = false, button = 0) => {
         // Ignore synthetic mouse events that mobile browsers can emit right after touchend.
         if (!skipGhostClickProtection) {
             const timeSinceLastTouch = Date.now() - lastTouchEndRef.current;
@@ -5980,6 +5980,10 @@ const App: React.FC = () => {
                     }
                 }
             } else {
+                // Empty ground: only open build menu or place initial town hall on LEFT click (button === 0)
+                if (button !== 0) {
+                    return;
+                }
                 const alreadyHasTownHall = hasTownHall ||
                     isPlacingTownHallRef.current ||
                     placedBuildingsRef.current.some(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && isMyBuilding(b)) ||
@@ -6144,7 +6148,7 @@ const App: React.FC = () => {
         if (isDraggingRef.current && hasDraggedRef.current) {
             reportPlayerMovement(true);
         }
-        await handleCanvasPointerUp(event.clientX, event.clientY);
+        await handleCanvasPointerUp(event.clientX, event.clientY, false, event.button);
     }, [handleCanvasPointerUp, reportPlayerMovement]);
 
     const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
@@ -21647,6 +21651,7 @@ const App: React.FC = () => {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
                 onWheel={handleWheel}
+                onContextMenu={(e) => e.preventDefault()}
                 onMouseLeave={() => {
                     if (isDraggingRef.current && hasDraggedRef.current) {
                         reportPlayerMovement(true);

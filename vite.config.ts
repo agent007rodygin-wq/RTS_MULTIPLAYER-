@@ -4,25 +4,33 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const proxyConfig = {
+      '/api': {
+        target: 'http://127.0.0.1:8090',
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            if (req.url && req.url.includes('/realtime')) {
+              res.setHeader('X-Accel-Buffering', 'no');
+              res.setHeader('Cache-Control', 'no-cache, no-transform');
+            }
+          });
+        }
+      }
+    };
+
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
         allowedHosts: true,
-        proxy: {
-          '/api': {
-            target: 'http://127.0.0.1:8090',
-            changeOrigin: true,
-            configure: (proxy) => {
-              proxy.on('proxyRes', (proxyRes, req, res) => {
-                if (req.url && req.url.includes('/realtime')) {
-                  res.setHeader('X-Accel-Buffering', 'no');
-                  res.setHeader('Cache-Control', 'no-cache, no-transform');
-                }
-              });
-            }
-          }
-        }
+        proxy: proxyConfig
+      },
+      preview: {
+        port: 3000,
+        host: '0.0.0.0',
+        allowedHosts: true,
+        proxy: proxyConfig
       },
       plugins: [
         react(),
