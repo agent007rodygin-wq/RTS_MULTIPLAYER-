@@ -4366,6 +4366,12 @@ const App: React.FC = () => {
     useEffect(() => { clansRef.current = clans; }, [clans]);
     const playerClanIdRef = useRef(playerClanId);
     useEffect(() => { playerClanIdRef.current = playerClanId; }, [playerClanId]);
+    const activeChatTabRef = useRef<ChatTab>(activeChatTab);
+    useEffect(() => { activeChatTabRef.current = activeChatTab; }, [activeChatTab]);
+    const playerNameRef = useRef<string>(playerName);
+    useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
+    const allActiveOnlineNamesRef = useRef<Set<string>>(new Set());
+    const allActiveOnlineUidsRef = useRef<Set<string>>(new Set());
 
 
     // Redundant or misplaced useMemo consolidation
@@ -8326,8 +8332,8 @@ const App: React.FC = () => {
                 await setDoc(presenceDocRef, {
                     uid: user.uid,
                     name: effectiveName,
-                    activeTab: activeChatTab,
-                    clanId: normalizeClanIdValue(playerClanId),
+                    activeTab: activeChatTabRef.current || activeChatTab,
+                    clanId: normalizeClanIdValue(playerClanIdRef.current ?? playerClanId),
                     lastSeen: Date.now(),
                     x: worldCenter.x,
                     y: worldCenter.y,
@@ -8581,15 +8587,35 @@ const App: React.FC = () => {
         if (!isAuthReady || !user || loadPhase < 2) return;
         const presenceCol = collection(db, 'presence');
         const q = query(presenceCol, orderBy('lastSeen', 'desc'), limit(200));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const allOnlineUsers: { name: string, uid: string }[] = [];
-            const clanOnlineUsers: { name: string, uid: string }[] = [];
+
+        const VALID_CHAT_TABS: readonly ChatTab[] = ['general', 'banya', 'loot', 'clan', 'police'] as const;
+
+        const dedupeUsers = (users: { name: string, uid: string }[]) => {
+            const map = new Map<string, { name: string, uid: string }>();
+            users.forEach((entry) => {
+                if (!entry.uid) return;
+                map.set(entry.uid, entry);
+            });
+            return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+        };
+
+        const processPresenceDocs = (docs: any[]) => {
+            const tabOnlineUsers: Record<ChatTab, { name: string, uid: string }[]> = {
+                general: [],
+                banya: [],
+                loot: [],
+                clan: [],
+                police: []
+            };
+            const allActiveNames = new Set<string>();
+            const allActiveUids = new Set<string>();
 
             const playersData: any[] = [];
             const now = Date.now();
             const presencePatch: Record<string, any> = {};
-            snapshot.forEach((doc) => {
-                const data = doc.data();
+
+            docs.forEach((doc) => {
+                const data = typeof doc.data === 'function' ? doc.data() : doc;
                 // Only count as online if seen in last 2 minutes
                 if (data && data.lastSeen && (now - data.lastSeen < 120000)) {
                     const uid = String(data.uid || doc.id);
@@ -8604,23 +8630,56 @@ const App: React.FC = () => {
                             : (data.name || existingUserName || "Неизвестный");
                     const repairedPresenceName = repairMojibakeCp1251Utf8(String(rawPresenceName));
                     const normalizedPresenceClanId = normalizeClanIdValue(data.clanId);
+                    const myClanId = normalizeClanIdValue(playerClanIdRef.current ?? playerClanId);
 
-                    allOnlineUsers.push({ name: repairedPresenceName, uid });
-                    if (
-                        normalizedPresenceClanId !== null &&
-                        normalizeClanIdValue(playerClanId) !== null &&
-                        normalizedPresenceClanId === normalizeClanIdValue(playerClanId)
-                    ) {
-                        clanOnlineUsers.push({ name: repairedPresenceName, uid });
+                    allActiveNames.add(repairedPresenceName);
+                    allActiveUids.add(uid);
+
+                    const isSelf = (uid === user.uid);
+                    let rawTab = isSelf ? activeChatTabRef.current : (data.activeTab as ChatTab);
+                    if (!rawTab || !VALID_CHAT_TABS.includes(rawTab)) {
+                        rawTab = 'general';
                     }
 
-                    if (uid !== user.uid) {
+                    if (rawTab === 'clan') {
+                        // Clan tab strictly visible only to members of the same clan
+                        if (
+                            normalizedPresenceClanId !== null &&
+                            myClanId !== null &&
+                            normalizedPresenceClanId === myClanId
+                        ) {
+                            tabOnlineUsers.clan.push({ name: repairedPresenceName, uid });
+                        }
+                    } else {
+                        tabOnlineUsers[rawTab].push({ name: repairedPresenceName, uid });
+                    }
+
+                    if (!isSelf) {
                         playersData.push({ ...data, uid, clanId: normalizedPresenceClanId, name: repairedPresenceName });
                     }
 
                     presencePatch[uid] = { ...data, uid, clanId: normalizedPresenceClanId, name: repairedPresenceName };
                 }
             });
+
+            // Ensure current active user is always visible in their own active tab
+            const currentTab = activeChatTabRef.current || 'general';
+            const myName = playerNameRef.current || playerName;
+            if (user && myName && myName !== 'Неизвестный') {
+                allActiveNames.add(myName);
+                allActiveUids.add(user.uid);
+                const alreadyInTab = tabOnlineUsers[currentTab].some(u => u.uid === user.uid);
+                if (!alreadyInTab) {
+                    const myClanId = normalizeClanIdValue(playerClanIdRef.current ?? playerClanId);
+                    if (currentTab !== 'clan' || Boolean(myClanId)) {
+                        tabOnlineUsers[currentTab].push({ name: myName, uid: user.uid });
+                    }
+                }
+            }
+
+            allActiveOnlineNamesRef.current = allActiveNames;
+            allActiveOnlineUidsRef.current = allActiveUids;
+
             if (Object.keys(presencePatch).length > 0) {
                 setAllUsers(prev => {
                     const updated = { ...prev };
@@ -8658,27 +8717,38 @@ const App: React.FC = () => {
                     return updated;
                 });
             }
-            const dedupeUsers = (users: { name: string, uid: string }[]) => {
-                const map = new Map<string, { name: string, uid: string }>();
-                users.forEach((entry) => {
-                    if (!entry.uid) return;
-                    map.set(entry.uid, entry);
-                });
-                return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-            };
-            const sharedOnlineUsers = dedupeUsers(allOnlineUsers);
-            const sharedClanUsers = dedupeUsers(clanOnlineUsers);
+
             setOnlineUsers({
-                general: sharedOnlineUsers,
-                banya: sharedOnlineUsers,
-                loot: sharedOnlineUsers,
-                police: sharedOnlineUsers,
-                clan: sharedClanUsers
+                general: dedupeUsers(tabOnlineUsers.general),
+                banya: dedupeUsers(tabOnlineUsers.banya),
+                loot: dedupeUsers(tabOnlineUsers.loot),
+                clan: dedupeUsers(tabOnlineUsers.clan),
+                police: dedupeUsers(tabOnlineUsers.police),
             });
             setOnlinePlayersData(playersData);
+        };
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            processPresenceDocs(snapshot.docs);
         }, (error) => handleFirestoreError(error, OperationType.GET, 'presence'));
 
-        return () => unsubscribe();
+        // Reliable fallback polling every 3 seconds to guarantee presence stays in sync
+        // even across SSE reconnects, network stutters, or device wakeups without needing reload.
+        const syncInterval = setInterval(async () => {
+            try {
+                const snap = await getDocs(q);
+                if (snap && snap.docs) {
+                    processPresenceDocs(snap.docs);
+                }
+            } catch (err) {
+                // Ignore transient network errors
+            }
+        }, 3000);
+
+        return () => {
+            unsubscribe();
+            clearInterval(syncInterval);
+        };
     }, [isAuthReady, user, playerClanId, loadPhase]);
 
     // Fetch offline user profiles when selected
@@ -10944,7 +11014,9 @@ const App: React.FC = () => {
     }, [currentZones, mapResources, placedBuildings, droppedItems, enqueueImagePreload]);
 
     const isUserOnline = (name: string) => {
-        if (name === playerName) return true;
+        if (!name) return false;
+        if (name === playerName || name === playerNameRef.current) return true;
+        if (allActiveOnlineNamesRef.current.has(name)) return true;
         return (Object.values(onlineUsers) as { name: string, uid: string }[][]).some(list => list.some(u => u.name === name));
     };
 
@@ -19041,20 +19113,38 @@ const App: React.FC = () => {
     };
 
     const handleSwitchChatTab = (newTab: ChatTab) => {
-        if (isBanned() && newTab !== 'banya' && newTab !== 'clan') {
-            setActiveChatTab('banya');
-            return;
-        }
-        if (newTab === activeChatTab) return;
-        setActiveChatTab(newTab);
+        const targetTab = (isBanned() && newTab !== 'banya' && newTab !== 'clan') ? 'banya' : newTab;
+        if (targetTab === activeChatTab) return;
+        setActiveChatTab(targetTab);
+        activeChatTabRef.current = targetTab;
         
+        // Immediate optimistic update to onlineUsers per tab so local player moves seamlessly
+        setOnlineUsers(prev => {
+            const myName = playerNameRef.current || playerName || 'Игрок';
+            const myUid = user ? user.uid : '';
+            const myEntry = { name: myName, uid: myUid };
+            const next: Record<ChatTab, { name: string, uid: string }[]> = {
+                general: (prev.general || []).filter(u => u.uid !== myUid && u.name !== myName),
+                banya: (prev.banya || []).filter(u => u.uid !== myUid && u.name !== myName),
+                loot: (prev.loot || []).filter(u => u.uid !== myUid && u.name !== myName),
+                clan: (prev.clan || []).filter(u => u.uid !== myUid && u.name !== myName),
+                police: (prev.police || []).filter(u => u.uid !== myUid && u.name !== myName),
+            };
+            if (myUid) {
+                if (targetTab !== 'clan' || Boolean(normalizeClanIdValue(playerClanIdRef.current))) {
+                    next[targetTab] = [...next[targetTab], myEntry].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+                }
+            }
+            return next;
+        });
+
         // Immediate presence update when switching tabs
         if (user) {
             const presenceDocRef = doc(db, 'presence', user.uid);
             const zoom = ZOOM_LEVELS[zoomIndex];
             const worldCenter = screenToWorld(window.innerWidth / 2, window.innerHeight / 2, zoom);
             updateDoc(presenceDocRef, { 
-                activeTab: newTab,
+                activeTab: targetTab,
                 lastSeen: Date.now(),
                 x: worldCenter.x,
                 y: worldCenter.y
@@ -19063,8 +19153,8 @@ const App: React.FC = () => {
                     await setDoc(presenceDocRef, {
                         uid: user.uid,
                         name: playerName,
-                        activeTab: newTab,
-                        clanId: normalizeClanIdValue(playerClanId),
+                        activeTab: targetTab,
+                        clanId: normalizeClanIdValue(playerClanIdRef.current ?? playerClanId),
                         lastSeen: Date.now(),
                         x: worldCenter.x,
                         y: worldCenter.y,
