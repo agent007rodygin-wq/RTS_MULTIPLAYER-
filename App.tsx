@@ -320,7 +320,7 @@ import {
 } from './src/world.js';
 const ZONE_SYNC_MAX_RETRIES = 2;
 const ZONE_SYNC_RETRY_DELAY_MS = 1500;
-const RENDER_RADIUS = 36; // Reduce initial draw work to improve FPS/loading on fresh sessions
+const RENDER_RADIUS = 50; // Full visible viewport coverage for all zoom levels (0.5 to 2.0) and wide monitors
 const GOLD_PER_CHOP = 5000000;
 const TREE_HP = 3;
 const TREE_SERVER_HIT_ENERGY_COST = 2;
@@ -4776,8 +4776,11 @@ const App: React.FC = () => {
 
         setCenterZone(prev => {
             if (prev === newCenter) return prev;
-            // Center zone changed - reset ring to 0 so we load center first
-            setZoneLoadRing(0);
+            // Only reset ring to 0 during initial load before session is fully ready.
+            // During active gameplay, keep ring 2 (all 9 surrounding zones) loaded to prevent textures popping.
+            if (!initialLoadDone.current) {
+                setZoneLoadRing(0);
+            }
             return newCenter;
         });
         };
@@ -11219,10 +11222,10 @@ const App: React.FC = () => {
                     const { screenX, screenY } = worldToScreen(i, j, zoom);
 
                     if (
-                        screenX + scaledTileWidth / 2 < -cameraOffsetRef.current.x ||
-                        screenX - scaledTileWidth / 2 > canvas.width - cameraOffsetRef.current.x ||
-                        screenY + scaledTileHeight / 2 < -cameraOffsetRef.current.y ||
-                        screenY - scaledTileHeight / 2 > canvas.height - cameraOffsetRef.current.y
+                        screenX + scaledTileWidth < -cameraOffsetRef.current.x ||
+                        screenX - scaledTileWidth > canvas.width - cameraOffsetRef.current.x ||
+                        screenY + scaledTileHeight < -cameraOffsetRef.current.y ||
+                        screenY - scaledTileHeight > canvas.height - cameraOffsetRef.current.y
                     ) {
                         continue;
                     }
@@ -11314,11 +11317,16 @@ const App: React.FC = () => {
         visibleDrawableEntities.forEach(({ entity, entityVX, entityVY }) => {
             const { screenX, screenY } = worldToScreen(entityVX, entityVY, zoom);
 
+            // Generous margins so multi-tile and tall buildings never pop out of view while partially on-screen
+            const marginX = Math.max(scaledTileWidth * 2, 500 * zoom);
+            const marginTop = Math.max(scaledTileHeight * 6, 800 * zoom);
+            const marginBottom = Math.max(scaledTileHeight * 2, 250 * zoom);
+
             if (
-                screenX + scaledTileWidth / 2 < -cameraOffsetRef.current.x ||
-                screenX - scaledTileWidth / 2 > canvas.width - cameraOffsetRef.current.x ||
-                screenY < -cameraOffsetRef.current.y - scaledTileHeight * 4 ||
-                screenY - scaledTileHeight > canvas.height - cameraOffsetRef.current.y
+                screenX + marginX < -cameraOffsetRef.current.x ||
+                screenX - marginX > canvas.width - cameraOffsetRef.current.x ||
+                screenY < -cameraOffsetRef.current.y - marginTop ||
+                screenY - marginBottom > canvas.height - cameraOffsetRef.current.y
             ) {
                 return;
             }
@@ -17624,15 +17632,35 @@ const App: React.FC = () => {
     };
 
     const handleZoomIn = () => {
-        const next = Math.min(zoomIndexRef.current + 1, ZOOM_LEVELS.length - 1);
+        const currentIndex = zoomIndexRef.current;
+        const next = Math.min(currentIndex + 1, ZOOM_LEVELS.length - 1);
+        if (next === currentIndex) return;
+        const oldZoom = ZOOM_LEVELS[currentIndex];
+        const newZoom = ZOOM_LEVELS[next];
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        const newCameraX = cx - ((cx - cameraOffsetRef.current.x) / oldZoom) * newZoom;
+        const newCameraY = cy - ((cy - cameraOffsetRef.current.y) / oldZoom) * newZoom;
         zoomIndexRef.current = next;
+        cameraOffsetRef.current = { x: newCameraX, y: newCameraY };
         setZoomIndex(next);
+        reportPlayerMovement(false);
     };
 
     const handleZoomOut = () => {
-        const next = Math.max(zoomIndexRef.current - 1, 0);
+        const currentIndex = zoomIndexRef.current;
+        const next = Math.max(currentIndex - 1, 0);
+        if (next === currentIndex) return;
+        const oldZoom = ZOOM_LEVELS[currentIndex];
+        const newZoom = ZOOM_LEVELS[next];
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        const newCameraX = cx - ((cx - cameraOffsetRef.current.x) / oldZoom) * newZoom;
+        const newCameraY = cy - ((cy - cameraOffsetRef.current.y) / oldZoom) * newZoom;
         zoomIndexRef.current = next;
+        cameraOffsetRef.current = { x: newCameraX, y: newCameraY };
         setZoomIndex(next);
+        reportPlayerMovement(false);
     };
 
     const handleSectorTeleport = (x: number, y: number) => {
@@ -18349,29 +18377,37 @@ const App: React.FC = () => {
         setBuildMenu({ visible: true, x, y });
     }, [buildConfirmation]);
 
+    const lastWheelTimeRef = useRef(0);
     const handleWheel = useCallback((event: React.WheelEvent<HTMLCanvasElement>) => {
-        const oldZoom = ZOOM_LEVELS[zoomIndex];
+        event.preventDefault();
+        const now = performance.now();
+        // Debounce rapid wheel events (at most one zoom level transition per 80ms) to prevent camera runaway
+        if (now - lastWheelTimeRef.current < 80) return;
 
-        let newZoomIndex = zoomIndex;
+        const currentIndex = zoomIndexRef.current;
+        let nextIndex = currentIndex;
         if (event.deltaY < 0) {
-            newZoomIndex = Math.min(ZOOM_LEVELS.length - 1, zoomIndex + 1);
-        } else {
-            newZoomIndex = Math.max(0, zoomIndex - 1);
+            nextIndex = Math.min(ZOOM_LEVELS.length - 1, currentIndex + 1);
+        } else if (event.deltaY > 0) {
+            nextIndex = Math.max(0, currentIndex - 1);
         }
 
-        if (newZoomIndex === zoomIndex) return;
+        if (nextIndex === currentIndex) return;
+        lastWheelTimeRef.current = now;
 
-        const newZoom = ZOOM_LEVELS[newZoomIndex];
+        const oldZoom = ZOOM_LEVELS[currentIndex];
+        const newZoom = ZOOM_LEVELS[nextIndex];
         const mouseX = event.clientX;
         const mouseY = event.clientY;
 
         const newCameraX = mouseX - ((mouseX - cameraOffsetRef.current.x) / oldZoom) * newZoom;
         const newCameraY = mouseY - ((mouseY - cameraOffsetRef.current.y) / oldZoom) * newZoom;
 
-        zoomIndexRef.current = newZoomIndex;
-        setZoomIndex(newZoomIndex);
+        zoomIndexRef.current = nextIndex;
         cameraOffsetRef.current = { x: newCameraX, y: newCameraY };
-    }, [zoomIndex]);
+        setZoomIndex(nextIndex);
+        reportPlayerMovement(false);
+    }, [reportPlayerMovement]);
 
     const handleTeleportToTownHall = () => {
         // First, try to find Town Hall in loaded buildings

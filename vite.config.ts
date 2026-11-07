@@ -12,7 +12,15 @@ export default defineConfig(({ mode }) => {
         proxy: {
           '/api': {
             target: 'http://127.0.0.1:8090',
-            changeOrigin: true
+            changeOrigin: true,
+            configure: (proxy) => {
+              proxy.on('proxyRes', (proxyRes, req, res) => {
+                if (req.url && req.url.includes('/realtime')) {
+                  res.setHeader('X-Accel-Buffering', 'no');
+                  res.setHeader('Cache-Control', 'no-cache, no-transform');
+                }
+              });
+            }
           }
         }
       },
