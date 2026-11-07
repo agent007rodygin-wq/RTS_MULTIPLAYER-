@@ -340,10 +340,24 @@ export const MarketModal: React.FC<MarketModalProps> = memo(({
                                                 type="number"
                                                 min="1"
                                                 max={sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId!] || 1)}
-                                                value={sellItemSelection.amount}
+                                                value={sellItemSelection.amount === 0 ? '' : sellItemSelection.amount}
+                                                placeholder="1"
                                                 onChange={(e) => {
+                                                    const raw = e.target.value;
+                                                    if (raw === '') {
+                                                        onSellItemSelectionChange(prev => ({ ...prev, amount: 0 }));
+                                                        return;
+                                                    }
                                                     const max = sellItemSelection.itemId === 10014 ? playerRubies : (inventory[sellItemSelection.itemId!] || 1);
-                                                    onSellItemSelectionChange(prev => ({ ...prev, amount: Math.max(1, Math.min(max, parseInt(e.target.value) || 1)) }));
+                                                    const val = parseInt(raw, 10);
+                                                    if (!isNaN(val)) {
+                                                        onSellItemSelectionChange(prev => ({ ...prev, amount: Math.max(0, Math.min(max, val)) }));
+                                                    }
+                                                }}
+                                                onBlur={() => {
+                                                    if (!sellItemSelection.amount || sellItemSelection.amount < 1) {
+                                                        onSellItemSelectionChange(prev => ({ ...prev, amount: 1 }));
+                                                    }
                                                 }}
                                                 className="w-full bg-black/60 border border-purple-500/30 rounded-xl p-2.5 text-white text-sm focus:border-purple-400 focus:outline-none"
                                             />
@@ -355,8 +369,24 @@ export const MarketModal: React.FC<MarketModalProps> = memo(({
                                                 <input
                                                     type="number"
                                                     min="1"
-                                                    value={sellItemSelection.price}
-                                                    onChange={(e) => onSellItemSelectionChange(prev => ({ ...prev, price: Math.max(1, parseInt(e.target.value) || 1) }))}
+                                                    value={sellItemSelection.price === 0 ? '' : sellItemSelection.price}
+                                                    placeholder="1"
+                                                    onChange={(e) => {
+                                                        const raw = e.target.value;
+                                                        if (raw === '') {
+                                                            onSellItemSelectionChange(prev => ({ ...prev, price: 0 }));
+                                                            return;
+                                                        }
+                                                        const val = parseInt(raw, 10);
+                                                        if (!isNaN(val)) {
+                                                            onSellItemSelectionChange(prev => ({ ...prev, price: Math.max(0, val) }));
+                                                        }
+                                                    }}
+                                                    onBlur={() => {
+                                                        if (!sellItemSelection.price || sellItemSelection.price < 1) {
+                                                            onSellItemSelectionChange(prev => ({ ...prev, price: 1 }));
+                                                        }
+                                                    }}
                                                     className="w-full bg-black/60 border border-purple-500/30 rounded-xl p-2.5 text-white text-sm focus:border-purple-400 focus:outline-none"
                                                 />
                                             </div>

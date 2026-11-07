@@ -15987,7 +15987,18 @@ const App: React.FC = () => {
                 });
             })
                 .then(() => {
-                    addHistoryLog(`Куплено ${item.rubyPackQuantity! * quantity} ${item.name} за ${quantity} рубинов.`, 'economy');
+                    const receivedCount = (item.rubyPackQuantity || 1) * quantity;
+                    updatePlayerResources(0, -quantity, { [item.id]: receivedCount });
+                    playCoinSound();
+                    setPermitPurchaseToast(`+${receivedCount} ${item.name} (-${quantity} 💎)`);
+                    if (permitPurchaseToastTimerRef.current !== null) {
+                        window.clearTimeout(permitPurchaseToastTimerRef.current);
+                    }
+                    permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                        setPermitPurchaseToast(null);
+                        permitPurchaseToastTimerRef.current = null;
+                    }, 2500);
+                    addHistoryLog(`Куплено ${receivedCount} ${item.name} за ${quantity} рубинов.`, 'economy');
                 })
                 .catch(e => {
                     console.error("Buy shop item failed: ", e);
@@ -16033,8 +16044,10 @@ const App: React.FC = () => {
                 });
             })
                 .then(() => {
+                    updatePlayerResources(coins, -exchangeAmount, {});
                     setShowExchangeModal(false);
                     setExchangeAmount(1);
+                    playCoinSound();
                     addHistoryLog(`Обменяно ${exchangeAmount} рубинов на ${coins} монет.`, 'economy');
                     alert(`Обмен успешен! Вы получили ${coins.toLocaleString()} монет.`);
                 })

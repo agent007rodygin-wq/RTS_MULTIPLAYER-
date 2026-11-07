@@ -37,7 +37,7 @@ export const BlackMarketMissingModal: React.FC<BlackMarketMissingModalProps> = m
 }) => {
     // Single item buy dialog state
     const [selectedResource, setSelectedResource] = useState<MissingResource | null>(null);
-    const [buyAmount, setBuyAmount] = useState<number>(1);
+    const [buyAmount, setBuyAmount] = useState<number | ''>(1);
 
     const missingResources = useMemo(() => {
         if (!isOpen || !building) return [];
@@ -62,8 +62,9 @@ export const BlackMarketMissingModal: React.FC<BlackMarketMissingModalProps> = m
         setBuyAmount(resource.missing);
     };
 
+    const effectiveBuyAmount = Math.max(1, Number(buyAmount) || 1);
     const currentSingleCost = selectedResource
-        ? calculateResourceRubyCost(buyAmount, selectedResource.rubyPackQuantity)
+        ? calculateResourceRubyCost(effectiveBuyAmount, selectedResource.rubyPackQuantity)
         : { rubies: 0, itemsReceived: 0 };
 
     const allFulfilled = missingResources.length === 0;
@@ -265,7 +266,7 @@ export const BlackMarketMissingModal: React.FC<BlackMarketMissingModalProps> = m
 
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setBuyAmount(prev => Math.max(1, prev - 1))}
+                                        onClick={() => setBuyAmount(prev => Math.max(1, (Number(prev) || 1) - 1))}
                                         className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 text-lg font-bold border border-gray-600 flex items-center justify-center transition-all cursor-pointer"
                                     >
                                         -
@@ -274,14 +275,27 @@ export const BlackMarketMissingModal: React.FC<BlackMarketMissingModalProps> = m
                                         type="number"
                                         min={1}
                                         value={buyAmount}
+                                        placeholder="1"
                                         onChange={(e) => {
-                                            const val = parseInt(e.target.value) || 1;
-                                            setBuyAmount(Math.max(1, val));
+                                            const raw = e.target.value;
+                                            if (raw === '') {
+                                                setBuyAmount('');
+                                                return;
+                                            }
+                                            const val = parseInt(raw, 10);
+                                            if (!isNaN(val)) {
+                                                setBuyAmount(Math.max(0, Math.min(1000000, val)));
+                                            }
+                                        }}
+                                        onBlur={() => {
+                                            if (buyAmount === '' || buyAmount === 0 || typeof buyAmount !== 'number') {
+                                                setBuyAmount(1);
+                                            }
                                         }}
                                         className="flex-1 h-9 rounded-lg bg-gray-900 border border-yellow-500/40 text-center font-extrabold text-yellow-200 outline-none focus:border-yellow-400 text-sm"
                                     />
                                     <button
-                                        onClick={() => setBuyAmount(prev => prev + 1)}
+                                        onClick={() => setBuyAmount(prev => Math.max(1, (Number(prev) || 1) + 1))}
                                         className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 text-lg font-bold border border-gray-600 flex items-center justify-center transition-all cursor-pointer"
                                     >
                                         +
@@ -289,22 +303,22 @@ export const BlackMarketMissingModal: React.FC<BlackMarketMissingModalProps> = m
                                 </div>
 
                                 {/* Quick Presets */}
-                                <div className="grid grid-cols-4 gap-1.5 pt-1">
-                                    {[1, 10, 50].map(cnt => (
+                                <div className="grid grid-cols-5 gap-1.5 pt-1">
+                                    {[1, 10, 50, 100, 1000].map(cnt => (
                                         <button
                                             key={cnt}
                                             onClick={() => setBuyAmount(cnt)}
                                             className="py-1 rounded-md text-xs font-bold bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition-all cursor-pointer"
                                         >
-                                            {cnt} шт.
+                                            {cnt >= 1000 ? '1к' : cnt}
                                         </button>
                                     ))}
                                     <button
                                         onClick={() => setBuyAmount(selectedResource.missing)}
-                                        className="py-1 rounded-md text-xs font-bold bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border border-amber-600/50 transition-all cursor-pointer"
+                                        className="col-span-5 py-1 rounded-md text-xs font-bold bg-amber-950/70 hover:bg-amber-900/80 text-amber-300 border border-amber-600/50 transition-all cursor-pointer"
                                         title="Установить ровно недостающее количество"
                                     >
-                                        Все ({selectedResource.missing})
+                                        Все ({selectedResource.missing} шт.)
                                     </button>
                                 </div>
                             </div>
@@ -337,9 +351,13 @@ export const BlackMarketMissingModal: React.FC<BlackMarketMissingModalProps> = m
                                         onBuyResource(selectedResource.id, currentSingleCost.itemsReceived, currentSingleCost.rubies);
                                         setSelectedResource(null);
                                     }}
-                                    className="flex-1 py-2 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-lg transition-all transform active:scale-95 cursor-pointer flex items-center justify-center gap-1"
+                                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold shadow-lg transition-all transform active:scale-95 cursor-pointer flex items-center justify-center gap-1 ${
+                                        playerRubies >= currentSingleCost.rubies
+                                            ? 'bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black'
+                                            : 'bg-red-900/60 hover:bg-red-800/70 text-red-200 border border-red-500/40'
+                                    }`}
                                 >
-                                    Купить ({currentSingleCost.rubies} 💎)
+                                    {playerRubies >= currentSingleCost.rubies ? `Купить (${currentSingleCost.rubies} 💎)` : `Нужно ${currentSingleCost.rubies} 💎 (не хватает)`}
                                 </button>
                             </div>
                         </div>

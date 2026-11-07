@@ -55,7 +55,8 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
 }) => {
     const [activeTab, setActiveTab] = useState<'inventory' | 'craft'>('inventory');
     const [sellingItem, setSellingItem] = useState<SellingItemInfo | null>(null);
-    const [sellAmount, setSellAmount] = useState<number>(1);
+    const [sellAmount, setSellAmount] = useState<number | ''>(1);
+    const effectiveSellAmount = Math.max(1, Number(sellAmount) || 1);
 
     if (!isOpen) return null;
 
@@ -645,7 +646,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
                                 {/* Amount stepper */}
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setSellAmount(prev => Math.max(1, prev - 1))}
+                                        onClick={() => setSellAmount(prev => Math.max(1, (Number(prev) || 1) - 1))}
                                         className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 text-lg font-bold border border-gray-600 flex items-center justify-center transition-all cursor-pointer"
                                     >
                                         -
@@ -655,14 +656,27 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
                                         min={1}
                                         max={sellingItem.availableAmount}
                                         value={sellAmount}
+                                        placeholder="1"
                                         onChange={(e) => {
-                                            const val = parseInt(e.target.value) || 0;
-                                            setSellAmount(Math.max(1, Math.min(sellingItem.availableAmount, val)));
+                                            const raw = e.target.value;
+                                            if (raw === '') {
+                                                setSellAmount('');
+                                                return;
+                                            }
+                                            const val = parseInt(raw, 10);
+                                            if (!isNaN(val)) {
+                                                setSellAmount(Math.max(0, Math.min(sellingItem.availableAmount, val)));
+                                            }
+                                        }}
+                                        onBlur={() => {
+                                            if (sellAmount === '' || sellAmount === 0 || typeof sellAmount !== 'number') {
+                                                setSellAmount(1);
+                                            }
                                         }}
                                         className="flex-1 h-9 rounded-lg bg-gray-900 border border-yellow-500/40 text-center font-extrabold text-yellow-200 outline-none focus:border-yellow-400"
                                     />
                                     <button
-                                        onClick={() => setSellAmount(prev => Math.min(sellingItem.availableAmount, prev + 1))}
+                                        onClick={() => setSellAmount(prev => Math.min(sellingItem.availableAmount, (Number(prev) || 1) + 1))}
                                         className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 text-lg font-bold border border-gray-600 flex items-center justify-center transition-all cursor-pointer"
                                     >
                                         +
@@ -699,7 +713,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
                                 <span className="text-xs text-gray-300">Итого к получению:</span>
                                 <span className="text-base font-extrabold text-yellow-300 flex items-center gap-1.5">
                                     <img src={coinImageUrl} className="w-4 h-4" alt="C" />
-                                    +{(sellAmount * sellingItem.unitPrice).toLocaleString()}
+                                    +{(effectiveSellAmount * sellingItem.unitPrice).toLocaleString()}
                                 </span>
                             </div>
 
@@ -714,7 +728,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
                                 <button
                                     onClick={() => {
                                         if (onQuickSellItem) {
-                                            onQuickSellItem(sellingItem.id, sellAmount);
+                                            onQuickSellItem(sellingItem.id, effectiveSellAmount);
                                         }
                                         setSellingItem(null);
                                     }}

@@ -72,8 +72,24 @@ export const ExchangeModal: React.FC<ExchangeModalProps> = memo(({
                                     type="number"
                                     min="1"
                                     max={playerRubies}
-                                    value={exchangeAmount}
-                                    onChange={e => onExchangeAmountChange(Math.max(1, parseInt(e.target.value) || 0))}
+                                    value={exchangeAmount === 0 ? '' : exchangeAmount}
+                                    placeholder="1"
+                                    onChange={e => {
+                                        const raw = e.target.value;
+                                        if (raw === '') {
+                                            onExchangeAmountChange(0);
+                                            return;
+                                        }
+                                        const val = parseInt(raw, 10);
+                                        if (!isNaN(val)) {
+                                            onExchangeAmountChange(Math.max(0, val));
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        if (!exchangeAmount || exchangeAmount < 1) {
+                                            onExchangeAmountChange(1);
+                                        }
+                                    }}
                                     className="w-20 bg-black/60 text-pink-300 text-center font-extrabold rounded-lg border border-purple-500/40 p-1.5 text-sm focus:border-purple-400 focus:outline-none"
                                 />
                                 <span className="text-[10px] text-purple-300/70 mt-1">рубинов</span>
