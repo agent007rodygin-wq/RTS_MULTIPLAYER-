@@ -10,7 +10,7 @@ import {
     renderConfettiCanvas,
 } from '../../game/juice/comboSystem';
 
-const ZOOM_LEVELS = [0.5, 1, 1.5, 2, 2.5];
+import { ZOOM_LEVELS } from '../../world.js';
 
 interface ComboJuiceOverlayProps {
     floatingItems: FloatingTextItem[];

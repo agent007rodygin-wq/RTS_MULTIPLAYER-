@@ -1,5 +1,7 @@
-export const TILE_WIDTH = 128;
-export const TILE_HEIGHT = 64;
+export const TILE_WIDTH = 256;
+export const TILE_HEIGHT = 128;
+export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2];
+export const DEFAULT_ZOOM_INDEX = 2; // Corresponds to 1.0 zoom (256x128 tile)
 export const WORLD_WIDTH_TILES = 200;
 export const WORLD_HEIGHT_TILES = 200;
 export const ZONES_X = 5;

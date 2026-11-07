@@ -305,14 +305,13 @@ const handleGameLoopError = (error: unknown, operationType: OperationType, path:
 };
 
 
-// Constants
-const ZOOM_LEVELS = [1, 1.5, 2, 2.5];
 const PLAYER_COLORS = ['#4299E1', '#F56565', '#48BB78', '#ECC94B'];
 // World geometry and zone helpers — canonical module src/world.js
 import {
     TILE_WIDTH, TILE_HEIGHT,
     WORLD_WIDTH_TILES, WORLD_HEIGHT_TILES,
     ZONES_X, ZONES_Y, ZONE_SIZE,
+    ZOOM_LEVELS, DEFAULT_ZOOM_INDEX,
     wrapCoord, normalizeWorldCoord,
     getWrappedDelta, getWrappedDirectionToTarget,
     getWrappedManhattanDistance, getWrappedChebyshevDistance,
@@ -2337,7 +2336,7 @@ const App: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const startupDebugConsoleEnabled = DEBUG_FLAG_ENABLED || readLocalStorageFlag(STARTUP_DEBUG_STORAGE_KEY, false);
     const cameraOffsetRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 4 });
-    const [zoomIndex, setZoomIndex] = useState(1); // Corresponds to 1.5 zoom
+    const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX); // Corresponds to 1.0 zoom (256x128 tile)
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [placedBuildings, setPlacedBuildings] = useState<PlacedBuilding[]>([]);
     const [mapResources, setMapResources] = useState<MapResource[]>([]);
@@ -12189,7 +12188,7 @@ const App: React.FC = () => {
             }
 
             const aspectRatio = img && img.naturalWidth > 0 ? img.naturalHeight / img.naturalWidth : 1.5;
-            const isResourceFullScale = entity.entityType === 'resource' && (entity.type === 'tree' || entity.type === 'oil' || entity.type === 'quarry');
+            const isResourceFullScale = entity.entityType === 'resource' && (entity.type === 'tree' || entity.type === 'oil' || entity.type === 'quarry' || entity.type === 'chest');
             // Bronekur boss monster should be rendered larger (2.5x tile size)
             const isBronekurMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === BRONEKUR_ID && buildingInfo?.stats.isMonster;
             const isIzbushkaMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === KILLING_HUT_ID && buildingInfo?.stats.isMonster;
