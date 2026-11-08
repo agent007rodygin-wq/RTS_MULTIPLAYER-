@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertCircle, LogIn, UserPlus } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertCircle, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { Swirling } from './src/components/ui/Swirling';
 import videoSource from './4ad7fd6bdd364b3ea7df7491510ab3fa.mp4';
 import { repairMojibakeCp1251Utf8 } from './src/game/utils/mojibake';
@@ -45,6 +45,8 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
     setIsLoadingScreen,
     setCurrentTrackIndex
 }) => {
+    const [showPassword, setShowPassword] = useState(false);
+
     return (
         <div
             className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black cursor-pointer overflow-hidden font-sans"
@@ -140,19 +142,33 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({
                                     </>
                                 )}
 
-                                <input
-                                    type="password"
-                                    placeholder="Пароль"
-                                    className="px-4 py-3 bg-gray-900/90 border border-gray-600/70 rounded-xl text-white text-base outline-none focus:border-blue-500 focus:bg-gray-900 transition-all placeholder:text-gray-400 shadow-inner"
-                                    value={authPassword}
-                                    autoComplete={isRegisterMode ? "new-password" : "current-password"}
-                                    autoCapitalize="none"
-                                    autoCorrect="off"
-                                    spellCheck={false}
-                                    translate="no"
-                                    onChange={(e) => setAuthPassword(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
+                                <div className="relative flex items-center">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Пароль"
+                                        className="w-full px-4 py-3 pr-11 bg-gray-900/90 border border-gray-600/70 rounded-xl text-white text-base outline-none focus:border-blue-500 focus:bg-gray-900 transition-all placeholder:text-gray-400 shadow-inner"
+                                        value={authPassword}
+                                        autoComplete={isRegisterMode ? "new-password" : "current-password"}
+                                        autoCapitalize="none"
+                                        autoCorrect="off"
+                                        spellCheck={false}
+                                        translate="no"
+                                        onChange={(e) => setAuthPassword(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowPassword(!showPassword);
+                                        }}
+                                        className="absolute right-3 text-gray-400 hover:text-white transition-colors focus:outline-none cursor-pointer"
+                                        title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                                    >
+                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                    </button>
+                                </div>
                             </div>
 
                             {authError && (
