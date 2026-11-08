@@ -8983,6 +8983,7 @@ const App: React.FC = () => {
             merged.forEach((b, id) => {
                 const bInfo = buildingData.find(info => info.id === Number(b.buildingId) || info.id === b.buildingId);
                 if (bInfo?.stats?.isMonster) {
+                    const gId = b.gameId ? String(b.gameId) : '';
                     const prevPos = monsterPrevPosRef.current.get(id);
                     if (prevPos && (prevPos.x !== b.x || prevPos.y !== b.y)) {
                         const dx = b.x - prevPos.x;
@@ -8991,7 +8992,6 @@ const App: React.FC = () => {
                         if (b.lastMoveTime) {
                             monsterLastMoveTimeRef.current.set(id, b.lastMoveTime);
                         }
-                        const gId = b.gameId ? String(b.gameId) : '';
                         if (gId) {
                             monsterDirectionRef.current.set(gId, { dx, dy });
                             if (b.lastMoveTime) {
@@ -9000,6 +9000,30 @@ const App: React.FC = () => {
                         }
                     }
                     monsterPrevPosRef.current.set(id, { x: b.x, y: b.y });
+
+                    // Synchronize monster facing direction from server doc
+                    const dir = (b as any).direction;
+                    if (dir && typeof dir.dx === 'number' && typeof dir.dy === 'number') {
+                        monsterDirectionRef.current.set(id, dir);
+                        if (gId) monsterDirectionRef.current.set(gId, dir);
+                    }
+
+                    // Synchronize monster attack state and direction from server doc
+                    if (b.lastAttackTime) {
+                        monsterAttackTimeRef.current.set(id, b.lastAttackTime);
+                        if (gId) monsterAttackTimeRef.current.set(gId, b.lastAttackTime);
+                        monsterAttackCancelTimeRef.current.delete(id);
+                        if (gId) monsterAttackCancelTimeRef.current.delete(gId);
+                    }
+                    const attackDir = (b as any).attackDir;
+                    if (attackDir && typeof attackDir.dx === 'number' && typeof attackDir.dy === 'number') {
+                        monsterAttackDirectionRef.current.set(id, attackDir);
+                        if (gId) monsterAttackDirectionRef.current.set(gId, attackDir);
+                    }
+                    if (b.lastMoveTime) {
+                        monsterLastMoveTimeRef.current.set(id, b.lastMoveTime);
+                        if (gId) monsterLastMoveTimeRef.current.set(gId, b.lastMoveTime);
+                    }
                 }
             });
 
@@ -9497,25 +9521,61 @@ const App: React.FC = () => {
                     const strId = String(b.id);
                     const gameIdStr = b.gameId ? String(b.gameId) : '';
                     const serverMonster = monstersMap.get(strId) || (gameIdStr ? monstersMap.get(gameIdStr) : undefined);
-                    if (serverMonster && (b.x !== serverMonster.x || b.y !== serverMonster.y || b.hp !== serverMonster.hp)) {
-                        anyMoved = true;
-                        const refAttackTime = Math.max(
-                            monsterAttackTimeRef.current.get(strId) || 0,
-                            gameIdStr ? (monsterAttackTimeRef.current.get(gameIdStr) || 0) : 0
-                        );
-                        const refMoveTime = Math.max(
-                            monsterLastMoveTimeRef.current.get(strId) || 0,
-                            gameIdStr ? (monsterLastMoveTimeRef.current.get(gameIdStr) || 0) : 0
-                        );
-                        return {
-                            ...b,
-                            x: serverMonster.x,
-                            y: serverMonster.y,
-                            zoneId: serverMonster.zoneId,
-                            hp: serverMonster.hp,
-                            lastMoveTime: Math.max(b.lastMoveTime || 0, serverMonster.lastMoveTime || 0, refMoveTime),
-                            lastAttackTime: Math.max(b.lastAttackTime || 0, serverMonster.lastAttackTime || 0, refAttackTime)
-                        };
+                    if (serverMonster) {
+                        const hasPosChange = b.x !== serverMonster.x || b.y !== serverMonster.y;
+                        const hasHpChange = b.hp !== serverMonster.hp;
+                        const hasAttackChange = (serverMonster.lastAttackTime || 0) > (b.lastAttackTime || 0);
+                        const hasMoveChange = (serverMonster.lastMoveTime || 0) > (b.lastMoveTime || 0);
+
+                        if (hasPosChange || hasHpChange || hasAttackChange || hasMoveChange) {
+                            anyMoved = true;
+
+                            // Sync attack animation refs immediately so observer plays attack anim
+                            const serverAttackTime = serverMonster.lastAttackTime || 0;
+                            if (serverAttackTime > 0) {
+                                monsterAttackTimeRef.current.set(strId, serverAttackTime);
+                                if (gameIdStr) monsterAttackTimeRef.current.set(gameIdStr, serverAttackTime);
+                                monsterAttackCancelTimeRef.current.delete(strId);
+                                if (gameIdStr) monsterAttackCancelTimeRef.current.delete(gameIdStr);
+                            }
+                            const serverAttackDir = (serverMonster as any).attackDir;
+                            if (serverAttackDir && typeof serverAttackDir.dx === 'number' && typeof serverAttackDir.dy === 'number') {
+                                monsterAttackDirectionRef.current.set(strId, serverAttackDir);
+                                if (gameIdStr) monsterAttackDirectionRef.current.set(gameIdStr, serverAttackDir);
+                            }
+
+                            // Sync movement animation & facing direction immediately
+                            if (hasPosChange) {
+                                const dx = Math.sign(serverMonster.x - b.x);
+                                const dy = Math.sign(serverMonster.y - b.y);
+                                if (dx !== 0 || dy !== 0) {
+                                    monsterDirectionRef.current.set(strId, { dx, dy });
+                                    if (gameIdStr) monsterDirectionRef.current.set(gameIdStr, { dx, dy });
+                                }
+                            }
+                            const serverDir = (serverMonster as any).direction;
+                            if (serverDir && typeof serverDir.dx === 'number' && typeof serverDir.dy === 'number') {
+                                monsterDirectionRef.current.set(strId, serverDir);
+                                if (gameIdStr) monsterDirectionRef.current.set(gameIdStr, serverDir);
+                            }
+                            const serverMoveTime = serverMonster.lastMoveTime || 0;
+                            if (serverMoveTime > 0) {
+                                monsterLastMoveTimeRef.current.set(strId, serverMoveTime);
+                                if (gameIdStr) monsterLastMoveTimeRef.current.set(gameIdStr, serverMoveTime);
+                            }
+
+                            return {
+                                ...b,
+                                x: serverMonster.x,
+                                y: serverMonster.y,
+                                zoneId: serverMonster.zoneId,
+                                hp: serverMonster.hp,
+                                lastMoveTime: Math.max(b.lastMoveTime || 0, serverMoveTime),
+                                lastAttackTime: Math.max(b.lastAttackTime || 0, serverAttackTime),
+                                attackDir: serverAttackDir || (b as any).attackDir,
+                                direction: serverDir || (b as any).direction,
+                            };
+                        }
                     }
                     return b;
                 });
@@ -11765,7 +11825,10 @@ const App: React.FC = () => {
                         const now = Date.now();
                         const monsterId = String(entity.id);
                         const monsterGameId = entity.gameId ? String(entity.gameId) : '';
-                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        let lastDir = monsterDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).direction ||
+                            (entity as any).data?.direction;
                         if (!lastDir) {
                             const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
                             lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
@@ -11774,11 +11837,13 @@ const App: React.FC = () => {
                         }
                         const lastMoveTime = Math.max(
                             entity.lastMoveTime || 0,
+                            (entity as any).data?.lastMoveTime || 0,
                             monsterLastMoveTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
                         );
                         const lastAttackTime = Math.max(
                             entity.lastAttackTime || 0,
+                            (entity as any).data?.lastAttackTime || 0,
                             monsterAttackTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
                         );
@@ -11789,7 +11854,11 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).attackDir ||
+                            (entity as any).data?.attackDir ||
+                            lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -11872,7 +11941,10 @@ const App: React.FC = () => {
                         const now = Date.now();
                         const monsterId = String(entity.id);
                         const monsterGameId = entity.gameId ? String(entity.gameId) : '';
-                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        let lastDir = monsterDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).direction ||
+                            (entity as any).data?.direction;
                         if (!lastDir) {
                             const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
                             lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
@@ -11881,11 +11953,13 @@ const App: React.FC = () => {
                         }
                         const lastMoveTime = Math.max(
                             entity.lastMoveTime || 0,
+                            (entity as any).data?.lastMoveTime || 0,
                             monsterLastMoveTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
                         );
                         const lastAttackTime = Math.max(
                             entity.lastAttackTime || 0,
+                            (entity as any).data?.lastAttackTime || 0,
                             monsterAttackTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
                         );
@@ -11898,7 +11972,11 @@ const App: React.FC = () => {
                         let santaAnimState: 'idle' | 'walk' | 'attack' = 'idle';
                         
                         // PRIORITY 1: Attack animation
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).attackDir ||
+                            (entity as any).data?.attackDir ||
+                            lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -11972,7 +12050,10 @@ const App: React.FC = () => {
                         const now = Date.now();
                         const monsterId = String(entity.id);
                         const monsterGameId = entity.gameId ? String(entity.gameId) : '';
-                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        let lastDir = monsterDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).direction ||
+                            (entity as any).data?.direction;
                         if (!lastDir) {
                             const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
                             lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
@@ -11981,11 +12062,13 @@ const App: React.FC = () => {
                         }
                         const lastMoveTime = Math.max(
                             entity.lastMoveTime || 0,
+                            (entity as any).data?.lastMoveTime || 0,
                             monsterLastMoveTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
                         );
                         const lastAttackTime = Math.max(
                             entity.lastAttackTime || 0,
+                            (entity as any).data?.lastAttackTime || 0,
                             monsterAttackTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
                         );
@@ -11996,7 +12079,11 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).attackDir ||
+                            (entity as any).data?.attackDir ||
+                            lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             // Map grid direction to attack animation
@@ -12080,7 +12167,10 @@ const App: React.FC = () => {
                         const now = Date.now();
                         const monsterId = String(entity.id);
                         const monsterGameId = entity.gameId ? String(entity.gameId) : '';
-                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        let lastDir = monsterDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).direction ||
+                            (entity as any).data?.direction;
                         if (!lastDir) {
                             const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
                             lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
@@ -12089,11 +12179,13 @@ const App: React.FC = () => {
                         }
                         const lastMoveTime = Math.max(
                             entity.lastMoveTime || 0,
+                            (entity as any).data?.lastMoveTime || 0,
                             monsterLastMoveTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
                         );
                         const lastAttackTime = Math.max(
                             entity.lastAttackTime || 0,
+                            (entity as any).data?.lastAttackTime || 0,
                             monsterAttackTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
                         );
@@ -12104,7 +12196,11 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).attackDir ||
+                            (entity as any).data?.attackDir ||
+                            lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -12181,7 +12277,10 @@ const App: React.FC = () => {
                         const now = Date.now();
                         const monsterId = String(entity.id);
                         const monsterGameId = entity.gameId ? String(entity.gameId) : '';
-                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        let lastDir = monsterDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).direction ||
+                            (entity as any).data?.direction;
                         if (!lastDir) {
                             const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
                             lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
@@ -12190,11 +12289,13 @@ const App: React.FC = () => {
                         }
                         const lastMoveTime = Math.max(
                             entity.lastMoveTime || 0,
+                            (entity as any).data?.lastMoveTime || 0,
                             monsterLastMoveTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
                         );
                         const lastAttackTime = Math.max(
                             entity.lastAttackTime || 0,
+                            (entity as any).data?.lastAttackTime || 0,
                             monsterAttackTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
                         );
@@ -12205,7 +12306,11 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).attackDir ||
+                            (entity as any).data?.attackDir ||
+                            lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -12280,7 +12385,10 @@ const App: React.FC = () => {
                         const now = Date.now();
                         const monsterId = String(entity.id);
                         const monsterGameId = entity.gameId ? String(entity.gameId) : '';
-                        let lastDir = monsterDirectionRef.current.get(monsterId) || (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined);
+                        let lastDir = monsterDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).direction ||
+                            (entity as any).data?.direction;
                         if (!lastDir) {
                             const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
                             lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
@@ -12289,11 +12397,13 @@ const App: React.FC = () => {
                         }
                         const lastMoveTime = Math.max(
                             entity.lastMoveTime || 0,
+                            (entity as any).data?.lastMoveTime || 0,
                             monsterLastMoveTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
                         );
                         const lastAttackTime = Math.max(
                             entity.lastAttackTime || 0,
+                            (entity as any).data?.lastAttackTime || 0,
                             monsterAttackTimeRef.current.get(monsterId) || 0,
                             monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0
                         );
@@ -12304,7 +12414,11 @@ const App: React.FC = () => {
                         let playbackMultiplier = 1;
                         
                         // PRIORITY 1: Attack animation (takes precedence over walk)
-                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) || (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) || lastDir;
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).attackDir ||
+                            (entity as any).data?.attackDir ||
+                            lastDir;
                         if (attackDir && lastAttackTime > 0) {
                             let attackFrames: string[];
                             const absDx = Math.abs(attackDir.dx);
@@ -13301,6 +13415,18 @@ const App: React.FC = () => {
                     if (hostIsOnline) return false;
                 }
 
+                // Deterministic host election among online players:
+                // When hostId is unclaimed or previous host went offline, the candidate with
+                // lexicographically lowest UID claims the slot, preventing multi-host race conditions.
+                const allOnlineUids = [
+                    ...onlinePlayersDataRef.current.map(p => p.uid).filter(Boolean),
+                    userRef.current.uid
+                ];
+                allOnlineUids.sort();
+                if (allOnlineUids[0] !== userRef.current.uid) {
+                    return false;
+                }
+
                 // Optimistic host claim: process immediately on this client while claim is being persisted.
                 // This avoids "monsters stand still forever" when hostId claim update is delayed or rejected.
                 tryClaimNeutralHost(b);
@@ -13654,16 +13780,30 @@ const App: React.FC = () => {
                         monsterAttackCancelTimeRef.current.delete(gameIdStr);
                     }
 
-                    const newMonsterState = { ...monster, lastAttackTime: now, hostId: userRef.current?.uid || null };
+                    const newMonsterState = {
+                        ...monster,
+                        lastAttackTime: now,
+                        attackDir,
+                        direction: attackDir,
+                        hostId: userRef.current?.uid || null
+                    };
                     monsterUpdates.set(String(monster.id), newMonsterState);
                     monster.lastAttackTime = now;
+                    (monster as any).attackDir = attackDir;
+                    (monster as any).direction = attackDir;
                     monster.hostId = userRef.current?.uid || null;
                     monsterLastActionRef.current.set(monsterId, now);
                     monstersActedThisCycle.add(String(monsterId));
 
                     if (monster.ownerId === "monster" || monster.ownerId === "0" || monster.ownerId === "-1" || (isAuthReadyRef.current && userRef.current && monster.ownerId === userRef.current.uid)) {
                         const docId = String(monster.id);
-                        updateBuildingDocSafe(docId, { lastAttackTime: now, hostId: userRef.current?.uid || null }, { throttleMonster: true });
+                        // Send attack event immediately without throttling so all players see attack anim simultaneously
+                        updateBuildingDocSafe(docId, {
+                            lastAttackTime: now,
+                            attackDir,
+                            direction: attackDir,
+                            hostId: userRef.current?.uid || null
+                        });
                     }
                 });
 
@@ -13788,12 +13928,21 @@ const App: React.FC = () => {
                                 occupiedPositions.delete(`${monster.x},${monster.y}`);
 
                                 const newMoveZoneId = getZoneId(chosenMove.x, chosenMove.y);
-                                const newMonsterState = { ...monster, x: chosenMove.x, y: chosenMove.y, zoneId: newMoveZoneId, lastMoveTime: now, hostId: userRef.current?.uid || null };
+                                const newMonsterState = {
+                                    ...monster,
+                                    x: chosenMove.x,
+                                    y: chosenMove.y,
+                                    zoneId: newMoveZoneId,
+                                    lastMoveTime: now,
+                                    direction: { dx: chosenMove.dx, dy: chosenMove.dy },
+                                    hostId: userRef.current?.uid || null
+                                };
                                 monsterUpdates.set(String(monster.id), newMonsterState);
                                 if (serverMonsterBuildingsRef.current.has(String(monster.id))) {
                                     serverMonsterBuildingsRef.current.set(String(monster.id), newMonsterState);
                                 }
                                 monster.lastMoveTime = now;
+                                (monster as any).direction = { dx: chosenMove.dx, dy: chosenMove.dy };
                                 monsterLastMoveTimeRef.current.set(monsterId, now);
                                 monsterLastActionRef.current.set(monsterId, now);
 
@@ -13804,6 +13953,7 @@ const App: React.FC = () => {
                                         y: chosenMove.y,
                                         zoneId: newMoveZoneId,
                                         lastMoveTime: now,
+                                        direction: { dx: chosenMove.dx, dy: chosenMove.dy },
                                         hostId: userRef.current?.uid || null
                                     }, { throttleMonster: true });
                                 }
