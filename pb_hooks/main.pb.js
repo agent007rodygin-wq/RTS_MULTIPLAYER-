@@ -158,6 +158,61 @@ routerAdd(
       1440: 100000,
     };
 
+    var decodeUtf8Bytes = function (raw) {
+      if (!raw) return "";
+      if (typeof raw === "string") return raw;
+      var out = "";
+      var i = 0;
+      var len = raw.length;
+      while (i < len) {
+        var c = raw[i++] & 0xff;
+        if ((c & 0x80) === 0) {
+          out += String.fromCharCode(c);
+        } else if ((c & 0xe0) === 0xc0) {
+          if (i < len) {
+            var c2 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x1f) << 6) | (c2 & 0x3f));
+          }
+        } else if ((c & 0xf0) === 0xe0) {
+          if (i + 1 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x0f) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+          }
+        } else if ((c & 0xf8) === 0xf0) {
+          if (i + 2 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            var c4 = raw[i++] & 0xff;
+            var cp = (((c & 0x07) << 18) | ((c2 & 0x3f) << 12) | ((c3 & 0x3f) << 6) | (c4 & 0x3f)) - 0x10000;
+            out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+          }
+        } else {
+          out += String.fromCharCode(c);
+        }
+      }
+      return out;
+    };
+
+    var parseDataField = function (record) {
+      var raw = record.get("data");
+      if (!raw) return {};
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      var str = Array.isArray(raw) ? decodeUtf8Bytes(raw) : (typeof raw === "string" ? raw : "");
+      if (!str) return {};
+      try {
+        var parsed = JSON.parse(str);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      } catch (error) {
+        console.log("[ban-player:parseDataField] decode failed:", String(error));
+      }
+      return {};
+    };
+
+    var setDataField = function (record, obj) {
+      record.set("data", JSON.stringify(obj));
+    };
+
     var finitePositive = function (value) {
       var n = Number(value);
       return Number.isFinite(n) && n > 0 ? n : 0;
@@ -358,6 +413,55 @@ routerAdd(
   function (e) {
     var RECOMMENDATION_ID = 10032;
     var MAX_REPUTATION = 950;
+
+    var decodeUtf8Bytes = function (raw) {
+      if (!raw) return "";
+      if (typeof raw === "string") return raw;
+      var out = "";
+      var i = 0;
+      var len = raw.length;
+      while (i < len) {
+        var c = raw[i++] & 0xff;
+        if ((c & 0x80) === 0) {
+          out += String.fromCharCode(c);
+        } else if ((c & 0xe0) === 0xc0) {
+          if (i < len) {
+            var c2 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x1f) << 6) | (c2 & 0x3f));
+          }
+        } else if ((c & 0xf0) === 0xe0) {
+          if (i + 1 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x0f) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+          }
+        } else if ((c & 0xf8) === 0xf0) {
+          if (i + 2 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            var c4 = raw[i++] & 0xff;
+            var cp = (((c & 0x07) << 18) | ((c2 & 0x3f) << 12) | ((c3 & 0x3f) << 6) | (c4 & 0x3f)) - 0x10000;
+            out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+          }
+        } else {
+          out += String.fromCharCode(c);
+        }
+      }
+      return out;
+    };
+
+    var parseInventoryField = function (record) {
+      var raw = record.get("inventory");
+      if (!raw) return {};
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      var str = Array.isArray(raw) ? decodeUtf8Bytes(raw) : (typeof raw === "string" ? raw : "");
+      if (!str) return {};
+      try {
+        var parsed = JSON.parse(str);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      } catch (_) {}
+      return {};
+    };
 
     var authRecord = e.auth;
     if (!authRecord) {
