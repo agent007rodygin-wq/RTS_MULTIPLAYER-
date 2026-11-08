@@ -21223,8 +21223,10 @@ const App: React.FC = () => {
                 setPermitPurchaseToast(null);
                 permitPurchaseToastTimerRef.current = null;
             }, 1800);
+            playCoinSound();
             addHistoryLog(`Куплено ${amount} энергии за ${rubiesCost} руб.`, 'economy');
-            setEnergyModalState(null);
+            // Keep energy modal open so player can purchase multiple packs conveniently
+            setEnergyModalState(prev => prev ? { ...prev, mode: 'shop' } : { mode: 'shop' });
         } catch (e: any) {
             if (e?.message === 'Insufficient rubies') {
                 openRubyWarningModal(rubiesCost);
