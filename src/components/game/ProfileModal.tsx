@@ -637,7 +637,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                     })()}
 
                     {activeProfileTab === 'private' && (() => {
-                        const effectivePrivateChats = privateChats.filter(chat => chat.lastMessage.messageType === 'private' && !chat.lastMessage.isAnonymous);
+                        const effectivePrivateChats = privateChats;
                         return (
                         <div
                             className="h-full flex flex-col overflow-y-auto bg-[#efe1bd] text-black border-4 border-[#8b5a2b] shadow-inner relative p-4 rounded-sm"
@@ -659,13 +659,13 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                 <div className="space-y-4 pt-2 px-2 pb-10">
                                     {effectivePrivateChats.map(chat => {
                                         const otherUser = Object.values(allUsers).find(u => u.uid === chat.otherUserId);
-                                        const computedChatId = chat.lastMessage.chatId || [user?.uid || '', otherUser?.uid || ''].sort().join('_');
+                                        const computedChatId = chat.lastMessage.chatId || [user?.uid || '', otherUser?.uid || ''].sort().join('_') + '_anon';
                                         return (
                                             <div
                                                 key={computedChatId || Math.random().toString()}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onOpenChat(chat.otherUserId, computedChatId, false, 'private');
+                                                    onOpenChat(chat.otherUserId, computedChatId, true, 'private');
                                                 }}
                                                 className="relative bg-[#fdf6e3] p-4 rounded-sm cursor-pointer hover:bg-[#fff9ed] transition-colors flex items-center gap-4 group shadow-md border border-[#c2b280]"
                                                 style={{

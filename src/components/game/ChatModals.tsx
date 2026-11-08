@@ -27,6 +27,7 @@ export interface PrivateChatModalProps {
     onSendPrivateMessage: () => void;
     chatMode?: 'mail' | 'private';
     onToggleChatMode?: (mode: 'mail' | 'private') => void;
+    isAnonymousMessage?: boolean;
 }
 
 const SHOUT_COST_ENERGY = 10;
@@ -122,26 +123,33 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
     setPrivateMessageText,
     onSendPrivateMessage,
     chatMode = 'mail',
-    onToggleChatMode
+    onToggleChatMode,
+    isAnonymousMessage = false
 }) => {
     if (!isOpen || !activePrivateChat) return null;
 
+    const isAnonymousView = chatMode === 'private' || isAnonymousMessage || activePrivateChat === 'anonymous' || Boolean(activePrivateChatId?.endsWith('_anon'));
     const targetUser = Object.values(allUsers).find(u => u.uid === activePrivateChat);
 
     const relevantMessages = privateMessages.filter(m => {
-        if (activePrivateChatId?.endsWith('_anon')) {
-            return m.chatId === activePrivateChatId;
+        const mTarget = m.receiverId || (m as any).recipientId;
+        const isPair = (m.senderId === user?.uid && mTarget === activePrivateChat) || 
+                       (m.senderId === activePrivateChat && (mTarget === user?.uid || mTarget === undefined));
+        
+        if (isAnonymousView) {
+            const isAnonMsg = m.messageType === 'private' || Boolean(m.chatId?.endsWith('_anon'));
+            if (!isAnonMsg) return false;
+            if (activePrivateChatId?.endsWith('_anon')) {
+                return m.chatId === activePrivateChatId;
+            }
+            return isPair;
         } else {
-            const mTarget = m.receiverId || (m as any).recipientId;
-            const isPair = (m.senderId === user?.uid && mTarget === activePrivateChat) || 
-                           (m.senderId === activePrivateChat && (mTarget === user?.uid || mTarget === undefined));
-            return isPair && (!m.chatId || !m.chatId.endsWith('_anon'));
+            const isMail = !m.messageType || m.messageType === 'mail';
+            return isPair && isMail && (!m.chatId || !m.chatId.endsWith('_anon'));
         }
     });
 
-    const mailMessages = relevantMessages.filter(m => !m.messageType || m.messageType === 'mail');
-    const privateTypeMessages = relevantMessages.filter(m => m.messageType === 'private');
-    const displayedMessages = chatMode === 'private' ? privateTypeMessages : mailMessages;
+    const displayedMessages = relevantMessages;
 
     return (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-3 sm:p-4 animate-fade-in" onClick={onClose}>
@@ -149,7 +157,7 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                 {/* Header */}
                 <div className="p-3.5 sm:p-4 border-b border-purple-500/30 bg-purple-950/30 flex justify-between items-center">
                     <div className="flex items-center gap-2.5">
-                        {activePrivateChat === 'anonymous' ? (
+                        {isAnonymousView ? (
                             <div className="w-9 h-9 rounded-xl bg-purple-950/60 border border-purple-500/40 flex items-center justify-center text-xl shadow-inner">
                                 🕵️
                             </div>
@@ -162,11 +170,10 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                         )}
                         <div className="flex flex-col">
                             <span className="text-white font-extrabold text-sm">
-                                {activePrivateChat === 'anonymous' ? 'Аноним' : (targetUser?.name || 'Неизвестный')}
-                                {activePrivateChatId?.endsWith('_anon') && activePrivateChat !== 'anonymous' && <span className="text-orange-400 ml-1">(Анонимно)</span>}
+                                {isAnonymousView ? 'Аноним' : (targetUser?.name || 'Неизвестный')}
                             </span>
                             <span className="text-[10px] text-purple-300/70">
-                                {activePrivateChat === 'anonymous' ? 'Анонимный диалог' : (targetUser?.clanId ? 'В клане' : 'Без клана')}
+                                {isAnonymousView ? 'Личность отправителя скрыта' : (targetUser?.clanId ? 'В клане' : 'Без клана')}
                             </span>
                         </div>
                     </div>
@@ -178,49 +185,19 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                     </button>
                 </div>
 
-                {/* Mode Selector Tabs */}
-                <div className="flex border-b border-purple-500/20 bg-purple-950/20 px-3 pt-2 gap-2 text-xs">
-                    <button
-                        type="button"
-                        onClick={() => onToggleChatMode?.('mail')}
-                        className={`pb-2 px-3 flex items-center gap-1.5 font-bold transition-all border-b-2 cursor-pointer ${
-                            chatMode === 'mail'
-                                ? 'border-amber-400 text-amber-300'
-                                : 'border-transparent text-gray-400 hover:text-gray-200'
-                        }`}
-                    >
-                        <span>✉️</span>
-                        <span>Обычные письма</span>
-                        {mailMessages.length > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/30 text-amber-200 border border-amber-400/30">
-                                {mailMessages.length}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onToggleChatMode?.('private')}
-                        className={`pb-2 px-3 flex items-center gap-1.5 font-bold transition-all border-b-2 cursor-pointer ${
-                            chatMode === 'private'
-                                ? 'border-purple-400 text-purple-300'
-                                : 'border-transparent text-gray-400 hover:text-gray-200'
-                        }`}
-                    >
-                        <span>🔒</span>
-                        <span>Приватные</span>
-                        {privateTypeMessages.length > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/30 text-purple-200 border border-purple-400/30">
-                                {privateTypeMessages.length}
-                            </span>
-                        )}
-                    </button>
-                </div>
-
                 {/* Messages Body */}
                 <div className="flex-1 p-3.5 overflow-y-auto space-y-3 bg-black/30 custom-scrollbar">
                     {displayedMessages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-center p-6 text-gray-400 space-y-2">
-                            {chatMode === 'mail' ? (
+                            {isAnonymousView ? (
+                                <>
+                                    <span className="text-3xl">🕵️</span>
+                                    <p className="font-bold text-sm text-purple-300">Приватный анонимный диалог</p>
+                                    <p className="text-xs text-gray-400 max-w-xs">
+                                        Здесь отображаются конфиденциальные приватные сообщения. Личность отправителя скрыта.
+                                    </p>
+                                </>
+                            ) : (
                                 <>
                                     <span className="text-3xl">✉️</span>
                                     <p className="font-bold text-sm text-amber-200/90">Королевская почта (Письма)</p>
@@ -228,41 +205,39 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                                         Здесь отображаются обычные письма. Отправленное письмо появится в личном кабинете игрока во вкладке «Письма».
                                     </p>
                                 </>
-                            ) : (
-                                <>
-                                    <span className="text-3xl">🔒</span>
-                                    <p className="font-bold text-sm text-purple-300">Приватный диалог</p>
-                                    <p className="text-xs text-gray-400 max-w-xs">
-                                        Здесь отображаются конфиденциальные приватные сообщения. Отправленное сообщение появится в личном кабинете игрока во вкладке «Приватные».
-                                    </p>
-                                </>
                             )}
                         </div>
                     ) : (
                         displayedMessages.map(msg => {
                             const isMine = msg.senderId === user?.uid;
-                            const isAnonymous = msg.senderId === 'anonymous';
                             const displayText = msg.text || (msg as any).message;
-                            const senderAvatar = msg.senderAvatar || allUsers[msg.senderId]?.avatar;
-                            const senderName = msg.senderName || allUsers[msg.senderId]?.name || 'Неизвестный';
+                            const senderName = isMine ? 'Вы' : (isAnonymousView ? 'Аноним' : (msg.senderName || targetUser?.name || 'Неизвестный'));
+                            const senderAvatar = isMine ? playerAvatar : (isAnonymousView ? undefined : (msg.senderAvatar || targetUser?.avatar));
                             return (
                                 <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'} items-end gap-2`}>
                                     {!isMine && (
-                                        senderAvatar ? (
-                                            <img src={senderAvatar} alt="avatar" className="w-7 h-7 rounded-full object-cover border border-purple-500/30 flex-shrink-0" />
+                                        isAnonymousView ? (
+                                            <div className="w-7 h-7 rounded-full bg-purple-950 border border-purple-500/40 flex items-center justify-center text-sm flex-shrink-0 shadow-inner">
+                                                🕵️
+                                            </div>
+                                        ) : senderAvatar ? (
+                                            <img src={senderAvatar} alt="avatar" className="w-7 h-7 rounded-full object-cover border border-amber-500/30 flex-shrink-0" />
                                         ) : (
-                                            <div className="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center border border-purple-500/30 flex-shrink-0">
-                                                <span className="text-xs font-bold text-purple-300">{senderName?.charAt(0) || '?'}</span>
+                                            <div className="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center border border-amber-500/30 flex-shrink-0">
+                                                <span className="text-xs font-bold text-amber-300">{senderName?.charAt(0) || '?'}</span>
                                             </div>
                                         )
                                     )}
                                     <div className={`max-w-[80%] rounded-xl p-2.5 text-xs shadow-md ${
                                         isMine 
-                                            ? (chatMode === 'mail' ? 'bg-gradient-to-r from-amber-700 to-amber-600 text-white rounded-br-none border border-amber-500/30' : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none border border-purple-400/30')
+                                            ? (isAnonymousView ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none border border-purple-400/30' : 'bg-gradient-to-r from-amber-700 to-amber-600 text-white rounded-br-none border border-amber-500/30')
                                             : 'bg-gray-800/90 text-gray-200 border border-purple-500/20 rounded-bl-none'
                                     }`}>
-                                        {!isMine && !isAnonymous && <p className="text-[10px] text-purple-300 mb-1 font-bold">{senderName}</p>}
-                                        {isAnonymous && !isMine && <p className="text-[10px] text-orange-400 mb-1 font-bold">Анонимное сообщение:</p>}
+                                        {!isMine && (
+                                            <p className={`text-[10px] mb-1 font-bold ${isAnonymousView ? 'text-purple-300' : 'text-amber-300'}`}>
+                                                {senderName}
+                                            </p>
+                                        )}
                                         <p className="break-words font-medium">{displayText || (msg as any).content || `[Ошибка: пустое сообщение]`}</p>
                                         <div className={`text-[9px] mt-1 ${isMine ? 'text-purple-200 text-right' : 'text-gray-400 text-left'}`}>
                                             {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -283,37 +258,19 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                     )}
                 </div>
 
-                {/* Footer with Clickable Mode Switcher */}
+                {/* Footer */}
                 <div className="p-3 bg-purple-950/20 border-t border-purple-500/30 flex flex-col gap-2">
                     <div className="flex items-center justify-between px-1 text-xs">
-                        {chatMode === 'mail' ? (
-                            <>
-                                <span className="text-amber-200/80 text-[11px] flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block shadow-sm"></span>
-                                    <span>Обычное письмо (придёт во вкладку «Письма»)</span>
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => onToggleChatMode?.('private')}
-                                    className="text-purple-300 hover:text-purple-100 font-bold hover:underline cursor-pointer flex items-center gap-1 transition-all"
-                                >
-                                    <span>🔒 Отправить приватное сообщение</span>
-                                </button>
-                            </>
+                        {isAnonymousView ? (
+                            <span className="text-purple-300 text-[11px] flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse inline-block shadow-[0_0_8px_rgba(192,132,252,0.8)]"></span>
+                                <span>Приватное сообщение (анонимно)</span>
+                            </span>
                         ) : (
-                            <>
-                                <span className="text-purple-300 text-[11px] flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse inline-block shadow-[0_0_8px_rgba(192,132,252,0.8)]"></span>
-                                    <span>Приватное сообщение (придёт во вкладку «Приватные»)</span>
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => onToggleChatMode?.('mail')}
-                                    className="text-amber-300 hover:text-amber-100 font-bold hover:underline cursor-pointer flex items-center gap-1 transition-all"
-                                >
-                                    <span>✉️ Отправить обычное письмо</span>
-                                </button>
-                            </>
+                            <span className="text-amber-200/80 text-[11px] flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block shadow-sm"></span>
+                                <span>Обычное письмо (придёт во вкладку «Письма»)</span>
+                            </span>
                         )}
                     </div>
 
@@ -323,23 +280,23 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                             value={privateMessageText}
                             onChange={e => setPrivateMessageText(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && onSendPrivateMessage()}
-                            placeholder={chatMode === 'mail' ? 'Написать письмо игроку...' : 'Написать приватное сообщение...'}
+                            placeholder={isAnonymousView ? 'Написать анонимное сообщение...' : 'Написать письмо игроку...'}
                             className={`flex-1 bg-black/60 text-white px-3.5 py-2.5 rounded-xl border focus:outline-none text-xs transition-colors ${
-                                chatMode === 'mail'
-                                    ? 'border-amber-500/40 focus:border-amber-400'
-                                    : 'border-purple-500/40 focus:border-purple-400'
+                                isAnonymousView
+                                    ? 'border-purple-500/40 focus:border-purple-400'
+                                    : 'border-amber-500/40 focus:border-amber-400'
                             }`}
                         />
                         <button
                             onClick={onSendPrivateMessage}
                             disabled={!privateMessageText.trim()}
                             className={`text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed ${
-                                chatMode === 'mail'
-                                    ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600'
-                                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500'
+                                isAnonymousView
+                                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500'
+                                    : 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600'
                             }`}
                         >
-                            {chatMode === 'mail' ? 'Отправить письмо' : 'Отправить'}
+                            {isAnonymousView ? 'Отправить' : 'Отправить письмо'}
                         </button>
                     </div>
                 </div>
@@ -356,5 +313,6 @@ export const PrivateChatModal = memo(PrivateChatModalComponent, (prev, next) => 
     if (prev.privateMessages !== next.privateMessages) return false;
     if (prev.privateMessageText !== next.privateMessageText) return false;
     if (prev.chatMode !== next.chatMode) return false;
+    if (prev.isAnonymousMessage !== next.isAnonymousMessage) return false;
     return true;
 });

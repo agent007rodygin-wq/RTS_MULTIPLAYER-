@@ -704,6 +704,16 @@ function unwrapData(record: RecordModel): AnyRecord {
         data.participants = [sId, rId];
       }
     }
+    // Anonymity guard: if this is a private message and the current user is NOT the sender,
+    // ensure senderName is always "Аноним" and senderAvatar is never leaked to the client
+    const isPrivate = data.messageType === 'private' || String(data.chatId || '').endsWith('_anon');
+    if (isPrivate) {
+      const currentAuthId = pb.authStore.model?.id;
+      if (currentAuthId && String(data.senderId || '') !== String(currentAuthId)) {
+        data.senderName = 'Аноним';
+        data.senderAvatar = undefined;
+      }
+    }
   }
   
   if (record.collectionName === 'users') {

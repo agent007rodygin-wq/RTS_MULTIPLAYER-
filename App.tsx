@@ -19281,8 +19281,9 @@ const App: React.FC = () => {
             return;
         }
 
-        const cost = isAnonymousMessage ? 500 : 0;
-        const energy = isAnonymousMessage ? 1 : 0;
+        const isAnon = privateChatMode === 'private' || isAnonymousMessage;
+        const cost = isAnon ? 500 : 0;
+        const energy = isAnon ? 1 : 0;
 
         if (playerGold < cost || playerEnergy < energy) {
             if (playerEnergy < energy) {
@@ -19296,7 +19297,7 @@ const App: React.FC = () => {
         const text = privateMessageText.trim();
         setPrivateMessageText('');
 
-        const chatId = [user.uid, activePrivateChat].sort().join('_') + (isAnonymousMessage ? '_anon' : '');
+        const chatId = [user.uid, activePrivateChat].sort().join('_') + (isAnon ? '_anon' : '');
         const messageId = Date.now().toString() + Math.floor(Math.random() * 1000);
         const targetUser = allUsers[activePrivateChat];
         const targetName = targetUser?.name || '';
@@ -19304,7 +19305,7 @@ const App: React.FC = () => {
         const newMsg: PrivateMessage = {
             id: messageId,
             chatId,
-            senderId: isAnonymousMessage ? 'anonymous' : user.uid,
+            senderId: user.uid,
             receiverId: activePrivateChat,
             recipientId: activePrivateChat,
             recipientName: targetName,
@@ -19312,9 +19313,9 @@ const App: React.FC = () => {
             timestamp: Date.now(),
             read: false,
             participants: [user.uid, activePrivateChat],
-            senderName: isAnonymousMessage ? undefined : playerName,
-            senderAvatar: isAnonymousMessage ? undefined : (playerAvatar || undefined),
-            messageType: privateChatMode,
+            senderName: isAnon ? 'Аноним' : playerName,
+            senderAvatar: isAnon ? undefined : (playerAvatar || undefined),
+            messageType: isAnon ? 'private' : 'mail',
         };
 
         // Optimistically add message so sender sees it immediately
@@ -19325,11 +19326,10 @@ const App: React.FC = () => {
 
         try {
             await setDoc(doc(db, 'private_messages', messageId), newMsg);
-            if (isAnonymousMessage) {
-                setPlayerGold(prev => prev - cost);
-                setPlayerEnergy(prev => prev - energy);
-                addHistoryLog(`Отправлено анонимное сообщение игроку ${targetName || 'неизвестному'}.`, 'economy');
-                // Switch to the anonymous chat view if we just sent an anonymous message
+            if (isAnon) {
+                if (cost > 0) setPlayerGold(prev => Math.max(0, prev - cost));
+                if (energy > 0) setPlayerEnergy(prev => Math.max(0, prev - energy));
+                addHistoryLog(`Отправлено приватное сообщение игроку.`, 'economy');
                 setActivePrivateChatId(chatId);
             }
         } catch (e) {
@@ -20915,13 +20915,12 @@ const App: React.FC = () => {
         const chats: Record<string, { otherUserId: string, lastMessage: PrivateMessage, unreadCount: number }> = {};
 
         privateMessages.forEach(msg => {
-            if (msg.messageType === 'private') return;
+            // Strictly exclude private/anonymous messages from Royal Mail
+            if (msg.messageType === 'private' || msg.chatId?.endsWith('_anon')) return;
             const receiver = msg.receiverId || (msg as any).recipientId;
+            if (msg.senderId === 'anonymous' || receiver === 'anonymous') return;
+
             const otherUserId = msg.senderId === user?.uid ? receiver : msg.senderId;
-
-            // Hide anonymous messages from the Mail tab
-            if (msg.senderId === 'anonymous' || receiver === 'anonymous' || msg.chatId?.endsWith('_anon')) return;
-
             const groupKey = msg.chatId || [user?.uid || '', otherUserId].sort().join('_');
 
             if (!chats[groupKey] || chats[groupKey].lastMessage.timestamp < msg.timestamp) {
@@ -20943,14 +20942,12 @@ const App: React.FC = () => {
         const chats: Record<string, { otherUserId: string, lastMessage: PrivateMessage, unreadCount: number }> = {};
 
         privateMessages.forEach(msg => {
-            if (msg.messageType !== 'private') return;
+            const isPrivate = msg.messageType === 'private' || msg.chatId?.endsWith('_anon');
+            if (!isPrivate) return;
             const receiver = msg.receiverId || (msg as any).recipientId;
             const otherUserId = msg.senderId === user?.uid ? receiver : msg.senderId;
 
-            // Hide anonymous messages from the Mail tab
-            if (msg.senderId === 'anonymous' || receiver === 'anonymous' || msg.chatId?.endsWith('_anon')) return;
-
-            const groupKey = msg.chatId || [user?.uid || '', otherUserId].sort().join('_');
+            const groupKey = msg.chatId ? (msg.chatId.endsWith('_anon') ? msg.chatId : `${msg.chatId}_anon`) : `${[user?.uid || '', otherUserId].sort().join('_')}_anon`;
 
             if (!chats[groupKey] || chats[groupKey].lastMessage.timestamp < msg.timestamp) {
                 chats[groupKey] = {
@@ -21965,6 +21962,7 @@ const App: React.FC = () => {
                 onSendPrivateMessage={handleSendPrivateMessage}
                 chatMode={privateChatMode}
                 onToggleChatMode={setPrivateChatMode}
+                isAnonymousMessage={isAnonymousMessage}
             />
 
             <OtherPlayerProfileModal
