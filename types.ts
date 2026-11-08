@@ -160,6 +160,7 @@ export interface PlacedBuilding {
   isActive?: boolean;
   hostId?: string; // UID of the client responsible for AI logic
   timestamp?: number; // Legacy or explicit creation timestamp
+  monsterMode?: 'stand' | 'patrol'; // 'stand' = hold position, 'patrol' = roam and attack foreign buildings
 }
 
 export interface VisualEffect {

@@ -4,11 +4,14 @@ import { getCardinalNeighborTiles, getWrappedManhattanDistance } from '../../wor
 import { isBuildingAlive } from '../buildings/isBuildingAlive.js';
 
 export function isMonsterAttackTargetCandidate(monster, target, buildingData, options) {
+    const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+    if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
     const targetId = String(target.id);
     const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
     const riverId = options?.riverId ?? 50004;
     const mountainId = options?.mountainId ?? 50005;
     if (target.ownerId === monster.ownerId) return false;
+    if (options?.friendlyOwnerIds && options.friendlyOwnerIds.has(target.ownerId)) return false;
     if (Number(target.buildingId) === Number(riverId) || Number(target.buildingId) === Number(mountainId)) return false;
     if (targetInfo?.stats.isMonster) return false;
     if (options?.blockedTargetIds?.has(targetId)) return false;
@@ -19,11 +22,14 @@ export function isMonsterAttackTargetCandidate(monster, target, buildingData, op
 }
 
 export function isMonsterHoldTargetCandidate(monster, target, buildingData, options) {
+    const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+    if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
     const targetId = String(target.id);
     const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
     const riverId = options?.riverId ?? 50004;
     const mountainId = options?.mountainId ?? 50005;
     if (target.ownerId === monster.ownerId) return false;
+    if (options?.friendlyOwnerIds && options.friendlyOwnerIds.has(target.ownerId)) return false;
     if (Number(target.buildingId) === Number(riverId) || Number(target.buildingId) === Number(mountainId)) return false;
     if (targetInfo?.stats.isMonster) return false;
     if (options?.blockedTargetIds?.has(targetId)) return false;
@@ -81,8 +87,10 @@ export function getMonsterAdjacentHoldTarget(monster, buildings, buildingData, o
 }
 
 export function getMonsterChaseTarget(monster, buildings, buildingData, options) {
+    const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+    if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return null;
     const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
-    const searchRadius = options?.searchRadius ?? (Number(monster.buildingId) === Number(options?.bronekurId) ? 10 : 5);
+    const searchRadius = options?.searchRadius ?? (Number(monster.buildingId) === Number(options?.bronekurId) ? 10 : (isPlayerOwned ? 8 : 5));
     let nearestTarget = null;
 
     buildings.forEach((target) => {

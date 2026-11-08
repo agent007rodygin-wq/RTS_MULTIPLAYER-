@@ -29,6 +29,13 @@ export function chooseMonsterBackgroundMove(
     zoneCounts, isWrappedWorld,
     previousPos, lastDir, recentPositions
 ) {
+    const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+    if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) {
+        return {
+            chosenMove: null,
+            nextDir: lastDir || getMonsterPatrolDirection(monster.id, monster.buildingId)
+        };
+    }
     const nextDir = lastDir || getMonsterPatrolDirection(monster.id, monster.buildingId);
     const adjacentHoldTarget = getMonsterAdjacentHoldTarget(monster, buildings, buildingData, { isWrappedWorld });
     if (adjacentHoldTarget) {

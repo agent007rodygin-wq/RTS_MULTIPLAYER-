@@ -40,6 +40,8 @@ export function buildMonsterRuntimeSnapshot({
     const monstersMoving = buildings.filter(b => {
         if (b.isConstructing || b.isDestroying) return false;
         if (b.hp !== undefined && b.hp <= 0) return false;
+        const isPlayerOwned = Boolean(b.ownerId && b.ownerId !== 'monster' && b.ownerId !== '-1' && b.ownerId !== '0');
+        if (b.monsterMode === 'stand' || (isPlayerOwned && b.monsterMode !== 'patrol')) return false;
         const info = buildingData.find(i => i.id === b.buildingId);
         if (!info || !info.stats.isMonster) return false;
         if (!isMonsterHost(b)) return false;
@@ -57,6 +59,8 @@ export function buildMonsterRuntimeSnapshot({
     const monstersReadyToAttack = buildings.filter(monster => {
         if (monster.isConstructing || monster.isDestroying) return false;
         if (monster.hp !== undefined && monster.hp <= 0) return false;
+        const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+        if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
         const info = buildingData.find(i => i.id === monster.buildingId);
         if (!info || !info.stats.isMonster) return false;
         if (!isMonsterHost(monster)) return false;

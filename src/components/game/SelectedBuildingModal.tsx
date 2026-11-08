@@ -158,6 +158,8 @@ export interface SelectedBuildingModalProps {
     onUseItem?: (itemId: number) => void;
     onCollectAllReadyIncome?: () => void;
     onOpenFinancialProductionModal?: () => void;
+    onOpenFinancialMonsterControl?: () => void;
+    onSetMonsterMode?: (monsterId: string, mode: 'stand' | 'patrol') => void;
     lastFinancialCollectTime?: number;
     hasEgyptianObelisk?: boolean;
 }
@@ -211,6 +213,8 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     onUseItem,
     onCollectAllReadyIncome,
     onOpenFinancialProductionModal,
+    onOpenFinancialMonsterControl,
+    onSetMonsterMode,
     lastFinancialCollectTime = 0,
     hasEgyptianObelisk = false
 }) => {
@@ -257,6 +261,11 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     const isOwnAuction = isAuction && isMine;
     const isFinancialIntelligence = FINANCIAL_INTELLIGENCE_IDS.includes(Number(info.id));
     const isEgyptianObelisk = EGYPTIAN_OBELISK_IDS.includes(Number(info.id));
+    const isMonster = Boolean(info.stats?.isMonster || info.category === 'Монстры');
+
+    const playerMonstersCount = (isFinancialIntelligence && isMine)
+        ? placedBuildings.filter(b => isMyBuilding(b) && !b.isDestroying && (b.hp === undefined || b.hp > 0) && Boolean(buildingData.find(d => d.id === b.buildingId)?.stats.isMonster || buildingData.find(d => d.id === b.buildingId)?.category === 'Монстры')).length
+        : 0;
 
     const readyBuildingsCount = (isFinancialIntelligence && isMine)
         ? placedBuildings.filter(b => isMyBuilding(b) && isBuildingReadyForCollection(b, Date.now())).length
@@ -890,10 +899,74 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
 
                                     <button
                                         onClick={onOpenFinancialProductionModal}
-                                        className="w-full bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-blue-400/30 transition-all shadow-md"
+                                        className="w-full bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-blue-400/30 transition-all shadow-md active:scale-95"
                                     >
                                         <span>🏭</span>
                                         <span>Управление производствами</span>
+                                    </button>
+
+                                    <button
+                                        onClick={onOpenFinancialMonsterControl || onOpenFinancialProductionModal}
+                                        className="w-full bg-gradient-to-r from-rose-700 via-purple-700 to-indigo-700 hover:from-rose-600 hover:to-indigo-600 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-purple-400/30 transition-all shadow-md active:scale-95"
+                                    >
+                                        <span>👾</span>
+                                        <span>Управление монстрами {playerMonstersCount > 0 ? `(${playerMonstersCount})` : ''}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Monster Behavior Controls for player-owned monster */}
+                        {isMonster && isMine && !isUnderConstruction && (
+                            <div className="mt-4 p-3.5 bg-gradient-to-r from-purple-950/70 via-gray-900/90 to-rose-950/60 rounded-xl border border-purple-500/50 shadow-lg space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl">👾</span>
+                                        <div>
+                                            <h4 className="text-purple-300 font-extrabold text-sm">
+                                                Приказ монстру
+                                            </h4>
+                                            <p className="text-[11px] text-gray-300">
+                                                {building.monsterMode === 'patrol' 
+                                                    ? '⚔️ Патрулирует район и атакует чужие постройки' 
+                                                    : '🛑 Стоит на месте и удерживает позицию'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                        building.monsterMode === 'patrol'
+                                            ? 'bg-red-950/80 text-rose-300 border-rose-500/40 animate-pulse'
+                                            : 'bg-blue-950/80 text-sky-300 border-sky-500/40'
+                                    }`}>
+                                        {building.monsterMode === 'patrol' ? '⚔️ В патруле' : '🛑 На месте'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => onSetMonsterMode && onSetMonsterMode(String(building.id), 'stand')}
+                                        className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
+                                            (building.monsterMode || 'stand') === 'stand'
+                                                ? 'bg-sky-600 text-white border-2 border-sky-300 shadow-lg shadow-sky-500/30 font-black'
+                                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-white/10'
+                                        }`}
+                                    >
+                                        <span>🛑</span>
+                                        <span>Стоять на месте</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => onSetMonsterMode && onSetMonsterMode(String(building.id), 'patrol')}
+                                        className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
+                                            building.monsterMode === 'patrol'
+                                                ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-2 border-rose-300 shadow-lg shadow-red-500/30 font-black'
+                                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-white/10'
+                                        }`}
+                                    >
+                                        <span>⚔️</span>
+                                        <span>Патрулировать</span>
                                     </button>
                                 </div>
                             </div>
@@ -1255,7 +1328,8 @@ const arePropsEqual = (prevProps: SelectedBuildingModalProps, nextProps: Selecte
         prevB.isDestroying !== nextB.isDestroying ||
         prevB.isActive !== nextB.isActive ||
         prevB.bank !== nextB.bank ||
-        prevB.taxRate !== nextB.taxRate
+        prevB.taxRate !== nextB.taxRate ||
+        prevB.monsterMode !== nextB.monsterMode
     ) {
         return false;
     }

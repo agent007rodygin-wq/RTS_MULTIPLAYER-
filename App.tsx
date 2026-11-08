@@ -101,7 +101,7 @@ import {
 } from './src/game/economy/clanStockLogic';
 import { ShoutModal, PrivateChatModal } from './src/components/game/ChatModals';
 import { SelectedBuildingModal } from './src/components/game/SelectedBuildingModal';
-import { FinancialProductionModal } from './src/components/game/FinancialProductionModal';
+import { FinancialProductionModal, TabType as FinancialTabType } from './src/components/game/FinancialProductionModal';
 import {
     checkHasEgyptianObelisk,
     getFinancialCollectCooldownStatus,
@@ -2408,6 +2408,36 @@ const App: React.FC = () => {
     const [townHallLastSkipTime, setTownHallLastSkipTime] = useState<number>(0);
     const [townHallSkipSalt, setTownHallSkipSalt] = useState<number>(0);
     const [showFinancialProductionModal, setShowFinancialProductionModal] = useState<boolean>(false);
+    const [financialModalInitialTab, setFinancialModalInitialTab] = useState<FinancialTabType>('ready');
+
+    const handleSetMonsterMode = useCallback((monsterId: string, mode: 'stand' | 'patrol') => {
+        const strId = String(monsterId);
+        setPlacedBuildings(prev => prev.map(b => String(b.id) === strId ? { ...b, monsterMode: mode } : b));
+        if (placedBuildingsRef.current) {
+            placedBuildingsRef.current = placedBuildingsRef.current.map(b => String(b.id) === strId ? { ...b, monsterMode: mode } : b);
+        }
+        setSelectedBuilding(prev => (prev?.building && String(prev.building.id) === strId) ? {
+            ...prev,
+            building: { ...prev.building, monsterMode: mode }
+        } : prev);
+        updateDoc(doc(db, 'buildings', strId), { monsterMode: mode }).catch(e => {
+            console.error("Failed to update monster mode:", e);
+        });
+    }, []);
+
+    const handleSetAllMonstersMode = useCallback((mode: 'stand' | 'patrol') => {
+        const myMonsters = placedBuildingsRef.current.filter(b => {
+            if (user?.uid && b.ownerId && b.ownerId !== user.uid) return false;
+            if (b.isDestroying || (b.hp !== undefined && b.hp <= 0)) return false;
+            const info = buildingData.find(d => d.id === b.buildingId);
+            return Boolean(info?.stats?.isMonster || info?.category === 'Монстры');
+        });
+
+        myMonsters.forEach(m => {
+            handleSetMonsterMode(String(m.id), mode);
+        });
+    }, [user?.uid, buildingData, handleSetMonsterMode]);
+
     const [lastFinancialCollectTime, setLastFinancialCollectTime] = useState<number>(() => {
         try {
             const raw = localStorage.getItem('basingse_last_financial_collect');
@@ -6600,6 +6630,7 @@ const App: React.FC = () => {
             ...(building.stats.durability !== undefined ? { hp: building.stats.durability, maxHp: building.stats.durability } : {}),
             ...(isWatchtowerId(building.id) ? { taxRate: 0 } : {}),
             isActive: Boolean(building.stats?.isMonster || building.category === 'Монстры' || CANNON_IDS.includes(building.id) || building.id === PROTECTED_TOWER_ID || isWatchtowerId(building.id)),
+            ...(building.stats?.isMonster || building.category === 'Монстры' ? { monsterMode: 'stand' as const } : {}),
             isLocal: true
         };
 
@@ -13818,6 +13849,8 @@ const App: React.FC = () => {
                 const monstersActedThisCycle = new Set<string>();
 
                 monstersReadyToAttack.forEach(monster => {
+                    const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+                    if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return;
                     const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
                     const monsterId = String(monster.id || '');
                     const attackId = `${monsterId}:${now}:${Math.random().toString(36).slice(2, 8)}`;
@@ -13976,6 +14009,8 @@ const App: React.FC = () => {
                 }
 
                 actingMonsters.forEach(monster => {
+                    const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+                    if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return;
                     const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
                     const monsterId = monster.id || '';
                     const recentPositions = monsterRecentPositionsRef.current.get(monsterId) || [];
@@ -15064,6 +15099,8 @@ const App: React.FC = () => {
 
                     for (const monster of zoneMonsters) {
                         if (worldSweepActions >= WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE) break;
+                        const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+                        if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) continue;
 
                         const monsterId = String(monster.id);
                         const actualZoneId = getZoneId(monster.x, monster.y);
@@ -21622,13 +21659,29 @@ const App: React.FC = () => {
                 isMortarActive={mortarBuffUntil > currentTime}
                 onUseItem={handleUseInventoryItem}
                 onCollectAllReadyIncome={handleCollectAllReadyIncome}
-                onOpenFinancialProductionModal={() => setShowFinancialProductionModal(true)}
+                onOpenFinancialProductionModal={() => {
+                    setFinancialModalInitialTab('ready');
+                    setShowFinancialProductionModal(true);
+                }}
+                onOpenFinancialMonsterControl={() => {
+                    setFinancialModalInitialTab('monsters');
+                    setShowFinancialProductionModal(true);
+                }}
+                onSetMonsterMode={handleSetMonsterMode}
                 lastFinancialCollectTime={lastFinancialCollectTime}
                 hasEgyptianObelisk={hasEgyptianObelisk}
             />
 
             <FinancialProductionModal
                 isOpen={showFinancialProductionModal}
+                initialTab={financialModalInitialTab}
+                userUid={user?.uid}
+                onSetMonsterMode={handleSetMonsterMode}
+                onSetAllMonstersMode={handleSetAllMonstersMode}
+                onOpenMonstersShop={() => {
+                    setShowFinancialProductionModal(false);
+                    setBuildMenu(prev => ({ ...prev, visible: true }));
+                }}
                 onClose={() => {
                     setShowFinancialProductionModal(false);
                     playCloseSound();

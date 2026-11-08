@@ -26,9 +26,14 @@ export interface FinancialProductionModalProps {
     onFocusBuilding?: (building: PlacedBuilding) => void;
     coinImageUrl?: string;
     playCloseSound?: () => void;
+    initialTab?: TabType;
+    onSetMonsterMode?: (monsterId: string, mode: 'stand' | 'patrol') => void;
+    onSetAllMonstersMode?: (mode: 'stand' | 'patrol') => void;
+    onOpenMonstersShop?: () => void;
+    userUid?: string;
 }
 
-type TabType = 'ready' | 'idle' | 'interactive' | 'all';
+export type TabType = 'ready' | 'idle' | 'interactive' | 'all' | 'monsters';
 type StatusFilter = 'all' | 'ready' | 'working' | 'idle';
 
 export const FinancialProductionModal: React.FC<FinancialProductionModalProps> = memo(({
@@ -47,12 +52,24 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
     onStartSingle,
     onFocusBuilding,
     coinImageUrl = '/Gui/Front/значек монет/Image-2.webp',
-    playCloseSound
+    playCloseSound,
+    initialTab,
+    onSetMonsterMode,
+    onSetAllMonstersMode,
+    onOpenMonstersShop,
+    userUid
 }) => {
-    const [activeTab, setActiveTab] = useState<TabType>('ready');
+    const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'ready');
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [, setTick] = useState(0);
+
+    // Sync initialTab when modal opens or initialTab changes
+    useEffect(() => {
+        if (isOpen && initialTab) {
+            setActiveTab(initialTab);
+        }
+    }, [isOpen, initialTab]);
 
     // Live 1-second interval to update remaining times and cooldowns
     useEffect(() => {
@@ -141,6 +158,16 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
             return sum + producesCount;
         }, 0);
     }, [readyBuildings, buildingMap]);
+
+    // Filter player-owned monsters
+    const playerMonsters = useMemo(() => {
+        return placedBuildings.filter(b => {
+            if (userUid && b.ownerId && b.ownerId !== userUid) return false;
+            if (b.isDestroying || (b.hp !== undefined && b.hp <= 0)) return false;
+            const info = buildingMap.get(Number(b.buildingId));
+            return Boolean(info?.stats?.isMonster || info?.category === 'Монстры');
+        });
+    }, [placedBuildings, userUid, buildingMap]);
 
     if (!isOpen) return null;
 
@@ -295,7 +322,7 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                 </div>
 
                 {/* Tabs Switcher */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-2 sm:p-3 bg-gray-950/70 border-b border-gray-800 text-xs font-bold">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 p-2 sm:p-3 bg-gray-950/70 border-b border-gray-800 text-xs font-bold">
                     <button
                         type="button"
                         onClick={() => setActiveTab('ready')}
@@ -305,7 +332,7 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                 : 'bg-gray-900/80 text-gray-300 hover:text-white hover:bg-gray-800'
                         }`}
                     >
-                        <span>🌾 Готовы к сбору</span>
+                        <span>🌾 Готовы</span>
                         <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                             activeTab === 'ready' ? 'bg-black/30 text-black' : 'bg-amber-500/20 text-amber-400'
                         }`}>
@@ -322,7 +349,7 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                 : 'bg-gray-900/80 text-gray-300 hover:text-white hover:bg-gray-800'
                         }`}
                     >
-                        <span>👥 Требуют рабочих</span>
+                        <span>👥 Рабочие</span>
                         <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                             activeTab === 'idle' ? 'bg-black/30 text-white' : 'bg-sky-500/20 text-sky-400'
                         }`}>
@@ -339,7 +366,7 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                 : 'bg-gray-900/80 text-gray-300 hover:text-white hover:bg-gray-800'
                         }`}
                     >
-                        <span>📦 Сырьё и интерактив</span>
+                        <span>📦 Сырьё</span>
                         <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                             activeTab === 'interactive' ? 'bg-black/30 text-white' : 'bg-purple-500/20 text-purple-400'
                         }`}>
@@ -356,11 +383,28 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                 : 'bg-gray-900/80 text-gray-300 hover:text-white hover:bg-gray-800'
                         }`}
                     >
-                        <span>📋 Все производства</span>
+                        <span>📋 Все</span>
                         <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                             activeTab === 'all' ? 'bg-black/30 text-white' : 'bg-emerald-500/20 text-emerald-400'
                         }`}>
                             {productiveBuildings.length}
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('monsters')}
+                        className={`py-2 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                            activeTab === 'monsters'
+                                ? 'bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-white shadow ring-1 ring-purple-400/50'
+                                : 'bg-gray-900/80 text-gray-300 hover:text-white hover:bg-gray-800'
+                        }`}
+                    >
+                        <span>👾 Монстры</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                            activeTab === 'monsters' ? 'bg-black/30 text-white' : 'bg-purple-500/20 text-purple-300'
+                        }`}>
+                            {playerMonsters.length}
                         </span>
                     </button>
                 </div>
@@ -855,6 +899,228 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                                             className="text-[11px] text-gray-400 hover:text-white bg-gray-800/80 hover:bg-gray-700 py-1 px-2 rounded text-center transition-colors"
                                                         >
                                                             📍 Показать
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* TAB 5: MONSTERS DISPATCHER */}
+                    {activeTab === 'monsters' && (
+                        <div className="space-y-3">
+                            {/* Command Banner */}
+                            <div className="bg-gradient-to-r from-purple-950/70 via-slate-900 to-indigo-950/70 border border-purple-500/30 rounded-2xl p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-800 to-indigo-900 border border-purple-400/40 flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                                        👾
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-extrabold text-sm sm:text-base text-purple-200">
+                                                Диспетчер боевых монстров
+                                            </h3>
+                                            <span className="text-[11px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                                                {playerMonsters.length} под управлением
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-300 mt-0.5">
+                                            Управление поведением: удерживайте позицию для защиты базы или отправляйте монстров патрулировать район и уничтожать постройки врагов.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {playerMonsters.length > 0 && onSetAllMonstersMode && (
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <button
+                                            type="button"
+                                            onClick={() => onSetAllMonstersMode('stand')}
+                                            className="flex-1 sm:flex-none py-1.5 px-3.5 rounded-xl bg-sky-950/80 hover:bg-sky-900 text-sky-200 border border-sky-500/40 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow transition-all active:scale-95"
+                                            title="Приказать всем монстрам стоять на месте"
+                                        >
+                                            <span>🛑</span>
+                                            <span>Всем: Стоять</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => onSetAllMonstersMode('patrol')}
+                                            className="flex-1 sm:flex-none py-1.5 px-3.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border border-rose-400 font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/30 transition-all active:scale-95"
+                                            title="Приказать всем монстрам патрулировать и атаковать постройки"
+                                        >
+                                            <span>⚔️</span>
+                                            <span>Всем: В патруль</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Monsters List */}
+                            {playerMonsters.length === 0 ? (
+                                <div className="text-center py-12 px-4 bg-gray-900/60 rounded-2xl border border-gray-800/80">
+                                    <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-purple-900/50 to-indigo-950/70 border border-purple-500/30 flex items-center justify-center text-3xl shadow-lg">
+                                        👾
+                                    </div>
+                                    <h4 className="text-base font-extrabold text-purple-200">У вас пока нет боевых монстров</h4>
+                                    <p className="text-xs text-gray-300 mt-2 max-w-md mx-auto leading-relaxed">
+                                        Вы можете призвать или создать монстров (например, Бабу Ягу, Колобка, Доброго Санту, Горыныча или Избушку-убийцу) в магазине строительства во вкладке «Монстры» или в Академии монстров.
+                                    </p>
+                                    <p className="text-[11px] text-amber-300/90 mt-2 max-w-md mx-auto">
+                                        После призыва монстр появится на карте под вашим командованием: вы сможете приказывать ему стоять на месте для охраны или патрулировать район и атаковать вражеские постройки.
+                                    </p>
+                                    {onOpenMonstersShop && (
+                                        <button
+                                            type="button"
+                                            onClick={onOpenMonstersShop}
+                                            className="mt-4 py-2.5 px-5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-purple-600/30 border border-purple-400/40 transition-all active:scale-95 inline-flex items-center gap-2"
+                                        >
+                                            <span>🛍️</span>
+                                            <span>Открыть вкладку «Монстры» в магазине</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {playerMonsters.map(monster => {
+                                        const info = buildingMap.get(Number(monster.buildingId));
+                                        if (!info) return null;
+                                        const monsterDocId = String(monster.id);
+                                        const isPatrol = monster.monsterMode === 'patrol';
+                                        const isStand = !isPatrol; // default is stand
+                                        const maxDurability = monster.maxHp || (info.stats.durability ?? 100);
+                                        const currentHp = monster.hp !== undefined ? monster.hp : maxDurability;
+                                        const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / maxDurability) * 100)));
+                                        const damageValue = info.stats.damage || '4';
+                                        const hatesCategory = info.stats.hates || 'Вражеские постройки';
+
+                                        return (
+                                            <div
+                                                key={monster.id}
+                                                className={`rounded-2xl p-3.5 border transition-all duration-200 relative overflow-hidden shadow-md flex flex-col justify-between gap-3 ${
+                                                    isPatrol
+                                                        ? 'bg-gradient-to-br from-rose-950/40 via-gray-900/95 to-purple-950/40 border-rose-500/50 shadow-rose-950/30'
+                                                        : 'bg-gradient-to-br from-sky-950/30 via-gray-900/95 to-slate-900 border-sky-500/40 shadow-sky-950/20'
+                                                }`}
+                                            >
+                                                {/* Header row */}
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden border relative ${
+                                                            isPatrol
+                                                                ? 'bg-rose-950/60 border-rose-500/50 shadow-inner'
+                                                                : 'bg-sky-950/60 border-sky-500/40 shadow-inner'
+                                                        }`}>
+                                                            {info.imageUrl ? (
+                                                                <img
+                                                                    src={info.imageUrl}
+                                                                    alt={info.name}
+                                                                    className="w-full h-full object-contain p-1"
+                                                                />
+                                                            ) : (
+                                                                <span className="text-2xl">👾</span>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-extrabold text-sm text-white truncate">
+                                                                    {info.name}
+                                                                </h4>
+                                                                {info.englishName && (
+                                                                    <span className="text-[10px] text-gray-400 hidden sm:inline">
+                                                                        ({info.englishName})
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-[11px] text-gray-300 flex items-center gap-2 mt-0.5">
+                                                                <span>📍 ({monster.x}, {monster.y})</span>
+                                                                <span>•</span>
+                                                                <span>💥 Урон: <b className="text-amber-300">{damageValue}</b></span>
+                                                            </div>
+                                                            <div className="text-[10px] text-gray-400 truncate mt-0.5">
+                                                                🎯 Приоритет: <span className="text-rose-300">{hatesCategory}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Status Badge */}
+                                                    <div className="flex-shrink-0">
+                                                        {isPatrol ? (
+                                                            <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-950/90 to-rose-900/90 text-rose-200 border border-rose-500/50 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm animate-pulse">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                                                                ⚔️ В патруле
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 bg-sky-950/90 text-sky-200 border border-sky-500/50 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">
+                                                                🛑 На месте
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Health bar */}
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center justify-between text-[11px]">
+                                                        <span className="text-gray-400">Прочность (HP):</span>
+                                                        <span className="font-mono font-bold text-gray-200">
+                                                            {currentHp} / {maxDurability} ({hpPercent}%)
+                                                        </span>
+                                                    </div>
+                                                    <div className="w-full bg-black/60 rounded-full h-2 overflow-hidden border border-white/10">
+                                                        <div
+                                                            className={`h-full transition-all duration-300 ${
+                                                                hpPercent > 50
+                                                                    ? 'bg-gradient-to-r from-emerald-500 to-green-400'
+                                                                    : hpPercent > 25
+                                                                    ? 'bg-gradient-to-r from-yellow-500 to-amber-400'
+                                                                    : 'bg-gradient-to-r from-red-600 to-rose-500'
+                                                            }`}
+                                                            style={{ width: `${hpPercent}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div className="flex items-center gap-2 pt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onSetMonsterMode && onSetMonsterMode(monsterDocId, 'stand')}
+                                                        className={`flex-1 py-1.5 px-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
+                                                            isStand
+                                                                ? 'bg-sky-600 hover:bg-sky-500 text-white border-2 border-sky-300 shadow-sky-500/30 font-black'
+                                                                : 'bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60'
+                                                        }`}
+                                                        title="Монстр стоит на месте и удерживает позицию"
+                                                    >
+                                                        <span>🛑</span>
+                                                        <span>Стоять на месте</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onSetMonsterMode && onSetMonsterMode(monsterDocId, 'patrol')}
+                                                        className={`flex-1 py-1.5 px-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
+                                                            isPatrol
+                                                                ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border-2 border-rose-300 shadow-rose-600/30 font-black'
+                                                                : 'bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60'
+                                                        }`}
+                                                        title="Монстр патрулирует район и атакует чужие постройки"
+                                                    >
+                                                        <span>⚔️</span>
+                                                        <span>Патрулировать</span>
+                                                    </button>
+
+                                                    {onFocusBuilding && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFocus(monster)}
+                                                            className="py-1.5 px-2.5 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 text-xs font-bold transition-colors"
+                                                            title="Перейти к монстру на карте"
+                                                        >
+                                                            📍
                                                         </button>
                                                     )}
                                                 </div>
