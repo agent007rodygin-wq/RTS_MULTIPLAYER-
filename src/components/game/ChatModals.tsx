@@ -132,8 +132,9 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
         if (activePrivateChatId?.endsWith('_anon')) {
             return m.chatId === activePrivateChatId;
         } else {
-            const isPair = (m.senderId === user?.uid && m.receiverId === activePrivateChat) || 
-                           (m.senderId === activePrivateChat && m.receiverId === user?.uid);
+            const mTarget = m.receiverId || (m as any).recipientId;
+            const isPair = (m.senderId === user?.uid && mTarget === activePrivateChat) || 
+                           (m.senderId === activePrivateChat && (mTarget === user?.uid || mTarget === undefined));
             return isPair && (!m.chatId || !m.chatId.endsWith('_anon'));
         }
     });

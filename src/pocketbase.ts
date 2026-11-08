@@ -520,7 +520,7 @@ const KNOWN_FIELDS_BY_COLLECTION: Record<string, string[]> = {
   dropped_items: ['itemId', 'zoneId', 'data', 'gameId'],
   map_state: ['data', 'gameId'],
   history: ['userId', 'message', 'type', 'timestamp'],
-  private_messages: ['senderId', 'receiverId', 'participants', 'text', 'timestamp', 'senderName', 'gameId', 'data'],
+  private_messages: ['senderId', 'senderName', 'recipientId', 'recipientName', 'text', 'timestamp', 'read', 'gameId', 'data'],
   chat_messages: ['sender', 'text', 'type', 'timestamp', 'tab', 'senderId', 'channel', 'gameId', 'data'],
   presence: ['userId', 'userName', 'lastSeen', 'gameId', 'data'],
   clans: ['name', 'leaderId', 'members', 'description', 'gameId', 'data'],
@@ -636,6 +636,19 @@ function wrapData(collectionName: string, docData: any): any {
     if (rawName && !result.userName) result.userName = String(rawName);
   }
 
+  if (collectionName === 'private_messages') {
+    const rawRecipient = docData.receiverId || docData.recipientId;
+    if (rawRecipient) {
+      result.recipientId = String(rawRecipient);
+      result.receiverId = String(rawRecipient);
+    }
+    const rawRecipientName = docData.receiverName || docData.recipientName;
+    if (rawRecipientName) {
+      result.recipientName = String(rawRecipientName);
+      result.receiverName = String(rawRecipientName);
+    }
+  }
+
   if (collectionName === 'buildings' || collectionName === 'map_resources' || collectionName === 'dropped_items') {
     const effX = Number(result.x !== undefined ? result.x : docData?.x);
     const effY = Number(result.y !== undefined ? result.y : docData?.y);
@@ -670,6 +683,26 @@ function unwrapData(record: RecordModel): AnyRecord {
     const rawName = (record as AnyRecord).userName || (record as AnyRecord).name;
     if (rawName && (!data.name || data.name === '')) {
       data.name = String(rawName);
+    }
+  }
+
+  if (record.collectionName === 'private_messages') {
+    const rawRecipient = (record as AnyRecord).recipientId || (record as AnyRecord).receiverId;
+    if (rawRecipient) {
+      data.receiverId = String(rawRecipient);
+      data.recipientId = String(rawRecipient);
+    }
+    const rawRecipientName = (record as AnyRecord).recipientName || (record as AnyRecord).receiverName;
+    if (rawRecipientName) {
+      data.receiverName = String(rawRecipientName);
+      data.recipientName = String(rawRecipientName);
+    }
+    if (!data.participants || !Array.isArray(data.participants)) {
+      const sId = String(data.senderId || '');
+      const rId = String(rawRecipient || '');
+      if (sId && rId) {
+        data.participants = [sId, rId];
+      }
     }
   }
   
@@ -2032,7 +2065,7 @@ export function query(
             (v) => v !== undefined && v !== null && String(v).trim() !== ''
           );
           if (cleanValues.length > 0) {
-            const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId');
+            const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId') || (col === 'private_messages' && (c.field === 'participants' || c.field === 'chatId' || c.field === 'messageType'));
             const targetField = isDataField ? `data.${c.field}` : c.field;
             const parts = cleanValues.map((v) => `${targetField} = ${pbFilterValue(v)}`);
             filter = filter ? `(${filter}) && (${parts.join(' || ')})` : `(${parts.join(' || ')})`;
@@ -2040,11 +2073,16 @@ export function query(
         }
       } else if (c.op === 'array-contains') {
         // PocketBase JSON array contains: field ?~ value
+        const isDataField = (col === 'private_messages' && c.field === 'participants') ||
+          (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) ||
+          (col === 'dropped_items' && c.field === 'zoneId') ||
+          (!KNOWN_FIELDS_BY_COLLECTION[col]?.includes(c.field));
+        const targetField = isDataField ? `data.${c.field}` : c.field;
         const valWithQuotes = pbFilterValue(c.value);
-        const clause = `${c.field} ?~ ${valWithQuotes}`;
+        const clause = `${targetField} ?~ ${valWithQuotes}`;
         filter = filter ? `(${filter}) && (${clause})` : clause;
       } else {
-        const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId');
+        const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId') || (col === 'private_messages' && (c.field === 'participants' || c.field === 'chatId' || c.field === 'messageType'));
         const fieldName = isDataField ? `data.${c.field}` : c.field;
         const pbOp =
           c.op === '=='
@@ -2479,9 +2517,12 @@ export function onSnapshot(
   const checkRecordMatchesQuery = (record: RecordModel | undefined): boolean => {
     if (!record) return false;
 
+    // Use unwrapped data to reliably check both top-level columns and data JSON fields
+    const item = unwrapData(record);
+
     // Check where constraints if present
     if (desc.whereField && desc.whereOp) {
-      const recVal = (record as any)[desc.whereField] ?? (record as any).data?.[desc.whereField];
+      const recVal = (item as any)[desc.whereField];
       const strRecVal = recVal !== undefined && recVal !== null ? String(recVal).trim() : '';
 
       if (desc.whereOp === '==' || desc.whereOp === '===') {
@@ -2492,6 +2533,15 @@ export function onSnapshot(
         if (Array.isArray(desc.whereValue)) {
           const allowed = new Set(desc.whereValue.map((v) => String(v ?? '').trim()));
           if (!allowed.has(strRecVal)) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      } else if (desc.whereOp === 'array-contains') {
+        const expected = String(desc.whereValue ?? '').trim();
+        if (Array.isArray(recVal)) {
+          if (!recVal.map(String).includes(expected)) {
             return false;
           }
         } else {

@@ -214,6 +214,8 @@ export interface PrivateMessage {
   chatId: string;
   senderId: string;
   receiverId: string;
+  recipientId?: string;
+  recipientName?: string;
   text: string;
   timestamp: number;
   read: boolean;

@@ -19298,12 +19298,16 @@ const App: React.FC = () => {
 
         const chatId = [user.uid, activePrivateChat].sort().join('_') + (isAnonymousMessage ? '_anon' : '');
         const messageId = Date.now().toString() + Math.floor(Math.random() * 1000);
+        const targetUser = allUsers[activePrivateChat];
+        const targetName = targetUser?.name || '';
 
         const newMsg: PrivateMessage = {
             id: messageId,
             chatId,
             senderId: isAnonymousMessage ? 'anonymous' : user.uid,
             receiverId: activePrivateChat,
+            recipientId: activePrivateChat,
+            recipientName: targetName,
             text,
             timestamp: Date.now(),
             read: false,
@@ -19313,12 +19317,18 @@ const App: React.FC = () => {
             messageType: privateChatMode,
         };
 
+        // Optimistically add message so sender sees it immediately
+        setPrivateMessages(prev => {
+            if (prev.some(m => m.id === messageId)) return prev;
+            return [...prev, newMsg].sort((a, b) => a.timestamp - b.timestamp);
+        });
+
         try {
             await setDoc(doc(db, 'private_messages', messageId), newMsg);
             if (isAnonymousMessage) {
                 setPlayerGold(prev => prev - cost);
                 setPlayerEnergy(prev => prev - energy);
-                addHistoryLog(`Отправлено анонимное сообщение игроку ${allUsers[activePrivateChat]?.name || 'неизвестному'}.`, 'economy');
+                addHistoryLog(`Отправлено анонимное сообщение игроку ${targetName || 'неизвестному'}.`, 'economy');
                 // Switch to the anonymous chat view if we just sent an anonymous message
                 setActivePrivateChatId(chatId);
             }
@@ -20906,10 +20916,11 @@ const App: React.FC = () => {
 
         privateMessages.forEach(msg => {
             if (msg.messageType === 'private') return;
-            const otherUserId = msg.senderId === user?.uid ? msg.receiverId : msg.senderId;
+            const receiver = msg.receiverId || (msg as any).recipientId;
+            const otherUserId = msg.senderId === user?.uid ? receiver : msg.senderId;
 
             // Hide anonymous messages from the Mail tab
-            if (msg.senderId === 'anonymous' || msg.receiverId === 'anonymous' || msg.chatId?.endsWith('_anon')) return;
+            if (msg.senderId === 'anonymous' || receiver === 'anonymous' || msg.chatId?.endsWith('_anon')) return;
 
             const groupKey = msg.chatId || [user?.uid || '', otherUserId].sort().join('_');
 
@@ -20920,7 +20931,7 @@ const App: React.FC = () => {
                     unreadCount: chats[groupKey]?.unreadCount || 0
                 };
             }
-            if (msg.receiverId === user?.uid && !msg.read) {
+            if ((receiver === user?.uid || (msg as any).recipientId === user?.uid) && !msg.read) {
                 if (chats[groupKey]) chats[groupKey].unreadCount++;
             }
         });
@@ -20933,10 +20944,11 @@ const App: React.FC = () => {
 
         privateMessages.forEach(msg => {
             if (msg.messageType !== 'private') return;
-            const otherUserId = msg.senderId === user?.uid ? msg.receiverId : msg.senderId;
+            const receiver = msg.receiverId || (msg as any).recipientId;
+            const otherUserId = msg.senderId === user?.uid ? receiver : msg.senderId;
 
             // Hide anonymous messages from the Mail tab
-            if (msg.senderId === 'anonymous' || msg.receiverId === 'anonymous' || msg.chatId?.endsWith('_anon')) return;
+            if (msg.senderId === 'anonymous' || receiver === 'anonymous' || msg.chatId?.endsWith('_anon')) return;
 
             const groupKey = msg.chatId || [user?.uid || '', otherUserId].sort().join('_');
 
@@ -20947,7 +20959,7 @@ const App: React.FC = () => {
                     unreadCount: chats[groupKey]?.unreadCount || 0
                 };
             }
-            if (msg.receiverId === user?.uid && !msg.read) {
+            if ((receiver === user?.uid || (msg as any).recipientId === user?.uid) && !msg.read) {
                 if (chats[groupKey]) chats[groupKey].unreadCount++;
             }
         });
