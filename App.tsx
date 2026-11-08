@@ -18130,6 +18130,7 @@ const App: React.FC = () => {
             x: centerX - isoX,
             y: centerY - isoY
         };
+        reportPlayerMovement(true);
     };
 
     const handleMoveClick = () => {
@@ -21434,6 +21435,52 @@ const App: React.FC = () => {
         }
     };
 
+    const handleWorldMapSectorTeleport = useCallback((col: number, row: number) => {
+        const TELEPORT_ENERGY_COST = 1;
+        const TELEPORT_GOLD_COST = 500;
+
+        if (playerEnergy < TELEPORT_ENERGY_COST) {
+            openEnergyWarningModal(TELEPORT_ENERGY_COST);
+            return;
+        }
+
+        if (playerGold < TELEPORT_GOLD_COST) {
+            alert(`Недостаточно монет для телепортации! Требуется: ${TELEPORT_GOLD_COST} монет, у вас: ${playerGold}.`);
+            return;
+        }
+
+        // Deduct resources locally
+        setPlayerEnergy(prev => Math.max(0, prev - TELEPORT_ENERGY_COST));
+        setPlayerGold(prev => Math.max(0, prev - TELEPORT_GOLD_COST));
+
+        // Deduct resources in database
+        if (isAuthReady && user) {
+            updateDoc(doc(db, 'users', user.uid), {
+                energy: increment(-TELEPORT_ENERGY_COST),
+                gold: increment(-TELEPORT_GOLD_COST)
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+        }
+
+        // Add history log
+        addHistoryLog(
+            `Телепортация в сектор ${col + 1}-${row + 1}. Расход: ${TELEPORT_GOLD_COST} монет, ${TELEPORT_ENERGY_COST} энергия.`,
+            'move'
+        );
+
+        // Sound effect
+        playCoinSound();
+
+        // Target coordinates: center of the sector (ZONE_SIZE = 40)
+        const targetX = col * ZONE_SIZE + Math.floor(ZONE_SIZE / 2);
+        const targetY = row * ZONE_SIZE + Math.floor(ZONE_SIZE / 2);
+
+        // Teleport camera
+        handleSectorTeleport(targetX, targetY);
+
+        // Close the world map modal
+        setShowMap(false);
+    }, [playerEnergy, playerGold, isAuthReady, user, playCoinSound, openEnergyWarningModal, handleSectorTeleport]);
+
     return (
         <div className="relative w-screen h-screen">
             {isLoadingScreen && (
@@ -21918,6 +21965,10 @@ const App: React.FC = () => {
                 allUsers={allUsers}
                 currentClan={currentClan}
                 currentUserUid={user?.uid}
+                playerEnergy={playerEnergy}
+                playerGold={playerGold}
+                coinImageUrl={coinImageUrl}
+                onTeleportToSector={handleWorldMapSectorTeleport}
             />
 
             <TopPlayersModal

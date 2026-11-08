@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { ClanIcon } from '../../../components/IconComponents';
 import { ZONES_X, ZONES_Y, ZONE_SIZE } from '../../world.js';
 import type { Building, PlacedBuilding, Clan } from '../../../types';
@@ -14,9 +14,20 @@ export interface WorldMapModalProps {
     allUsers?: Record<string, any>;
     currentClan?: Clan | null;
     currentUserUid?: string;
+    playerEnergy?: number;
+    playerGold?: number;
+    onTeleportToSector?: (col: number, row: number) => void;
+    coinImageUrl?: string;
 }
 
 const WATCHTOWER_IDS = [801, 214, 215, 216];
+
+interface PendingTeleportSector {
+    col: number;
+    row: number;
+    clanName?: string;
+    hasTownHall?: boolean;
+}
 
 const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
     isOpen,
@@ -28,14 +39,33 @@ const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
     clans = [],
     allUsers = {},
     currentClan = null,
-    currentUserUid
+    currentUserUid,
+    playerEnergy = 0,
+    playerGold = 0,
+    onTeleportToSector,
+    coinImageUrl
 }) => {
+    const [pendingTeleport, setPendingTeleport] = useState<PendingTeleportSector | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setPendingTeleport(null);
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const handleClose = () => {
+        setPendingTeleport(null);
         playCloseSound();
         onClose();
     };
+
+    const TELEPORT_ENERGY_COST = 1;
+    const TELEPORT_GOLD_COST = 500;
+    const hasEnoughEnergy = playerEnergy >= TELEPORT_ENERGY_COST;
+    const hasEnoughGold = playerGold >= TELEPORT_GOLD_COST;
+    const canAfford = hasEnoughEnergy && hasEnoughGold;
 
     return (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm" onClick={handleClose}>
@@ -116,6 +146,14 @@ const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
                             return (
                                 <div
                                     key={index}
+                                    onClick={() => {
+                                        setPendingTeleport({
+                                            col,
+                                            row,
+                                            clanName: sectorClan?.name,
+                                            hasTownHall: Boolean(hasTownHall)
+                                        });
+                                    }}
                                     style={{
                                         width: '96px',
                                         height: '96px',
@@ -132,13 +170,15 @@ const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
                                         overflow: 'hidden',
                                         padding: '4px'
                                     }}
-                                    title={`Сектор ${col + 1}-${row + 1}${sectorClan ? ` • Клан: ${sectorClan.name}` : primaryClanBuilding ? ' • Владения клана' : ''}${hasTownHall ? ' • Ваш город' : ''}`}
+                                    title={`Сектор ${col + 1}-${row + 1}${sectorClan ? ` • Клан: ${sectorClan.name}` : primaryClanBuilding ? ' • Владения клана' : ''}${hasTownHall ? ' • Ваш город' : ''} • Нажмите для телепортации`}
                                     onMouseEnter={e => {
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)';
-                                        e.currentTarget.style.background = isOccupiedByClan ? 'rgba(180,40,40,0.35)' : 'rgba(255,255,255,0.08)';
+                                        e.currentTarget.style.borderColor = 'rgba(96,165,250,0.7)';
+                                        e.currentTarget.style.boxShadow = '0 0 10px rgba(96,165,250,0.3)';
+                                        e.currentTarget.style.background = isOccupiedByClan ? 'rgba(180,40,40,0.4)' : 'rgba(96,165,250,0.15)';
                                     }}
                                     onMouseLeave={e => {
                                         e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                                        e.currentTarget.style.boxShadow = 'none';
                                         e.currentTarget.style.background = isOccupiedByClan ? 'rgba(180,40,40,0.25)' : 'rgba(0,0,0,0.25)';
                                     }}
                                 >
@@ -218,6 +258,262 @@ const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
                         Звездочкой отмечено ваше главное здание. Эмблемы и замки обозначают владения кланов.
                     </div>
                 </div>
+
+                {/* Teleport Confirmation Modal */}
+                {pendingTeleport && (
+                    <div
+                        className="absolute inset-0 z-30 flex items-center justify-center p-4"
+                        style={{
+                            background: 'rgba(5, 10, 20, 0.78)',
+                            backdropFilter: 'blur(8px)',
+                            WebkitBackdropFilter: 'blur(8px)'
+                        }}
+                        onClick={() => setPendingTeleport(null)}
+                    >
+                        <div
+                            className="relative w-full max-w-sm rounded-2xl p-5 text-white flex flex-col items-center text-center shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background: 'linear-gradient(180deg, #182234 0%, #0e1522 100%)',
+                                border: '1.5px solid rgba(96, 165, 250, 0.45)',
+                                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(59, 130, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                                fontFamily: 'Nunito, sans-serif'
+                            }}
+                        >
+                            {/* Close button X */}
+                            <button
+                                type="button"
+                                onClick={() => setPendingTeleport(null)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '12px',
+                                    right: '12px',
+                                    width: '28px',
+                                    height: '28px',
+                                    borderRadius: '50%',
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    color: 'rgba(255, 255, 255, 0.7)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 700,
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)';
+                                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                                    e.currentTarget.style.color = '#fff';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                    e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
+                                }}
+                                title="Отмена"
+                            >
+                                ✕
+                            </button>
+
+                            {/* Icon badge */}
+                            <div
+                                style={{
+                                    width: '56px',
+                                    height: '56px',
+                                    borderRadius: '50%',
+                                    background: 'radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, rgba(37, 99, 235, 0.1) 70%, transparent 100%)',
+                                    border: '1.5px solid rgba(96, 165, 250, 0.55)',
+                                    boxShadow: '0 0 16px rgba(59, 130, 246, 0.45), inset 0 0 10px rgba(96, 165, 250, 0.25)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '28px',
+                                    marginBottom: '12px'
+                                }}
+                            >
+                                🌀
+                            </div>
+
+                            {/* Title & confirmation text */}
+                            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#f8fafc', letterSpacing: '0.3px', lineHeight: 1.25 }}>
+                                Подтвердить телепорт в этот сектор?
+                            </h3>
+
+                            <div style={{ marginTop: '6px', fontSize: '13px', fontWeight: 700, color: '#93c5fd' }}>
+                                Сектор {pendingTeleport.col + 1}-{pendingTeleport.row + 1}
+                                {pendingTeleport.hasTownHall ? ' • ⭐ Ваш город' : pendingTeleport.clanName ? ` • ⚔️ Клан: ${pendingTeleport.clanName}` : ''}
+                            </div>
+
+                            {/* Cost Box */}
+                            <div
+                                style={{
+                                    width: '100%',
+                                    background: 'rgba(0, 0, 0, 0.35)',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                                    borderRadius: '12px',
+                                    padding: '12px 14px',
+                                    marginTop: '14px',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                    boxSizing: 'border-box'
+                                }}
+                            >
+                                <div style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                                    Стоимость телепорта:
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                                    {/* Energy cost */}
+                                    <div
+                                        style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            background: hasEnoughEnergy ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.15)',
+                                            padding: '8px 10px',
+                                            borderRadius: '8px',
+                                            border: `1px solid ${hasEnoughEnergy ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.45)'}`
+                                        }}
+                                    >
+                                        <span style={{ fontSize: '16px' }}>⚡</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 800, color: hasEnoughEnergy ? '#4ade80' : '#f87171' }}>
+                                                1 энергия
+                                            </span>
+                                            <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.45)' }}>
+                                                у вас: {playerEnergy}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Gold cost */}
+                                    <div
+                                        style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            background: hasEnoughGold ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.15)',
+                                            padding: '8px 10px',
+                                            borderRadius: '8px',
+                                            border: `1px solid ${hasEnoughGold ? 'rgba(34, 197, 94, 0.35)' : 'rgba(239, 68, 68, 0.45)'}`
+                                        }}
+                                    >
+                                        {coinImageUrl ? (
+                                            <img src={coinImageUrl} alt="Монеты" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                                        ) : (
+                                            <span style={{ fontSize: '16px' }}>🪙</span>
+                                        )}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 800, color: hasEnoughGold ? '#4ade80' : '#f87171' }}>
+                                                500 монет
+                                            </span>
+                                            <span style={{ fontSize: '10px', color: 'rgba(255, 255, 255, 0.45)' }}>
+                                                у вас: {playerGold.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {!canAfford && (
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#f87171', marginTop: '2px' }}>
+                                        ⚠️ Недостаточно ресурсов для телепортации!
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Buttons Да / Нет */}
+                            <div style={{ display: 'flex', width: '100%', gap: '10px', justifyContent: 'center' }}>
+                                {/* Кнопка Нет */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPendingTeleport(null)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 16px',
+                                        borderRadius: '10px',
+                                        fontWeight: 700,
+                                        fontSize: '14px',
+                                        color: '#cbd5e1',
+                                        background: 'rgba(255, 255, 255, 0.08)',
+                                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                        e.currentTarget.style.color = '#fff';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                                        e.currentTarget.style.color = '#cbd5e1';
+                                    }}
+                                >
+                                    Нет
+                                </button>
+
+                                {/* Кнопка Да */}
+                                <button
+                                    type="button"
+                                    disabled={!canAfford}
+                                    onClick={() => {
+                                        if (!canAfford) {
+                                            if (!hasEnoughEnergy) {
+                                                alert('Недостаточно энергии! Требуется 1 энергия.');
+                                            } else {
+                                                alert('Недостаточно монет! Требуется 500 монет.');
+                                            }
+                                            return;
+                                        }
+                                        const col = pendingTeleport.col;
+                                        const row = pendingTeleport.row;
+                                        setPendingTeleport(null);
+                                        onTeleportToSector?.(col, row);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px 16px',
+                                        borderRadius: '10px',
+                                        fontWeight: 800,
+                                        fontSize: '14px',
+                                        color: '#ffffff',
+                                        background: canAfford
+                                            ? 'linear-gradient(180deg, #16a34a 0%, #15803d 100%)'
+                                            : 'rgba(75, 85, 99, 0.4)',
+                                        border: canAfford ? '1px solid #22c55e' : '1px solid rgba(255, 255, 255, 0.1)',
+                                        boxShadow: canAfford
+                                            ? '0 0 16px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                                            : 'none',
+                                        cursor: canAfford ? 'pointer' : 'not-allowed',
+                                        opacity: canAfford ? 1 : 0.5,
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                    onMouseEnter={e => {
+                                        if (canAfford) {
+                                            e.currentTarget.style.background = 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)';
+                                            e.currentTarget.style.boxShadow = '0 0 20px rgba(34, 197, 94, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
+                                        }
+                                    }}
+                                    onMouseLeave={e => {
+                                        if (canAfford) {
+                                            e.currentTarget.style.background = 'linear-gradient(180deg, #16a34a 0%, #15803d 100%)';
+                                            e.currentTarget.style.boxShadow = '0 0 16px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                                        }
+                                    }}
+                                >
+                                    Да
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -232,5 +528,9 @@ export const WorldMapModal = memo(WorldMapModalComponent, (prev, next) => {
     if (prev.currentClan !== next.currentClan) return false;
     if (prev.allUsers !== next.allUsers) return false;
     if (prev.currentUserUid !== next.currentUserUid) return false;
+    if (prev.playerEnergy !== next.playerEnergy) return false;
+    if (prev.playerGold !== next.playerGold) return false;
+    if (prev.coinImageUrl !== next.coinImageUrl) return false;
+    if (prev.onTeleportToSector !== next.onTeleportToSector) return false;
     return true;
 });
