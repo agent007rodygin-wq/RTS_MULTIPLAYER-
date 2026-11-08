@@ -237,8 +237,9 @@ export const ResourceShopModal: React.FC<ResourceShopModalProps> = memo(({
                                             <input
                                                 type="number"
                                                 min="1"
-                                                value={rawQty !== undefined ? rawQty : 1}
+                                                value={rawQty !== undefined ? rawQty : ''}
                                                 placeholder="1"
+                                                onFocus={(e) => e.target.select()}
                                                 onChange={(e) => {
                                                     const val = e.target.value;
                                                     if (val === '') {

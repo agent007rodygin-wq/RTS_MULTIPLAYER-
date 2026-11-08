@@ -135,6 +135,48 @@ function setDataField(record, obj) {
   record.set("data", JSON.stringify(obj));
 }
 
+function parseInventoryField(record) {
+  var raw = record.get("inventory");
+
+  if (!raw) {
+    return {};
+  }
+
+  if (Array.isArray(raw)) {
+    try {
+      var decoded = "";
+      for (var i = 0; i < raw.length; i++) {
+        decoded += String.fromCharCode(Number(raw[i]));
+      }
+      var parsedBytes = JSON.parse(decoded);
+      if (parsedBytes && typeof parsedBytes === "object" && !Array.isArray(parsedBytes)) {
+        return parsedBytes;
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  if (typeof raw === "string") {
+    try {
+      var parsedString = JSON.parse(raw);
+      if (parsedString && typeof parsedString === "object" && !Array.isArray(parsedString)) {
+        return parsedString;
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    return raw;
+  }
+
+  return {};
+}
+
 function finitePositive(value) {
   var n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -408,6 +450,205 @@ routerAdd(
       });
     }
   },
+);
+
+routerAdd(
+  "POST",
+  "/api/game/reputation-action",
+  function (e) {
+    var RECOMMENDATION_ID = 10032;
+    var MAX_REPUTATION = 950;
+
+    var parseDataField = function (record) {
+      var raw = record.get("data");
+      if (!raw) return {};
+      if (Array.isArray(raw)) {
+        try {
+          var decoded = "";
+          for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
+          var parsedBytes = JSON.parse(decoded);
+          if (parsedBytes && typeof parsedBytes === "object" && !Array.isArray(parsedBytes)) return parsedBytes;
+          return {};
+        } catch (_) { return {}; }
+      }
+      if (typeof raw === "string") {
+        try {
+          var parsedString = JSON.parse(raw);
+          if (parsedString && typeof parsedString === "object" && !Array.isArray(parsedString)) return parsedString;
+          return {};
+        } catch (_) { return {}; }
+      }
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      return {};
+    };
+
+    var setDataField = function (record, obj) {
+      record.set("data", JSON.stringify(obj));
+    };
+
+    var parseInventoryField = function (record) {
+      var raw = record.get("inventory");
+      if (!raw) return {};
+      if (Array.isArray(raw)) {
+        try {
+          var decoded = "";
+          for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
+          var parsedBytes = JSON.parse(decoded);
+          if (parsedBytes && typeof parsedBytes === "object" && !Array.isArray(parsedBytes)) return parsedBytes;
+          return {};
+        } catch (_) { return {}; }
+      }
+      if (typeof raw === "string") {
+        try {
+          var parsedString = JSON.parse(raw);
+          if (parsedString && typeof parsedString === "object" && !Array.isArray(parsedString)) return parsedString;
+          return {};
+        } catch (_) { return {}; }
+      }
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      return {};
+    };
+
+    var authRecord = e.auth;
+    if (!authRecord) {
+      try {
+        var _h = e.requestInfo().headers;
+        var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
+        if (_token) authRecord = $app.findAuthRecordByToken(_token);
+      } catch (_e) { authRecord = null; }
+    }
+
+    if (!authRecord) {
+      return e.json(401, { success: false, error: "AUTH_REQUIRED" });
+    }
+
+    var _body = {};
+    try {
+      _body = e.requestInfo().body || {};
+    } catch (err) {
+      return e.json(400, { success: false, error: "INVALID_REQUEST_BODY" });
+    }
+
+    var issuerId = authRecord.id;
+    var targetId = String(_body.targetUserId || "").trim();
+    var action = String(_body.action || "praise").trim().toLowerCase();
+    if (action !== "praise" && action !== "complain") {
+      action = "praise";
+    }
+
+    if (!targetId) {
+      return e.json(400, { success: false, error: "MISSING_TARGET" });
+    }
+
+    var issuerEmail = String(authRecord.get("email") || "");
+    var isAdmin = issuerEmail === "fabiosluco@gmail.com";
+    if (targetId === issuerId && !isAdmin) {
+      return e.json(400, { success: false, error: "CANNOT_PRAISE_SELF" });
+    }
+
+    var result = null;
+
+    try {
+      $app.runInTransaction(function (txApp) {
+        var issuerRecord = txApp.findRecordById("users", issuerId);
+        if (!issuerRecord) {
+          throw new Error("ISSUER_NOT_FOUND");
+        }
+
+        var targetRecord = null;
+        try {
+          targetRecord = txApp.findRecordById("users", targetId);
+        } catch (_) {}
+        if (!targetRecord) {
+          try {
+            var list = txApp.findRecordsByFilter("users", "id = '" + targetId + "' || gameId = '" + targetId + "'", "-created", 1);
+            if (list && list.length > 0) {
+              targetRecord = list[0];
+            }
+          } catch (_) {}
+        }
+        if (!targetRecord) {
+          throw new Error("TARGET_NOT_FOUND");
+        }
+
+        if (targetRecord.id === issuerId && !isAdmin) {
+          throw new Error("CANNOT_PRAISE_SELF");
+        }
+
+        var inv = parseInventoryField(issuerRecord);
+        var recKey = String(RECOMMENDATION_ID);
+        var recCount = Number(inv[RECOMMENDATION_ID] !== undefined ? inv[RECOMMENDATION_ID] : (inv[recKey] || 0));
+
+        if (recCount < 1 && !isAdmin) {
+          throw new Error("INSUFFICIENT_RECOMMENDATIONS");
+        }
+
+        if (!isAdmin) {
+          var remainingRecs = Math.max(0, recCount - 1);
+          inv[RECOMMENDATION_ID] = remainingRecs;
+          inv[recKey] = remainingRecs;
+          issuerRecord.set("inventory", JSON.stringify(inv));
+          txApp.save(issuerRecord);
+        }
+
+        var currentRep = Number(targetRecord.get("reputation") || 0);
+        var targetData = parseDataField(targetRecord);
+        if (targetData && typeof targetData === "object" && targetData.reputation !== undefined) {
+          currentRep = Math.max(currentRep, Number(targetData.reputation) || 0);
+        }
+
+        var delta = action === "complain" ? -1 : 1;
+        var newRep = currentRep + delta;
+        if (newRep < 0) newRep = 0;
+        if (newRep > MAX_REPUTATION) newRep = MAX_REPUTATION;
+
+        targetRecord.set("reputation", newRep);
+        if (targetData && typeof targetData === "object") {
+          targetData.reputation = newRep;
+          setDataField(targetRecord, targetData);
+        }
+        txApp.save(targetRecord);
+
+        // Sync presence if target player is currently online
+        try {
+          var presList = txApp.findRecordsByFilter("presence", "userId = '" + targetRecord.id + "' || uid = '" + targetRecord.id + "'", "-updated", 1);
+          if (presList && presList.length > 0) {
+            var pRec = presList[0];
+            var pData = parseDataField(pRec);
+            pData.reputation = newRep;
+            setDataField(pRec, pData);
+            txApp.save(pRec);
+          }
+        } catch (_) {}
+
+        result = {
+          success: true,
+          action: action,
+          targetUserId: targetRecord.id,
+          targetName: targetRecord.get("name") || "Игрок",
+          targetReputation: newRep,
+          issuerRecommendations: !isAdmin ? (inv[RECOMMENDATION_ID] || 0) : recCount,
+        };
+      });
+
+      console.log("[reputation-action] success:", JSON.stringify(result));
+      return e.json(200, result);
+    } catch (err) {
+      var detail = String(err);
+      console.log("[reputation-action] failed:", detail);
+
+      if (detail.indexOf("INSUFFICIENT_RECOMMENDATIONS") !== -1) {
+        return e.json(400, { success: false, error: "INSUFFICIENT_RECOMMENDATIONS" });
+      }
+      if (detail.indexOf("CANNOT_PRAISE_SELF") !== -1) {
+        return e.json(400, { success: false, error: "CANNOT_PRAISE_SELF" });
+      }
+      if (detail.indexOf("TARGET_NOT_FOUND") !== -1) {
+        return e.json(404, { success: false, error: "TARGET_NOT_FOUND" });
+      }
+      return e.json(500, { success: false, error: "INTERNAL_ERROR", detail: detail.substring(0, 200) });
+    }
+  }
 );
 
 // --- BasingSe Telegram Link & Daily Reward API ---

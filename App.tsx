@@ -7558,6 +7558,23 @@ const App: React.FC = () => {
                 }
                 setPlayerGold(goldValue < 0 ? 0 : goldValue);
                 setPlayerRubies(rubiesValue < 0 ? 0 : rubiesValue);
+                const serverReputation = Math.max(0, Math.min(MAX_REPUTATION, Number(data.reputation ?? data.data?.reputation) || 0));
+                setPlayerReputation(prev => {
+                    if (prev !== serverReputation && initialLoadDone.current) {
+                        if (serverReputation > prev) {
+                            setPermitPurchaseToast(`🌟 Вас похвалили! (+${serverReputation - prev} репутация, теперь ${serverReputation})`);
+                            if (permitPurchaseToastTimerRef.current !== null) {
+                                window.clearTimeout(permitPurchaseToastTimerRef.current);
+                            }
+                            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                                setPermitPurchaseToast(null);
+                                permitPurchaseToastTimerRef.current = null;
+                            }, 3500);
+                            playCoinSound();
+                        }
+                    }
+                    return serverReputation;
+                });
                 const serverExtraPermits = Math.max(0, Number(data.extraBuildingPermits ?? data.data?.extraBuildingPermits) || 0);
                 const cachedExtraPermits = readCachedExtraBuildingPermits(user.uid);
                 const resolvedExtraPermits = Math.max(serverExtraPermits, cachedExtraPermits);
@@ -8038,6 +8055,8 @@ const App: React.FC = () => {
             const mergedLeaderboardStats = mergeLocalUserStatCounters(data, cachedLeaderboardStats);
             setPlayerLeaderboardStats(mergedLeaderboardStats);
             writeCachedLeaderboardStats(user.uid, mergedLeaderboardStats);
+            const serverReputation = Math.max(0, Math.min(MAX_REPUTATION, Number(data.reputation ?? data.data?.reputation) || 0));
+            setPlayerReputation(serverReputation);
 
             // Update allUsers for current user with live glory from server
             setAllUsers(prev => {
@@ -8049,6 +8068,7 @@ const App: React.FC = () => {
                 if (existing.uid === user.uid &&
                     existing.level === resolvedLevel &&
                     existing.glory === playerGloryRef.current &&
+                    existing.reputation === serverReputation &&
                     existing.activeCurse?.endTime === newActiveCurse?.endTime &&
                     existing.banEndTime === newBanEndTime) {
                     return prev;
@@ -8062,7 +8082,7 @@ const App: React.FC = () => {
                         name: data.name || existing.name || 'Неизвестный',
                         level: resolvedLevel,
                         glory: playerGloryRef.current,
-                        reputation: Math.max(0, Number(data.reputation) || 0),
+                        reputation: serverReputation,
                         avatar: resolveUserAvatar(data, existing.avatar || null),
                         clanId: normalizeClanIdValue(data.clanId) ?? existing.clanId ?? null,
                         rank: data.rank ?? existing.rank ?? 0,
@@ -10488,19 +10508,14 @@ const App: React.FC = () => {
                 await handleComplainPlayer(targetUser.uid);
             }
         } else {
-            // Fallback to local state if user not in presence (offline)
-            setUserReputations(prev => {
-                const currentRep = prev[selectedChatUser] || 0;
-                const newRep = type === 'praise' ? currentRep + 1 : currentRep - 1;
-                const clampedRep = Math.min(MAX_REPUTATION, newRep);
-                return {
-                    ...prev,
-                    [selectedChatUser]: clampedRep
-                };
-            });
-            const actionText = type === 'praise' ? 'похвалили' : 'пожаловались на';
-            addHistoryLog(`Вы ${actionText} игрока ${selectedChatUser} (локально). Потрачена 1 рекомендация.`, 'social');
-            alert(`Вы успешно ${type === 'praise' ? 'похвалили' : 'пожаловались на'} игрока!`);
+            setPermitPurchaseToast("Игрок сейчас не найден в сети");
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
         }
     };
 
@@ -10508,116 +10523,235 @@ const App: React.FC = () => {
         if (!user) return;
         const isAdmin = user && user.email === "fabiosluco@gmail.com";
         if (targetUid === user.uid && !isAdmin) {
-            alert("Вы не можете похвалить самого себя!");
+            setPermitPurchaseToast("Вы не можете похвалить самого себя!");
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
+            return;
+        }
+
+        const myRecs = inventory[RECOMMENDATION_ID] || 0;
+        if (myRecs < 1 && !isAdmin) {
+            setPermitPurchaseToast("⚠️ У вас нет рекомендаций!");
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
             return;
         }
 
         try {
-            const targetUserDocRef = doc(db, 'users', targetUid);
-            const currentUserDocRef = doc(db, 'users', user.uid);
-
-            await runTransaction(db, async (transaction) => {
-                const currentUserDoc = await transaction.get(currentUserDocRef);
-                if (!currentUserDoc.exists()) throw new Error("User not found");
-
-                const userRecs = currentUserDoc.data().inventory?.[RECOMMENDATION_ID] || 0;
-                if (userRecs < 1) throw new Error("Insufficient recommendations");
-
-                transaction.update(targetUserDocRef, {
-                    reputation: increment(1)
-                });
-
-                transaction.update(currentUserDocRef, {
-                    [`inventory.${RECOMMENDATION_ID}`]: increment(-1)
-                });
+            const response = await pb.send('/api/game/reputation-action', {
+                method: 'POST',
+                body: { targetUserId: targetUid, action: 'praise' }
             });
 
-            // Update local state immediately so UI reflects the change
+            if (!response || !response.success) {
+                const errMsg = response?.error === 'INSUFFICIENT_RECOMMENDATIONS'
+                    ? '⚠️ У вас нет рекомендаций!'
+                    : (response?.error === 'CANNOT_PRAISE_SELF' ? 'Вы не можете похвалить самого себя!' : (response?.error || 'Ошибка при похвале'));
+                setPermitPurchaseToast(errMsg);
+                if (permitPurchaseToastTimerRef.current !== null) {
+                    window.clearTimeout(permitPurchaseToastTimerRef.current);
+                }
+                permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                    setPermitPurchaseToast(null);
+                    permitPurchaseToastTimerRef.current = null;
+                }, 2500);
+                return;
+            }
+
+            const newRecs = typeof response.issuerRecommendations === 'number'
+                ? response.issuerRecommendations
+                : Math.max(0, myRecs - 1);
+
+            // Deduct local inventory
+            setInventory(prev => ({
+                ...prev,
+                [RECOMMENDATION_ID]: newRecs
+            }));
+
+            const targetName = response.targetName || allUsers[targetUid]?.name || 'Игрок';
+            const newRep = Number(response.targetReputation) || ((allUsers[targetUid]?.reputation || 0) + 1);
+
+            // Update allUsers immediately
             setAllUsers(prev => {
                 const updated = { ...prev };
                 if (updated[targetUid]) {
                     updated[targetUid] = {
                         ...updated[targetUid],
-                        reputation: (updated[targetUid].reputation || 0) + 1
+                        reputation: newRep
                     };
                 }
-                // Also update current user's inventory
                 if (updated[user.uid]) {
                     updated[user.uid] = {
                         ...updated[user.uid],
                         inventory: {
-                            ...updated[user.uid].inventory,
-                            [RECOMMENDATION_ID]: (updated[user.uid].inventory?.[RECOMMENDATION_ID] || 0) - 1
+                            ...(updated[user.uid].inventory || {}),
+                            [RECOMMENDATION_ID]: newRecs
                         }
                     };
                 }
                 return updated;
             });
 
-            addHistoryLog(`Вы похвалили игрока ${allUsers[targetUid]?.name || 'неизвестного'}. Потрачена 1 рекомендация.`, 'social');
-            alert('Вы успешно похвалили игрока!');
-        } catch (e: any) {
-            if (e.message === "Insufficient recommendations") {
-                alert("У вас нет рекомендаций!");
-            } else {
-                handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
+            if (targetUid === user.uid) {
+                setPlayerReputation(newRep);
             }
+
+            addHistoryLog(`Вы похвалили игрока ${targetName}. Потрачена 1 рекомендация.`, 'social');
+            playCoinSound();
+
+            // JUICE GAME NOTIFICATION
+            setPermitPurchaseToast(`👍 Игрок ${targetName} успешно похвален! (+1 репутация)`);
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 3000);
+        } catch (e: any) {
+            console.error('[handlePraisePlayer] Error:', e);
+            const errStr = String(e?.response?.data?.error || e?.message || '');
+            if (errStr.includes("INSUFFICIENT_RECOMMENDATIONS")) {
+                setPermitPurchaseToast("⚠️ У вас нет рекомендаций!");
+            } else if (errStr.includes("CANNOT_PRAISE_SELF")) {
+                setPermitPurchaseToast("Вы не можете похвалить самого себя!");
+            } else {
+                setPermitPurchaseToast("Ошибка при похвале игрока");
+            }
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
         }
     };
 
     const handleComplainPlayer = async (targetUid: string) => {
         if (!user) return;
+        const isAdmin = user && user.email === "fabiosluco@gmail.com";
+        if (targetUid === user.uid && !isAdmin) {
+            setPermitPurchaseToast("Вы не можете пожаловаться на самого себя!");
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
+            return;
+        }
+
+        const myRecs = inventory[RECOMMENDATION_ID] || 0;
+        if (myRecs < 1 && !isAdmin) {
+            setPermitPurchaseToast("⚠️ У вас нет рекомендаций!");
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
+            return;
+        }
 
         try {
-            const targetUserDocRef = doc(db, 'users', targetUid);
-            const currentUserDocRef = doc(db, 'users', user.uid);
-
-            await runTransaction(db, async (transaction) => {
-                const currentUserDoc = await transaction.get(currentUserDocRef);
-                if (!currentUserDoc.exists()) throw new Error("User not found");
-
-                const userRecs = currentUserDoc.data().inventory?.[RECOMMENDATION_ID] || 0;
-                if (userRecs < 1) throw new Error("Insufficient recommendations");
-
-                transaction.update(targetUserDocRef, {
-                    reputation: increment(-1)
-                });
-
-                transaction.update(currentUserDocRef, {
-                    [`inventory.${RECOMMENDATION_ID}`]: increment(-1)
-                });
+            const response = await pb.send('/api/game/reputation-action', {
+                method: 'POST',
+                body: { targetUserId: targetUid, action: 'complain' }
             });
 
-            // Update local state immediately so UI reflects the change
+            if (!response || !response.success) {
+                const errMsg = response?.error === 'INSUFFICIENT_RECOMMENDATIONS'
+                    ? '⚠️ У вас нет рекомендаций!'
+                    : (response?.error === 'CANNOT_PRAISE_SELF' ? 'Вы не можете пожаловаться на себя!' : (response?.error || 'Ошибка при жалобе'));
+                setPermitPurchaseToast(errMsg);
+                if (permitPurchaseToastTimerRef.current !== null) {
+                    window.clearTimeout(permitPurchaseToastTimerRef.current);
+                }
+                permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                    setPermitPurchaseToast(null);
+                    permitPurchaseToastTimerRef.current = null;
+                }, 2500);
+                return;
+            }
+
+            const newRecs = typeof response.issuerRecommendations === 'number'
+                ? response.issuerRecommendations
+                : Math.max(0, myRecs - 1);
+
+            // Deduct local inventory
+            setInventory(prev => ({
+                ...prev,
+                [RECOMMENDATION_ID]: newRecs
+            }));
+
+            const targetName = response.targetName || allUsers[targetUid]?.name || 'Игрок';
+            const newRep = Number(response.targetReputation) ?? Math.max(0, (allUsers[targetUid]?.reputation || 0) - 1);
+
+            // Update allUsers immediately
             setAllUsers(prev => {
                 const updated = { ...prev };
                 if (updated[targetUid]) {
                     updated[targetUid] = {
                         ...updated[targetUid],
-                        reputation: (updated[targetUid].reputation || 0) - 1
+                        reputation: newRep
                     };
                 }
-                // Also update current user's inventory
                 if (updated[user.uid]) {
                     updated[user.uid] = {
                         ...updated[user.uid],
                         inventory: {
-                            ...updated[user.uid].inventory,
-                            [RECOMMENDATION_ID]: (updated[user.uid].inventory?.[RECOMMENDATION_ID] || 0) - 1
+                            ...(updated[user.uid].inventory || {}),
+                            [RECOMMENDATION_ID]: newRecs
                         }
                     };
                 }
                 return updated;
             });
 
-            addHistoryLog(`Вы пожаловались на игрока ${allUsers[targetUid]?.name || 'неизвестного'}. Потрачена 1 рекомендация.`, 'social');
-            alert('Вы успешно пожаловались на игрока!');
-        } catch (e: any) {
-            if (e.message === "Insufficient recommendations") {
-                alert("У вас нет рекомендаций!");
-            } else {
-                handleFirestoreError(e, OperationType.UPDATE, `users/${targetUid}`);
+            if (targetUid === user.uid) {
+                setPlayerReputation(newRep);
             }
+
+            addHistoryLog(`Вы пожаловались на игрока ${targetName}. Потрачена 1 рекомендация.`, 'social');
+            playCoinSound();
+
+            // JUICE GAME NOTIFICATION
+            setPermitPurchaseToast(`👎 Вы пожаловались на игрока ${targetName}. (-1 репутация)`);
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 3000);
+        } catch (e: any) {
+            console.error('[handleComplainPlayer] Error:', e);
+            const errStr = String(e?.response?.data?.error || e?.message || '');
+            if (errStr.includes("INSUFFICIENT_RECOMMENDATIONS")) {
+                setPermitPurchaseToast("⚠️ У вас нет рекомендаций!");
+            } else {
+                setPermitPurchaseToast("Ошибка при жалобе на игрока");
+            }
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
         }
     };
     const handleBanPlayer = (cost: number, durationMinutes: number) => {
