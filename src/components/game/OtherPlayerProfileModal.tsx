@@ -36,7 +36,7 @@ export interface OtherPlayerProfileModalProps {
     onComplainPlayer: (uid: string) => void;
     onVoteKing: (uid: string) => void;
     onAddFriend: (uid: string) => void;
-    onOpenPrivateChat: (uid: string) => void;
+    onOpenPrivateChat: (uid: string, mode?: 'mail' | 'private') => void;
     onCatchCriminal: (uid: string) => void;
     onTeleportToBuilding: (x: number, y: number) => void;
     onBanPlayer: (uid: string, cost: number, durationMinutes: number) => void;
@@ -86,6 +86,7 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
     const [showCurseMenu, setShowCurseMenu] = useState(false);
     const [showBuildingsMenu, setShowBuildingsMenu] = useState(false);
     const [showAchievementsMenu, setShowAchievementsMenu] = useState(false);
+    const [showMessageMenu, setShowMessageMenu] = useState(false);
 
     if (!isOpen || !selectedPlayerId) return null;
 
@@ -95,6 +96,7 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
         setShowCurseMenu(false);
         setShowBuildingsMenu(false);
         setShowAchievementsMenu(false);
+        setShowMessageMenu(false);
         onClose();
     };
 
@@ -344,7 +346,7 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
                 </div>
 
                 {/* 4. Main Buttons Grid OR Submenu */}
-                {!showBanMenu && !showPunishMenu && !showCurseMenu && !showBuildingsMenu && !showAchievementsMenu ? (
+                {!showBanMenu && !showPunishMenu && !showCurseMenu && !showBuildingsMenu && !showAchievementsMenu && !showMessageMenu ? (
                     <div id="profile-buttons-area" className="relative z-10">
                         {/* Row 1: Y = 281 */}
                         <button
@@ -478,7 +480,7 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
                         <button
                             id="btn-messages"
                             type="button"
-                            onClick={() => onOpenPrivateChat(selectedPlayerId)}
+                            onClick={() => setShowMessageMenu(true)}
                             style={{ position: 'absolute', left: '18px', top: '525px', width: '279px', height: '65px' }}
                             className="p-0 border-0 bg-transparent cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] hover:brightness-110 active:brightness-95 focus:outline-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
                             title="Сообщения"
@@ -706,6 +708,62 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
                                             <span className="text-pink-400 font-black drop-shadow">{option.cost} ₽</span>
                                         </button>
                                     ))}
+                                </div>
+                            </div>
+                        ) : showMessageMenu ? (
+                            <div className="bg-[#121424]/95 border-2 border-purple-500/50 rounded-2xl p-4 flex flex-col flex-1 overflow-hidden shadow-[0_0_25px_rgba(168,85,247,0.35)] backdrop-blur-md">
+                                <div className="flex justify-between items-center mb-4 pb-2 border-b border-purple-500/30">
+                                    <span className="text-purple-300 font-black text-sm flex items-center gap-2 drop-shadow font-sans">
+                                        <span>✉️</span> Написать игроку {targetUser?.name || ''}
+                                    </span>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowMessageMenu(false)} 
+                                        className="text-xs text-purple-200 hover:text-white font-extrabold px-3 py-1 rounded-xl bg-purple-900/50 hover:bg-purple-800/80 border border-purple-400/40 transition-all flex items-center gap-1 cursor-pointer shadow-md font-sans"
+                                    >
+                                        <span>← Назад</span>
+                                    </button>
+                                </div>
+                                <div className="space-y-4 flex flex-col justify-center flex-1 px-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowMessageMenu(false);
+                                            onOpenPrivateChat(selectedPlayerId, 'mail');
+                                        }}
+                                        className="w-full bg-gradient-to-r from-amber-700/90 via-amber-600/90 to-amber-700/90 hover:from-amber-600 hover:via-amber-500 hover:to-amber-600 text-white p-4 rounded-2xl text-sm flex items-center justify-between transition-all border-2 border-amber-400/60 shadow-[0_4px_15px_rgba(245,158,11,0.25)] font-bold cursor-pointer hover:scale-[1.02] active:scale-[0.98] font-sans group"
+                                    >
+                                        <div className="flex items-center gap-3.5">
+                                            <div className="w-11 h-11 rounded-xl bg-amber-950/60 border border-amber-400/40 flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform">
+                                                ✉️
+                                            </div>
+                                            <div className="flex flex-col text-left">
+                                                <span className="font-black text-base text-amber-100">Отправить обычное сообщение</span>
+                                                <span className="text-[11px] text-amber-200/80 font-medium">Придёт во вкладку «Письма» (видно ваш ник)</span>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs text-amber-200 font-black bg-black/40 px-3 py-1.5 rounded-xl border border-amber-400/40">Бесплатно</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowMessageMenu(false);
+                                            onOpenPrivateChat(selectedPlayerId, 'private');
+                                        }}
+                                        className="w-full bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-purple-900/90 hover:from-purple-800 hover:via-indigo-800 hover:to-purple-800 text-white p-4 rounded-2xl text-sm flex items-center justify-between transition-all border-2 border-purple-400/60 shadow-[0_4px_15px_rgba(168,85,247,0.25)] font-bold cursor-pointer hover:scale-[1.02] active:scale-[0.98] font-sans group"
+                                    >
+                                        <div className="flex items-center gap-3.5">
+                                            <div className="w-11 h-11 rounded-xl bg-purple-950/60 border border-purple-400/40 flex items-center justify-center text-2xl shadow-inner group-hover:scale-110 transition-transform">
+                                                🔒
+                                            </div>
+                                            <div className="flex flex-col text-left">
+                                                <span className="font-black text-base text-purple-100">Отправить приватное сообщение</span>
+                                                <span className="text-[11px] text-purple-300/80 font-medium">Придёт во вкладку «Приватные» (анонимно)</span>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs text-yellow-300 font-black bg-black/40 px-3 py-1.5 rounded-xl border border-purple-400/40">500 🪙 + 1 ⚡</span>
+                                    </button>
                                 </div>
                             </div>
                         ) : (

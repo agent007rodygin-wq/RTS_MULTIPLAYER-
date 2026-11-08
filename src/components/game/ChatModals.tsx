@@ -131,6 +131,12 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
     const isAnonymousView = chatMode === 'private' || isAnonymousMessage || activePrivateChat === 'anonymous' || Boolean(activePrivateChatId?.endsWith('_anon'));
     const targetUser = Object.values(allUsers).find(u => u.uid === activePrivateChat);
 
+    const isRecipientOfAnon = activePrivateChat === 'anonymous' || privateMessages.some(m => 
+        (m.messageType === 'private' || Boolean(m.chatId?.endsWith('_anon'))) && 
+        m.senderId !== user?.uid && 
+        (m.senderId === activePrivateChat || (m.receiverId === user?.uid && (m.chatId === activePrivateChatId || !activePrivateChatId)))
+    );
+
     const relevantMessages = privateMessages.filter(m => {
         const mTarget = m.receiverId || (m as any).recipientId;
         const isPair = (m.senderId === user?.uid && mTarget === activePrivateChat) || 
@@ -170,10 +176,14 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                         )}
                         <div className="flex flex-col">
                             <span className="text-white font-extrabold text-sm">
-                                {isAnonymousView ? 'Аноним' : (targetUser?.name || 'Неизвестный')}
+                                {isAnonymousView 
+                                    ? (isRecipientOfAnon ? 'Аноним' : (targetUser?.name ? `Кому: ${targetUser.name}` : 'Анонимное сообщение'))
+                                    : (targetUser?.name || 'Неизвестный')}
                             </span>
                             <span className="text-[10px] text-purple-300/70">
-                                {isAnonymousView ? 'Личность отправителя скрыта' : (targetUser?.clanId ? 'В клане' : 'Без клана')}
+                                {isAnonymousView 
+                                    ? (isRecipientOfAnon ? 'Личность отправителя скрыта' : 'Приватное сообщение (анонимно)')
+                                    : (targetUser?.clanId ? 'В клане' : 'Без клана')}
                             </span>
                         </div>
                     </div>
@@ -264,7 +274,7 @@ const PrivateChatModalComponent: React.FC<PrivateChatModalProps> = ({
                         {isAnonymousView ? (
                             <span className="text-purple-300 text-[11px] flex items-center gap-1.5">
                                 <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse inline-block shadow-[0_0_8px_rgba(192,132,252,0.8)]"></span>
-                                <span>Приватное сообщение (анонимно)</span>
+                                <span>{isRecipientOfAnon ? 'Приватное сообщение (анонимно)' : 'Приватное сообщение (анонимно: 500 🪙 + 1 ⚡)'}</span>
                             </span>
                         ) : (
                             <span className="text-amber-200/80 text-[11px] flex items-center gap-1.5">

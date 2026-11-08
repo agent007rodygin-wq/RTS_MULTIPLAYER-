@@ -10967,12 +10967,13 @@ const App: React.FC = () => {
         setShowPlayerProfile(false);
     }, []);
 
-    const handleOpenPrivateChatFromProfile = useCallback((targetUid: string) => {
+    const handleOpenPrivateChatFromProfile = useCallback((targetUid: string, initialMode: 'mail' | 'private' = 'mail') => {
         setShowPlayerProfile(false);
         setActivePrivateChat(targetUid);
-        setActivePrivateChatId([user?.uid, targetUid].sort().join('_'));
-        setIsAnonymousMessage(false);
-        setPrivateChatMode('mail');
+        const isAnon = initialMode === 'private';
+        setActivePrivateChatId([user?.uid, targetUid].sort().join('_') + (isAnon ? '_anon' : ''));
+        setIsAnonymousMessage(isAnon);
+        setPrivateChatMode(initialMode);
         setShowPrivateChatModal(true);
     }, [user?.uid]);
 
