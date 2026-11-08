@@ -1025,7 +1025,7 @@ import {
 
 const MONSTER_FATAL_HIT_DELAY_MS = 1200;
 const MONSTER_WALK_ANIM_DURATION = 5000;
-const MONSTER_ATTACK_INTERVAL_MS = 3000;
+const MONSTER_ATTACK_INTERVAL_MS = 35000;
 const CANNON_ATTACK_INTERVAL_MS = 40000;
 const CANNON_TICK_INTERVAL_MS = 1000;
 const MONSTER_AI_TICK_INTERVAL_MS = 250;
@@ -9007,18 +9007,22 @@ const App: React.FC = () => {
                         monsterLastMoveTimeRef.current.get(strId) || 0,
                         gameIdStr ? (monsterLastMoveTimeRef.current.get(gameIdStr) || 0) : 0
                     );
+                    const localMoveTime = localMatch?.lastMoveTime || 0;
+                    const serverMoveTime = b.lastMoveTime || 0;
+                    const isServerPosStale = Boolean(localMatch && localMoveTime > serverMoveTime);
                     const effectiveAttackTime = Math.max(
                         b.lastAttackTime || 0,
                         localMatch?.lastAttackTime || 0,
                         refAttackTime
                     );
                     const effectiveMoveTime = Math.max(
-                        b.lastMoveTime || 0,
-                        localMatch?.lastMoveTime || 0,
+                        serverMoveTime,
+                        localMoveTime,
                         refMoveTime
                     );
                     const normalized = normalizePlacedBuildingHealth({
                         ...b,
+                        ...(isServerPosStale && localMatch ? { x: localMatch.x, y: localMatch.y, zoneId: localMatch.zoneId } : {}),
                         id: strId,
                         ...(effectiveAttackTime > 0 ? { lastAttackTime: effectiveAttackTime } : {}),
                         ...(effectiveMoveTime > 0 ? { lastMoveTime: effectiveMoveTime } : {}),
@@ -9582,10 +9586,13 @@ const App: React.FC = () => {
                     const gameIdStr = b.gameId ? String(b.gameId) : '';
                     const serverMonster = monstersMap.get(strId) || (gameIdStr ? monstersMap.get(gameIdStr) : undefined);
                     if (serverMonster) {
-                        const hasPosChange = b.x !== serverMonster.x || b.y !== serverMonster.y;
+                        const localMoveTime = b.lastMoveTime || 0;
+                        const serverMoveTime = serverMonster.lastMoveTime || 0;
+                        const isServerPosStale = localMoveTime > serverMoveTime;
+                        const hasPosChange = !isServerPosStale && (b.x !== serverMonster.x || b.y !== serverMonster.y);
                         const hasHpChange = b.hp !== serverMonster.hp;
                         const hasAttackChange = (serverMonster.lastAttackTime || 0) > (b.lastAttackTime || 0);
-                        const hasMoveChange = (serverMonster.lastMoveTime || 0) > (b.lastMoveTime || 0);
+                        const hasMoveChange = serverMoveTime > localMoveTime;
 
                         if (hasPosChange || hasHpChange || hasAttackChange || hasMoveChange) {
                             anyMoved = true;
@@ -9618,7 +9625,6 @@ const App: React.FC = () => {
                                 monsterDirectionRef.current.set(strId, serverDir);
                                 if (gameIdStr) monsterDirectionRef.current.set(gameIdStr, serverDir);
                             }
-                            const serverMoveTime = serverMonster.lastMoveTime || 0;
                             if (serverMoveTime > 0) {
                                 monsterLastMoveTimeRef.current.set(strId, serverMoveTime);
                                 if (gameIdStr) monsterLastMoveTimeRef.current.set(gameIdStr, serverMoveTime);
@@ -9626,11 +9632,11 @@ const App: React.FC = () => {
 
                             return {
                                 ...b,
-                                x: serverMonster.x,
-                                y: serverMonster.y,
-                                zoneId: serverMonster.zoneId,
+                                x: isServerPosStale ? b.x : serverMonster.x,
+                                y: isServerPosStale ? b.y : serverMonster.y,
+                                zoneId: isServerPosStale ? b.zoneId : serverMonster.zoneId,
                                 hp: serverMonster.hp,
-                                lastMoveTime: Math.max(b.lastMoveTime || 0, serverMoveTime),
+                                lastMoveTime: Math.max(localMoveTime, serverMoveTime),
                                 lastAttackTime: Math.max(b.lastAttackTime || 0, serverAttackTime),
                                 attackDir: serverAttackDir || (b as any).attackDir,
                                 direction: serverDir || (b as any).direction,
@@ -13865,20 +13871,22 @@ const App: React.FC = () => {
                     }
                     const targetId = String(target.id);
                     const source = 'raf_combat';
-                    console.log("[COMBAT TARGET BEFORE HIT]", {
-                        combatTraceId: attackId,
-                        source,
-                        monsterId,
-                        targetId,
-                        targetHp: target.hp,
-                        targetIsDestroying: target.isDestroying,
-                        targetPendingDamage: target.pendingDamage,
-                        targetDestructionEndTime: target.destructionEndTime,
-                        deleting: targetId ? isBuildingDeleting(String(targetId)) : false,
-                        tombstoned: targetId ? isBuildingTombstoned(String(targetId)) : false,
-                        preferredTargetId: monsterTargetLockRef.current.get(monsterId),
-                        timestamp: Date.now(),
-                    });
+                    if (isMonsterDiagEnabled()) {
+                        console.log("[COMBAT TARGET BEFORE HIT]", {
+                            combatTraceId: attackId,
+                            source,
+                            monsterId,
+                            targetId,
+                            targetHp: target.hp,
+                            targetIsDestroying: target.isDestroying,
+                            targetPendingDamage: target.pendingDamage,
+                            targetDestructionEndTime: target.destructionEndTime,
+                            deleting: targetId ? isBuildingDeleting(String(targetId)) : false,
+                            tombstoned: targetId ? isBuildingTombstoned(String(targetId)) : false,
+                            preferredTargetId: monsterTargetLockRef.current.get(monsterId),
+                            timestamp: Date.now(),
+                        });
+                    }
                     if (
                         target.isDestroying ||
                         (target.hp !== undefined && target.hp <= 0) ||
@@ -13886,17 +13894,18 @@ const App: React.FC = () => {
                         isBuildingDeleting(targetId) ||
                         isBuildingTombstoned(targetId)
                     ) {
-                        console.error("[DESTRUCTION RESTART DETECTED]", {
-                            combatTraceId: attackId,
-                            source,
-                            buildingId: targetId,
-                            hp: target.hp,
-                            isDestroying: target.isDestroying,
-                            destructionEndTime: target.destructionEndTime,
-                            pendingDamage: target.pendingDamage,
-                            timestamp: Date.now(),
-                            stack: new Error().stack,
-                        });
+                        if (isMonsterDiagEnabled()) {
+                            console.error("[DESTRUCTION RESTART DETECTED]", {
+                                combatTraceId: attackId,
+                                source,
+                                buildingId: targetId,
+                                hp: target.hp,
+                                isDestroying: target.isDestroying,
+                                destructionEndTime: target.destructionEndTime,
+                                pendingDamage: target.pendingDamage,
+                                timestamp: Date.now(),
+                            });
+                        }
                         monsterTargetLockRef.current.delete(monsterId);
                         return;
                     }
@@ -13911,29 +13920,33 @@ const App: React.FC = () => {
                     const targetDamageKey = targetId;
                     damageMap.set(targetDamageKey, (damageMap.get(targetDamageKey) || 0) + dmg);
                     const targetCurrentHp = target.hp ?? (targetInfo?.stats.durability ?? 100);
-                    console.log("[COMBAT DAMAGE QUEUED]", {
-                        combatTraceId: attackId,
-                        source,
-                        monsterId,
-                        targetId: targetDamageKey,
-                        damage: dmg,
-                        damageMapTotal: damageMap?.get?.(String(targetDamageKey)),
-                        recipientIds: [targetDamageKey],
-                        recipientCount: 1,
-                        timestamp: Date.now(),
-                    });
-                    if ((damageMap.get(targetDamageKey) || 0) >= targetCurrentHp) {
-            console.log("[COMBAT FATAL HIT]", {
+                    if (isMonsterDiagEnabled()) {
+                        console.log("[COMBAT DAMAGE QUEUED]", {
                             combatTraceId: attackId,
                             source,
                             monsterId,
-                            buildingId: targetDamageKey,
-                            hpBefore: targetCurrentHp,
-                            hpAfterCalculated: 0,
-                            wasAlreadyDestroying: Boolean(target.isDestroying),
-                            oldDestructionEndTime: target.destructionEndTime,
+                            targetId: targetDamageKey,
+                            damage: dmg,
+                            damageMapTotal: damageMap?.get?.(String(targetDamageKey)),
+                            recipientIds: [targetDamageKey],
+                            recipientCount: 1,
                             timestamp: Date.now(),
                         });
+                    }
+                    if ((damageMap.get(targetDamageKey) || 0) >= targetCurrentHp) {
+                        if (isMonsterDiagEnabled()) {
+                            console.log("[COMBAT FATAL HIT]", {
+                                combatTraceId: attackId,
+                                source,
+                                monsterId,
+                                buildingId: targetDamageKey,
+                                hpBefore: targetCurrentHp,
+                                hpAfterCalculated: 0,
+                                wasAlreadyDestroying: Boolean(target.isDestroying),
+                                oldDestructionEndTime: target.destructionEndTime,
+                                timestamp: Date.now(),
+                            });
+                        }
                         markPendingDestroyed(targetDamageKey);
                     }
                     monsterAttackSourceMap.set(targetDamageKey, monsterId);
@@ -13941,14 +13954,16 @@ const App: React.FC = () => {
                     const monsterIsNeutral = monsterOwnerId === 'monster' || monsterOwnerId === '-1' || monsterOwnerId === '0';
                     damageInitiatorMap.set(targetDamageKey, monsterIsNeutral ? null : monsterOwnerId);
                     const recipientIds = [targetDamageKey];
-                    console.log("[MONSTER DAMAGE RECIPIENTS]", {
-                        attackId,
-                        monsterId,
-                        selectedTargetId: targetDamageKey,
-                        recipientIds,
-                        recipientCount: recipientIds.length,
-                        timestamp: Date.now(),
-                    });
+                    if (isMonsterDiagEnabled()) {
+                        console.log("[MONSTER DAMAGE RECIPIENTS]", {
+                            attackId,
+                            monsterId,
+                            selectedTargetId: targetDamageKey,
+                            recipientIds,
+                            recipientCount: recipientIds.length,
+                            timestamp: Date.now(),
+                        });
+                    }
 
                     const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
                     monsterDirectionRef.current.set(monsterId, attackDir);
@@ -14047,14 +14062,13 @@ const App: React.FC = () => {
                     if (shouldHoldPositionForAttack && target) {
                         const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
                         monsterDirectionRef.current.set(monsterId, attackDir);
-                        // Refresh move and action timestamps so the monster is known to be actively engaged in combat
+                        // Refresh action timestamps so the monster is known to be actively engaged in combat
                         // and does not accumulate overdue movement debt or get picked up by background patrol sweeps.
-                        monster.lastMoveTime = now;
-                        monsterLastMoveTimeRef.current.set(monsterId, now);
+                        // NOTE: Do NOT set monster.lastMoveTime here, because lastMoveTime triggers the walk animation,
+                        // which plays frame 0 (offset 1 tile back) and visually teleports the monster!
                         monsterLastActionRef.current.set(monsterId, now);
                         lastInteractionRef.current.set(monsterId, now);
                         if (gIdStr) {
-                            monsterLastMoveTimeRef.current.set(gIdStr, now);
                             monsterLastActionRef.current.set(gIdStr, now);
                             lastInteractionRef.current.set(gIdStr, now);
                         }
@@ -14245,7 +14259,6 @@ const App: React.FC = () => {
                                 isLocal: false
                             }));
                             stateChanged = true;
-                        structuralStateChanged = true;
                             structuralStateChanged = true;
                             return;
                         }
@@ -14327,7 +14340,6 @@ const App: React.FC = () => {
                             updateBuildingDocSafe(docId, { isConstructing: false, workState: 'idle' });
 
                             stateChanged = true;
-                        structuralStateChanged = true;
                             structuralStateChanged = true;
                         } else if (updatedB.workState === 'working' && updatedB.workEndTime && now >= updatedB.workEndTime) {
                             updatedB.workState = 'finished';
@@ -14347,7 +14359,6 @@ const App: React.FC = () => {
                                 updateBuildingDocSafe(docId, { workState: 'finished' });
                             }
                             stateChanged = true;
-                        structuralStateChanged = true;
                             structuralStateChanged = true;
                         }
                     }
@@ -14395,7 +14406,9 @@ const App: React.FC = () => {
                             updatedB.initiatorId = damageInitiatorId || undefined;
                         }
                         stateChanged = true;
-                        structuralStateChanged = true;
+                        if (monsterFatalHit) {
+                            structuralStateChanged = true;
+                        }
 
                         newExplosions.push({
                             id: Date.now() + Math.random(),

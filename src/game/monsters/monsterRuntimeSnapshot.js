@@ -75,7 +75,7 @@ export function buildMonsterRuntimeSnapshot({
             refAttackTime
         );
         if (lastAttackTime > now) return false;
-        if ((now - lastAttackTime) < 3000) return false; // MONSTER_ATTACK_INTERVAL_MS (3s)
+        if ((now - lastAttackTime) < 35000) return false; // MONSTER_ATTACK_INTERVAL_MS (35s)
 
         return !!getMonsterAdjacentAttackTarget(monster, buildings, buildingData, {
             isWrappedWorld: isWorldWrapped,
