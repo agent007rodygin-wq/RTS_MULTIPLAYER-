@@ -27,7 +27,7 @@ export const bronekurWalkBottomRightFrames: string[] = [
 ];
 export const bronekurIdleFrames: string[] = Array.from({ length: 57 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/стоит/${424 + i}.webp`);
 export const bronekurAttackTopFrames: string[] = Array.from({ length: 51 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в верхний квадрат/${374 + i}.webp`);
-export const bronekurAttackLeftFrames: string[] = Array.from({ length: 34 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в левый квадрат/${290 + i}.webp`);
+export const bronekurAttackLeftFrames: string[] = Array.from({ length: 33 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в левый квадрат/${290 + i}.webp`);
 export const bronekurAttackBottomFrames: string[] = Array.from({ length: 40 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в нижний квадрат/${251 + i}.webp`);
 export const bronekurAttackRightFrames: string[] = Array.from({ length: 52 }, (_, i) => `/animation/monsters/bronecur/DefineSprite_962_anim.a70006/атака/удар в правый квадрат/${323 + i}.webp`);
 
@@ -55,7 +55,7 @@ export const santaWalkUpFrames: string[] = Array.from({ length: 41 }, (_, i) => 
 export const santaAttackLeftFrames: string[] = Array.from({ length: 37 }, (_, i) => `${SANTA_BASE}/атака/выстрел в лево/${38 + i}.webp`);
 export const santaAttackBottomFrames: string[] = Array.from({ length: 37 }, (_, i) => `${SANTA_BASE}/атака/выстрел в низ/${1 + i}.webp`);
 export const santaAttackRightFrames: string[] = Array.from({ length: 42 }, (_, i) => `${SANTA_BASE}/атака/выстрел в право/${74 + i}.webp`);
-export const santaAttackTopFrames: string[] = Array.from({ length: 40 }, (_, i) => `${SANTA_BASE}/атака/выстрел вверх/${115 + i}.webp`);
+export const santaAttackTopFrames: string[] = Array.from({ length: 39 }, (_, i) => `${SANTA_BASE}/атака/выстрел вверх/${115 + i}.webp`);
 // Santa idle uses the last right-walk frame (267) — a centered standing pose
 // from the Evil Santa animation set matching walk/attack character style.
 export const santaIdleFrames: string[] = [`${SANTA_BASE}/идет в право/267.webp`];
@@ -68,7 +68,7 @@ export const gorynychIdleFrames: string[] = Array.from({ length: 31 }, (_, i) =>
 export const gorynychAttackTopFrames: string[] = Array.from({ length: 107 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в верх/${201 + i}.webp`);
 export const gorynychAttackBottomFrames: string[] = Array.from({ length: 69 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в низ/${1 + i}.webp`);
 export const gorynychAttackLeftFrames: string[] = Array.from({ length: 71 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в лево/${131 + i}.webp`);
-export const gorynychAttackRightFrames: string[] = Array.from({ length: 63 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в право/${69 + i}.webp`);
+export const gorynychAttackRightFrames: string[] = Array.from({ length: 62 }, (_, i) => `${GORYNYCH_BASE}/анимация когда атакует/удар в право/${69 + i}.webp`);
 
 export const kolobokWalkUpFrames: string[] = Array.from({ length: 31 }, (_, i) => `${KOLOBOK_BASE}/анимация ходьбы/идет в верх/${296 + i}.webp`);
 export const kolobokWalkDownFrames: string[] = Array.from({ length: 31 }, (_, i) => `${KOLOBOK_BASE}/анимация ходьбы/идет в низ/${203 + i}.webp`);
@@ -89,6 +89,6 @@ export const babaYagaWalkLeftFrames: string[] = Array.from({ length: 62 }, (_, i
 export const babaYagaWalkRightFrames: string[] = Array.from({ length: 63 }, (_, i) => `${BABA_YAGA_BASE}/анимация ходьбы монстра/идет на право/${528 + i}.webp`);
 export const babaYagaIdleFrames: string[] = Array.from({ length: 93 }, (_, i) => `${BABA_YAGA_BASE}/анимация когда мнстр стоит/${1 + i}.webp`);
 export const babaYagaAttackTopFrames: string[] = Array.from({ length: 66 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/атака верх/${204 + i}.webp`);
-export const babaYagaAttackLeftFrames: string[] = Array.from({ length: 81 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/левая атака атакует левую клетку/${269 + i}.webp`);
-export const babaYagaAttackBottomFrames: string[] = Array.from({ length: 49 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/нижняя атака/${91 + i}.webp`);
+export const babaYagaAttackLeftFrames: string[] = Array.from({ length: 80 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/левая атака атакует левую клетку/${269 + i}.webp`);
+export const babaYagaAttackBottomFrames: string[] = Array.from({ length: 48 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/нижняя атака/${91 + i}.webp`);
 export const babaYagaAttackRightFrames: string[] = Array.from({ length: 66 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/правая атака/${139 + i}.webp`);
