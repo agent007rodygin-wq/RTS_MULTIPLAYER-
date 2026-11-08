@@ -759,7 +759,7 @@ const processOfflineTimers = (
     let appliedMoves = 0;
 
     const monsters = Array.from(byId.values()).filter((b) => {
-        const info = buildingData.find(i => i.id === b.buildingId);
+        const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
         return !!info?.stats.isMonster && (b.hp === undefined || b.hp > 0);
     });
 
@@ -777,9 +777,9 @@ const processOfflineTimers = (
         });
         if (!target) continue;
 
-        const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+        const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
         let dmg = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
-        const targetInfo = buildingData.find(i => i.id === target.buildingId);
+        const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
         if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
             dmg *= 2;
         }
@@ -1025,7 +1025,7 @@ import {
 
 const MONSTER_FATAL_HIT_DELAY_MS = 1200;
 const MONSTER_WALK_ANIM_DURATION = 5000;
-const MONSTER_ATTACK_INTERVAL_MS = 40000;
+const MONSTER_ATTACK_INTERVAL_MS = 3000;
 const CANNON_ATTACK_INTERVAL_MS = 40000;
 const CANNON_TICK_INTERVAL_MS = 1000;
 const MONSTER_AI_TICK_INTERVAL_MS = 250;
@@ -9292,7 +9292,7 @@ const App: React.FC = () => {
             const newBuildings = Array.from(dedupById.values());
             const tileDedup = new Map<string, PlacedBuilding>();
             const getTileScore = (b: PlacedBuilding) => {
-                const info = buildingData.find(i => i.id === b.buildingId);
+                const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
                 const isMonster = Boolean(info?.stats.isMonster);
                 const idStr = String(b.id);
                 const gameIdStr = b.gameId ? String(b.gameId) : '';
@@ -13587,31 +13587,29 @@ const App: React.FC = () => {
                     if (ownerIsOnline) return false;
                     // Owner is offline: delegate to neutral host arbitration so the monster never freezes in place
                 }
+
+                // Neutral monsters require active zone awareness so combat, collisions, and targets can be resolved.
+                const monsterZone = b.zoneId || getZoneId(b.x, b.y);
+                const isMonsterInMyActiveZones = currentZonesRef.current.includes(monsterZone);
+                if (!isMonsterInMyActiveZones) {
+                    return false;
+                }
                 
                 // Neutral buildings or offline-player monsters are only handled by one host
                 // If this user already claimed it, they're the host
                 if (b.hostId === userRef.current.uid) return true;
 
-                // If another ONLINE user claimed it, don't process (check presence, not just existence)
+                // If another ONLINE user claimed it, verify they are actively acting on it (not stagnant)
                 if (b.hostId && b.hostId !== userRef.current.uid) {
                     const hostIsOnline = onlinePlayersDataRef.current.some(p => p.uid === b.hostId);
-                    if (hostIsOnline) return false;
+                    const lastActionTime = Math.max(b.lastMoveTime || 0, b.lastAttackTime || 0);
+                    const isStagnant = (now - lastActionTime) >= 8000;
+                    if (hostIsOnline && !isStagnant) return false;
                 }
 
-                // Deterministic host election among online players:
-                // When hostId is unclaimed or previous host went offline, the candidate with
-                // lexicographically lowest UID claims the slot, preventing multi-host race conditions.
-                const allOnlineUids = [
-                    ...onlinePlayersDataRef.current.map(p => p.uid).filter(Boolean),
-                    userRef.current.uid
-                ];
-                allOnlineUids.sort();
-                if (allOnlineUids[0] !== userRef.current.uid) {
-                    return false;
-                }
-
-                // Optimistic host claim: process immediately on this client while claim is being persisted.
-                // This avoids "monsters stand still forever" when hostId claim update is delayed or rejected.
+                // Deterministic host election among online players in this zone:
+                // When hostId is unclaimed, offline, or stagnant, claim the slot for this active viewer.
+                b.hostId = userRef.current.uid;
                 tryClaimNeutralHost(b);
                 return true;
             };
@@ -13737,7 +13735,7 @@ const App: React.FC = () => {
                 allBuildings.forEach(b => {
                     if (stuckTeleported >= MAX_STUCK_TELEPORTS_PER_CHECK) return;
                     if (b.ownerId !== 'monster' && b.ownerId !== '-1') return;
-                    const info = buildingData.find(i => i.id === b.buildingId);
+                    const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
                     if (!info || !info.stats.isMonster) return;
                     if (b.hp !== undefined && b.hp <= 0) return;
                     if (b.isDestroying || (b.pendingDamage || 0) > 0 || (typeof b.destructionEndTime === 'number' && b.destructionEndTime > now)) return;
@@ -14011,7 +14009,7 @@ const App: React.FC = () => {
                 actingMonsters.forEach(monster => {
                     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
                     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return;
-                    const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
+                    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
                     const monsterId = monster.id || '';
                     const recentPositions = monsterRecentPositionsRef.current.get(monsterId) || [];
                     
@@ -14049,6 +14047,17 @@ const App: React.FC = () => {
                     if (shouldHoldPositionForAttack && target) {
                         const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
                         monsterDirectionRef.current.set(monsterId, attackDir);
+                        // Refresh move and action timestamps so the monster is known to be actively engaged in combat
+                        // and does not accumulate overdue movement debt or get picked up by background patrol sweeps.
+                        monster.lastMoveTime = now;
+                        monsterLastMoveTimeRef.current.set(monsterId, now);
+                        monsterLastActionRef.current.set(monsterId, now);
+                        lastInteractionRef.current.set(monsterId, now);
+                        if (gIdStr) {
+                            monsterLastMoveTimeRef.current.set(gIdStr, now);
+                            monsterLastActionRef.current.set(gIdStr, now);
+                            lastInteractionRef.current.set(gIdStr, now);
+                        }
                         logMonsterDiag(monster, 'attack_instead_of_move', `targetId=${String(target.id || 'unknown')} targetPos=(${target.x},${target.y})`);
                     } else {
                         // MOVEMENT: Try to move toward nearby buildings, fallback to wandering
@@ -14246,7 +14255,7 @@ const App: React.FC = () => {
                         }
                         const damage = updatedB.pendingDamage || 0;
                         // Use maxHp as fallback if hp is undefined Р Р†Р вЂљРІР‚Сњ never default to 0
-                        const bInfo = buildingData.find(i => i.id === updatedB.buildingId);
+                        const bInfo = buildingData.find(i => Number(i.id) === Number(updatedB.buildingId));
                         const fullHp2 = updatedB.maxHp ?? bInfo?.stats.durability ?? 100;
                         const currentHp = updatedB.hp ?? fullHp2;
                         const remainingHp = currentHp - damage;
@@ -14351,7 +14360,7 @@ const App: React.FC = () => {
                         const shieldDamage = hadShield ? Math.min(currentShield, totalDamage) : 0;
                         // Game rule: while shield exists at hit start, this hit only damages shield.
                         const overflowDamage = hadShield ? 0 : totalDamage;
-                        const fullHp = buildingData.find(i => i.id === updatedB.buildingId)?.stats.durability ?? 100;
+                        const fullHp = buildingData.find(i => Number(i.id) === Number(updatedB.buildingId))?.stats.durability ?? 100;
                         const currentHpBeforeHit = updatedB.hp ?? fullHp;
                         const nextHpAfterHit = currentHpBeforeHit - overflowDamage;
                         const monsterFatalHit = overflowDamage > 0 && nextHpAfterHit <= 0;
@@ -15089,7 +15098,7 @@ const App: React.FC = () => {
 
                     const zoneMonsters = allBuildings
                         .filter(b => {
-                            const info = buildingData.find(i => i.id === b.buildingId);
+                            const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
                             if (!info?.stats.isMonster) return false;
                             if (b.isConstructing || b.isDestroying) return false;
                             if (b.hp !== undefined && b.hp <= 0) return false;
@@ -15101,6 +15110,10 @@ const App: React.FC = () => {
                         if (worldSweepActions >= WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE) break;
                         const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
                         if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) continue;
+                        // Skip monsters that were recently engaged in local combat (within 10 seconds)
+                        if ((nowTs - (monster.lastAttackTime || 0)) < 10000) {
+                            continue;
+                        }
 
                         const monsterId = String(monster.id);
                         const actualZoneId = getZoneId(monster.x, monster.y);
@@ -15131,8 +15144,8 @@ const App: React.FC = () => {
                         if (attackTarget && (nowTs - lastAttackTime) >= MONSTER_ATTACK_INTERVAL_MS) {
                             const source = 'background_sweep';
                             const combatTraceId = `${source}:${monsterId}:${String(attackTarget.id)}:${Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
-                            const monsterInfo = buildingData.find(i => i.id === monster.buildingId);
-                            const targetInfo = buildingData.find(i => i.id === attackTarget.buildingId);
+                            const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
+                            const targetInfo = buildingData.find(i => Number(i.id) === Number(attackTarget.buildingId));
                             const selectedTargetId = String(attackTarget.id);
                             console.log("[COMBAT TARGET BEFORE HIT]", {
                                 combatTraceId,

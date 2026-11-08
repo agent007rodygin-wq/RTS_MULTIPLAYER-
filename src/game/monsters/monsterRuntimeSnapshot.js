@@ -42,7 +42,7 @@ export function buildMonsterRuntimeSnapshot({
         if (b.hp !== undefined && b.hp <= 0) return false;
         const isPlayerOwned = Boolean(b.ownerId && b.ownerId !== 'monster' && b.ownerId !== '-1' && b.ownerId !== '0');
         if (b.monsterMode === 'stand' || (isPlayerOwned && b.monsterMode !== 'patrol')) return false;
-        const info = buildingData.find(i => i.id === b.buildingId);
+        const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
         if (!info || !info.stats.isMonster) return false;
         if (!isMonsterHost(b)) return false;
         const monsterId = String(b.id || '');
@@ -61,7 +61,7 @@ export function buildMonsterRuntimeSnapshot({
         if (monster.hp !== undefined && monster.hp <= 0) return false;
         const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
         if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
-        const info = buildingData.find(i => i.id === monster.buildingId);
+        const info = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
         if (!info || !info.stats.isMonster) return false;
         if (!isMonsterHost(monster)) return false;
         const monsterId = String(monster.id || '');
@@ -75,7 +75,7 @@ export function buildMonsterRuntimeSnapshot({
             refAttackTime
         );
         if (lastAttackTime > now) return false;
-        if ((now - lastAttackTime) < 40000) return false; // MONSTER_ATTACK_INTERVAL_MS
+        if ((now - lastAttackTime) < 3000) return false; // MONSTER_ATTACK_INTERVAL_MS (3s)
 
         return !!getMonsterAdjacentAttackTarget(monster, buildings, buildingData, {
             isWrappedWorld: isWorldWrapped,

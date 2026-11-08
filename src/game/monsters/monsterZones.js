@@ -18,7 +18,7 @@ export function getMonsterZoneId(monster) {
 export function buildMonsterZoneCounts(buildings, buildingData) {
     const counts = new Map();
     buildings.forEach((building) => {
-        const info = buildingData.find(i => i.id === building.buildingId);
+        const info = buildingData.find(i => Number(i.id) === Number(building.buildingId));
         if (!info || !info.stats.isMonster) return;
         if (building.isConstructing || building.isDestroying) return;
         if (building.hp !== undefined && building.hp <= 0) return;
