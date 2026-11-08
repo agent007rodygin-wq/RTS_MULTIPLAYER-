@@ -75,6 +75,8 @@ function isByteArrayLike(value) {
 }
 
 function decodeUtf8Bytes(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
   try {
     var bytes = value;
     if (Array.isArray(value)) {
@@ -86,17 +88,41 @@ function decodeUtf8Bytes(value) {
       return new TextDecoder("utf-8").decode(bytes);
     }
   } catch (error) {
-    // Fallback below.
+    // Pure JS UTF-8 decoder fallback below.
   }
 
-  var result = "";
-  var source = Array.isArray(value) ? value : Array.prototype.slice.call(value || []);
-  var chunkSize = 8192;
-  for (var index = 0; index < source.length; index += chunkSize) {
-    var chunk = source.slice(index, index + chunkSize);
-    result += String.fromCharCode.apply(null, chunk);
+  var raw = Array.isArray(value) ? value : Array.prototype.slice.call(value || []);
+  var out = "";
+  var i = 0;
+  var len = raw.length;
+  while (i < len) {
+    var c = raw[i++] & 0xff;
+    if ((c & 0x80) === 0) {
+      out += String.fromCharCode(c);
+    } else if ((c & 0xe0) === 0xc0) {
+      if (i < len) {
+        var c2 = raw[i++] & 0xff;
+        out += String.fromCharCode(((c & 0x1f) << 6) | (c2 & 0x3f));
+      }
+    } else if ((c & 0xf0) === 0xe0) {
+      if (i + 1 < len) {
+        var c2 = raw[i++] & 0xff;
+        var c3 = raw[i++] & 0xff;
+        out += String.fromCharCode(((c & 0x0f) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+      }
+    } else if ((c & 0xf8) === 0xf0) {
+      if (i + 2 < len) {
+        var c2 = raw[i++] & 0xff;
+        var c3 = raw[i++] & 0xff;
+        var c4 = raw[i++] & 0xff;
+        var cp = (((c & 0x07) << 18) | ((c2 & 0x3f) << 12) | ((c3 & 0x3f) << 6) | (c4 & 0x3f)) - 0x10000;
+        out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+      }
+    } else {
+      out += String.fromCharCode(c);
+    }
   }
-  return result;
+  return out;
 }
 
 function tryParseInventoryJson(raw) {

@@ -4371,6 +4371,15 @@ const App: React.FC = () => {
     useEffect(() => { activeChatTabRef.current = activeChatTab; }, [activeChatTab]);
     const playerNameRef = useRef<string>(playerName);
     useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
+    const playerReputationRef = useRef(playerReputation);
+    useEffect(() => { playerReputationRef.current = playerReputation; }, [playerReputation]);
+    const playerAvatarRef = useRef(playerAvatar);
+    useEffect(() => { playerAvatarRef.current = playerAvatar; }, [playerAvatar]);
+    const playerActiveCurseRef = useRef(playerActiveCurse);
+    useEffect(() => { playerActiveCurseRef.current = playerActiveCurse; }, [playerActiveCurse]);
+    const selectedTitleRef = useRef(selectedTitle);
+    useEffect(() => { selectedTitleRef.current = selectedTitle; }, [selectedTitle]);
+    const isPraiseInFlightRef = useRef(false);
     const allActiveOnlineNamesRef = useRef<Set<string>>(new Set());
     const allActiveOnlineUidsRef = useRef<Set<string>>(new Set());
     const playerLastKnownTabRef = useRef<Map<string, ChatTab>>(new Map());
@@ -8345,30 +8354,30 @@ const App: React.FC = () => {
             try {
                 const zoom = ZOOM_LEVELS[zoomIndexRef.current];
                 const worldCenter = screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
-                const myCurse = playerActiveCurse;
-                const effectiveName = (playerName && playerName !== 'Неизвестный')
-                    ? playerName
-                    : (allUsersRef.current[user.uid]?.name || playerName);
+                const myCurse = playerActiveCurseRef.current;
+                const effectiveName = (playerNameRef.current && playerNameRef.current !== 'Неизвестный')
+                    ? playerNameRef.current
+                    : (allUsersRef.current[user.uid]?.name || playerNameRef.current || 'Игрок');
 
                 // Update presence with current position
                 await setDoc(presenceDocRef, {
                     uid: user.uid,
                     name: effectiveName,
-                    activeTab: activeChatTabRef.current || activeChatTab,
-                    clanId: normalizeClanIdValue(playerClanIdRef.current ?? playerClanId),
+                    activeTab: activeChatTabRef.current || 'general',
+                    clanId: normalizeClanIdValue(playerClanIdRef.current),
                     lastSeen: Date.now(),
                     x: worldCenter.x,
                     y: worldCenter.y,
-                    level: playerLevel,
-                    glory: playerGlory,
-                    reputation: playerReputation,
-                    avatar: playerAvatar,
+                    level: playerLevelRef.current || 1,
+                    glory: playerGloryRef.current || 0,
+                    reputation: playerReputationRef.current || 0,
+                    avatar: playerAvatarRef.current || '',
                     activeCurse: myCurse || null,
                     treesChopped: playerLeaderboardStatsRef.current.treesChopped || 0,
                     monstersDestroyed: playerLeaderboardStatsRef.current.monstersDestroyed || 0,
                     buildingsDestroyed: playerLeaderboardStatsRef.current.buildingsDestroyed || 0,
                     theftsCommitted: playerLeaderboardStatsRef.current.theftsCommitted || 0,
-                    title: selectedTitle || null,
+                    title: selectedTitleRef.current || null,
                 });
             } catch (e) {
                 // Ignore presence errors to keep game flow
@@ -8383,12 +8392,12 @@ const App: React.FC = () => {
 
         updatePresenceRef.current = updatePresence;
         updatePresence();
-        const interval = setInterval(updatePresence, 5000); // 5s heartbeat (reduced from 2s to prevent ERR_INSUFFICIENT_RESOURCES)
+        const interval = setInterval(updatePresence, 5000); // 5s heartbeat
 
         return () => {
             clearInterval(interval);
         };
-    }, [isAuthReady, user, playerName, activeChatTab, playerClanId, playerLevel, playerGlory, playerReputation, playerAvatar, playerActiveCurse, selectedTitle]);
+    }, [isAuthReady, user?.uid]);
 
     const [onlinePlayersData, setOnlinePlayersData] = useState<any[]>([]);
     const [interpolatedPlayers, setInterpolatedPlayers] = useState<Record<string, { x: number, y: number }>>({});
@@ -10521,6 +10530,7 @@ const App: React.FC = () => {
 
     const handlePraisePlayer = async (targetUid: string) => {
         if (!user) return;
+        if (isPraiseInFlightRef.current) return;
         const isAdmin = user && user.email === "fabiosluco@gmail.com";
         if (targetUid === user.uid && !isAdmin) {
             setPermitPurchaseToast("Вы не можете похвалить самого себя!");
@@ -10547,6 +10557,7 @@ const App: React.FC = () => {
             return;
         }
 
+        isPraiseInFlightRef.current = true;
         try {
             const response = await pb.send('/api/game/reputation-action', {
                 method: 'POST',
@@ -10635,11 +10646,14 @@ const App: React.FC = () => {
                 setPermitPurchaseToast(null);
                 permitPurchaseToastTimerRef.current = null;
             }, 2500);
+        } finally {
+            isPraiseInFlightRef.current = false;
         }
     };
 
     const handleComplainPlayer = async (targetUid: string) => {
         if (!user) return;
+        if (isPraiseInFlightRef.current) return;
         const isAdmin = user && user.email === "fabiosluco@gmail.com";
         if (targetUid === user.uid && !isAdmin) {
             setPermitPurchaseToast("Вы не можете пожаловаться на самого себя!");
@@ -10666,6 +10680,7 @@ const App: React.FC = () => {
             return;
         }
 
+        isPraiseInFlightRef.current = true;
         try {
             const response = await pb.send('/api/game/reputation-action', {
                 method: 'POST',
@@ -10752,6 +10767,8 @@ const App: React.FC = () => {
                 setPermitPurchaseToast(null);
                 permitPurchaseToastTimerRef.current = null;
             }, 2500);
+        } finally {
+            isPraiseInFlightRef.current = false;
         }
     };
     const handleBanPlayer = (cost: number, durationMinutes: number) => {

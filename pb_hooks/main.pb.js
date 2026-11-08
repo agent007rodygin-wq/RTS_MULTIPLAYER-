@@ -73,61 +73,54 @@ var BAN_PRICES = {
   1440: 100000,
 };
 
+function decodeUtf8Bytes(raw) {
+  if (!raw) return "";
+  if (typeof raw === "string") return raw;
+  var out = "";
+  var i = 0;
+  var len = raw.length;
+  while (i < len) {
+    var c = raw[i++] & 0xff;
+    if ((c & 0x80) === 0) {
+      out += String.fromCharCode(c);
+    } else if ((c & 0xe0) === 0xc0) {
+      if (i < len) {
+        var c2 = raw[i++] & 0xff;
+        out += String.fromCharCode(((c & 0x1f) << 6) | (c2 & 0x3f));
+      }
+    } else if ((c & 0xf0) === 0xe0) {
+      if (i + 1 < len) {
+        var c2 = raw[i++] & 0xff;
+        var c3 = raw[i++] & 0xff;
+        out += String.fromCharCode(((c & 0x0f) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+      }
+    } else if ((c & 0xf8) === 0xf0) {
+      if (i + 2 < len) {
+        var c2 = raw[i++] & 0xff;
+        var c3 = raw[i++] & 0xff;
+        var c4 = raw[i++] & 0xff;
+        var cp = (((c & 0x07) << 18) | ((c2 & 0x3f) << 12) | ((c3 & 0x3f) << 6) | (c4 & 0x3f)) - 0x10000;
+        out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+      }
+    } else {
+      out += String.fromCharCode(c);
+    }
+  }
+  return out;
+}
+
 function parseDataField(record) {
   var raw = record.get("data");
-
-  if (!raw) {
-    return {};
+  if (!raw) return {};
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  var str = Array.isArray(raw) ? decodeUtf8Bytes(raw) : (typeof raw === "string" ? raw : "");
+  if (!str) return {};
+  try {
+    var parsed = JSON.parse(str);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  } catch (error) {
+    console.log("[parseDataField] decode failed:", String(error));
   }
-
-  if (Array.isArray(raw)) {
-    try {
-      var decoded = "";
-
-      for (var i = 0; i < raw.length; i++) {
-        decoded += String.fromCharCode(Number(raw[i]));
-      }
-
-      var parsedBytes = JSON.parse(decoded);
-
-      if (
-        parsedBytes &&
-        typeof parsedBytes === "object" &&
-        !Array.isArray(parsedBytes)
-      ) {
-        return parsedBytes;
-      }
-
-      return {};
-    } catch (error) {
-      console.log("[parseDataField] byte decode failed:", String(error));
-      return {};
-    }
-  }
-
-  if (typeof raw === "string") {
-    try {
-      var parsedString = JSON.parse(raw);
-
-      if (
-        parsedString &&
-        typeof parsedString === "object" &&
-        !Array.isArray(parsedString)
-      ) {
-        return parsedString;
-      }
-
-      return {};
-    } catch (error) {
-      console.log("[parseDataField] string decode failed:", String(error));
-      return {};
-    }
-  }
-
-  if (typeof raw === "object") {
-    return raw;
-  }
-
   return {};
 }
 
@@ -137,43 +130,14 @@ function setDataField(record, obj) {
 
 function parseInventoryField(record) {
   var raw = record.get("inventory");
-
-  if (!raw) {
-    return {};
-  }
-
-  if (Array.isArray(raw)) {
-    try {
-      var decoded = "";
-      for (var i = 0; i < raw.length; i++) {
-        decoded += String.fromCharCode(Number(raw[i]));
-      }
-      var parsedBytes = JSON.parse(decoded);
-      if (parsedBytes && typeof parsedBytes === "object" && !Array.isArray(parsedBytes)) {
-        return parsedBytes;
-      }
-      return {};
-    } catch (_) {
-      return {};
-    }
-  }
-
-  if (typeof raw === "string") {
-    try {
-      var parsedString = JSON.parse(raw);
-      if (parsedString && typeof parsedString === "object" && !Array.isArray(parsedString)) {
-        return parsedString;
-      }
-      return {};
-    } catch (_) {
-      return {};
-    }
-  }
-
-  if (typeof raw === "object" && !Array.isArray(raw)) {
-    return raw;
-  }
-
+  if (!raw) return {};
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  var str = Array.isArray(raw) ? decodeUtf8Bytes(raw) : (typeof raw === "string" ? raw : "");
+  if (!str) return {};
+  try {
+    var parsed = JSON.parse(str);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  } catch (_) {}
   return {};
 }
 
@@ -192,70 +156,6 @@ routerAdd(
       30: 25000,
       60: 45000,
       1440: 100000,
-    };
-
-    var parseDataField = function (record) {
-      var raw = record.get("data");
-
-      if (!raw) {
-        return {};
-      }
-
-      // PocketBase may return a JSON field as Go []byte,
-      // which crosses into JS as an array of integers.
-      if (Array.isArray(raw)) {
-        try {
-          var decoded = "";
-
-          for (var i = 0; i < raw.length; i++) {
-            decoded += String.fromCharCode(Number(raw[i]));
-          }
-
-          var parsedBytes = JSON.parse(decoded);
-
-          if (
-            parsedBytes &&
-            typeof parsedBytes === "object" &&
-            !Array.isArray(parsedBytes)
-          ) {
-            return parsedBytes;
-          }
-
-          return {};
-        } catch (error) {
-          console.log("[parseDataField] byte decode failed:", String(error));
-          return {};
-        }
-      }
-
-      if (typeof raw === "string") {
-        try {
-          var parsedString = JSON.parse(raw);
-
-          if (
-            parsedString &&
-            typeof parsedString === "object" &&
-            !Array.isArray(parsedString)
-          ) {
-            return parsedString;
-          }
-
-          return {};
-        } catch (error) {
-          console.log("[parseDataField] string decode failed:", String(error));
-          return {};
-        }
-      }
-
-      if (typeof raw === "object") {
-        return raw;
-      }
-
-      return {};
-    };
-
-    var setDataField = function (record, obj) {
-      record.set("data", JSON.stringify(obj));
     };
 
     var finitePositive = function (value) {
@@ -459,56 +359,6 @@ routerAdd(
     var RECOMMENDATION_ID = 10032;
     var MAX_REPUTATION = 950;
 
-    var parseDataField = function (record) {
-      var raw = record.get("data");
-      if (!raw) return {};
-      if (Array.isArray(raw)) {
-        try {
-          var decoded = "";
-          for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
-          var parsedBytes = JSON.parse(decoded);
-          if (parsedBytes && typeof parsedBytes === "object" && !Array.isArray(parsedBytes)) return parsedBytes;
-          return {};
-        } catch (_) { return {}; }
-      }
-      if (typeof raw === "string") {
-        try {
-          var parsedString = JSON.parse(raw);
-          if (parsedString && typeof parsedString === "object" && !Array.isArray(parsedString)) return parsedString;
-          return {};
-        } catch (_) { return {}; }
-      }
-      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
-      return {};
-    };
-
-    var setDataField = function (record, obj) {
-      record.set("data", JSON.stringify(obj));
-    };
-
-    var parseInventoryField = function (record) {
-      var raw = record.get("inventory");
-      if (!raw) return {};
-      if (Array.isArray(raw)) {
-        try {
-          var decoded = "";
-          for (var i = 0; i < raw.length; i++) decoded += String.fromCharCode(Number(raw[i]));
-          var parsedBytes = JSON.parse(decoded);
-          if (parsedBytes && typeof parsedBytes === "object" && !Array.isArray(parsedBytes)) return parsedBytes;
-          return {};
-        } catch (_) { return {}; }
-      }
-      if (typeof raw === "string") {
-        try {
-          var parsedString = JSON.parse(raw);
-          if (parsedString && typeof parsedString === "object" && !Array.isArray(parsedString)) return parsedString;
-          return {};
-        } catch (_) { return {}; }
-      }
-      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
-      return {};
-    };
-
     var authRecord = e.auth;
     if (!authRecord) {
       try {
@@ -592,34 +442,13 @@ routerAdd(
         }
 
         var currentRep = Number(targetRecord.get("reputation") || 0);
-        var targetData = parseDataField(targetRecord);
-        if (targetData && typeof targetData === "object" && targetData.reputation !== undefined) {
-          currentRep = Math.max(currentRep, Number(targetData.reputation) || 0);
-        }
-
         var delta = action === "complain" ? -1 : 1;
         var newRep = currentRep + delta;
         if (newRep < 0) newRep = 0;
         if (newRep > MAX_REPUTATION) newRep = MAX_REPUTATION;
 
         targetRecord.set("reputation", newRep);
-        if (targetData && typeof targetData === "object") {
-          targetData.reputation = newRep;
-          setDataField(targetRecord, targetData);
-        }
         txApp.save(targetRecord);
-
-        // Sync presence if target player is currently online
-        try {
-          var presList = txApp.findRecordsByFilter("presence", "userId = '" + targetRecord.id + "' || uid = '" + targetRecord.id + "'", "-updated", 1);
-          if (presList && presList.length > 0) {
-            var pRec = presList[0];
-            var pData = parseDataField(pRec);
-            pData.reputation = newRep;
-            setDataField(pRec, pData);
-            txApp.save(pRec);
-          }
-        } catch (_) {}
 
         result = {
           success: true,
