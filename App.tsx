@@ -3345,7 +3345,7 @@ const App: React.FC = () => {
         options?: { batchSize?: number; delayMs?: number; onComplete?: () => void }
     ) => {
         const requestedUrls = [...new Set((urls || []).filter(Boolean))];
-        const batchSize = options?.batchSize ?? 20;
+        const batchSize = Math.max(1, options?.batchSize ?? 6);
 
         const startLoading = () => {
             const urlsToLoad = requestedUrls.filter((url) => {
@@ -3363,52 +3363,55 @@ const App: React.FC = () => {
                 return;
             }
 
-            let completed = 0;
-
+            // Mark all URLs as requested upfront so concurrent preloads don't duplicate them
             urlsToLoad.forEach(url => {
                 const normalizedUrl = normalizeAssetUrl(url);
                 requestedImageUrlsRef.current.add(url);
                 requestedImageUrlsRef.current.add(normalizedUrl);
-
-                let finished = false;
-                let attempts = 0;
-                const maxAttempts = 3;
-
-                const finish = () => {
-                    if (finished) return;
-                    finished = true;
-                    completed++;
-                    if (completed === urlsToLoad.length) {
-                        options?.onComplete?.();
-                    }
-                };
-
-                const tryLoad = () => {
-                    attempts++;
-                    const img = new Image();
-                    const versionedUrl = appendAssetVersion(normalizedUrl);
-                    img.onload = () => {
-                        const optimized = createOptimizedCanvasFromImage(img);
-                        loadedImageElementsRef.current[url] = optimized;
-                        loadedImageElementsRef.current[normalizedUrl] = optimized;
-                        loadedImageElementsRef.current[versionedUrl] = optimized;
-                        finish();
-                    };
-                    img.onerror = () => {
-                        if (attempts < maxAttempts) {
-                            const backoffMs = 250 * attempts;
-                            window.setTimeout(tryLoad, backoffMs);
-                            return;
-                        }
-                        requestedImageUrlsRef.current.delete(url);
-                        requestedImageUrlsRef.current.delete(normalizedUrl);
-                        finish();
-                    };
-                    img.src = versionedUrl;
-                };
-
-                tryLoad();
             });
+
+            const loadSingle = (url: string): Promise<void> => {
+                return new Promise<void>((resolve) => {
+                    const normalizedUrl = normalizeAssetUrl(url);
+                    let attempts = 0;
+                    const maxAttempts = 3;
+
+                    const tryLoad = () => {
+                        attempts++;
+                        const img = new Image();
+                        const versionedUrl = appendAssetVersion(normalizedUrl);
+                        img.onload = () => {
+                            const optimized = createOptimizedCanvasFromImage(img);
+                            loadedImageElementsRef.current[url] = optimized;
+                            loadedImageElementsRef.current[normalizedUrl] = optimized;
+                            loadedImageElementsRef.current[versionedUrl] = optimized;
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            if (attempts < maxAttempts) {
+                                const backoffMs = 250 * attempts;
+                                window.setTimeout(tryLoad, backoffMs);
+                                return;
+                            }
+                            requestedImageUrlsRef.current.delete(url);
+                            requestedImageUrlsRef.current.delete(normalizedUrl);
+                            resolve();
+                        };
+                        img.src = versionedUrl;
+                    };
+
+                    tryLoad();
+                });
+            };
+
+            // Process URLs in sequential batches of batchSize (default 6) to keep network pipeline clear
+            (async () => {
+                for (let i = 0; i < urlsToLoad.length; i += batchSize) {
+                    const chunk = urlsToLoad.slice(i, i + batchSize);
+                    await Promise.all(chunk.map(loadSingle));
+                }
+                options?.onComplete?.();
+            })();
         };
 
         if (options?.delayMs) {
@@ -12493,14 +12496,13 @@ const App: React.FC = () => {
     }, [showPrivateChatModal, activePrivateChatId, privateChatMode, privateMessages, user]);
 
     // Preload only the assets needed to render the first visible seconds of the world.
+    // Heavy multi-frame animations (bush swaying, oil splashing) are deferred until after entering the game.
     useEffect(() => {
         const baseCriticalUrls = [
             groundTileImageUrl,
             treeImageUrl,
             coinImageUrl,
-            ...treeHoverBushAnimationFrames,
             oilImageUrl,
-            ...oilSplashAnimationFrames,
             rubyImageUrl,
             populationImageUrl,
             builderIconUrl,
@@ -12518,13 +12520,28 @@ const App: React.FC = () => {
         ];
 
         enqueueImagePreload(baseCriticalUrls, {
-            batchSize: 8,
+            batchSize: 6,
         });
     }, [enqueueImagePreload, playerLevel]);
+
+    // Deferred background load: multi-frame bush and oil splash animations load only after entering the game
+    useEffect(() => {
+        if (isLoadingScreen) return;
+        const deferredAnimationUrls = [
+            ...treeHoverBushAnimationFrames,
+            ...oilSplashAnimationFrames,
+        ];
+        enqueueImagePreload(deferredAnimationUrls, {
+            batchSize: 6,
+            delayMs: 2000,
+        });
+    }, [isLoadingScreen, enqueueImagePreload]);
 
     const lastPreloadSignatureRef = useRef('');
     useEffect(() => {
         if (currentZones.length === 0) return;
+        // Priority to database: wait until critical world snapshot is received (loadPhase >= 1)
+        if (loadPhase < 1) return;
 
         const zoneSet = new Set(currentZones);
         const nearbyBuildings = placedBuildings.filter(b => {
@@ -12534,7 +12551,7 @@ const App: React.FC = () => {
 
         // Throttle preloading: only run when visible building TYPES or zones change, NOT on every 1.2s timer tick
         const buildingTypes = Array.from(new Set(nearbyBuildings.map(b => b.buildingId))).sort().join(',');
-        const signature = `${currentZones.join(',')}|${buildingTypes}|${droppedItems.length}|${mapResources.length}`;
+        const signature = `${currentZones.join(',')}|${buildingTypes}|${droppedItems.length}|${mapResources.length}|${isLoadingScreen}`;
         if (signature === lastPreloadSignatureRef.current) return;
         lastPreloadSignatureRef.current = signature;
 
@@ -12562,11 +12579,15 @@ const App: React.FC = () => {
             })
             .filter(Boolean) as string[];
 
-        const nearbyAnimationUrls = nearbyBuildings.flatMap(getPriorityAnimationUrlsForBuilding);
+        // Always preload visible static icons first
+        enqueueImagePreload([...nearbyResourceUrls, ...nearbyStaticUrls, ...nearbyDroppedItemUrls], { batchSize: 6 });
 
-        enqueueImagePreload([...nearbyResourceUrls, ...nearbyStaticUrls, ...nearbyDroppedItemUrls], { batchSize: 16 });
-        enqueueImagePreload(nearbyAnimationUrls, { batchSize: 20 });
-    }, [currentZones, mapResources, placedBuildings, droppedItems, enqueueImagePreload]);
+        // Lazy loading: multi-frame building animations (smoke, windmills, flags, monsters) only load AFTER entering the game
+        if (!isLoadingScreen) {
+            const nearbyAnimationUrls = nearbyBuildings.flatMap(getPriorityAnimationUrlsForBuilding);
+            enqueueImagePreload(nearbyAnimationUrls, { batchSize: 6, delayMs: 1000 });
+        }
+    }, [currentZones, mapResources, placedBuildings, droppedItems, enqueueImagePreload, loadPhase, isLoadingScreen]);
 
     const isUserOnline = (name: string) => {
         if (!name) return false;
