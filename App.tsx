@@ -5465,6 +5465,27 @@ const App: React.FC = () => {
         zonePlacementStatusRef.current = nextStatus;
     }, [currentZones]);
 
+    // Sync initial camera position from URL hash e.g. #424,559 or on hashchange
+    useEffect(() => {
+        const applyHashCoordinates = () => {
+            const match = window.location.hash.match(/^#(\d{1,4}),(\d{1,4})$/);
+            if (match) {
+                const hX = parseInt(match[1], 10);
+                const hY = parseInt(match[2], 10);
+                const zoom = ZOOM_LEVELS[zoomIndexRef.current];
+                const screenX = (hX - hY) * (TILE_WIDTH * zoom / 2);
+                const screenY = (hX + hY) * (TILE_HEIGHT * zoom / 2);
+                cameraOffsetRef.current = {
+                    x: window.innerWidth / 2 - screenX,
+                    y: window.innerHeight / 2 - screenY
+                };
+            }
+        };
+        applyHashCoordinates();
+        window.addEventListener('hashchange', applyHashCoordinates);
+        return () => window.removeEventListener('hashchange', applyHashCoordinates);
+    }, []);
+
     // Calculate center zone from camera position (polled from ref; no React state churn)
     useEffect(() => {
         const computeCenterZone = () => {
@@ -5481,6 +5502,16 @@ const App: React.FC = () => {
 
         const worldX = (isoY + isoX) / 2;
         const worldY = (isoY - isoX) / 2;
+
+        // Realtime URL hash camera coordinates (#X,Y) like Gnomograd
+        const normWorldX = isWorldWrapped ? wrapCoord(Math.round(worldX), WORLD_WIDTH_TILES) : Math.round(worldX);
+        const normWorldY = isWorldWrapped ? wrapCoord(Math.round(worldY), WORLD_HEIGHT_TILES) : Math.round(worldY);
+        const hashStr = `#${normWorldX},${normWorldY}`;
+        if (window.location.hash !== hashStr) {
+            try {
+                window.history.replaceState(null, '', hashStr);
+            } catch {}
+        }
 
         const zX = Math.floor(worldX / ZONE_SIZE);
         const zY = Math.floor(worldY / ZONE_SIZE);
@@ -8736,17 +8767,24 @@ const App: React.FC = () => {
                         }
                         setPlayerEnergy(initialServerEnergy);
                         
-                        // Load player's last position and set camera
-                        if (resolvedLastPosition) {
+                        // Load player's last position and set camera (prefer URL hash if provided)
+                        const initialUrlHashMatch = window.location.hash.match(/^#(\d{1,4}),(\d{1,4})$/);
+                        const targetInitialPos = initialUrlHashMatch
+                            ? { x: parseInt(initialUrlHashMatch[1], 10), y: parseInt(initialUrlHashMatch[2], 10) }
+                            : resolvedLastPosition;
+
+                        if (targetInitialPos) {
                             const zoom = ZOOM_LEVELS[zoomIndex];
-                            const screenX = (resolvedLastPosition.x - resolvedLastPosition.y) * (TILE_WIDTH * zoom / 2);
-                            const screenY = (resolvedLastPosition.x + resolvedLastPosition.y) * (TILE_HEIGHT * zoom / 2);
+                            const screenX = (targetInitialPos.x - targetInitialPos.y) * (TILE_WIDTH * zoom / 2);
+                            const screenY = (targetInitialPos.x + targetInitialPos.y) * (TILE_HEIGHT * zoom / 2);
                             cameraOffsetRef.current = {
                                 x: window.innerWidth / 2 - screenX,
                                 y: window.innerHeight / 2 - screenY
                             };
-                            lastPersistedPlayerPositionRef.current = resolvedLastPosition;
-                            writeCachedLastPosition(user.uid, resolvedLastPosition);
+                            if (!initialUrlHashMatch && resolvedLastPosition) {
+                                lastPersistedPlayerPositionRef.current = resolvedLastPosition;
+                                writeCachedLastPosition(user.uid, resolvedLastPosition);
+                            }
                         } else {
                             lastPersistedPlayerPositionRef.current = null;
                         }
