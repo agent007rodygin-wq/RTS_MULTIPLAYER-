@@ -7,7 +7,7 @@ var TREE_RESPAWN_DELAY_MS = 3 * 60 * 1000;
 var TREE_RESPAWN_RETRY_MS = 60 * 1000;
 var TREE_RESPAWN_ATTEMPTS_LIMIT = 200;
 var WOOD_ITEM_ID = "10001";
-var ZONE_SIZE = 40;
+var ZONE_SIZE = 200;
 var TREE_DEBUG_PREFIX = "[TreeHit Debug]";
 
 function toInt(value, fallback) {

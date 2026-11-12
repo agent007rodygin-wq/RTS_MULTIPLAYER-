@@ -4,9 +4,9 @@ export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2];
 export const DEFAULT_ZOOM_INDEX = 2; // Corresponds to 1.0 zoom (256x128 tile)
 export const WORLD_WIDTH_TILES = 1000;
 export const WORLD_HEIGHT_TILES = 1000;
-export const ZONES_X = 25;
-export const ZONES_Y = 25;
-export const ZONE_SIZE = 40; // 40x40 tiles per zone to make 1000x1000 total
+export const ZONES_X = 5;
+export const ZONES_Y = 5;
+export const ZONE_SIZE = 200; // 200x200 tiles per zone (5x5 = 25 sectors total for 1000x1000)
 
 export const wrapCoord = (v, max) => ((v % max) + max) % max;
 
