@@ -423,7 +423,7 @@ const MAX_QUARRIES = 8;
 // 30% slower than typical mouse drag (~1000 px/sec): 1000 * 0.70 = 700 px/sec.
 const WASD_PAN_SPEED_NORMAL = 700;
 const WASD_PAN_SPEED_SPRINT = 1000;
-const BASE_WILD_MONSTERS_PER_ZONE = 124;
+const BASE_WILD_MONSTERS_PER_ZONE = 125;
 const WILD_MONSTER_EXTRA_ZONE_COUNT = 0;
 const TARGET_WILD_MONSTERS_TOTAL = BASE_WILD_MONSTERS_PER_ZONE * ZONES_X * ZONES_Y;
 const WILD_MONSTER_CROWDING_SOFT_CAP = 135;
@@ -2630,8 +2630,19 @@ function appendAssetVersion(url: string): string {
     return `${url}${sep}v=${GAME_ASSET_CACHE_VERSION}`;
 }
 
+const normalizedAssetUrlCache = new Map<string, string>();
+const MOJIBAKE_QUICK_REGEX = /[Р РЎР’РІРѓРЉР‹Р‚Р‰РЊРЏР„РЃС’СљСџРЋР‡ТђТ‘в„–ÐÑ]/;
+
 function normalizeAssetUrl(url: string): string {
     if (!url) return url;
+    const cached = normalizedAssetUrlCache.get(url);
+    if (cached !== undefined) return cached;
+    if (!MOJIBAKE_QUICK_REGEX.test(url)) {
+        if (normalizedAssetUrlCache.size < 8192) {
+            normalizedAssetUrlCache.set(url, url);
+        }
+        return url;
+    }
     const qIdx = url.indexOf('?');
     const path = qIdx >= 0 ? url.slice(0, qIdx) : url;
     const suffix = qIdx >= 0 ? url.slice(qIdx) : '';
@@ -2639,7 +2650,11 @@ function normalizeAssetUrl(url: string): string {
         .split('/')
         .map((segment) => repairMojibakeCp1251Utf8(segment))
         .join('/');
-    return fixed + suffix;
+    const result = fixed + suffix;
+    if (normalizedAssetUrlCache.size < 8192) {
+        normalizedAssetUrlCache.set(url, result);
+    }
+    return result;
 }
 
 function repairMojibakeDom(root: ParentNode): void {
@@ -3127,12 +3142,25 @@ const App: React.FC = () => {
         let pending = false;
         const nodesToFix: Element[] = [];
 
-        const flushFixes = () => {
+        const flushFixes = (deadline?: IdleDeadline) => {
             pending = false;
+            let processed = 0;
             while (nodesToFix.length > 0) {
+                if (processed >= 12 && deadline && deadline.timeRemaining() <= 2) {
+                    break;
+                }
                 const el = nodesToFix.pop();
                 if (el && el.isConnected) {
                     repairMojibakeDom(el);
+                }
+                processed++;
+            }
+            if (nodesToFix.length > 0 && !pending) {
+                pending = true;
+                if (typeof requestIdleCallback === 'function') {
+                    requestIdleCallback(flushFixes, { timeout: 200 });
+                } else {
+                    setTimeout(() => flushFixes(), 50);
                 }
             }
         };
@@ -3143,7 +3171,7 @@ const App: React.FC = () => {
                     if (added.nodeType === Node.TEXT_NODE) {
                         const t = added as Text;
                         const original = t.nodeValue || '';
-                        if (/[Р РЎР’РІРѓРЉР‹Р‚Р‰РЊРЏР„РЃС’СљСџРЋР‡ТђТ‘в„–ÐÑ]/.test(original)) {
+                        if (MOJIBAKE_QUICK_REGEX.test(original)) {
                             const fixed = repairMojibakeCp1251Utf8(original);
                             if (fixed !== original) t.nodeValue = fixed;
                         }
@@ -3152,13 +3180,17 @@ const App: React.FC = () => {
                         if (el.classList?.contains('pointer-events-none') || el.id === 'game-canvas') {
                             continue; // Skip overlays & game canvas elements
                         }
+                        const txt = el.textContent || '';
+                        if (!MOJIBAKE_QUICK_REGEX.test(txt)) {
+                            continue;
+                        }
                         nodesToFix.push(el);
                         if (!pending) {
                             pending = true;
                             if (typeof requestIdleCallback === 'function') {
-                                requestIdleCallback(flushFixes);
+                                requestIdleCallback(flushFixes, { timeout: 200 });
                             } else {
-                                setTimeout(flushFixes, 50);
+                                setTimeout(() => flushFixes(), 50);
                             }
                         }
                     }
@@ -3679,6 +3711,18 @@ const App: React.FC = () => {
     const isDraggingRef = useRef(false);
     const hasDraggedRef = useRef(false);
     const dragStartRef = useRef({ x: 0, y: 0 });
+    const dragDistanceAccumRef = useRef(0);
+    const dragCooldownMarkedRef = useRef(false);
+    const hashSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingHashRef = useRef<string>('');
+    const grassPatternCacheRef = useRef<{
+        zoom: number;
+        img: HTMLImageElement | HTMLCanvasElement;
+        pattern: CanvasPattern | null;
+    } | null>(null);
+    const activeTrebuchetReticlesRef = useRef<PlacedBuilding[]>([]);
+    const sectorClanBuildingsMapRef = useRef<Map<string, PlacedBuilding>>(new Map());
+    const lastDerivedBuildingsRef = useRef<PlacedBuilding[] | null>(null);
     const lastTouchEndRef = useRef(0); // Track last touch end time to prevent ghost clicks
     // WASD keyboard movement state
     const wasdKeysRef = useRef({
@@ -5513,14 +5557,23 @@ const App: React.FC = () => {
         const worldY = (isoY - isoX) / 2;
         cameraWorldCenterRef.current = { x: worldX, y: worldY };
 
-        // Realtime URL hash camera coordinates (#X,Y) like Gnomograd
+        // Realtime URL hash camera coordinates (#X,Y) like Gnomograd (debounced so panning doesn't spam browser IPC)
         const normWorldX = isWorldWrapped ? wrapCoord(Math.round(worldX), WORLD_WIDTH_TILES) : Math.round(worldX);
         const normWorldY = isWorldWrapped ? wrapCoord(Math.round(worldY), WORLD_HEIGHT_TILES) : Math.round(worldY);
         const hashStr = `#${normWorldX},${normWorldY}`;
-        if (window.location.hash !== hashStr) {
-            try {
-                window.history.replaceState(null, '', hashStr);
-            } catch {}
+        if (window.location.hash !== hashStr && pendingHashRef.current !== hashStr) {
+            pendingHashRef.current = hashStr;
+            if (hashSyncTimeoutRef.current) {
+                clearTimeout(hashSyncTimeoutRef.current);
+            }
+            hashSyncTimeoutRef.current = setTimeout(() => {
+                hashSyncTimeoutRef.current = null;
+                if (window.location.hash !== hashStr) {
+                    try {
+                        window.history.replaceState(null, '', hashStr);
+                    } catch {}
+                }
+            }, 650);
         }
 
         const effWorldX = isWorldWrapped
@@ -5559,7 +5612,13 @@ const App: React.FC = () => {
         };
         computeCenterZone();
         const interval = setInterval(computeCenterZone, 250);
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            if (hashSyncTimeoutRef.current) {
+                clearTimeout(hashSyncTimeoutRef.current);
+                hashSyncTimeoutRef.current = null;
+            }
+        };
     }, [isWorldWrapped]);
 
     // Progressive ring expansion: advance ring 0 -> 1 -> 2 with short delays
@@ -6285,7 +6344,10 @@ const App: React.FC = () => {
         initComboAudio();
         isDraggingRef.current = true;
         hasDraggedRef.current = false;
+        dragDistanceAccumRef.current = 0;
+        dragCooldownMarkedRef.current = false;
         dragStartRef.current = { x: event.clientX, y: event.clientY };
+        setTooltip(prev => (prev.visible ? { visible: false, x: 0, y: 0, content: null } : prev));
     }, []);
 
     const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
@@ -7431,19 +7493,20 @@ const App: React.FC = () => {
         if (isDraggingRef.current) {
             const dx = event.clientX - dragStartRef.current.x;
             const dy = event.clientY - dragStartRef.current.y;
+            dragDistanceAccumRef.current += Math.hypot(dx, dy);
 
-            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+            if (!hasDraggedRef.current && dragDistanceAccumRef.current > 7) {
                 hasDraggedRef.current = true;
-                // Track significant drag for cooldown - prevents building on unloaded cells
-                const dragDistance = Math.sqrt(dx * dx + dy * dy);
-                if (dragDistance > 75) {
-                    setLastDragTime(Date.now());
-                }
+            }
+            if (!dragCooldownMarkedRef.current && dragDistanceAccumRef.current > 75) {
+                dragCooldownMarkedRef.current = true;
+                setLastDragTime(Date.now());
             }
 
             cameraOffsetRef.current = { x: cameraOffsetRef.current.x + dx, y: cameraOffsetRef.current.y + dy };
             dragStartRef.current = { x: event.clientX, y: event.clientY };
             reportPlayerMovement(false);
+            return;
         }
         const zoom = ZOOM_LEVELS[zoomIndex];
         const { x: gridX, y: gridY } = screenToWorld(event.clientX, event.clientY, zoom);
@@ -7454,8 +7517,10 @@ const App: React.FC = () => {
             if (buildMenu.selectedBuilding || moveMode.active || roadBuilderMode || pavementBuilderMode) {
                 setHoveredTile(prev => (prev && prev.x === gridX && prev.y === gridY ? prev : { x: gridX, y: gridY }));
             }
-            const allPb = placedBuildingsRef.current;
-            const hoveredBuilding = allPb.find(b => b.x === gridX && b.y === gridY && isBuildingAlive(b));
+            const normHoverX = isWorldWrapped ? wrapCoord(gridX, WORLD_WIDTH_TILES) : gridX;
+            const normHoverY = isWorldWrapped ? wrapCoord(gridY, WORLD_HEIGHT_TILES) : gridY;
+            const hoveredCandidate = getSpatialBuildingAt(normHoverX, normHoverY);
+            const hoveredBuilding = hoveredCandidate && isBuildingAlive(hoveredCandidate) ? hoveredCandidate : undefined;
             if (hoveredBuilding && !hoveredBuilding.isConstructing && !hoveredBuilding.isDestroying) {
                 const bIdStr = String(hoveredBuilding.id);
                 if (tooltipRef.current && lastHoveredBuildingIdRef.current === bIdStr) {
@@ -7534,7 +7599,7 @@ const App: React.FC = () => {
             }
         }
 
-    }, [zoomIndex, screenToWorld, isMyBuilding, buildMenu.selectedBuilding, moveMode.active, roadBuilderMode, pavementBuilderMode]);
+    }, [zoomIndex, screenToWorld, isMyBuilding, buildMenu.selectedBuilding, moveMode.active, roadBuilderMode, pavementBuilderMode, getSpatialBuildingAt, isWorldWrapped, reportPlayerMovement]);
 
     const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
         if (isDraggingRef.current && event.touches.length === 1) {
@@ -12854,51 +12919,124 @@ const App: React.FC = () => {
             const camMinY = -cameraOffsetRef.current.y - scaledTileHeight;
             const camMaxY = canvas.height - cameraOffsetRef.current.y + scaledTileHeight;
 
-            for (let i = minTileX; i <= maxTileX; i++) {
-                for (let j = minTileY; j <= maxTileY; j++) {
-                    const screenX = (i - j) * halfW;
-                    const screenY = (i + j) * halfH;
+            const isFullyInsideWorld =
+                isWorldWrapped ||
+                (minTileX > 0 && maxTileX < WORLD_WIDTH_TILES - 1 && minTileY > 0 && maxTileY < WORLD_HEIGHT_TILES - 1);
 
-                    if (
-                        screenX < camMinX ||
-                        screenX > camMaxX ||
-                        screenY < camMinY ||
-                        screenY > camMaxY
-                    ) {
-                        continue;
+            let usedPattern = false;
+            const isGroundReady = groundImg instanceof HTMLCanvasElement
+                ? groundImg.width > 0
+                : (groundImg.complete && groundImg.naturalWidth > 0);
+            if (isFullyInsideWorld && isGroundReady) {
+                let cache = grassPatternCacheRef.current;
+                if (!cache || cache.zoom !== zoom || cache.img !== groundImg) {
+                    const patW = Math.round(scaledTileWidth);
+                    const patH = Math.round(scaledTileHeight);
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = patW;
+                    offCanvas.height = patH;
+                    const offCtx = offCanvas.getContext('2d');
+                    if (offCtx) {
+                        const pHalfW = patW / 2;
+                        const pHalfH = patH / 2;
+                        offCtx.drawImage(groundImg, 0, 0, patW, patH);
+                        offCtx.drawImage(groundImg, -pHalfW, -pHalfH, patW, patH);
+                        offCtx.drawImage(groundImg, pHalfW, -pHalfH, patW, patH);
+                        offCtx.drawImage(groundImg, -pHalfW, pHalfH, patW, patH);
+                        offCtx.drawImage(groundImg, pHalfW, pHalfH, patW, patH);
+
+                        offCtx.beginPath();
+                        offCtx.moveTo(pHalfW, 0);
+                        offCtx.lineTo(patW, pHalfH);
+                        offCtx.lineTo(pHalfW, patH);
+                        offCtx.lineTo(0, pHalfH);
+                        offCtx.closePath();
+                        offCtx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+                        offCtx.lineWidth = 1;
+                        offCtx.stroke();
+
+                        cache = { zoom, img: groundImg, pattern: context.createPattern(offCanvas, 'repeat') };
+                        grassPatternCacheRef.current = cache;
                     }
-
-                    context.drawImage(
-                        groundImg,
-                        screenX - halfW,
-                        screenY - halfH,
-                        scaledTileWidth,
-                        scaledTileHeight
-                    );
+                }
+                if (cache?.pattern) {
+                    context.fillStyle = cache.pattern;
+                    context.fillRect(camMinX, camMinY, camMaxX - camMinX, camMaxY - camMinY);
+                    usedPattern = true;
                 }
             }
 
-            // Micro-pixel subtle isometric grid on tile boundaries
-            context.beginPath();
-            for (let lineJ = minTileY; lineJ <= maxTileY + 1; lineJ++) {
-                const x1 = (minTileX - lineJ) * halfW;
-                const y1 = (minTileX + lineJ - 1) * halfH;
-                const x2 = (maxTileX + 1 - lineJ) * halfW;
-                const y2 = (maxTileX + lineJ) * halfH;
-                context.moveTo(x1, y1);
-                context.lineTo(x2, y2);
+            if (!usedPattern) {
+                for (let i = minTileX; i <= maxTileX; i++) {
+                    for (let j = minTileY; j <= maxTileY; j++) {
+                        const screenX = (i - j) * halfW;
+                        const screenY = (i + j) * halfH;
+
+                        if (
+                            screenX < camMinX ||
+                            screenX > camMaxX ||
+                            screenY < camMinY ||
+                            screenY > camMaxY
+                        ) {
+                            continue;
+                        }
+
+                        context.drawImage(
+                            groundImg,
+                            screenX - halfW,
+                            screenY - halfH,
+                            scaledTileWidth,
+                            scaledTileHeight
+                        );
+                    }
+                }
+
+                // Micro-pixel subtle isometric grid on tile boundaries
+                context.beginPath();
+                for (let lineJ = minTileY; lineJ <= maxTileY + 1; lineJ++) {
+                    const x1 = (minTileX - lineJ) * halfW;
+                    const y1 = (minTileX + lineJ - 1) * halfH;
+                    const x2 = (maxTileX + 1 - lineJ) * halfW;
+                    const y2 = (maxTileX + lineJ) * halfH;
+                    context.moveTo(x1, y1);
+                    context.lineTo(x2, y2);
+                }
+                for (let lineI = minTileX; lineI <= maxTileX + 1; lineI++) {
+                    const x1 = (lineI - minTileY) * halfW;
+                    const y1 = (lineI + minTileY - 1) * halfH;
+                    const x2 = (lineI - 1 - maxTileY) * halfW;
+                    const y2 = (lineI + maxTileY) * halfH;
+                    context.moveTo(x1, y1);
+                    context.lineTo(x2, y2);
+                }
+                context.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+                context.lineWidth = 1;
+                context.stroke();
             }
-            for (let lineI = minTileX; lineI <= maxTileX + 1; lineI++) {
-                const x1 = (lineI - minTileY) * halfW;
-                const y1 = (lineI + minTileY - 1) * halfH;
-                const x2 = (lineI - 1 - maxTileY) * halfW;
-                const y2 = (lineI + maxTileY) * halfH;
-                context.moveTo(x1, y1);
-                context.lineTo(x2, y2);
+        }
+
+        if (lastDerivedBuildingsRef.current !== placedBuildingsRef.current) {
+            const pbAll = placedBuildingsRef.current;
+            lastDerivedBuildingsRef.current = pbAll;
+            const trebs: PlacedBuilding[] = [];
+            const clanMap = sectorClanBuildingsMapRef.current;
+            clanMap.clear();
+            for (let i = 0; i < pbAll.length; i++) {
+                const pb = pbAll[i];
+                const bid = Number(pb.buildingId);
+                if (bid === TREBUCHET_ID && pb.trebuchetFireAt) {
+                    trebs.push(pb);
+                }
+                if ((BANDIT_CASTLE_IDS.has(bid) || isWatchtowerId(pb.buildingId)) && isBuildingAlive(pb) && !pb.isConstructing) {
+                    const zx = Math.floor(pb.x / ZONE_SIZE);
+                    const zy = Math.floor(pb.y / ZONE_SIZE);
+                    const key = `${zx}_${zy}`;
+                    if (!clanMap.has(key)) {
+                        clanMap.set(key, pb);
+                    }
+                }
             }
-            context.strokeStyle = 'rgba(255, 255, 255, 0.14)';
-            context.lineWidth = 1;
-            context.stroke();
+            activeTrebuchetReticlesRef.current = trebs;
         }
 
         // Pre-filter visible entities within RENDER_RADIUS using reusable pool without any object allocations
@@ -15417,7 +15555,7 @@ const App: React.FC = () => {
 
         // Draw active target reticle on tiles targeted by trebuchets during 10s countdown
         const nowForReticle = Date.now();
-        placedBuildingsRef.current.forEach(pb => {
+        activeTrebuchetReticlesRef.current.forEach(pb => {
             if (Number(pb.buildingId) === TREBUCHET_ID && pb.trebuchetFireAt && nowForReticle < pb.trebuchetFireAt && pb.trebuchetTargetX !== undefined && pb.trebuchetTargetY !== undefined) {
                 let reticleTargetX = pb.trebuchetTargetX;
                 let reticleTargetY = pb.trebuchetTargetY;
@@ -15567,14 +15705,8 @@ const App: React.FC = () => {
                 const hoveredZoneX = Math.floor(curHoveredTile.x / ZONE_SIZE);
                 const hoveredZoneY = Math.floor(curHoveredTile.y / ZONE_SIZE);
 
-                // Find a bandit castle or watchtower that controls this sector.
-                const sectorClanBuilding = placedBuildingsRef.current.find((b) =>
-                    (BANDIT_CASTLE_IDS.has(Number(b.buildingId)) || isWatchtowerId(b.buildingId)) &&
-                    isBuildingAlive(b) &&
-                    !b.isConstructing &&
-                    Math.floor(b.x / ZONE_SIZE) === hoveredZoneX &&
-                    Math.floor(b.y / ZONE_SIZE) === hoveredZoneY
-                );
+                // Find a bandit castle or watchtower that controls this sector in O(1).
+                const sectorClanBuilding = sectorClanBuildingsMapRef.current.get(`${hoveredZoneX}_${hoveredZoneY}`);
 
                 const clan = sectorClanBuilding ? getClanForBuilding(sectorClanBuilding) : null;
                 const clanAvatarUrl = clan?.avatarUrl || null;
@@ -18540,25 +18672,22 @@ const App: React.FC = () => {
                     }
                 }
 
+                const homeZoneId = getBronekurHomeZoneId();
                 const activeBronekurs = allBuildings
                     .filter(b =>
                         Number(b.buildingId) === BRONEKUR_ID &&
                         (b.ownerId === "-1" || b.ownerId === "monster") &&
                         (b.hp === undefined || b.hp > 0)
                     )
-                    .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+                    .sort((a, b) => {
+                        const aHome = (a.zoneId || getZoneId(a.x, a.y)) === homeZoneId ? 0 : 1;
+                        const bHome = (b.zoneId || getZoneId(b.x, b.y)) === homeZoneId ? 0 : 1;
+                        if (aHome !== bHome) return aHome - bHome;
+                        return String(a.id).localeCompare(String(b.id));
+                    });
 
-                // Keep up to 1 Bronekur per sector rather than deleting 24 across the 5x5 world
-                const bronekursByZone = new Map<string, PlacedBuilding[]>();
-                for (const boss of activeBronekurs) {
-                    const bZone = boss.zoneId || getZoneId(boss.x, boss.y);
-                    const list = bronekursByZone.get(bZone) || [];
-                    list.push(boss);
-                    bronekursByZone.set(bZone, list);
-                }
-
-                for (const zoneBosses of bronekursByZone.values()) {
-                    for (const extraBoss of zoneBosses.slice(1)) {
+                // Only 1 Bronekur globally across the entire 1000x1000 map
+                for (const extraBoss of activeBronekurs.slice(1)) {
                         const localId = String(extraBoss.id);
                         const source = 'duplicate_bronekur';
                         try {
@@ -18593,7 +18722,6 @@ const App: React.FC = () => {
                         } catch (err) {
                             console.error('[MonsterSpawn] Failed to delete duplicate Bronekur:', err);
                         }
-                    }
                 }
 
                 const zoneSpawnRanking: Array<{ zoneId: string; score: number }> = [];
@@ -18609,24 +18737,19 @@ const App: React.FC = () => {
                 }
                 zoneSpawnRanking.sort((a, b) => b.score - a.score || a.zoneId.localeCompare(b.zoneId));
                 const bonusZoneIds = new Set(zoneSpawnRanking.slice(0, bonusZoneCount).map(z => z.zoneId));
-                const bonusTypes = seededShuffle(REGULAR_MONSTER_SPAWN_CONFIG.map(cfg => cfg.typeId), 'wild-extra-types');
-                const bonusTypeByZone = new Map<string, number>();
-                zoneSpawnRanking.slice(0, bonusZoneCount).forEach((zone, index) => {
-                    bonusTypeByZone.set(zone.zoneId, bonusTypes[index % bonusTypes.length]);
-                });
 
                 for (const zoneId of managedZoneIds) {
                     if (effectId !== monsterSpawnEffectIdRef.current) return;
                     const [zX, zY] = zoneId.split('_').map(Number);
                     if (!Number.isFinite(zX) || !Number.isFinite(zY)) continue;
                         const zoneTypeOrder = seededShuffle(REGULAR_MONSTER_SPAWN_CONFIG, `wild-types:${zoneId}`);
-                        const duplicateTypeId = bonusZoneIds.has(zoneId) ? bonusTypeByZone.get(zoneId) || null : null;
                         const zoneTargetCount = BASE_WILD_MONSTERS_PER_ZONE + (bonusZoneIds.has(zoneId) ? 1 : 0);
+                        const perTypeBase = Math.floor(zoneTargetCount / Math.max(1, zoneTypeOrder.length));
+                        const perTypeRemainder = zoneTargetCount % Math.max(1, zoneTypeOrder.length);
                         const desiredTypeCounts = new Map<number, number>();
-                        zoneTypeOrder.forEach(cfg => desiredTypeCounts.set(cfg.typeId, 1));
-                        if (duplicateTypeId !== null) {
-                            desiredTypeCounts.set(duplicateTypeId, 2);
-                        }
+                        zoneTypeOrder.forEach((cfg, idx) =>
+                            desiredTypeCounts.set(cfg.typeId, perTypeBase + (idx < perTypeRemainder ? 1 : 0))
+                        );
 
                         const zoneRegularMonsters = allBuildings
                             .filter(b =>

@@ -31,18 +31,15 @@ OIL_PER_SECTOR = 10         # 25 * 10 = 250 нефтяных вышек
 QUARRIES_PER_SECTOR = 8     # 25 * 8 = 200 каменоломен
 CHESTS_PER_SECTOR = 15      # 25 * 15 = 375 сундуков
 
-# Monster definitions
+# Monster definitions (125 regular wild monsters per sector: 25 of each type; NO Котофей/Тролль/Айболит/Большой Айболит)
 MONSTER_CONFIG = [
-    {"id": 70001, "name": "Избушка-убийца", "hp": 100, "count": 22},
-    {"id": 70002, "name": "Добрый Санта",   "hp": 80,  "count": 20},
-    {"id": 70003, "name": "Горыныч",        "hp": 150, "count": 16},
-    {"id": 70004, "name": "Колобок",        "hp": 120, "count": 18},
-    {"id": 70005, "name": "Баба Яга",       "hp": 130, "count": 16},
-    {"id": 70007, "name": "Котофей",        "hp": 200, "count": 14},
-    {"id": 70008, "name": "Тролль",         "hp": 250, "count": 10},
-    {"id": 70009, "name": "Айболит",        "hp": 90,  "count": 8},
-    {"id": 70006, "name": "Бронекур",       "hp": 500, "count": 1},
+    {"id": 70001, "name": "Избушка-убийца", "hp": 100, "count": 25},
+    {"id": 70002, "name": "Добрый Санта",   "hp": 80,  "count": 25},
+    {"id": 70003, "name": "Горыныч",        "hp": 150, "count": 25},
+    {"id": 70004, "name": "Колобок",        "hp": 120, "count": 25},
+    {"id": 70005, "name": "Баба Яга",       "hp": 130, "count": 25},
 ]
+BRONEKUR_BOSS_CFG = {"id": 70006, "name": "Бронекур", "hp": 500}
 # Проверка: 22+20+16+18+16+14+10+8+1 = 125 монстров на сектор!
 
 def make_pb_id():
@@ -307,6 +304,39 @@ def main():
                                 }
                             })
                             break
+
+            # Единственный мировой босс Бронекур на всю карту (в центральном секторе 2_2)
+            if zx == ZONES_X // 2 and zy == ZONES_Y // 2:
+                boss_id = BRONEKUR_BOSS_CFG["id"]
+                boss_hp = BRONEKUR_BOSS_CFG["hp"]
+                for _ in range(500):
+                    bx = random.randint(min_x + 2, max_x - 2)
+                    by = random.randint(min_y + 2, max_y - 2)
+                    if (bx, by) not in occupied:
+                        occupied.add((bx, by))
+                        buildings_to_create.append({
+                            "id": make_pb_id(),
+                            "gameId": f"m{boss_id}s1z{zone_id}",
+                            "x": bx,
+                            "y": by,
+                            "zoneId": zone_id,
+                            "buildingId": str(boss_id),
+                            "ownerId": "monster",
+                            "ownerName": "Монстр",
+                            "data": {
+                                "zoneId": zone_id,
+                                "hp": boss_hp,
+                                "maxHp": boss_hp,
+                                "isActive": True,
+                                "lastMoveTime": 0,
+                                "type": "Default",
+                                "workState": "idle",
+                                "isBoss": True,
+                                "monsterType": "бронекур",
+                                "monsterSlot": 1,
+                            }
+                        })
+                        break
 
             # ----------------------------------------------------
             # Д. ПЛОТНЫЙ ЛЕС (1000 деревьев строго по маске Гномограда)

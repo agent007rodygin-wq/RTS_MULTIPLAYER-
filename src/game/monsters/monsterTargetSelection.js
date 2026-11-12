@@ -17,6 +17,45 @@ import {
     getTrollChaseTarget,
 } from './trollLogic.js';
 
+const targetSelectionBuildingMapCache = new WeakMap();
+
+function getTargetSelectionBuildingInfo(buildingData, buildingId) {
+    let map = targetSelectionBuildingMapCache.get(buildingData);
+    if (!map) {
+        map = new Map();
+        for (let i = 0; i < buildingData.length; i++) {
+            const info = buildingData[i];
+            map.set(Number(info.id), info);
+        }
+        targetSelectionBuildingMapCache.set(buildingData, map);
+    }
+    return map.get(Number(buildingId));
+}
+
+function collectAdjacentCandidates(monster, buildings, buildingData, options, predicate) {
+    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
+    const byTile = options?.buildingsByTile;
+    if (byTile instanceof Map) {
+        const candidates = [];
+        for (let i = 0; i < neighbors.length; i++) {
+            const n = neighbors[i];
+            const bucket = byTile.get(`${n.x},${n.y}`);
+            if (!bucket) continue;
+            for (let j = 0; j < bucket.length; j++) {
+                const target = bucket[j];
+                if (predicate(monster, target, buildingData, options)) {
+                    candidates.push(target);
+                }
+            }
+        }
+        return candidates;
+    }
+    return buildings.filter(target =>
+        neighbors.some(n => n.x === target.x && n.y === target.y) &&
+        predicate(monster, target, buildingData, options)
+    );
+}
+
 export function isMonsterAttackTargetCandidate(monster, target, buildingData, options) {
     if (isHealerMonster(monster?.buildingId)) {
         return isKotofeyRepairCandidate(monster, target, buildingData, options);
@@ -27,7 +66,7 @@ export function isMonsterAttackTargetCandidate(monster, target, buildingData, op
     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
     const targetId = String(target.id);
-    const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
+    const targetInfo = getTargetSelectionBuildingInfo(buildingData, target.buildingId);
     const riverId = options?.riverId ?? 50004;
     const mountainId = options?.mountainId ?? 50005;
     if (target.ownerId === monster.ownerId) return false;
@@ -51,7 +90,7 @@ export function isMonsterHoldTargetCandidate(monster, target, buildingData, opti
     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
     const targetId = String(target.id);
-    const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
+    const targetInfo = getTargetSelectionBuildingInfo(buildingData, target.buildingId);
     const riverId = options?.riverId ?? 50004;
     const mountainId = options?.mountainId ?? 50005;
     if (target.ownerId === monster.ownerId) return false;
@@ -66,13 +105,8 @@ export function isMonsterHoldTargetCandidate(monster, target, buildingData, opti
 }
 
 export function getMonsterAdjacentAttackTarget(monster, buildings, buildingData, options) {
-    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
-    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
-
-    const candidates = buildings.filter(target =>
-        neighbors.some(n => n.x === target.x && n.y === target.y) &&
-        isMonsterAttackTargetCandidate(monster, target, buildingData, options)
-    );
+    const monsterInfo = getTargetSelectionBuildingInfo(buildingData, monster.buildingId);
+    const candidates = collectAdjacentCandidates(monster, buildings, buildingData, options, isMonsterAttackTargetCandidate);
     if (candidates.length === 0) return null;
 
     if (isHealerMonster(monster?.buildingId)) {
@@ -95,20 +129,15 @@ export function getMonsterAdjacentAttackTarget(monster, buildings, buildingData,
 
     const hates = monsterInfo?.stats.hates;
     const hatedTarget = candidates.find((t) => {
-        const info = buildingData.find(i => Number(i.id) === Number(t.buildingId));
+        const info = getTargetSelectionBuildingInfo(buildingData, t.buildingId);
         return hates && info?.category === hates;
     });
     return hatedTarget || candidates[0];
 }
 
 export function getMonsterAdjacentHoldTarget(monster, buildings, buildingData, options) {
-    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
-    const neighbors = getCardinalNeighborTiles(monster.x, monster.y, !!options?.isWrappedWorld);
-
-    const candidates = buildings.filter(target =>
-        neighbors.some(n => n.x === target.x && n.y === target.y) &&
-        isMonsterHoldTargetCandidate(monster, target, buildingData, options)
-    );
+    const monsterInfo = getTargetSelectionBuildingInfo(buildingData, monster.buildingId);
+    const candidates = collectAdjacentCandidates(monster, buildings, buildingData, options, isMonsterHoldTargetCandidate);
     if (candidates.length === 0) return null;
 
     if (isHealerMonster(monster?.buildingId)) {
@@ -131,7 +160,7 @@ export function getMonsterAdjacentHoldTarget(monster, buildings, buildingData, o
 
     const hates = monsterInfo?.stats.hates;
     const hatedTarget = candidates.find((t) => {
-        const info = buildingData.find(i => Number(i.id) === Number(t.buildingId));
+        const info = getTargetSelectionBuildingInfo(buildingData, t.buildingId);
         return hates && info?.category === hates;
     });
     return hatedTarget || candidates[0];

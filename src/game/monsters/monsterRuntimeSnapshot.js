@@ -33,58 +33,85 @@ import { getMonsterAdjacentAttackTarget } from './monsterTargetSelection.js';
  *   monsterZoneCounts: Map<string, number>,
  * }}
  */
+const runtimeSnapshotBuildingMapCache = new WeakMap();
+
+function getBuildingByIdMap(buildingData) {
+    let map = runtimeSnapshotBuildingMapCache.get(buildingData);
+    if (!map) {
+        map = new Map();
+        for (let i = 0; i < buildingData.length; i++) {
+            const info = buildingData[i];
+            map.set(Number(info.id), info);
+        }
+        runtimeSnapshotBuildingMapCache.set(buildingData, map);
+    }
+    return map;
+}
+
 export function buildMonsterRuntimeSnapshot({
     now, buildings, buildingData,
     monsterLastAction, monsterAttackTime, isMonsterHost,
     isWorldWrapped, pendingDestroyedIds, maxMovesPerBatch,
     kotofeyContext,
 }) {
-    const monstersMoving = buildings.filter(b => {
-        if (b.isConstructing || b.isDestroying) return false;
-        if (b.hp !== undefined && b.hp <= 0) return false;
+    const byId = getBuildingByIdMap(buildingData);
+    const buildingsByTile = new Map();
+    const candidateMonsters = [];
+    for (let i = 0; i < buildings.length; i++) {
+        const b = buildings[i];
+        const key = `${b.x},${b.y}`;
+        let bucket = buildingsByTile.get(key);
+        if (!bucket) {
+            bucket = [b];
+            buildingsByTile.set(key, bucket);
+        } else {
+            bucket.push(b);
+        }
+
+        if (b.isConstructing || b.isDestroying) continue;
+        if (b.hp !== undefined && b.hp <= 0) continue;
+        const info = byId.get(Number(b.buildingId));
+        if (!info || !info.stats.isMonster) continue;
         const isPlayerOwned = Boolean(b.ownerId && b.ownerId !== 'monster' && b.ownerId !== '-1' && b.ownerId !== '0');
-        if (b.monsterMode === 'stand' || (isPlayerOwned && b.monsterMode !== 'patrol')) return false;
-        const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
-        if (!info || !info.stats.isMonster) return false;
-        if (!isMonsterHost(b)) return false;
-        const monsterId = String(b.id || '');
-        const gameIdStr = b.gameId ? String(b.gameId) : '';
+        if (b.monsterMode === 'stand' || (isPlayerOwned && b.monsterMode !== 'patrol')) continue;
+        if (isMonsterHost(b)) {
+            candidateMonsters.push(b);
+        }
+    }
+
+    const monstersMoving = [];
+    const monstersReadyToAttack = [];
+    for (let i = 0; i < candidateMonsters.length; i++) {
+        const monster = candidateMonsters[i];
+        const monsterId = String(monster.id || '');
+        const gameIdStr = monster.gameId ? String(monster.gameId) : '';
         const refLastAction = Math.max(
             monsterLastAction.get(monsterId) || 0,
             gameIdStr ? (monsterLastAction.get(gameIdStr) || 0) : 0
         );
-        const lastTime = Math.max(b.lastMoveTime || 0, refLastAction);
-        const moveInterval = getMonsterMoveInterval(b.buildingId, monsterId);
-        return (now - lastTime >= moveInterval);
-    });
+        const lastTime = Math.max(monster.lastMoveTime || 0, refLastAction);
+        const moveInterval = getMonsterMoveInterval(monster.buildingId, monsterId);
+        if (now - lastTime >= moveInterval) {
+            monstersMoving.push(monster);
+        }
 
-    const monstersReadyToAttack = buildings.filter(monster => {
-        if (monster.isConstructing || monster.isDestroying) return false;
-        if (monster.hp !== undefined && monster.hp <= 0) return false;
-        const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
-        if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
-        const info = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
-        if (!info || !info.stats.isMonster) return false;
-        if (!isMonsterHost(monster)) return false;
-        const monsterId = String(monster.id || '');
-        const gameIdStr = monster.gameId ? String(monster.gameId) : '';
         const refAttackTime = Math.max(
             monsterAttackTime.get(monsterId) || 0,
             gameIdStr ? (monsterAttackTime.get(gameIdStr) || 0) : 0
         );
-        const lastAttackTime = Math.max(
-            monster.lastAttackTime || 0,
-            refAttackTime
-        );
-        if (lastAttackTime > now) return false;
-        if ((now - lastAttackTime) < 35000) return false; // MONSTER_ATTACK_INTERVAL_MS (35s)
-
-        return !!getMonsterAdjacentAttackTarget(monster, buildings, buildingData, {
-            isWrappedWorld: isWorldWrapped,
-            pendingDestroyedIds,
-            kotofeyContext,
-        });
-    });
+        const lastAttackTime = Math.max(monster.lastAttackTime || 0, refAttackTime);
+        if (lastAttackTime <= now && (now - lastAttackTime) >= 35000) {
+            const target = getMonsterAdjacentAttackTarget(monster, buildings, buildingData, {
+                isWrappedWorld: isWorldWrapped,
+                pendingDestroyedIds,
+                kotofeyContext,
+                buildingsByTile,
+            });
+            if (target) {
+                monstersReadyToAttack.push(monster);
+            }
+        }
+    }
 
     const monsterZoneCounts = buildMonsterZoneCounts(buildings, buildingData);
 

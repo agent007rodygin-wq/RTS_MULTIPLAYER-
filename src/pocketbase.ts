@@ -2074,6 +2074,7 @@ export interface QueryDescriptor {
   whereField?: string;
   whereOp?: string;
   whereValue?: unknown;
+  __bypassZonePool?: boolean;
 }
 
 export function query(
@@ -2342,6 +2343,201 @@ const SUBSCRIPTION_DELAY_MS = 150; // Reduced from 500ms for faster initial load
 const MAX_STAGGER_SUBSCRIPTIONS = 20;
 let realtimeUnavailableLogged = false;
 
+// Shared per-zone subscription pool so crossing a sector boundary reuses already-loaded sectors
+// without tearing down or re-downloading overlapping zones over HTTP.
+const MAX_WARM_IDLE_ZONES_PER_COL = 6;
+const WARM_IDLE_ZONE_TTL_MS = 60000;
+
+interface ZonePoolEntry {
+  key: string;
+  col: string;
+  zoneId: string;
+  refCount: number;
+  lastUsedAt: number;
+  loaded: boolean;
+  docs: any[];
+  auditSource: string;
+  listeners: Set<() => void>;
+  errorListeners: Set<(e: unknown) => void>;
+  unsub: () => void;
+}
+
+const zoneSubscriptionPool = new Map<string, ZonePoolEntry>();
+
+function evictExpiredOrExcessWarmZones(col: string) {
+  const now = Date.now();
+  const idleEntries: ZonePoolEntry[] = [];
+  for (const entry of zoneSubscriptionPool.values()) {
+    if (entry.col !== col || entry.refCount > 0) continue;
+    if ((now - entry.lastUsedAt) > WARM_IDLE_ZONE_TTL_MS) {
+      zoneSubscriptionPool.delete(entry.key);
+      try { entry.unsub(); } catch {}
+    } else {
+      idleEntries.push(entry);
+    }
+  }
+  if (idleEntries.length > MAX_WARM_IDLE_ZONES_PER_COL) {
+    idleEntries.sort((a, b) => a.lastUsedAt - b.lastUsedAt);
+    const toRemove = idleEntries.length - MAX_WARM_IDLE_ZONES_PER_COL;
+    for (let i = 0; i < toRemove; i++) {
+      const victim = idleEntries[i];
+      zoneSubscriptionPool.delete(victim.key);
+      try { victim.unsub(); } catch {}
+    }
+  }
+}
+
+function subscribeZonePartitionedQuery(
+  desc: QueryDescriptor,
+  callback: (snapshot: any) => void,
+  errCallback?: (e: unknown) => void
+): UnsubscribeFn {
+  const zoneIds = Array.from(
+    new Set(
+      (Array.isArray(desc.whereValue) ? desc.whereValue : [])
+        .map((v) => String(v || '').trim())
+        .filter(Boolean)
+    )
+  );
+  let destroyed = false;
+  let scheduledEmit = false;
+
+  if (zoneIds.length === 0) {
+    queueMicrotask(() => {
+      if (destroyed) return;
+      callback({
+        size: 0,
+        empty: true,
+        docs: [],
+        forEach: () => {},
+      });
+    });
+    return () => {
+      destroyed = true;
+    };
+  }
+
+  const now = Date.now();
+  for (const existing of zoneSubscriptionPool.values()) {
+    if (existing.col === desc.col && existing.refCount === 0 && (now - existing.lastUsedAt) > WARM_IDLE_ZONE_TTL_MS) {
+      zoneSubscriptionPool.delete(existing.key);
+      try { existing.unsub(); } catch {}
+    }
+  }
+
+  const entries: ZonePoolEntry[] = [];
+  const emitCombined = () => {
+    if (destroyed) return;
+    if (entries.some((e) => !e.loaded)) return;
+
+    const dedupMap = new Map<string, any>();
+    let latestAuditSource = 'onSnapshot';
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.auditSource && entry.auditSource !== 'onSnapshot') {
+        latestAuditSource = entry.auditSource;
+      }
+      for (let j = 0; j < entry.docs.length; j++) {
+        const d = entry.docs[j];
+        dedupMap.set(String(d.id), d);
+      }
+    }
+
+    const docs = Array.from(dedupMap.values());
+    const snap: any = {
+      size: docs.length,
+      empty: docs.length === 0,
+      docs,
+      forEach: (cb: (doc: any) => void) => {
+        for (let i = 0; i < docs.length; i++) cb(docs[i]);
+      },
+      __auditSource: latestAuditSource,
+    };
+    callback(snap);
+  };
+
+  const onEntryUpdate = () => {
+    if (destroyed || scheduledEmit) return;
+    scheduledEmit = true;
+    queueMicrotask(() => {
+      scheduledEmit = false;
+      emitCombined();
+    });
+  };
+
+  const onEntryError = (err: unknown) => {
+    if (destroyed) return;
+    errCallback?.(err);
+  };
+
+  for (let i = 0; i < zoneIds.length; i++) {
+    const zoneId = zoneIds[i];
+    const key = `${desc.col}:${zoneId}`;
+    let entry = zoneSubscriptionPool.get(key);
+    if (!entry) {
+      const singleQuery = query(collection(null, desc.col), where('zoneId', 'in', [zoneId]));
+      singleQuery.__bypassZonePool = true;
+      const createdEntry: ZonePoolEntry = {
+        key,
+        col: desc.col,
+        zoneId,
+        refCount: 0,
+        lastUsedAt: now,
+        loaded: false,
+        docs: [],
+        auditSource: 'onSnapshot',
+        listeners: new Set(),
+        errorListeners: new Set(),
+        unsub: () => {},
+      };
+      zoneSubscriptionPool.set(key, createdEntry);
+      createdEntry.unsub = onSnapshot(
+        singleQuery,
+        (singleSnap) => {
+          createdEntry.loaded = true;
+          createdEntry.lastUsedAt = Date.now();
+          createdEntry.docs = Array.isArray(singleSnap.docs) ? singleSnap.docs : [];
+          createdEntry.auditSource = String((singleSnap as any).__auditSource || 'onSnapshot');
+          createdEntry.listeners.forEach((listener) => listener());
+        },
+        (err) => {
+          if (!createdEntry.loaded) {
+            zoneSubscriptionPool.delete(createdEntry.key);
+            try { createdEntry.unsub(); } catch {}
+          }
+          createdEntry.errorListeners.forEach((listener) => listener(err));
+        }
+      );
+      entry = createdEntry;
+    }
+
+    entry.refCount += 1;
+    entry.lastUsedAt = now;
+    entry.listeners.add(onEntryUpdate);
+    entry.errorListeners.add(onEntryError);
+    entries.push(entry);
+  }
+
+  evictExpiredOrExcessWarmZones(desc.col);
+
+  if (entries.every((e) => e.loaded)) {
+    onEntryUpdate();
+  }
+
+  return () => {
+    destroyed = true;
+    const releasedAt = Date.now();
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      entry.listeners.delete(onEntryUpdate);
+      entry.errorListeners.delete(onEntryError);
+      entry.refCount = Math.max(0, entry.refCount - 1);
+      entry.lastUsedAt = releasedAt;
+    }
+    evictExpiredOrExcessWarmZones(desc.col);
+  };
+}
+
 /**
  * Subscribe to a single document or a collection/query.
  * Returns an unsubscribe function (same as Firebase).
@@ -2352,6 +2548,20 @@ export function onSnapshot(
   callback: (snapshot: any) => void,
   _errCallback?: (e: unknown) => void
 ): UnsubscribeFn {
+  if (
+    refOrQuery &&
+    'col' in refOrQuery &&
+    !refOrQuery.__bypassZonePool &&
+    !refOrQuery.maxItems &&
+    !refOrQuery.sort &&
+    (refOrQuery.col === 'map_resources' || refOrQuery.col === 'buildings' || refOrQuery.col === 'dropped_items') &&
+    refOrQuery.whereField === 'zoneId' &&
+    refOrQuery.whereOp === 'in' &&
+    Array.isArray(refOrQuery.whereValue)
+  ) {
+    return subscribeZonePartitionedQuery(refOrQuery, callback, _errCallback);
+  }
+
   let destroyed = false;
   let cleanup: UnsubscribeFn = () => {};
   const safeCleanup = () => {

@@ -25,16 +25,33 @@ export function getMonsterZoneId(monster) {
  * @param {Array<{ id: number; stats?: { isMonster?: boolean } }>} buildingData
  * @returns {Map<string, number>}
  */
+const buildingDataMapCache = new WeakMap();
+
+function getBuildingByIdMap(buildingData) {
+    let map = buildingDataMapCache.get(buildingData);
+    if (!map) {
+        map = new Map();
+        for (let i = 0; i < buildingData.length; i++) {
+            const info = buildingData[i];
+            map.set(Number(info.id), info);
+        }
+        buildingDataMapCache.set(buildingData, map);
+    }
+    return map;
+}
+
 export function buildMonsterZoneCounts(buildings, buildingData) {
     const counts = new Map();
-    buildings.forEach((building) => {
-        const info = buildingData.find(i => Number(i.id) === Number(building.buildingId));
-        if (!info || !info.stats.isMonster) return;
-        if (building.isConstructing || building.isDestroying) return;
-        if (building.hp !== undefined && building.hp <= 0) return;
+    const byId = getBuildingByIdMap(buildingData);
+    for (let i = 0; i < buildings.length; i++) {
+        const building = buildings[i];
+        const info = byId.get(Number(building.buildingId));
+        if (!info || !info.stats.isMonster) continue;
+        if (building.isConstructing || building.isDestroying) continue;
+        if (building.hp !== undefined && building.hp <= 0) continue;
         const zoneId = getMonsterZoneId(building);
         counts.set(zoneId, (counts.get(zoneId) || 0) + 1);
-    });
+    }
     return counts;
 }
 
