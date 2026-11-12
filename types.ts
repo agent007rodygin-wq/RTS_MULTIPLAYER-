@@ -228,6 +228,8 @@ export interface VisualEffect {
   targetY?: number;
   isTrebuchetRock?: boolean;
   isMortarShell?: boolean;
+  damage?: number;
+  text?: string;
 }
 
 export interface MarketListing {

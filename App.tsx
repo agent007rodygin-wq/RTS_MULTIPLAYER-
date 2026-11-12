@@ -15618,12 +15618,92 @@ const App: React.FC = () => {
             } else if (effect.type === 'explosion') {
                 const { x: expVX, y: expVY } = getClosestWrappedWorldCoords(effect.x, effect.y, renderCenterX, renderCenterY, isWorldWrapped);
                 const { screenX: expScreenX, screenY: expScreenY } = worldToScreen(expVX, expVY, zoom);
-                const radius = scaledTileWidth * (0.5 + progress);
-                const opacity = 1.0 - progress;
-                context.beginPath();
-                context.arc(expScreenX, expScreenY, radius, 0, 2 * Math.PI);
-                context.fillStyle = `rgba(255, 69, 0, ${opacity})`;
-                context.fill();
+
+                // --- Authentic Gnomograd Explosion (showBoom) & Damage (showDelta) ---
+                const duration = effect.duration || 1000;
+                const elapsedMs = progress * duration;
+
+                // 1. Shockwave & Flash (showBoom - 380ms)
+                if (elapsedMs <= 380) {
+                    const n = elapsedMs / 380;
+                    const rOuter = (18 + 70 * n) * zoom;
+                    const rInner = (9 + 32 * n) * zoom;
+                    const alphaOuter = Math.max(0, 1 - n);
+                    const alphaInner = Math.max(0, 0.75 * (1 - n));
+
+                    // Inner fireball
+                    context.beginPath();
+                    context.arc(expScreenX, expScreenY, rInner, 0, 2 * Math.PI);
+                    context.fillStyle = `rgba(255, 185, 60, ${alphaInner})`;
+                    context.fill();
+
+                    // Outer shockwave ring
+                    context.beginPath();
+                    context.arc(expScreenX, expScreenY, rOuter, 0, 2 * Math.PI);
+                    context.lineWidth = Math.max(1, (6 * (1 - n) + 1.5) * zoom);
+                    context.strokeStyle = `rgba(255, 90, 2, ${alphaOuter})`;
+                    context.stroke();
+                }
+
+                // 2. Damage text popup (showDelta - 1000ms)
+                let textScale = 1.0;
+                let textAlpha = 1.0;
+                if (elapsedMs < 200) {
+                    const e = elapsedMs / 200;
+                    textScale = 1.5 * e;
+                    textAlpha = e;
+                } else if (elapsedMs < 300) {
+                    textScale = 1.5 - 0.5 * ((elapsedMs - 200) / 100);
+                } else if (elapsedMs < 800) {
+                    textScale = 1.0;
+                } else if (elapsedMs < 900) {
+                    textScale = 1.0 + 0.5 * ((elapsedMs - 800) / 100);
+                } else if (elapsedMs < 1000) {
+                    const e = (elapsedMs - 900) / 100;
+                    textScale = 1.5 * (1 - e);
+                    textAlpha = Math.max(0, 1 - e);
+                } else {
+                    textScale = 0;
+                    textAlpha = 0;
+                }
+
+                if (textScale > 0.05 && textAlpha > 0.05) {
+                    const dmg = effect.damage !== undefined ? effect.damage : (effect.text ? undefined : 40);
+                    const label = effect.text || "БУМ!";
+                    const numText = dmg !== undefined ? (dmg > 0 ? `−${dmg}` : `${dmg}`) : null;
+
+                    context.save();
+                    context.translate(expScreenX, expScreenY - 40 * zoom);
+                    context.scale(textScale * zoom, textScale * zoom);
+                    context.globalAlpha = textAlpha;
+
+                    context.textAlign = 'center';
+                    context.textBaseline = 'middle';
+                    context.shadowColor = 'rgba(255, 51, 0, 0.9)';
+                    context.shadowBlur = 10;
+                    context.lineJoin = 'round';
+
+                    // Label "БУМ!" (or "УРОН")
+                    const labelY = numText ? -16 : 0;
+                    context.font = "900 22px 'Arial Black', Impact, sans-serif";
+                    context.lineWidth = 4;
+                    context.strokeStyle = '#CC0000';
+                    context.strokeText(label, 0, labelY);
+                    context.fillStyle = '#FFE2EA';
+                    context.fillText(label, 0, labelY);
+
+                    // Damage number "-40"
+                    if (numText) {
+                        context.font = "900 38px 'Arial Black', Impact, sans-serif";
+                        context.lineWidth = 5;
+                        context.strokeStyle = '#CC0000';
+                        context.strokeText(numText, 0, 18);
+                        context.fillStyle = '#FFFFFF';
+                        context.fillText(numText, 0, 18);
+                    }
+
+                    context.restore();
+                }
             } else if (effect.type === 'shot') {
                 const { x: startVX, y: startVY } = getClosestWrappedWorldCoords(effect.x, effect.y, renderCenterX, renderCenterY, isWorldWrapped);
                 const { x: endVX, y: endVY } = getClosestWrappedWorldCoords(effect.targetX!, effect.targetY!, startVX, startVY, isWorldWrapped);
@@ -16024,8 +16104,10 @@ const App: React.FC = () => {
                             x: liveTargetX,
                             y: liveTargetY,
                             type: 'explosion',
+                            damage: 10,
+                            text: 'БУМ!',
                             startTime: now,
-                            duration: 1200,
+                            duration: 1000,
                         }));
 
                         // Target must be a monster or an enemy building (never friendly fire on own buildings)
@@ -16332,8 +16414,10 @@ const App: React.FC = () => {
                             x: liveTargetX,
                             y: liveTargetY,
                             type: 'explosion',
+                            damage: 10,
+                            text: 'БУМ!',
                             startTime: now,
-                            duration: 1200,
+                            duration: 1000,
                         }));
 
                         // Target must be a monster!
@@ -16840,6 +16924,16 @@ const App: React.FC = () => {
                         const monsterIsNeutral = monsterOwnerId === 'monster' || monsterOwnerId === '-1' || monsterOwnerId === '0';
                         damageInitiatorMap.set(targetDamageKey, monsterIsNeutral ? null : monsterOwnerId);
                         const recipientIds = [targetDamageKey];
+                        visualEffectsRef.current.push(createVisualEffect({
+                            id: Date.now() + Math.random(),
+                            x: target.x,
+                            y: target.y,
+                            type: 'explosion',
+                            damage: dmg,
+                            text: 'БУМ!',
+                            startTime: now,
+                            duration: 1000,
+                        }));
                         if (isMonsterDiagEnabled()) {
                             console.log("[MONSTER DAMAGE RECIPIENTS]", {
                                 attackId,
@@ -17645,6 +17739,7 @@ const App: React.FC = () => {
                             x: updatedB.x,
                             y: updatedB.y,
                             type: 'explosion',
+                            text: 'БУМ!',
                             startTime: now,
                             duration: 1000
                         });
