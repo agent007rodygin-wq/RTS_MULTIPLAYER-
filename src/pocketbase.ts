@@ -1,4 +1,5 @@
 import PocketBase, { RecordModel } from 'pocketbase';
+import { ZONE_SIZE } from './world.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>;
@@ -653,7 +654,7 @@ function wrapData(collectionName: string, docData: any): any {
     const effX = Number(result.x !== undefined ? result.x : docData?.x);
     const effY = Number(result.y !== undefined ? result.y : docData?.y);
     if (Number.isFinite(effX) && Number.isFinite(effY)) {
-      const computedZoneId = `${Math.floor(effX / 40)}_${Math.floor(effY / 40)}`;
+      const computedZoneId = `${Math.floor(effX / ZONE_SIZE)}_${Math.floor(effY / ZONE_SIZE)}`;
       if (!result.data) result.data = {};
       result.data.zoneId = computedZoneId;
       result.zoneId = computedZoneId;
@@ -813,7 +814,7 @@ function unwrapData(record: RecordModel): AnyRecord {
     const effX = Number(data.x);
     const effY = Number(data.y);
     if (Number.isFinite(effX) && Number.isFinite(effY)) {
-      data.zoneId = `${Math.floor(effX / 40)}_${Math.floor(effY / 40)}`;
+      data.zoneId = `${Math.floor(effX / ZONE_SIZE)}_${Math.floor(effY / ZONE_SIZE)}`;
     }
   }
   
@@ -1827,7 +1828,7 @@ export async function updateDoc(
       const effX = Number(payload.x !== undefined ? payload.x : (resolved.x !== undefined ? resolved.x : (current.x !== undefined ? current.x : currentRawDataJson?.x)));
       const effY = Number(payload.y !== undefined ? payload.y : (resolved.y !== undefined ? resolved.y : (current.y !== undefined ? current.y : currentRawDataJson?.y)));
       if (Number.isFinite(effX) && Number.isFinite(effY)) {
-        const computedZone = `${Math.floor(effX / 40)}_${Math.floor(effY / 40)}`;
+        const computedZone = `${Math.floor(effX / ZONE_SIZE)}_${Math.floor(effY / ZONE_SIZE)}`;
         if (!payload.data) payload.data = {};
         payload.data.zoneId = computedZone;
         payload.zoneId = computedZone;

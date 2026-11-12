@@ -409,23 +409,25 @@ import {
 const ZONE_SYNC_MAX_RETRIES = 2;
 const ZONE_SYNC_RETRY_DELAY_MS = 1500;
 const RENDER_RADIUS = 50; // Full visible viewport coverage for all zoom levels (0.5 to 2.0) and wide monitors
+const ZONE_EDGE_PRELOAD_MARGIN = 65; // Preload neighbor sectors only when camera nears a sector border (> RENDER_RADIUS)
+const MONSTER_AI_ACTIVE_RADIUS = 75; // Only claim/step wild monster AI within active radius of player camera
 const GOLD_PER_CHOP = 5000000;
 const TREE_HP = 3;
 const TREE_SERVER_HIT_ENERGY_COST = 2;
 const TREES_PER_ZONE = 243; // 243 trees per sector (-10% from 270)
 const NUM_TREES = TREES_PER_ZONE * ZONES_X * ZONES_Y; // 6075 total trees (243 ? 25 sectors)
-const MAX_OIL_DEPOSITS = 8;
+const MAX_OIL_DEPOSITS = 10;
 const MAX_CHESTS = 15;
-const MAX_QUARRIES = 6;
+const MAX_QUARRIES = 8;
 // WASD camera panning speed (pixels per second in screen space)
 // 30% slower than typical mouse drag (~1000 px/sec): 1000 * 0.70 = 700 px/sec.
 const WASD_PAN_SPEED_NORMAL = 700;
 const WASD_PAN_SPEED_SPRINT = 1000;
-const BASE_WILD_MONSTERS_PER_ZONE = 5;
-const WILD_MONSTER_EXTRA_ZONE_COUNT = 4;
-const TARGET_WILD_MONSTERS_TOTAL = 129;
-const WILD_MONSTER_CROWDING_SOFT_CAP = 5;
-const WILD_MONSTER_CROWDING_HARD_CAP = 6;
+const BASE_WILD_MONSTERS_PER_ZONE = 124;
+const WILD_MONSTER_EXTRA_ZONE_COUNT = 0;
+const TARGET_WILD_MONSTERS_TOTAL = BASE_WILD_MONSTERS_PER_ZONE * ZONES_X * ZONES_Y;
+const WILD_MONSTER_CROWDING_SOFT_CAP = 135;
+const WILD_MONSTER_CROWDING_HARD_CAP = 150;
 const MAX_WILD_MONSTERS_PER_ZONE = 4; // 4 random types (out of 5) per sector
 const MAX_WILD_MONSTERS_TOTAL = 100; // 25 РЎРѓР ВµР С”РЎвЂљР С•РЎР‚Р С•Р Р† ? 4 Р СР С•Р Р…РЎРѓРЎвЂљРЎР‚Р В°
 const MONSTER_RESPAWN_TIME = 60000; // 60 РЎРѓР ВµР С”РЎС“Р Р…Р Т‘ (1 Р СР С‘Р Р…РЎС“РЎвЂљР В° Р С”РЎС“Р В»Р Т‘Р В°РЎС“Р Р… Р С—Р С•РЎРѓР В»Р Вµ РЎС“Р Р…Р С‘РЎвЂЎРЎвЂљР С•Р В¶Р ВµР Р…Р С‘РЎРЏ)
@@ -1139,8 +1141,8 @@ const royalKingCrownImageUrl = '/Gui/GUI_Menu/Королевские выбор�
 const policeBadgeImageUrl = '/Gui/GUI_Menu/жетон полиции нравов в меню/325999-2.webp';
 const ZONE_RING_ONE_DELAY_MS = 900;
 const ZONE_RING_TWO_DELAY_MS = 2200;
-const WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE = 10;
-const WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE = 25;
+const WORLD_MONSTER_SWEEP_ZONES_PER_CYCLE = 1;
+const WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE = 15;
 const WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER = 6;
 
 // Monster movement, targeting, IDs — canonical modules
@@ -1224,6 +1226,9 @@ function getCrowdingEscapeMove(
         const wrappedX = isWrappedWorld ? wrapCoord(nx, ZONES_X) : nx;
         const wrappedY = isWrappedWorld ? wrapCoord(ny, ZONES_Y) : ny;
         const neighborZoneId = `${wrappedX}_${wrappedY}`;
+        if (!zoneCounts.has(neighborZoneId)) {
+            return;
+        }
         const neighborCount = zoneCounts.get(neighborZoneId) || 0;
 
         if (isSparseZone && (neighborCount >= currentCount || currentCount <= 1)) {
@@ -5442,8 +5447,12 @@ const App: React.FC = () => {
     }, [isAuthReady, user]);
 
     const [currentZones, setCurrentZones] = useState<string[]>([]);
-    const [zoneLoadRing, setZoneLoadRing] = useState(0); // 0=center only, 1=+cardinal, 2=+diagonal (full 3x3)
+    const [zoneLoadRing, setZoneLoadRing] = useState(0); // 0=center only, 1=+needed edge cardinals, 2=+needed corner
     const [centerZone, setCenterZone] = useState<string>(''); // Track current center zone for ring reset
+    const [zoneEdgeOffsets, setZoneEdgeOffsets] = useState<{ left: boolean; right: boolean; top: boolean; bottom: boolean }>({
+        left: false, right: false, top: false, bottom: false
+    });
+    const cameraWorldCenterRef = useRef<{ x: number; y: number } | null>(null);
     const zoneLoadRingRef = useRef(0);
     useEffect(() => { zoneLoadRingRef.current = zoneLoadRing; }, [zoneLoadRing]);
     useEffect(() => { currentZonesRef.current = currentZones; }, [currentZones]);
@@ -5502,6 +5511,7 @@ const App: React.FC = () => {
 
         const worldX = (isoY + isoX) / 2;
         const worldY = (isoY - isoX) / 2;
+        cameraWorldCenterRef.current = { x: worldX, y: worldY };
 
         // Realtime URL hash camera coordinates (#X,Y) like Gnomograd
         const normWorldX = isWorldWrapped ? wrapCoord(Math.round(worldX), WORLD_WIDTH_TILES) : Math.round(worldX);
@@ -5513,16 +5523,34 @@ const App: React.FC = () => {
             } catch {}
         }
 
-        const zX = Math.floor(worldX / ZONE_SIZE);
-        const zY = Math.floor(worldY / ZONE_SIZE);
-        const newCenter = isWorldWrapped
-            ? `${wrapCoord(zX, ZONES_X)}_${wrapCoord(zY, ZONES_Y)}`
-            : `${Math.max(0, Math.min(ZONES_X - 1, zX))}_${Math.max(0, Math.min(ZONES_Y - 1, zY))}`;
+        const effWorldX = isWorldWrapped
+            ? wrapCoord(Math.floor(worldX), WORLD_WIDTH_TILES)
+            : Math.max(0, Math.min(WORLD_WIDTH_TILES - 1, Math.floor(worldX)));
+        const effWorldY = isWorldWrapped
+            ? wrapCoord(Math.floor(worldY), WORLD_HEIGHT_TILES)
+            : Math.max(0, Math.min(WORLD_HEIGHT_TILES - 1, Math.floor(worldY)));
+
+        const zX = Math.floor(effWorldX / ZONE_SIZE);
+        const zY = Math.floor(effWorldY / ZONE_SIZE);
+        const newCenter = `${zX}_${zY}`;
+
+        const localX = effWorldX - zX * ZONE_SIZE;
+        const localY = effWorldY - zY * ZONE_SIZE;
+        const hyst = 8; // Hysteresis prevents subscription churn when walking near edge threshold
+        setZoneEdgeOffsets(prev => {
+            const left = prev.left ? localX < ZONE_EDGE_PRELOAD_MARGIN + hyst : localX < ZONE_EDGE_PRELOAD_MARGIN;
+            const right = prev.right ? localX >= ZONE_SIZE - ZONE_EDGE_PRELOAD_MARGIN - hyst : localX >= ZONE_SIZE - ZONE_EDGE_PRELOAD_MARGIN;
+            const top = prev.top ? localY < ZONE_EDGE_PRELOAD_MARGIN + hyst : localY < ZONE_EDGE_PRELOAD_MARGIN;
+            const bottom = prev.bottom ? localY >= ZONE_SIZE - ZONE_EDGE_PRELOAD_MARGIN - hyst : localY >= ZONE_SIZE - ZONE_EDGE_PRELOAD_MARGIN;
+            if (prev.left === left && prev.right === right && prev.top === top && prev.bottom === bottom) {
+                return prev;
+            }
+            return { left, right, top, bottom };
+        });
 
         setCenterZone(prev => {
             if (prev === newCenter) return prev;
             // Only reset ring to 0 during initial load before session is fully ready.
-            // During active gameplay, keep ring 2 (all 9 surrounding zones) loaded to prevent textures popping.
             if (!initialLoadDone.current) {
                 setZoneLoadRing(0);
             }
@@ -5537,49 +5565,51 @@ const App: React.FC = () => {
     // Progressive ring expansion: advance ring 0 -> 1 -> 2 with short delays
     useEffect(() => {
         if (!centerZone) return;
-        // Ring 0 is immediate, then nearby sectors open quickly so the player sees local objects first.
+        // Ring 0 is immediate, then nearby edge sectors open quickly so the player sees local objects first.
         const t1 = setTimeout(() => setZoneLoadRing(r => Math.max(r, 1)), ZONE_RING_ONE_DELAY_MS);
         const t2 = setTimeout(() => setZoneLoadRing(r => Math.max(r, 2)), ZONE_RING_TWO_DELAY_MS);
         return () => { clearTimeout(t1); clearTimeout(t2); };
     }, [centerZone]);
 
-    const buildZoneList = useCallback((zoneId: string, maxRing: number): string[] => {
+    const buildZoneList = useCallback((
+        zoneId: string,
+        maxRing: number,
+        edges: { left: boolean; right: boolean; top: boolean; bottom: boolean } = { left: true, right: true, top: true, bottom: true }
+    ): string[] => {
         if (!zoneId) return [];
         const [czx, czy] = zoneId.split('_').map(Number);
         const zones: string[] = [zoneId];
 
+        const pushNeighbor = (dx: number, dy: number) => {
+            const nx = czx + dx;
+            const ny = czy + dy;
+            if (isWorldWrapped) {
+                zones.push(`${wrapCoord(nx, ZONES_X)}_${wrapCoord(ny, ZONES_Y)}`);
+            } else if (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y) {
+                zones.push(`${nx}_${ny}`);
+            }
+        };
+
         if (maxRing >= 1) {
-            const cardinals = [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 }];
-            cardinals.forEach(({ dx, dy }) => {
-                const nx = czx + dx;
-                const ny = czy + dy;
-                if (isWorldWrapped) {
-                    zones.push(`${wrapCoord(nx, ZONES_X)}_${wrapCoord(ny, ZONES_Y)}`);
-                } else if (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y) {
-                    zones.push(`${nx}_${ny}`);
-                }
-            });
+            if (edges.left) pushNeighbor(-1, 0);
+            if (edges.right) pushNeighbor(1, 0);
+            if (edges.top) pushNeighbor(0, -1);
+            if (edges.bottom) pushNeighbor(0, 1);
         }
 
         if (maxRing >= 2) {
-            const diagonals = [{ dx: -1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: -1 }, { dx: 1, dy: 1 }];
-            diagonals.forEach(({ dx, dy }) => {
-                const nx = czx + dx;
-                const ny = czy + dy;
-                if (isWorldWrapped) {
-                    zones.push(`${wrapCoord(nx, ZONES_X)}_${wrapCoord(ny, ZONES_Y)}`);
-                } else if (nx >= 0 && nx < ZONES_X && ny >= 0 && ny < ZONES_Y) {
-                    zones.push(`${nx}_${ny}`);
-                }
-            });
+            if (edges.left && edges.top) pushNeighbor(-1, -1);
+            if (edges.left && edges.bottom) pushNeighbor(-1, 1);
+            if (edges.right && edges.top) pushNeighbor(1, -1);
+            if (edges.right && edges.bottom) pushNeighbor(1, 1);
         }
 
         return Array.from(new Set(zones));
     }, [isWorldWrapped]);
 
     const currentBuildingZones = useMemo(
-        () => buildZoneList(centerZone, zoneLoadRing),
-        [buildZoneList, centerZone, zoneLoadRing]
+        () => buildZoneList(centerZone, zoneLoadRing, zoneEdgeOffsets),
+        [buildZoneList, centerZone, zoneLoadRing, zoneEdgeOffsets]
     );
 
     // Keep initial zone load scoped to the visible ring first, then expand progressively.
@@ -10802,123 +10832,11 @@ const App: React.FC = () => {
         return () => unsubscribeInitiated();
     }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
 
-    // Sync All Wild Monsters Globally from PocketBase
-    // Ensures all monsters across the entire map move and stay active even if player is far away
+    // Wild monsters and neutral terrain (-1) within active camera sectors are synced by qZoneBuildings.
+    // Avoid downloading all ~9,500 global records across all 25 sectors every snapshot.
     useEffect(() => {
-        if (!isAuthReady || !user) return;
-
-        const buildingsCol = collection(db, 'buildings');
-        const qMonsters = query(buildingsCol, where('ownerId', 'in', ['monster', '-1']));
-
-        let monsterSyncTimeout: NodeJS.Timeout | null = null;
-        const unsubscribeMonsters = onSnapshot(qMonsters, (snapshot) => {
-            const monstersMap = new Map<string, PlacedBuilding>();
-            snapshot.forEach((docSnap) => {
-                const data = docSnap.data() as PlacedBuilding;
-                const strId = String(docSnap.id);
-
-                if (isBuildingTombstoned(strId)) return;
-
-                monstersMap.set(strId, {
-                    ...data,
-                    id: strId,
-                    isLocal: false,
-                    status: 'normal',
-                    syncState: 'synced'
-                } as PlacedBuilding);
-            });
-
-            serverMonsterBuildingsRef.current = monstersMap;
-
-            // Immediately update placedBuildingsRef so canvas renders new positions on next frame at 60fps
-            const currentRefBuildings = placedBuildingsRef.current;
-            if (currentRefBuildings && currentRefBuildings.length > 0) {
-                let anyMoved = false;
-                const nextRefBuildings = currentRefBuildings.map(b => {
-                    const strId = String(b.id);
-                    const gameIdStr = b.gameId ? String(b.gameId) : '';
-                    const serverMonster = monstersMap.get(strId) || (gameIdStr ? monstersMap.get(gameIdStr) : undefined);
-                    if (serverMonster) {
-                        const localMoveTime = b.lastMoveTime || 0;
-                        const serverMoveTime = serverMonster.lastMoveTime || 0;
-                        const isServerPosStale = localMoveTime > serverMoveTime;
-                        const hasPosChange = !isServerPosStale && (b.x !== serverMonster.x || b.y !== serverMonster.y);
-                        const hasHpChange = b.hp !== serverMonster.hp;
-                        const hasAttackChange = (serverMonster.lastAttackTime || 0) > (b.lastAttackTime || 0);
-                        const hasMoveChange = serverMoveTime > localMoveTime;
-
-                        if (hasPosChange || hasHpChange || hasAttackChange || hasMoveChange) {
-                            anyMoved = true;
-
-                            // Sync attack animation refs immediately so observer plays attack anim
-                            const serverAttackTime = serverMonster.lastAttackTime || 0;
-                            if (serverAttackTime > 0) {
-                                monsterAttackTimeRef.current.set(strId, serverAttackTime);
-                                if (gameIdStr) monsterAttackTimeRef.current.set(gameIdStr, serverAttackTime);
-                                monsterAttackCancelTimeRef.current.delete(strId);
-                                if (gameIdStr) monsterAttackCancelTimeRef.current.delete(gameIdStr);
-                            }
-                            const serverAttackDir = (serverMonster as any).attackDir;
-                            if (serverAttackDir && typeof serverAttackDir.dx === 'number' && typeof serverAttackDir.dy === 'number') {
-                                monsterAttackDirectionRef.current.set(strId, serverAttackDir);
-                                if (gameIdStr) monsterAttackDirectionRef.current.set(gameIdStr, serverAttackDir);
-                            }
-
-                            // Sync movement animation & facing direction immediately
-                            if (hasPosChange) {
-                                const dx = Math.sign(serverMonster.x - b.x);
-                                const dy = Math.sign(serverMonster.y - b.y);
-                                if (dx !== 0 || dy !== 0) {
-                                    monsterDirectionRef.current.set(strId, { dx, dy });
-                                    if (gameIdStr) monsterDirectionRef.current.set(gameIdStr, { dx, dy });
-                                }
-                            }
-                            const serverDir = (serverMonster as any).direction;
-                            if (serverDir && typeof serverDir.dx === 'number' && typeof serverDir.dy === 'number') {
-                                monsterDirectionRef.current.set(strId, serverDir);
-                                if (gameIdStr) monsterDirectionRef.current.set(gameIdStr, serverDir);
-                            }
-                            if (serverMoveTime > 0) {
-                                monsterLastMoveTimeRef.current.set(strId, serverMoveTime);
-                                if (gameIdStr) monsterLastMoveTimeRef.current.set(gameIdStr, serverMoveTime);
-                            }
-
-                            return {
-                                ...b,
-                                x: isServerPosStale ? b.x : serverMonster.x,
-                                y: isServerPosStale ? b.y : serverMonster.y,
-                                zoneId: isServerPosStale ? b.zoneId : serverMonster.zoneId,
-                                hp: serverMonster.hp,
-                                lastMoveTime: Math.max(localMoveTime, serverMoveTime),
-                                lastAttackTime: Math.max(b.lastAttackTime || 0, serverAttackTime),
-                                attackDir: serverAttackDir || (b as any).attackDir,
-                                direction: serverDir || (b as any).direction,
-                            };
-                        }
-                    }
-                    return b;
-                });
-                if (anyMoved) {
-                    placedBuildingsRef.current = nextRefBuildings;
-                }
-            }
-
-            // Coalesce full React component re-renders to at most once per 800ms
-            if (!monsterSyncTimeout) {
-                monsterSyncTimeout = setTimeout(() => {
-                    monsterSyncTimeout = null;
-                    updatePlacedBuildingsFromServer(((snapshot as any).__auditSource as BuildingTimerTraceSource | undefined) || 'onSnapshot');
-                }, 800);
-            }
-        }, (error) => {
-            handleFirestoreError(error, OperationType.GET, 'buildings_monsters');
-        });
-
-        return () => {
-            if (monsterSyncTimeout) clearTimeout(monsterSyncTimeout);
-            unsubscribeMonsters();
-        };
-    }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
+        serverMonsterBuildingsRef.current = new Map();
+    }, [isAuthReady, user]);
 
     // Sync All Clan Buildings Globally from PocketBase
     // Ensures all Bandit Castles and Watchtowers across the entire map
@@ -15817,6 +15735,15 @@ const App: React.FC = () => {
                     return false;
                 }
 
+                // Limit wild monster host claiming and stepping to active radius around player camera
+                const camCenter = cameraWorldCenterRef.current;
+                if (camCenter && (b.ownerId === "monster" || b.ownerId === "0" || b.ownerId === "-1")) {
+                    const distToCam = getWrappedChebyshevDistance(b, camCenter, isWorldWrapped);
+                    if (distToCam > MONSTER_AI_ACTIVE_RADIUS) {
+                        return false;
+                    }
+                }
+
                 const zoneStatus = zonePlacementStatusRef.current.get(monsterZone);
                 if (!zoneStatus || !zoneStatus.buildingsLoaded) {
                     return false;
@@ -18621,52 +18548,51 @@ const App: React.FC = () => {
                     )
                     .sort((a, b) => String(a.id).localeCompare(String(b.id)));
 
-                for (const extraBoss of activeBronekurs.slice(1)) {
-                    const localId = String(extraBoss.id);
-                    const source = 'duplicate_bronekur';
-                    try {
-                        if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
-                            console.log("[MONSTER DELETE SKIPPED]", {
-                                localId,
-                                source,
-                                reason: "already_deleting_or_tombstoned",
-                                timestamp: Date.now(),
-                            });
-                            continue;
-                        }
-                        console.log("[MONSTER DELETE REQUEST]", {
-                            localId,
-                            source,
-                            buildingId: extraBoss.buildingId,
-                            zoneId: extraBoss.zoneId,
-                            x: extraBoss.x,
-                            y: extraBoss.y,
-                            currentUserId: userRef.current?.uid,
-                            timestamp: Date.now(),
-                        });
-                        removeBuildingFromSnapshotCaches(localId);
-                        await deleteDoc(doc(db, 'buildings', localId));
-                        console.log("[MONSTER DELETE COMPLETED]", {
-                            localId,
-                            source,
-                            timestamp: Date.now(),
-                        });
-                        occupied.delete(`${extraBoss.x},${extraBoss.y}`);
-                        deletedDuplicates++;
-                    } catch (err) {
-                        console.error('[MonsterSpawn] Failed to delete duplicate Bronekur:', err);
-                    }
+                // Keep up to 1 Bronekur per sector rather than deleting 24 across the 5x5 world
+                const bronekursByZone = new Map<string, PlacedBuilding[]>();
+                for (const boss of activeBronekurs) {
+                    const bZone = boss.zoneId || getZoneId(boss.x, boss.y);
+                    const list = bronekursByZone.get(bZone) || [];
+                    list.push(boss);
+                    bronekursByZone.set(bZone, list);
                 }
 
-                const primaryBronekur = activeBronekurs[0];
-                if (primaryBronekur && (primaryBronekur.hp !== BRONEKUR_BOSS_HP || primaryBronekur.maxHp !== BRONEKUR_BOSS_HP)) {
-                    try {
-                        await updateDoc(doc(db, 'buildings', String(primaryBronekur.id)), {
-                            hp: BRONEKUR_BOSS_HP,
-                            maxHp: BRONEKUR_BOSS_HP
-                        });
-                    } catch (err) {
-                        console.error('[MonsterSpawn] Failed to normalize Bronekur HP:', err);
+                for (const zoneBosses of bronekursByZone.values()) {
+                    for (const extraBoss of zoneBosses.slice(1)) {
+                        const localId = String(extraBoss.id);
+                        const source = 'duplicate_bronekur';
+                        try {
+                            if (isBuildingDeleting(localId) || isBuildingTombstoned(localId)) {
+                                console.log("[MONSTER DELETE SKIPPED]", {
+                                    localId,
+                                    source,
+                                    reason: "already_deleting_or_tombstoned",
+                                    timestamp: Date.now(),
+                                });
+                                continue;
+                            }
+                            console.log("[MONSTER DELETE REQUEST]", {
+                                localId,
+                                source,
+                                buildingId: extraBoss.buildingId,
+                                zoneId: extraBoss.zoneId,
+                                x: extraBoss.x,
+                                y: extraBoss.y,
+                                currentUserId: userRef.current?.uid,
+                                timestamp: Date.now(),
+                            });
+                            removeBuildingFromSnapshotCaches(localId);
+                            await deleteDoc(doc(db, 'buildings', localId));
+                            console.log("[MONSTER DELETE COMPLETED]", {
+                                localId,
+                                source,
+                                timestamp: Date.now(),
+                            });
+                            occupied.delete(`${extraBoss.x},${extraBoss.y}`);
+                            deletedDuplicates++;
+                        } catch (err) {
+                            console.error('[MonsterSpawn] Failed to delete duplicate Bronekur:', err);
+                        }
                     }
                 }
 
@@ -18956,10 +18882,10 @@ const App: React.FC = () => {
             if (spawned > 0) console.log(`[MonsterSpawn] Spawned ${spawned} monsters this cycle`);
         };
 
-        monsterSpawnIntervalRef.current = setInterval(runSpawnCycle, 15000);
+        monsterSpawnIntervalRef.current = setInterval(runSpawnCycle, 30000);
 
-        // Run once after 5 seconds for initial population
-        monsterSpawnInitialTimeoutRef.current = setTimeout(runSpawnCycle, 5000);
+        // Run once after 10 seconds for initial population
+        monsterSpawnInitialTimeoutRef.current = setTimeout(runSpawnCycle, 10000);
 
         return () => {
             if (effectId === monsterSpawnEffectIdRef.current) {

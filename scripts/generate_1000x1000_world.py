@@ -194,6 +194,7 @@ def main():
                             "ownerId": "-1",
                             "ownerName": "Система",
                             "data": {
+                                "zoneId": zone_id,
                                 "hp": 999999,
                                 "maxHp": 999999,
                                 "isConstructing": False,
@@ -229,6 +230,7 @@ def main():
                             "ownerId": "-1",
                             "ownerName": "Система",
                             "data": {
+                                "zoneId": zone_id,
                                 "hp": 999999,
                                 "maxHp": 999999,
                                 "isConstructing": False,
@@ -295,6 +297,7 @@ def main():
                                 "ownerId": "monster",
                                 "ownerName": "Монстр",
                                 "data": {
+                                    "zoneId": zone_id,
                                     "hp": m_hp,
                                     "maxHp": m_hp,
                                     "isActive": True,
@@ -342,15 +345,32 @@ def main():
     batch_insert(token, "map_resources", resources_to_create)
 
     # 4. Запись статуса карты в map_state
+    map_state_payload = {
+        "id": "status000000000",
+        "gameId": "status",
+        "data": {
+            "gameId": "status",
+            "generated": True,
+            "seed": 777,
+            "terrainRepairVersion": 1,
+        },
+    }
     try:
         req = urllib.request.Request(
             f"{PB_URL}/api/collections/map_state/records",
-            data=json.dumps({"id": "status", "generated": True, "seed": 777}).encode(),
-            headers={"Authorization": token, "Content-Type": "application/json"}
+            data=json.dumps(map_state_payload).encode(),
+            headers={"Authorization": token, "Content-Type": "application/json"},
+            method="POST",
         )
         urllib.request.urlopen(req)
     except Exception:
-        pass
+        req = urllib.request.Request(
+            f"{PB_URL}/api/collections/map_state/records/status000000000",
+            data=json.dumps(map_state_payload).encode(),
+            headers={"Authorization": token, "Content-Type": "application/json"},
+            method="PATCH",
+        )
+        urllib.request.urlopen(req)
 
     print("\n🎉 ГОТОВО! Карта 1000x1000 успешно сгенерирована!")
     print(f"  • Секторов: 25 (5x5 по 200x200 клеток)")
