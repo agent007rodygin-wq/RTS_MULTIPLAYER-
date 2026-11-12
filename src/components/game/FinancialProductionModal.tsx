@@ -1,5 +1,5 @@
 import React, { memo, useState, useEffect, useMemo } from 'react';
-import type { Building, PlacedBuilding } from '../../../types';
+import type { Building, KotofeySettings, TrollSettings, PlacedBuilding } from '../../../types';
 import { items as allItemsData } from '../../../data/items';
 import {
     getFinancialCollectCooldownStatus,
@@ -8,6 +8,11 @@ import {
     isProductiveBuilding,
     calculateBuildingBaseGoldYield
 } from '../../game/economy/productionCollectLogic';
+import { isKotofeyMonster, isHealerMonster } from '../../game/monsters/kotofeyLogic';
+import { isTrollMonster } from '../../game/monsters/trollLogic';
+import { getCustomMonsterScaledStats } from '../../game/monsters/statueBonusLogic';
+import { KotofeyControlsPanel } from './KotofeyControlsPanel';
+import { TrollControlsPanel } from './TrollControlsPanel';
 
 export interface FinancialProductionModalProps {
     isOpen: boolean;
@@ -29,6 +34,8 @@ export interface FinancialProductionModalProps {
     initialTab?: TabType;
     onSetMonsterMode?: (monsterId: string, mode: 'stand' | 'patrol') => void;
     onSetAllMonstersMode?: (mode: 'stand' | 'patrol') => void;
+    onUpdateKotofeySettings?: (monsterId: string, patch: Partial<KotofeySettings>) => void;
+    onUpdateTrollSettings?: (monsterId: string, patch: Partial<TrollSettings>) => void;
     onOpenMonstersShop?: () => void;
     userUid?: string;
 }
@@ -56,6 +63,8 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
     initialTab,
     onSetMonsterMode,
     onSetAllMonstersMode,
+    onUpdateKotofeySettings,
+    onUpdateTrollSettings,
     onOpenMonstersShop,
     userUid
 }) => {
@@ -993,15 +1002,31 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                         const maxDurability = monster.maxHp || (info.stats.durability ?? 100);
                                         const currentHp = monster.hp !== undefined ? monster.hp : maxDurability;
                                         const hpPercent = Math.max(0, Math.min(100, Math.round((currentHp / maxDurability) * 100)));
-                                        const damageValue = info.stats.damage || '4';
+                                        const isHealer = isHealerMonster(info.id);
+                                        const isTroll = isTrollMonster(info.id);
+                                        const isKotofey = isHealer;
+                                        const scaledStats = getCustomMonsterScaledStats({
+                                            buildingId: info.id,
+                                            ownerId: monster.ownerId,
+                                            buildings: placedBuildings,
+                                        });
+                                        const damageValue = isTroll
+                                            ? String(scaledStats.damageToBuilding)
+                                            : (info.stats.damage || '4');
+                                        const repairValue = (info.id === 70009 || info.id === 70010)
+                                            ? String(scaledStats.baseRepair)
+                                            : (info.stats.repair || '300');
                                         const hatesCategory = info.stats.hates || 'Вражеские постройки';
+                                        const lovesCategory = info.stats.loves || 'Подарки';
 
                                         return (
                                             <div
                                                 key={monster.id}
                                                 className={`rounded-2xl p-3.5 border transition-all duration-200 relative overflow-hidden shadow-md flex flex-col justify-between gap-3 ${
                                                     isPatrol
-                                                        ? 'bg-gradient-to-br from-rose-950/40 via-gray-900/95 to-purple-950/40 border-rose-500/50 shadow-rose-950/30'
+                                                        ? isKotofey
+                                                            ? 'bg-gradient-to-br from-emerald-950/45 via-gray-900/95 to-teal-950/40 border-emerald-500/50 shadow-emerald-950/30'
+                                                            : 'bg-gradient-to-br from-rose-950/40 via-gray-900/95 to-purple-950/40 border-rose-500/50 shadow-rose-950/30'
                                                         : 'bg-gradient-to-br from-sky-950/30 via-gray-900/95 to-slate-900 border-sky-500/40 shadow-sky-950/20'
                                                 }`}
                                             >
@@ -1010,7 +1035,9 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                                     <div className="flex items-center gap-3 min-w-0">
                                                         <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden border relative ${
                                                             isPatrol
-                                                                ? 'bg-rose-950/60 border-rose-500/50 shadow-inner'
+                                                                ? isKotofey
+                                                                    ? 'bg-emerald-950/60 border-emerald-500/50 shadow-inner'
+                                                                    : 'bg-rose-950/60 border-rose-500/50 shadow-inner'
                                                                 : 'bg-sky-950/60 border-sky-500/40 shadow-inner'
                                                         }`}>
                                                             {info.imageUrl ? (
@@ -1038,10 +1065,18 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                                             <div className="text-[11px] text-gray-300 flex items-center gap-2 mt-0.5">
                                                                 <span>📍 ({monster.x}, {monster.y})</span>
                                                                 <span>•</span>
-                                                                <span>💥 Урон: <b className="text-amber-300">{damageValue}</b></span>
+                                                                {isKotofey ? (
+                                                                    <span>🔧 Ремонт: <b className="text-emerald-300">+{repairValue}{scaledStats.defenderLevel > 0 && (info.id === 70009 || info.id === 70010) ? ` (Защитник ур.${scaledStats.defenderLevel})` : ''}</b></span>
+                                                                ) : (
+                                                                    <span>💥 Урон: <b className="text-amber-300">{damageValue}{isTroll ? ` (монстрам ${scaledStats.damageToMonster}${scaledStats.warriorLevel > 0 ? `, Воитель ур.${scaledStats.warriorLevel}` : ''})` : ''}</b></span>
+                                                                )}
                                                             </div>
                                                             <div className="text-[10px] text-gray-400 truncate mt-0.5">
-                                                                🎯 Приоритет: <span className="text-rose-300">{hatesCategory}</span>
+                                                                {isKotofey ? (
+                                                                    <>🎁 Любит: <span className="text-pink-300">{lovesCategory} (x2)</span></>
+                                                                ) : (
+                                                                    <>🎯 Приоритет: <span className="text-rose-300">{hatesCategory}</span></>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1049,10 +1084,17 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                                     {/* Status Badge */}
                                                     <div className="flex-shrink-0">
                                                         {isPatrol ? (
-                                                            <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-950/90 to-rose-900/90 text-rose-200 border border-rose-500/50 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm animate-pulse">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
-                                                                ⚔️ В патруле
-                                                            </span>
+                                                            isKotofey ? (
+                                                                <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-950/90 to-teal-900/90 text-emerald-200 border border-emerald-500/50 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm animate-pulse">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                                                    💚 В патруле
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-950/90 to-rose-900/90 text-rose-200 border border-rose-500/50 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm animate-pulse">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                                                                    ⚔️ В патруле
+                                                                </span>
+                                                            )
                                                         ) : (
                                                             <span className="inline-flex items-center gap-1 bg-sky-950/90 text-sky-200 border border-sky-500/50 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm">
                                                                 🛑 На месте
@@ -1104,12 +1146,14 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                                         onClick={() => onSetMonsterMode && onSetMonsterMode(monsterDocId, 'patrol')}
                                                         className={`flex-1 py-1.5 px-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
                                                             isPatrol
-                                                                ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border-2 border-rose-300 shadow-rose-600/30 font-black'
+                                                                ? isKotofey
+                                                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-2 border-emerald-300 shadow-emerald-600/30 font-black'
+                                                                    : 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white border-2 border-rose-300 shadow-red-600/30 font-black'
                                                                 : 'bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60'
                                                         }`}
-                                                        title="Монстр патрулирует район и атакует чужие постройки"
+                                                        title={isKotofey ? 'Котофей патрулирует и ремонтирует постройки' : 'Монстр патрулирует район и атакует чужие постройки'}
                                                     >
-                                                        <span>⚔️</span>
+                                                        <span>{isKotofey ? '💚' : '⚔️'}</span>
                                                         <span>Патрулировать</span>
                                                     </button>
 
@@ -1124,6 +1168,24 @@ export const FinancialProductionModal: React.FC<FinancialProductionModalProps> =
                                                         </button>
                                                     )}
                                                 </div>
+
+                                                {isKotofey && onUpdateKotofeySettings && (
+                                                    <KotofeyControlsPanel
+                                                        compact
+                                                        buildingId={info.id}
+                                                        settings={monster.kotofeySettings}
+                                                        onChange={(patch) => onUpdateKotofeySettings(monsterDocId, patch)}
+                                                    />
+                                                )}
+                                                {isTroll && onUpdateTrollSettings && (
+                                                    <TrollControlsPanel
+                                                        compact
+                                                        monsterMode={monster.monsterMode || 'stand'}
+                                                        trollSettings={monster.trollSettings}
+                                                        onSetMode={(mode) => onSetMonsterMode && onSetMonsterMode(monsterDocId, mode)}
+                                                        onChange={(patch) => onUpdateTrollSettings(monsterDocId, patch)}
+                                                    />
+                                                )}
                                             </div>
                                         );
                                     })}

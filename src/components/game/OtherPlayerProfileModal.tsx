@@ -1,8 +1,9 @@
-import React, { useState, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { CompassIcon } from '../../../components/IconComponents';
 import { BAN_OPTIONS, PUNISHMENT_OPTIONS, CURSE_OPTIONS } from '../../game/ui/actionOptions';
 import { AchievementsView } from './AchievementsView';
 import type { Building, PlacedBuilding } from '../../../types';
+import { repairMojibakeCp1251Utf8 } from '../../game/utils/mojibake.js';
 
 export interface PlayerStatusMeta {
     isOnline: boolean;
@@ -87,6 +88,41 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
     const [showBuildingsMenu, setShowBuildingsMenu] = useState(false);
     const [showAchievementsMenu, setShowAchievementsMenu] = useState(false);
     const [showMessageMenu, setShowMessageMenu] = useState(false);
+    const [fetchedStaticId, setFetchedStaticId] = useState<number | null>(null);
+
+    const targetUser = selectedPlayerId ? allUsers[selectedPlayerId] : undefined;
+    const isCurrentPlayer = selectedPlayerId === user?.uid;
+
+    useEffect(() => {
+        if (!selectedPlayerId) return;
+        const target = allUsers[selectedPlayerId];
+        const knownId = isCurrentPlayer
+            ? ((user as any)?.joinNumber || target?.joinNumber || target?.data?.joinNumber)
+            : (target?.joinNumber || target?.data?.joinNumber);
+
+        if (knownId && Number(knownId) > 0) {
+            setFetchedStaticId(Number(knownId));
+            return;
+        }
+
+        let cancelled = false;
+        fetch('/api/basingse/player-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: selectedPlayerId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!cancelled && data.success && typeof data.joinNumber === 'number') {
+                setFetchedStaticId(data.joinNumber);
+            }
+        })
+        .catch(() => {});
+
+        return () => { cancelled = true; };
+    }, [selectedPlayerId, isCurrentPlayer, allUsers, user]);
+
+    const targetStaticId = fetchedStaticId || targetUser?.joinNumber || targetUser?.data?.joinNumber || (isCurrentPlayer ? ((user as any)?.joinNumber || 1) : null);
 
     if (!isOpen || !selectedPlayerId) return null;
 
@@ -100,8 +136,6 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
         onClose();
     };
 
-    const targetUser = allUsers[selectedPlayerId];
-    const isCurrentPlayer = selectedPlayerId === user?.uid;
     const isSheriffOrDeputy = sheriffId === user?.uid || deputies.includes(user?.uid || '');
     const isTargetThief = !!activeThieves[selectedPlayerId];
 
@@ -269,7 +303,7 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
                         >
                             {targetUser?.selectedTitle && (
                                 <span className="text-yellow-400 font-extrabold text-[11px] bg-yellow-500/20 border border-yellow-500/40 px-2 py-0.5 rounded-full mr-2 shadow-sm font-sans">
-                                    [{targetUser.selectedTitle}]
+                                    [{repairMojibakeCp1251Utf8(targetUser.selectedTitle)}]
                                 </span>
                             )}
                             <span className="text-[25px] font-black text-white tracking-wide truncate drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] font-sans">
@@ -277,7 +311,7 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
                             </span>
                         </div>
 
-                        {/* Row 2: Level */}
+                        {/* Row 2: Level & Static ID */}
                         <div 
                             id="profile-level"
                             style={{
@@ -286,11 +320,29 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
                                 top: '38px',
                                 fontSize: '15px',
                                 color: '#c4b5d6',
-                                fontWeight: 600
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px'
                             }}
                             className="font-sans"
                         >
-                            Уровень: <span className="text-[#fbbf24] font-black text-[15px] ml-1 font-sans">{isCurrentPlayer ? playerLevel : (targetUser?.level || 1)}</span>
+                            <span>Уровень: <span className="text-[#fbbf24] font-black text-[15px] ml-1 font-sans">{isCurrentPlayer ? playerLevel : (targetUser?.level || 1)}</span></span>
+                            {targetStaticId ? (
+                                <span 
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[13px] font-black tracking-wide select-none"
+                                    style={{
+                                        background: 'rgba(234, 179, 8, 0.15)',
+                                        borderColor: 'rgba(234, 179, 8, 0.4)',
+                                        color: '#facc15',
+                                        textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                                        fontFamily: 'monospace'
+                                    }}
+                                    title={`Паспорт гражданина (статик: #${targetStaticId})`}
+                                >
+                                    #{targetStaticId}
+                                </span>
+                            ) : null}
                         </div>
 
                         {/* Row 3: Stats (Trophy + Shield) */}

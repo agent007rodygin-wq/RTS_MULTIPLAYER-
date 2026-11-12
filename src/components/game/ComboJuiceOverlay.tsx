@@ -56,11 +56,31 @@ export const ComboJuiceOverlay: React.FC<ComboJuiceOverlayProps> = ({
         }
     }, [levelUpCelebration]);
 
-    // Smooth animation tick for floating items, combo countdown, and canvas confetti
+    // Smooth animation tick for floating items, combo countdown, and canvas confetti (sleeps when idle)
     useEffect(() => {
-        let frameId: number;
+        let frameId: number = 0;
+        let isRunning = true;
+
         const tick = () => {
+            if (!isRunning) return;
+
             const currentNow = Date.now();
+            const hasParticles = particlesRef.current.length > 0;
+            const hasFloating = floatingItems.some(item => (currentNow - item.createdAt) < item.durationMs);
+            const isComboActiveNow = comboState.comboCount >= 2 && (currentNow - comboState.lastHitTime <= comboState.comboTimeoutMs);
+
+            // If nothing is animating, sleep until next trigger to save 100% idle CPU
+            if (!hasParticles && !hasFloating && !isComboActiveNow && !levelUpCelebration) {
+                const canvas = confettiCanvasRef.current;
+                if (canvas && typeof window !== 'undefined') {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+                }
+                return;
+            }
+
             setNow(currentNow);
 
             // Animate Confetti on Canvas
@@ -98,8 +118,11 @@ export const ComboJuiceOverlay: React.FC<ComboJuiceOverlayProps> = ({
             frameId = requestAnimationFrame(tick);
         };
         frameId = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(frameId);
-    }, []);
+        return () => {
+            isRunning = false;
+            if (frameId) cancelAnimationFrame(frameId);
+        };
+    }, [floatingItems.length, comboState.comboCount, comboState.lastHitTime, levelUpCelebration]);
 
     const zoom = ZOOM_LEVELS[zoomIndex] || 1;
     const isComboActive = comboState.comboCount >= 2 && (now - comboState.lastHitTime <= comboState.comboTimeoutMs);
@@ -330,7 +353,7 @@ export const ComboJuiceOverlay: React.FC<ComboJuiceOverlayProps> = ({
                     >
                         {isLevelUpItem ? (
                             <div
-                                className="px-4 py-2 rounded-2xl border-2 shadow-2xl flex items-center gap-2 whitespace-nowrap backdrop-blur-md"
+                                className="px-4 py-2 rounded-2xl border-2 shadow-2xl flex items-center gap-2 whitespace-nowrap bg-slate-950/95"
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(24, 20, 10, 0.94) 0%, rgba(10, 10, 15, 0.96) 100%)',
                                     borderColor: item.color,
@@ -407,7 +430,7 @@ export const ComboJuiceOverlay: React.FC<ComboJuiceOverlayProps> = ({
                     }}
                 >
                     <div
-                        className="relative px-6 md:px-10 py-3.5 md:py-4 rounded-3xl border-2 flex flex-col items-center gap-1 overflow-hidden backdrop-blur-lg"
+                        className="relative px-6 md:px-10 py-3.5 md:py-4 rounded-3xl border-2 flex flex-col items-center gap-1 overflow-hidden bg-slate-950/95"
                         style={{
                             background: 'linear-gradient(135deg, rgba(28, 22, 10, 0.96) 0%, rgba(14, 12, 22, 0.98) 100%)',
                             borderColor: levelUpCelebration.color,
@@ -468,7 +491,7 @@ export const ComboJuiceOverlay: React.FC<ComboJuiceOverlayProps> = ({
                     }}
                 >
                     <div
-                        className="px-4 py-2 rounded-2xl border-2 shadow-2xl backdrop-blur-md flex items-center gap-3 relative overflow-hidden"
+                        className="px-4 py-2 rounded-2xl border-2 shadow-2xl bg-slate-950/95 flex items-center gap-3 relative overflow-hidden"
                         style={{
                             background: 'linear-gradient(135deg, rgba(20, 20, 35, 0.92) 0%, rgba(10, 10, 20, 0.96) 100%)',
                             borderColor: tier.color,

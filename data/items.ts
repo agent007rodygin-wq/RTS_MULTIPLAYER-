@@ -464,5 +464,47 @@ export const items: Item[] = [
     description: 'Легкое оружие быстрого крафта из петард и досок. Наносит взрывной урон зданиям и монстрам.',
     imageUrl: '/Gui/firecracker_bundle.svg',
     rubyPackQuantity: 10
+  },
+  {
+    id: 10051,
+    name: 'Кости',
+    englishName: 'Bones',
+    category: 'Ресурсы',
+    description: 'Останки поверженных монстров. В чане из них можно приготовить костяную муку (3 кости = 1 мука).',
+    imageUrl: '/items/bones.webp',
+    rubyPackQuantity: 5
+  },
+  {
+    id: 10052,
+    name: 'Костяная мука',
+    englishName: 'Bone Meal',
+    category: 'Расходники',
+    description: 'Питательное органическое удобрение. Мгновенно ускоряет рост грядки, переводя её на следующий уровень развития.',
+    imageUrl: '/items/bone_meal.webp',
+    rubyPackQuantity: 3
+  },
+  {
+    id: 10053,
+    name: 'Котофей',
+    englishName: 'Kotofey',
+    category: 'Расходники',
+    description: 'Ходит и ремонтирует всё что под руку попадется: дома, монстров. Странный он... Нажмите «Поставить», чтобы выпустить Котофея на карту.',
+    imageUrl: '/buildings/Монстры/Котофей/70007.webp'
+  },
+  {
+    id: 10054,
+    name: 'Тролль',
+    englishName: 'Troll',
+    category: 'Расходники',
+    description: 'Злой и неуклюжий. Но обладает уникальной способностью заставлять гномов работать рядом с заводом или грядкой. Нажмите «Поставить», чтобы выпустить Тролля на карту.',
+    imageUrl: '/buildings/Монстры/Тролль/70008.webp'
+  },
+  {
+    id: 10055,
+    name: 'Айболит',
+    englishName: 'Aibolit',
+    category: 'Расходники',
+    description: 'Любит и лечит зверушек, всех. Нажмите «Поставить», чтобы выпустить Айболита на карту.',
+    imageUrl: '/buildings/Монстры/Айболит/70009.webp'
   }
 ];

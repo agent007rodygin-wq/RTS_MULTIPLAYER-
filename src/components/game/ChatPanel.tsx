@@ -57,7 +57,7 @@ export interface ChatPanelProps {
     isLocationCooldown: boolean;
 }
 
-export const ChatPanel: React.FC<ChatPanelProps> = ({
+export const ChatPanel: React.FC<ChatPanelProps> = React.memo(({
     chatCollapseState,
     setChatCollapseState,
     activeChatTab,
@@ -182,7 +182,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                                                     )}
                                                     {msgTitle && (
                                                         <span className="text-yellow-400 font-extrabold text-xs mr-1 bg-yellow-500/10 border border-yellow-500/30 px-1.5 py-0.5 rounded shadow-sm inline-block">
-                                                            [{msgTitle}]
+                                                            [{uiText(msgTitle)}]
                                                         </span>
                                                     )}
                                                     <span
@@ -221,7 +221,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                                             return (
                                                 <div key={idx} className={`text-sm truncate flex items-center ${u.name === playerName ? 'text-green-400 font-bold' : 'text-gray-300'}`}>
                                                     {uTitle && (
-                                                        <span className="text-yellow-400 font-extrabold text-[10px] mr-1 truncate">[{uTitle}]</span>
+                                                        <span className="text-yellow-400 font-extrabold text-[10px] mr-1 truncate">[{uiText(uTitle)}]</span>
                                                     )}
                                                     <span onClick={(e) => handleChatUserClick(u.name, u.uid, e)} className="cursor-pointer hover:text-white hover:underline truncate">{uiText(u.name)}</span>
                                                     <img src={getLevelIcon(allUsers[u.uid]?.level || 1)} className="w-5 h-5 ml-1 object-contain translate-y-[1%] shrink-0" alt="Level" />
@@ -289,4 +289,4 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             )}
         </div>
     );
-};
+});

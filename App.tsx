@@ -75,6 +75,7 @@ import type { LuckyWheelSector } from './src/components/game/LuckyWheel';
 import { MonsterAcademyModal } from './src/components/game/MonsterAcademyModal';
 import { WorldMapModal } from './src/components/game/WorldMapModal';
 import { ComboJuiceOverlay } from './src/components/game/ComboJuiceOverlay';
+import { PlayerNameplatesOverlay } from './src/components/game/PlayerNameplatesOverlay';
 import {
     ComboState,
     FloatingTextItem,
@@ -136,6 +137,12 @@ import {
     isUsableInventoryItem
 } from './src/game/crafting/craftingLogic';
 import { getItemQuickSellPrice } from './src/game/economy/quickSellLogic';
+import {
+    getNextGardenBedStage,
+    BONE_ITEM_ID,
+    BONE_MEAL_ITEM_ID,
+    CHAN_VAT_BUILDING_ID
+} from './src/game/farming/gardenBedLogic';
 import { ProfileModal, type ProfileTab } from './src/components/game/ProfileModal';
 import {
     ACHIEVEMENTS_DATA,
@@ -231,6 +238,24 @@ import {
     babaYagaAttackLeftFrames,
     babaYagaAttackBottomFrames,
     babaYagaAttackRightFrames,
+    KOTOFEY_FPS,
+    KOTOFEY_SHADOW_CENTER_X,
+    KOTOFEY_SHADOW_CENTER_Y,
+    KOTOFEY_SPRITE_WIDTH,
+    KOTOFEY_SPRITE_HEIGHT,
+    KOTOFEY_CANVAS_SCALE,
+    kotofeyIdleFrames,
+    kotofeyWalkBottomFrames,
+    kotofeyWalkLeftFrames,
+    kotofeyWalkRightFrames,
+    kotofeyWalkTopFrames,
+    kotofeyAttackBottomFrames,
+    kotofeyAttackLeftFrames,
+    kotofeyAttackRightFrames,
+    kotofeyAttackTopFrames,
+    kotofeyAllAnimationFrames,
+    CUSTOM_MONSTER_ANIMATION_SPECS,
+    type CustomMonsterAnimationSpec,
 } from './src/game/monsters/monsterAnimationConfig';
 import { SANTA_WALK_FRAME_META, SANTA_WALK_CROP_WINDOW } from './src/game/monsters/santaWalkCropMetadata';
 import {
@@ -262,7 +287,40 @@ import {
     GENERAL_MARKET_BED_SECTION_IDS,
     GENERAL_MARKET_MONSTER_SECTION_IDS
 } from './src/game/market/marketStaticData';
-import { Building, MapResource, BuildingType, PlacedBuilding, VisualEffect, DestructionInfo, Item, MarketListing, Clan, HistoryEntry, DroppedItem, PrivateMessage } from './types';
+import { Building, MapResource, BuildingType, PlacedBuilding, VisualEffect, DestructionInfo, Item, MarketListing, Clan, HistoryEntry, DroppedItem, PrivateMessage, KotofeySettings, TrollSettings } from './types';
+
+// Pre-indexed O(1) hash maps for instantaneous building and item lookups in render loops
+export const buildingByIdMap = new Map<number | string, Building>();
+for (let i = 0; i < buildingData.length; i++) {
+    const b = buildingData[i];
+    if (b && b.id !== undefined && b.id !== null) {
+        if (!buildingByIdMap.has(b.id)) {
+            buildingByIdMap.set(b.id, b);
+            buildingByIdMap.set(Number(b.id), b);
+            buildingByIdMap.set(String(b.id), b);
+        }
+    }
+}
+export const getBuildingById = (id: number | string | undefined | null): Building | undefined => {
+    if (id === undefined || id === null) return undefined;
+    return buildingByIdMap.get(id) || buildingByIdMap.get(Number(id));
+};
+
+export const itemByIdMap = new Map<number | string, Item>();
+for (let i = 0; i < itemData.length; i++) {
+    const item = itemData[i];
+    if (item && item.id !== undefined && item.id !== null) {
+        if (!itemByIdMap.has(item.id)) {
+            itemByIdMap.set(item.id, item);
+            itemByIdMap.set(Number(item.id), item);
+            itemByIdMap.set(String(item.id), item);
+        }
+    }
+}
+export const getItemById = (id: number | string | undefined | null): Item | undefined => {
+    if (id === undefined || id === null) return undefined;
+    return itemByIdMap.get(id) || itemByIdMap.get(Number(id));
+};
 import {
     hasActiveDestructionWindow,
     resolvePlacedBuildingSnapshotMerge,
@@ -275,6 +333,36 @@ import { resolveLocalRewardEligibility } from './src/game/buildings/resolveLocal
 import { resolveRejectedOptimisticPlacementRollback } from './src/game/buildings/resolveRejectedOptimisticPlacementRollback.js';
 import { resolveLocalDestructionCompletion } from './src/game/buildings/resolveLocalDestructionCompletion.js';
 import { filterReconnectSnapshotBuildingsByTombstones } from './src/game/buildings/filterReconnectSnapshotBuildingsByTombstones.js';
+import {
+    isRiverBuilding,
+    getRiverTileUrl,
+    ALL_RIVER_ASSET_URLS,
+} from './src/game/buildings/riverAutotile';
+import {
+    ROAD_BUILDING_ID,
+    isRoadBuilding,
+    getRoadTileUrl,
+    ALL_ROAD_ASSET_URLS,
+} from './src/game/buildings/roadAutotile';
+import {
+    PAVEMENT_BUILDING_ID,
+    isPavementBuilding,
+    getPavementTileUrl,
+    ALL_PAVEMENT_ASSET_URLS,
+} from './src/game/buildings/pavementAutotile';
+import {
+    isMountainBuilding,
+    getMountainTileUrl,
+    ALL_MOUNTAIN_ASSET_URLS,
+} from './src/game/buildings/mountainAutotile';
+import {
+    isWoodenWallBuilding,
+    isStoneWallBuilding,
+    isWallBuilding,
+    getWoodenWallTileUrl,
+    getStoneWallTileUrl,
+    ALL_WALL_ASSET_URLS,
+} from './src/game/buildings/wallAutotile';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
 
 const getCanonicalItemName = (itemId: string | number, fallbackName?: string, buildingId?: string | number) => {
@@ -345,7 +433,9 @@ const BASE_GOLD_CAPACITY = 500000000;
 const TOWN_HALL_ID = 301;
 const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
 const CANNON_ID = 700;
-const CANNON_IDS = [700, 701, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385];
+const TREBUCHET_ID = 703;
+const MORTAR_ID = 704;
+const CANNON_IDS = [700, 701, 703, 704, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385];
 const PROTECTED_TOWER_ID = 702;
 const CLAN_CASTLE_ID = 800;
 const WATCHTOWER_ID = 801;
@@ -404,9 +494,63 @@ const BABY_MAX_LEVEL_IDS = new Set([
 // Monster IDs — canonical module src/game/monsters/monsterIds.js
 import {
     KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID,
-    KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID,
+    KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID, KOTOFEY_ID,
+    TROLL_ID, AIBOLIT_ID, BIG_AIBOLIT_ID,
 } from './src/game/monsters/monsterIds.js';
+import {
+    KOTOFEY_ITEM_ID,
+    TROLL_ITEM_ID,
+    AIBOLIT_ITEM_ID,
+    KOTOFEY_PRICE_GOLD,
+    KOTOFEY_RECIPE_RESOURCES,
+    ACADEMY_CRAFTABLE_MONSTER_ITEM_BY_BUILDING_ID,
+    DEFAULT_KOTOFEY_SETTINGS,
+    isKotofeyMonster,
+    isHealerMonster,
+    isRoadCapableCustomMonster,
+    isGroundTileId,
+    normalizeKotofeySettings,
+    getKotofeyRepairAmount,
+    isKotofeyTileBlocked,
+} from './src/game/monsters/kotofeyLogic.js';
+import {
+    DEFAULT_TROLL_SETTINGS,
+    TROLL_WORK_BOOST_COOLDOWN_MS,
+    isTrollMonster,
+    normalizeTrollSettings,
+    getTrollAdjacentProductionTarget,
+    resolveTrollProductionWhip,
+    getTrollCombatDamage,
+} from './src/game/monsters/trollLogic.js';
+
+const KOTOFEY_ANIMATION_SPEC: CustomMonsterAnimationSpec = {
+    id: KOTOFEY_ID,
+    basePath: '/animation/monsters/Котофей',
+    fps: KOTOFEY_FPS,
+    shadowCenterX: KOTOFEY_SHADOW_CENTER_X,
+    shadowCenterY: KOTOFEY_SHADOW_CENTER_Y,
+    spriteWidth: KOTOFEY_SPRITE_WIDTH,
+    spriteHeight: KOTOFEY_SPRITE_HEIGHT,
+    canvasScale: KOTOFEY_CANVAS_SCALE,
+    idleFrames: kotofeyIdleFrames,
+    walkBottomFrames: kotofeyWalkBottomFrames,
+    walkLeftFrames: kotofeyWalkLeftFrames,
+    walkRightFrames: kotofeyWalkRightFrames,
+    walkTopFrames: kotofeyWalkTopFrames,
+    attackBottomFrames: kotofeyAttackBottomFrames,
+    attackLeftFrames: kotofeyAttackLeftFrames,
+    attackRightFrames: kotofeyAttackRightFrames,
+    attackTopFrames: kotofeyAttackTopFrames,
+    allAnimationFrames: kotofeyAllAnimationFrames,
+};
+
+const getCustomMonsterAnimationSpec = (buildingId: number | string | undefined | null): CustomMonsterAnimationSpec | null => {
+    const id = Number(buildingId);
+    if (id === KOTOFEY_ID) return KOTOFEY_ANIMATION_SPEC;
+    return CUSTOM_MONSTER_ANIMATION_SPECS[id] || null;
+};
 import { buildMonsterRuntimeSnapshot } from './src/game/monsters/monsterRuntimeSnapshot.js';
+import { chooseMonsterBackgroundMove } from './src/game/monsters/monsterBackgroundMove.js';
 const BRONEKUR_BOSS_HP = 250000;
 const getAllowedResourceTypesForBuildingId = (buildingId: number): MapResource['type'][] => {
     if (buildingId === OIL_RIG_ID || buildingId === TWO_OIL_RIGS_ID) return ['oil'];
@@ -447,7 +591,8 @@ const DIRECT_INTERACTION_FACTORIES = [
     2, 17, 18, 19, 30, 31, 32, // Hot Dog Carts (Р СћР ВµР В»Р ВµР В¶Р С”Р С‘ РЎРѓ РЎвЂ¦Р С•РЎвЂљР Т‘Р С•Р С–Р В°Р СР С‘)
     400, 401, 402, 403, 404, 405, 406, 407, 408, 409, // Lily Pond chain (Р СџРЎР‚РЎС“Р Т‘ РЎРѓ Р В»Р С‘Р В»Р С‘РЎРЏР СР С‘)
     577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, // Enhanced Lily Pond (Р Р€Р В»РЎС“РЎвЂЎРЎв‚¬Р ВµР Р…РЎвЂ№Р в„– Р С—РЎР‚РЎС“Р Т‘ РЎРѓ Р вЂєР С‘Р В»Р С‘РЎРЏР СР С‘)
-    273, // Mill (Р СљР ВµР В»РЎРЉР Р…Р С‘РЎвЂ Р В°)
+    273,
+    CHAN_VAT_BUILDING_ID, // Cauldron / Vat (Чан) // Mill (Р СљР ВµР В»РЎРЉР Р…Р С‘РЎвЂ Р В°)
 ];
 
 // Casino buildings with gambling interaction
@@ -771,6 +916,7 @@ const processOfflineTimers = (
 
     for (const monster of monsters) {
         if (appliedHits >= MAX_OFFLINE_TOTAL_HITS) break;
+        if (isHealerMonster(monster.buildingId)) continue;
         const monsterId = String(monster.id);
         const target = getMonsterAdjacentAttackTarget(monster, Array.from(byId.values()), buildingData, {
             isWrappedWorld: options?.isWrappedWorld
@@ -778,9 +924,11 @@ const processOfflineTimers = (
         if (!target) continue;
 
         const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
-        let dmg = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
         const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
-        if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
+        let dmg = isTrollMonster(monster.buildingId)
+            ? getTrollCombatDamage(monster, target, Array.from(byId.values()), buildingData, nowTs)
+            : (monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4);
+        if (!isTrollMonster(monster.buildingId) && monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
             dmg *= 2;
         }
 
@@ -943,8 +1091,8 @@ const processOfflineTimers = (
 };
 
 // Image assets
-const treeImageUrl = '/Grid/005.webp';
-const groundTileImageUrl = '/Grid/IMG-2378-12.webp';
+const treeImageUrl = '/Grid/tree/Изометрическая плитка с зелёной травой_cut.webp';
+const groundTileImageUrl = '/Grid/grid/Изометрическая плитка с зелёной травой_cut.webp';
 const coinImageUrl = '/Gui/Front/значек монет/Image-2.webp';
 const gloryImageUrl = '/last_appx/glory/slav.webp';
 const rubyImageUrl = '/Gui/Front/значек рубинов/Nj7hb.webp';
@@ -973,7 +1121,9 @@ const TUTORIAL_FROG_HOUSE_ID = 1;
 const TUTORIAL_LILY_POND_ID = 400;
 const energyBatteryImageUrl = '/Gui/Back/energy-battery.webp';
 const populationImageUrl = '/Gui/Front/значек популяции/Image-1.webp';
-const oilImageUrl = '/last_appx/oil_lake/30000.webp';
+// Oil puddle splash animation frames (9 frames, 180ms per frame, 738x369 2:1 isometric)
+const oilSplashAnimationFrames: string[] = Array.from({ length: 9 }, (_, i) => `/buildings/Месторождения/Нефть - Oil/oil_splash_frames/frame_${i}.webp`);
+const oilImageUrl = oilSplashAnimationFrames[0];
 const chestImageUrl = '/buildings/Сундуки на карте трежер хант/10000.webp';
 const quarryImageUrl = '/buildings/заброшенная каменоломня/30001.webp';
 const builderIconUrl = '/Gui/Front/значек популяции/Image-1.webp';
@@ -1170,66 +1320,6 @@ function findFreeMonsterTeleportSpot(
     return null;
 }
 
-function chooseMonsterBackgroundMove(
-    monster: Pick<PlacedBuilding, 'id' | 'ownerId' | 'buildingId' | 'x' | 'y' | 'zoneId'>,
-    buildings: PlacedBuilding[],
-    buildingData: Building[],
-    occupiedPositions: Set<string>,
-    blockedResourcePositions: Set<string>,
-    zoneCounts: Map<string, number>,
-    isWrappedWorld: boolean,
-    previousPos?: { x: number; y: number },
-    lastDir?: MonsterDirection,
-    recentPositions?: Array<{ x: number; y: number }>
-): { chosenMove: MonsterMoveStep | null; nextDir: MonsterDirection } {
-    const nextDir = lastDir || getMonsterPatrolDirection(monster.id, monster.buildingId);
-    const adjacentHoldTarget = getMonsterAdjacentHoldTarget(monster, buildings, buildingData, { isWrappedWorld });
-    if (adjacentHoldTarget) {
-        return {
-            chosenMove: null,
-            nextDir: getWrappedDirectionToTarget(monster, adjacentHoldTarget, isWrappedWorld)
-        };
-    }
-
-    const neighbors: MonsterMoveStep[] = getCardinalNeighborTiles(monster.x, monster.y, isWrappedWorld);
-
-    const validMoves = neighbors.filter(move =>
-        !isMonsterTileBlocked(move.x, move.y, occupiedPositions, blockedResourcePositions, undefined, isWrappedWorld)
-    );
-    if (validMoves.length === 0) {
-        return { chosenMove: null, nextDir };
-    }
-    const recentKeys = new Set((recentPositions || []).map(pos => `${pos.x},${pos.y}`));
-    const preferredMoves = validMoves.filter(move => !recentKeys.has(`${move.x},${move.y}`));
-    const candidateMoves = preferredMoves.length > 0 ? preferredMoves : validMoves;
-
-    const chaseTarget = getMonsterChaseTarget(monster, buildings, buildingData, { isWrappedWorld });
-    let chosenMove: MonsterMoveStep | null = null;
-    if (chaseTarget) {
-        chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWrappedWorld);
-    } else {
-        chosenMove = chooseMonsterPatrolMove(
-            candidateMoves,
-            nextDir,
-            true,
-            monster.id,
-            monster.buildingId,
-            0,
-            previousPos
-        ).chosenMove;
-    }
-
-    if (chosenMove && previousPos && chosenMove.x === previousPos.x && chosenMove.y === previousPos.y && candidateMoves.length > 1) {
-        const altMove = candidateMoves.find(m => m.x !== previousPos.x || m.y !== previousPos.y);
-        if (altMove) chosenMove = altMove;
-    }
-
-    return {
-        chosenMove,
-        nextDir: chosenMove ? { dx: chosenMove.dx, dy: chosenMove.dy } : nextDir
-    };
-}
-
 const normalizePlacedBuildingHealth = (building: PlacedBuilding): PlacedBuilding => {
     if (building.hp === undefined && building.maxHp === undefined) return building;
 
@@ -1339,6 +1429,233 @@ const devilMachineAnimationFrames: string[] = Array.from({ length: 60 }, (_, i) 
 // Mill (ID 273) animation frames
 const MILL_ID = 273;
 const millAnimationFrames: string[] = Array.from({ length: 30 }, (_, i) => `/animation/mill/${i + 1}.webp`);
+
+// Cauldron / Vat (Чан, ID 910) animation frames
+const chanWorkingAnimationFrames: string[] = Array.from({ length: 12 }, (_, i) => `/animation/chan/working/${i + 1}.webp`);
+
+// Trebuchet (ID 703) animation frames & timings (4 isometric directions: Up-Right, Up-Left, Down-Left, Down-Right)
+export type TrebuchetFacingDirection = 'up_right' | 'up_left' | 'down_left' | 'down_right';
+
+export function getTrebuchetFacingFromDelta(deltaX: number, deltaY: number): TrebuchetFacingDirection {
+    // In isometric screen coordinates:
+    // deltaScreenX = deltaX - deltaY
+    // deltaScreenY = deltaX + deltaY
+    // Tile steps:
+    // - dx: 0, dy: -1 (Up-Right)  => deltaScreenX = +1, deltaScreenY = -1
+    // - dx: -1, dy: 0 (Up-Left)   => deltaScreenX = -1, deltaScreenY = -1
+    // - dx: 0, dy: +1 (Down-Left) => deltaScreenX = -1, deltaScreenY = +1
+    // - dx: +1, dy: 0 (Down-Right)=> deltaScreenX = +1, deltaScreenY = +1
+    const deltaScreenX = deltaX - deltaY;
+    const deltaScreenY = deltaX + deltaY;
+
+    if (deltaScreenY <= 0) {
+        return deltaScreenX >= 0 ? 'up_right' : 'up_left';
+    } else {
+        return deltaScreenX > 0 ? 'down_right' : 'down_left';
+    }
+}
+
+export function normalizeTrebuchetFacing(facing?: string): TrebuchetFacingDirection {
+    if (facing === 'down_left') return 'down_left';
+    if (facing === 'down_right') return 'down_right';
+    if (facing === 'up_left' || facing === 'left') return 'up_left';
+    return 'up_right';
+}
+
+const trebuchetLoadingUpRightFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/loading/${i + 1}.webp`);
+const trebuchetLoadingUpLeftFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/loading_left/${i + 1}.webp`);
+const trebuchetLoadingDownLeftFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/loading_down_left/${i + 1}.webp`);
+const trebuchetLoadingDownRightFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/loading_down_right/${i + 1}.webp`);
+
+const trebuchetLoadingFrames = trebuchetLoadingUpRightFrames;
+const trebuchetLoadingLeftFrames = trebuchetLoadingUpLeftFrames;
+
+const TREBUCHET_FRAME_CUMULATIVE_MS = [0, 200, 380, 520, 660, 800, 940, 1080, 1220, 1360, 1500, 1640, 1780, 1940, 2100, 2350];
+const TREBUCHET_ANIM_DURATION = 2350;
+
+const trebuchetLaunchUpRightFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/launch/${i + 1}.webp`);
+const trebuchetLaunchUpLeftFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/launch_left/${i + 1}.webp`);
+const trebuchetLaunchDownLeftFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/launch_down_left/${i + 1}.webp`);
+const trebuchetLaunchDownRightFrames: string[] = Array.from({ length: 16 }, (_, i) => `/animation/trebuchet/launch_down_right/${i + 1}.webp`);
+
+const trebuchetLaunchFrames = trebuchetLaunchUpRightFrames;
+const trebuchetLaunchLeftFrames = trebuchetLaunchUpLeftFrames;
+
+const TREBUCHET_LAUNCH_CUMULATIVE_MS = [0, 150, 300, 450, 550, 650, 750, 850, 950, 1050, 1150, 1250, 1350, 1450, 1550, 1800];
+const TREBUCHET_LAUNCH_DURATION = 2500;
+
+const trebuchetMoveUpRightFrames: string[] = Array.from({ length: 16 }, (_, i) => `/buildings/защита/требушет _двигаеться/в перед или в верх в право/frames/${i + 1}.webp`);
+const trebuchetMoveUpLeftFrames: string[] = Array.from({ length: 16 }, (_, i) => `/buildings/защита/требушет _двигаеться/в перед или в верх только в лево/frames/${i + 1}.webp`);
+const trebuchetMoveDownLeftFrames: string[] = Array.from({ length: 16 }, (_, i) => `/buildings/защита/требушет _двигаеться/в низ в лево/frames/${i + 1}.webp`);
+const trebuchetMoveDownRightFrames: string[] = Array.from({ length: 16 }, (_, i) => `/buildings/защита/требушет _двигаеться/в низ в право/frames/${i + 1}.webp`);
+
+const trebuchetMoveFrames = trebuchetMoveUpRightFrames;
+const trebuchetMoveLeftFrames = trebuchetMoveUpLeftFrames;
+
+const TREBUCHET_IDLE_UP_RIGHT = '/buildings/защита/требушет _двигаеться/в перед или в верх в право/trebuchet_loading_transparent.webp';
+const TREBUCHET_IDLE_UP_LEFT = '/buildings/защита/требушет _двигаеться/в перед или в верх только в лево/trebuchet_mirrored.webp';
+const TREBUCHET_IDLE_DOWN_LEFT = '/buildings/защита/требушет _двигаеться/в низ в лево/trebuchet_rear_idle_left.webp';
+const TREBUCHET_IDLE_DOWN_RIGHT = '/buildings/защита/требушет _двигаеться/в низ в право/trebuchet_rear_idle_right.webp';
+
+const TREBUCHET_LOADED_UP_RIGHT = '/buildings/защита/требушет _двигаеться/в перед или в верх в право/trebuchet_loaded_transparent.webp';
+const TREBUCHET_LOADED_UP_LEFT = '/buildings/защита/требушет _двигаеться/в перед или в верх только в лево/trebuchet_loaded_left.webp';
+const TREBUCHET_LOADED_DOWN_LEFT = '/buildings/защита/требушет _двигаеться/в низ в лево/trebuchet_rear_loaded_left.webp';
+const TREBUCHET_LOADED_DOWN_RIGHT = '/buildings/защита/требушет _двигаеться/в низ в право/trebuchet_rear_loaded_right.webp';
+
+const TREBUCHET_IDLE_RIGHT = TREBUCHET_IDLE_UP_RIGHT;
+const TREBUCHET_IDLE_LEFT = TREBUCHET_IDLE_UP_LEFT;
+const TREBUCHET_LOADED_RIGHT = TREBUCHET_LOADED_UP_RIGHT;
+const TREBUCHET_LOADED_LEFT = TREBUCHET_LOADED_UP_LEFT;
+
+const getTrebuchetMoveFrames = (facing: TrebuchetFacingDirection): string[] => {
+    switch (facing) {
+        case 'up_left': return trebuchetMoveUpLeftFrames;
+        case 'down_left': return trebuchetMoveDownLeftFrames;
+        case 'down_right': return trebuchetMoveDownRightFrames;
+        case 'up_right':
+        default: return trebuchetMoveUpRightFrames;
+    }
+};
+
+const getTrebuchetLoadingFrames = (facing: TrebuchetFacingDirection): string[] => {
+    switch (facing) {
+        case 'up_left': return trebuchetLoadingUpLeftFrames;
+        case 'down_left': return trebuchetLoadingDownLeftFrames;
+        case 'down_right': return trebuchetLoadingDownRightFrames;
+        case 'up_right':
+        default: return trebuchetLoadingUpRightFrames;
+    }
+};
+
+const getTrebuchetLaunchFrames = (facing: TrebuchetFacingDirection): string[] => {
+    switch (facing) {
+        case 'up_left': return trebuchetLaunchUpLeftFrames;
+        case 'down_left': return trebuchetLaunchDownLeftFrames;
+        case 'down_right': return trebuchetLaunchDownRightFrames;
+        case 'up_right':
+        default: return trebuchetLaunchUpRightFrames;
+    }
+};
+
+const getTrebuchetIdleUrl = (facing: TrebuchetFacingDirection): string => {
+    switch (facing) {
+        case 'up_left': return TREBUCHET_IDLE_UP_LEFT;
+        case 'down_left': return TREBUCHET_IDLE_DOWN_LEFT;
+        case 'down_right': return TREBUCHET_IDLE_DOWN_RIGHT;
+        case 'up_right':
+        default: return TREBUCHET_IDLE_UP_RIGHT;
+    }
+};
+
+const getTrebuchetLoadedUrl = (facing: TrebuchetFacingDirection): string => {
+    switch (facing) {
+        case 'up_left': return TREBUCHET_LOADED_UP_LEFT;
+        case 'down_left': return TREBUCHET_LOADED_DOWN_LEFT;
+        case 'down_right': return TREBUCHET_LOADED_DOWN_RIGHT;
+        case 'up_right':
+        default: return TREBUCHET_LOADED_UP_RIGHT;
+    }
+};
+
+const TREBUCHET_MOVE_RANGE = 8;
+const TREBUCHET_MOVE_SPEED_MS_PER_TILE = 2800; // ~2.8s per tile (matching Bronekur walk speed)
+const TREBUCHET_ATTACK_RANGE = 6;
+const TREBUCHET_COUNTDOWN_MS = 10000;
+const STONE_BLOCK_ID = 10006;
+
+export interface TrebuchetPathStep {
+    x: number;
+    y: number;
+}
+
+export function findTrebuchetPath(
+    startX: number,
+    startY: number,
+    targetX: number,
+    targetY: number,
+    isBlocked: (x: number, y: number) => boolean,
+    maxSteps: number = 28
+): TrebuchetPathStep[] | null {
+    if (startX === targetX && startY === targetY) return [{ x: startX, y: startY }];
+    if (isBlocked(targetX, targetY)) return null;
+
+    type QueueItem = {
+        x: number;
+        y: number;
+        path: TrebuchetPathStep[];
+        lastAxis: 'x' | 'y' | null;
+    };
+
+    const queue: QueueItem[] = [{
+        x: startX,
+        y: startY,
+        path: [{ x: startX, y: startY }],
+        lastAxis: null
+    }];
+    const visited = new Set<string>();
+    visited.add(`${startX}_${startY}`);
+
+    while (queue.length > 0) {
+        const item = queue.shift()!;
+        if (item.path.length - 1 > maxSteps) continue;
+        if (item.x === targetX && item.y === targetY) {
+            return item.path;
+        }
+
+        const diffX = targetX - item.x;
+        const diffY = targetY - item.y;
+
+        const stepX = diffX < 0 ? -1 : (diffX > 0 ? 1 : 0);
+        const stepY = diffY < 0 ? -1 : (diffY > 0 ? 1 : 0);
+
+        const candX = stepX !== 0 ? { dx: stepX, dy: 0, axis: 'x' as const } : null;
+        const candY = stepY !== 0 ? { dx: 0, dy: stepY, axis: 'y' as const } : null;
+
+        // Alternate axis to produce natural zigzags (as requested and illustrated)
+        const preferred = item.lastAxis === 'x' ? [candY, candX] : [candX, candY];
+        const candidates: Array<{ dx: number; dy: number; axis: 'x' | 'y' }> = [];
+        for (const c of preferred) {
+            if (c) candidates.push(c);
+        }
+
+        // Add 4-directional moves for obstacle avoidance
+        const allOrthogonal: Array<{ dx: number; dy: number; axis: 'x' | 'y' }> = [
+            { dx: -1, dy: 0, axis: 'x' },
+            { dx: 0, dy: -1, axis: 'y' },
+            { dx: 1, dy: 0, axis: 'x' },
+            { dx: 0, dy: 1, axis: 'y' },
+        ];
+        for (const o of allOrthogonal) {
+            if (!candidates.some(c => c.dx === o.dx && c.dy === o.dy)) {
+                candidates.push(o);
+            }
+        }
+
+        for (const cand of candidates) {
+            const nx = item.x + cand.dx;
+            const ny = item.y + cand.dy;
+            const key = `${nx}_${ny}`;
+            if (visited.has(key)) continue;
+            if (isBlocked(nx, ny)) continue;
+            visited.add(key);
+            queue.push({
+                x: nx,
+                y: ny,
+                path: [...item.path, { x: nx, y: ny }],
+                lastAxis: cand.axis
+            });
+        }
+    }
+    return null;
+}
+
+// Mortar (ID 704) animation frames & timings
+const MORTAR_ATTACK_RANGE = 8;
+const MORTAR_ATTACK_INTERVAL_MS = 15000; // 15 seconds cooldown between shots
+const MORTAR_ANIM_DURATION = 2650; // Total duration of mortar flash GIF animation
+const MORTAR_SHELL_FLIGHT_MS = 850;
+const mortarFlashFrames: string[] = Array.from({ length: 15 }, (_, i) => `/animation/mortar/flash/${i + 1}.webp`);
+const MORTAR_FRAME_CUMULATIVE_MS = [0, 80, 160, 240, 320, 400, 480, 560, 670, 780, 890, 1000, 1110, 1220, 1330];
 
 // Town Hall Flag animation frames (61 frames, ~2 second loop)
 const TOWN_HALL_FLAG_IDS = [301, 306, 312, 331]; // First 4 levels of Town Hall
@@ -1735,12 +2052,15 @@ const babyAngelBoyAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) 
 const babyPandaAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_panda/${i + 1}.webp`);
 const babyFrogAnimationFrames: string[] = Array.from({ length: 91 }, (_, i) => `/animation/baby_frog/${i + 1}.webp`);
 
-// Oil Rig (Р СњР ВµРЎвЂћРЎвЂљРЎРЏР Р…Р В°РЎРЏ Р Р†РЎвЂ№РЎв‚¬Р С”Р В°) animation frames - 56 frames, working state only
+// Oil Rig (Нефтяная вышка) animation frames - 56 frames, working state only
 // Building IDs: 606 (single), 607 (double)
 const oilRigAnimationFrames: Record<number, string[]> = {
   [OIL_RIG_ID]: Array.from({ length: 56 }, (_, i) => `/animation/oil_rig/15/${i + 1}.webp`),
   [TWO_OIL_RIGS_ID]: Array.from({ length: 56 }, (_, i) => `/animation/oil_rig/49/${i + 1}.webp`),
 };
+
+// Tree hover swaying tropical bush animation frames (12 frames, 130ms each)
+const treeHoverBushAnimationFrames: string[] = Array.from({ length: 12 }, (_, i) => `/Grid/tree/bush_anim/frame_${i}.webp`);
 
 // Pre-generate frame URL arrays per group (working + idle)
 const monsterAcademyWorkingFrames: Record<string, string[]> = {};
@@ -1759,67 +2079,93 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
     if (building.buildingId === DETONATOR_FACTORY_ID && isWorking) return detonatorFactoryAnimationFrames;
     if (building.buildingId === DEVIL_MACHINE_ID && isWorking) return devilMachineAnimationFrames;
     if (building.buildingId === MILL_ID && isWorking) return millAnimationFrames;
+    if (building.buildingId === CHAN_VAT_BUILDING_ID && isWorking) return chanWorkingAnimationFrames;
+    if (building.buildingId === TREBUCHET_ID) {
+        return [
+            ...trebuchetLoadingUpRightFrames,
+            ...trebuchetLoadingUpLeftFrames,
+            ...trebuchetLoadingDownLeftFrames,
+            ...trebuchetLoadingDownRightFrames,
+            ...trebuchetLaunchUpRightFrames,
+            ...trebuchetLaunchUpLeftFrames,
+            ...trebuchetLaunchDownLeftFrames,
+            ...trebuchetLaunchDownRightFrames,
+            ...trebuchetMoveUpRightFrames,
+            ...trebuchetMoveUpLeftFrames,
+            ...trebuchetMoveDownLeftFrames,
+            ...trebuchetMoveDownRightFrames,
+            TREBUCHET_IDLE_UP_RIGHT,
+            TREBUCHET_IDLE_UP_LEFT,
+            TREBUCHET_IDLE_DOWN_LEFT,
+            TREBUCHET_IDLE_DOWN_RIGHT,
+            TREBUCHET_LOADED_UP_RIGHT,
+            TREBUCHET_LOADED_UP_LEFT,
+            TREBUCHET_LOADED_DOWN_LEFT,
+            TREBUCHET_LOADED_DOWN_RIGHT
+        ];
+    }
+    if (building.buildingId === MORTAR_ID) return mortarFlashFrames;
     if (COIN_FACTORY_ID_SET.has(building.buildingId) && isWorking) return coinFactoryAnimationFrames[building.buildingId] || [];
     if (SAWMILL_ID_SET.has(building.buildingId) && isWorking) return sawmillAnimationFrames[building.buildingId] || [];
 
     if (MONSTER_ACADEMY_ID_SET.has(building.buildingId)) {
         const group = MONSTER_ACADEMY_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? monsterAcademyWorkingFrames[group.folder] : monsterAcademyIdleFrames[group.folder];
+        if (group) return isWorking ? monsterAcademyWorkingFrames[group.folder] : (monsterAcademyIdleFrames[group.folder]?.[0] ? [monsterAcademyIdleFrames[group.folder][0]] : []);
     }
 
     if (ALCHEMY_FACTORY_ID_SET.has(building.buildingId)) {
-        return isWorking ? (alchemyFactoryWorkingFrames[building.buildingId] || []) : (alchemyFactoryIdleFrames[building.buildingId] || []);
+        return isWorking ? (alchemyFactoryWorkingFrames[building.buildingId] || []) : (alchemyFactoryIdleFrames[building.buildingId]?.[0] ? [alchemyFactoryIdleFrames[building.buildingId][0]] : []);
     }
 
     if (MILITARY_FACTORY_ID_SET.has(building.buildingId) && isWorking) return militaryFactoryAnimationFrames;
 
     if (MUSHROOM_BED_ID_SET.has(building.buildingId)) {
         const group = MUSHROOM_BED_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? mushroomBedWorkingFrames[group.folder] : mushroomBedIdleFrames[group.folder];
+        if (group) return isWorking ? mushroomBedWorkingFrames[group.folder] : (mushroomBedIdleFrames[group.folder]?.[0] ? [mushroomBedIdleFrames[group.folder][0]] : []);
     }
 
     if (MINE_ID_SET.has(building.buildingId)) {
         const group = MINE_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? mineWorkingFrames[group.folder] : mineIdleFrames[group.folder];
+        if (group) return isWorking ? mineWorkingFrames[group.folder] : (mineIdleFrames[group.folder]?.[0] ? [mineIdleFrames[group.folder][0]] : []);
     }
 
     if (EMERALD_FACTORY_ID_SET.has(building.buildingId)) {
         const group = EMERALD_FACTORY_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? emeraldFactoryWorkingFrames[group.folder] : emeraldFactoryIdleFrames[group.folder];
+        if (group) return isWorking ? emeraldFactoryWorkingFrames[group.folder] : (emeraldFactoryIdleFrames[group.folder]?.[0] ? [emeraldFactoryIdleFrames[group.folder][0]] : []);
     }
 
     if (GOLD_SMELTER_ID_SET.has(building.buildingId)) {
         const group = GOLD_SMELTER_ID_TO_GROUP[building.buildingId];
         if (group) {
             if (isWorking) return goldSmelterWorkingFrames[group.folder] || [];
-            if (group.idleFrames > 0) return goldSmelterIdleFrames[group.folder] || [];
+            if (group.idleFrames > 0 && goldSmelterIdleFrames[group.folder]?.[0]) return [goldSmelterIdleFrames[group.folder][0]];
         }
     }
 
     if (STEEL_ROLLING_MILL_ID_SET.has(building.buildingId)) {
         const group = STEEL_ROLLING_MILL_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? steelRollingMillWorkingFrames[group.folder] : steelRollingMillIdleFrames[group.folder];
+        if (group) return isWorking ? steelRollingMillWorkingFrames[group.folder] : (steelRollingMillIdleFrames[group.folder]?.[0] ? [steelRollingMillIdleFrames[group.folder][0]] : []);
     }
 
     if (STEEL_SMELTING_ID_SET.has(building.buildingId)) {
-        return isWorking ? (steelSmeltingWorkingFrames[building.buildingId] || []) : (steelSmeltingIdleFrames[building.buildingId] || []);
+        return isWorking ? (steelSmeltingWorkingFrames[building.buildingId] || []) : (steelSmeltingIdleFrames[building.buildingId]?.[0] ? [steelSmeltingIdleFrames[building.buildingId][0]] : []);
     }
 
     if (STONE_CRUSHER_ID_SET.has(building.buildingId)) {
         const folder = STONE_CRUSHER_ID_TO_FOLDER[building.buildingId];
-        if (folder) return isWorking ? stoneCrusherWorkingFrames[folder] : stoneCrusherIdleFrames[folder];
+        if (folder) return isWorking ? stoneCrusherWorkingFrames[folder] : (stoneCrusherIdleFrames[folder]?.[0] ? [stoneCrusherIdleFrames[folder][0]] : []);
     }
 
     if (LILY_POND_ID_SET.has(building.buildingId)) {
         const group = LILY_POND_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? lilyPondWorkingFrames[group.folder] : lilyPondIdleFrames[group.folder];
+        if (group) return isWorking ? lilyPondWorkingFrames[group.folder] : (lilyPondIdleFrames[group.folder]?.[0] ? [lilyPondIdleFrames[group.folder][0]] : []);
     }
 
     if (DETONATOR_FACTORY_ID_SET.has(building.buildingId)) {
         const group = DETONATOR_FACTORY_ID_TO_GROUP[building.buildingId];
         if (group) {
             if (isWorking) return detonatorFactoryWorkingFrames[group.folder] || [];
-            if (group.idleFrames > 0) return detonatorFactoryIdleFrames[group.folder] || [];
+            if (group.idleFrames > 0 && detonatorFactoryIdleFrames[group.folder]?.[0]) return [detonatorFactoryIdleFrames[group.folder][0]];
         }
     }
 
@@ -1919,6 +2265,11 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
         ];
     }
 
+    const customAnimSpec = getCustomMonsterAnimationSpec(building.buildingId);
+    if (customAnimSpec) {
+        return customAnimSpec.allAnimationFrames;
+    }
+
     switch (building.buildingId) {
         case BABY_BEAR_MAX_ID: return babyBearAnimationFrames;
         case BABY_ANGEL_GIRL_MAX_ID: return babyAngelGirlAnimationFrames;
@@ -1957,7 +2308,7 @@ const drawAnimatedCoin = (ctx: CanvasRenderingContext2D, x: number, y: number, s
     
     // Coin edge (3D effect)
     ctx.strokeStyle = '#8B6914';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(2, size * 0.08);
     ctx.stroke();
     
     // Shimmer effect
@@ -1975,7 +2326,7 @@ const drawAnimatedCoin = (ctx: CanvasRenderingContext2D, x: number, y: number, s
     // Letter B in center (only visible when facing forward)
     if (Math.abs(scaleX) > 0.3) {
         ctx.fillStyle = '#8B6914';
-        ctx.font = `bold ${size * 0.4}px serif`;
+        ctx.font = `bold ${Math.round(size * 0.42)}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('B', 0, 0);
@@ -2264,6 +2615,16 @@ const pushStartupDebugEvent = (step: string, details?: Record<string, unknown>) 
     }
 };
 
+const GAME_ASSET_CACHE_VERSION = 'v20261111_5';
+
+function appendAssetVersion(url: string): string {
+    if (!url) return url;
+    if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.includes('v=')) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}v=${GAME_ASSET_CACHE_VERSION}`;
+}
+
 function normalizeAssetUrl(url: string): string {
     if (!url) return url;
     const qIdx = url.indexOf('?');
@@ -2335,6 +2696,116 @@ function repairMojibakeDom(root: ParentNode): void {
     }
 }
 
+const MAX_BUILDING_TEXTURE_DIMENSION = 640;
+
+const TYPE_DEPTH_ORDER: Record<string, number> = { 'resource': 0, 'building': 1, 'dropped_item': 2 };
+
+type VisibleDrawableEntity = {
+    entity: any;
+    entityVX: number;
+    entityVY: number;
+    depth: number;
+};
+
+const createOptimizedCanvasFromImage = (img: HTMLImageElement | HTMLCanvasElement): HTMLCanvasElement | HTMLImageElement => {
+    return img;
+};
+
+const getOrLoadCachedSprite = (
+    url: string,
+    imageCache: Record<string, HTMLImageElement | HTMLCanvasElement>
+): HTMLImageElement | HTMLCanvasElement | undefined => {
+    if (!url) return undefined;
+    let cached = imageCache[url];
+    if (!cached) {
+        const normUrl = normalizeAssetUrl(url);
+        cached = imageCache[normUrl];
+    }
+    if (!cached) {
+        const normUrl = normalizeAssetUrl(url);
+        const versionedUrl = appendAssetVersion(normUrl);
+        const newImg = new Image();
+        newImg.src = versionedUrl;
+        newImg.onload = () => {
+            const optimized = createOptimizedCanvasFromImage(newImg);
+            imageCache[url] = optimized;
+            imageCache[normUrl] = optimized;
+            imageCache[versionedUrl] = optimized;
+        };
+        imageCache[url] = newImg;
+        imageCache[normUrl] = newImg;
+        imageCache[versionedUrl] = newImg;
+        cached = newImg;
+    }
+    return cached;
+};
+
+const ActiveBuffsPills: React.FC<{ lumberjackBuffUntil: number; mortarBuffUntil: number }> = React.memo(({ lumberjackBuffUntil, mortarBuffUntil }) => {
+    const [now, setNow] = useState(Date.now());
+    const hasActiveBuff = lumberjackBuffUntil > now || mortarBuffUntil > now;
+
+    useEffect(() => {
+        if (!hasActiveBuff) return;
+        const interval = setInterval(() => {
+            const current = Date.now();
+            setNow(current);
+            if (lumberjackBuffUntil <= current && mortarBuffUntil <= current) {
+                clearInterval(interval);
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [hasActiveBuff, lumberjackBuffUntil, mortarBuffUntil]);
+
+    if (!hasActiveBuff) return null;
+
+    const remainingLumberjack = Math.max(0, Math.ceil((lumberjackBuffUntil - now) / 1000));
+    const lMins = Math.floor(remainingLumberjack / 60);
+    const lSecs = remainingLumberjack % 60;
+    const lFormatted = `${String(lMins).padStart(2, '0')}:${String(lSecs).padStart(2, '0')}`;
+
+    const remainingMortar = Math.max(0, Math.ceil((mortarBuffUntil - now) / 1000));
+    const mMins = Math.floor(remainingMortar / 60);
+    const mSecs = remainingMortar % 60;
+    const mFormatted = `${String(mMins).padStart(2, '0')}:${String(mSecs).padStart(2, '0')}`;
+
+    return (
+        <div className="flex flex-col gap-1 mt-1 z-30">
+            {lumberjackBuffUntil > now && (
+                <div
+                    className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-md backdrop-blur-md"
+                    style={{
+                        background: 'rgba(5, 150, 105, 0.55)',
+                        border: '1px solid rgba(52, 211, 153, 0.75)',
+                        color: '#d1fae5',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                    }}
+                    title="Эликсир дровосека: +1 дерево за каждый срубленный ствол"
+                >
+                    <span>🪓</span>
+                    <span>Лесоруб: +1</span>
+                    <span className="text-emerald-200 font-mono font-bold">({lFormatted})</span>
+                </div>
+            )}
+            {mortarBuffUntil > now && (
+                <div
+                    className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-md backdrop-blur-md"
+                    style={{
+                        background: 'rgba(2, 132, 199, 0.55)',
+                        border: '1px solid rgba(56, 189, 248, 0.75)',
+                        color: '#e0f2fe',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                    }}
+                    title="Каменный укрепляющий раствор: -30% стоимость ремонта зданий"
+                >
+                    <span>🧱</span>
+                    <span>Раствор: -30%</span>
+                    <span className="text-sky-200 font-mono font-bold">({mFormatted})</span>
+                </div>
+            )}
+        </div>
+    );
+});
+
 const App: React.FC = () => {
     // Grouping ALL state hooks at the top to satisfy TDZ
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -2360,6 +2831,7 @@ const App: React.FC = () => {
     const [clanMembersRefreshToken, setClanMembersRefreshToken] = useState(0);
     const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
     const [playerReputation, setPlayerReputation] = useState(0);
+    const initialReputationLoadedRef = useRef(false);
     const [playerLeaderboardStats, setPlayerLeaderboardStats] = useState(() => getUserStatCounters(null));
     const [playerGold, setPlayerGold] = useState(100);
     const [playerRubies, setPlayerRubies] = useState(100);
@@ -2371,6 +2843,8 @@ const App: React.FC = () => {
     const [playerEnergy, setPlayerEnergy] = useState(BASE_MAX_ENERGY);
     const [playerGender, setPlayerGender] = useState<'male' | 'female' | null>(null);
     const [inventory, setInventory] = useState<Record<number, number>>({ [FIRECRACKER_ID]: 30, [RECOMMENDATION_ID]: 5 });
+    const inventoryRef = useRef<Record<number, number>>(inventory);
+    useEffect(() => { inventoryRef.current = inventory; }, [inventory]);
     const [banEndTime, setBanEndTime] = useState(0);
     const [playerActiveCurse, setPlayerActiveCurse] = useState<{ prefix: string, endTime: number } | null>(null);
     const [currentTime, setCurrentTime] = useState(Date.now());
@@ -2412,6 +2886,7 @@ const App: React.FC = () => {
 
     const handleSetMonsterMode = useCallback((monsterId: string, mode: 'stand' | 'patrol') => {
         const strId = String(monsterId);
+        lastInteractionRef.current.set(strId, Date.now());
         setPlacedBuildings(prev => prev.map(b => String(b.id) === strId ? { ...b, monsterMode: mode } : b));
         if (placedBuildingsRef.current) {
             placedBuildingsRef.current = placedBuildingsRef.current.map(b => String(b.id) === strId ? { ...b, monsterMode: mode } : b);
@@ -2424,6 +2899,49 @@ const App: React.FC = () => {
             console.error("Failed to update monster mode:", e);
         });
     }, []);
+
+    const updateMonsterSettings = useCallback(<K extends 'kotofeySettings' | 'trollSettings'>(
+        field: K,
+        monsterId: string,
+        nextValue: PlacedBuilding[K]
+    ) => {
+        const strId = String(monsterId);
+        const now = Date.now();
+        lastInteractionRef.current.set(strId, now);
+        setPlacedBuildings(prev => prev.map(b => String(b.id) === strId ? { ...b, [field]: nextValue } : b));
+        if (placedBuildingsRef.current) {
+            placedBuildingsRef.current = placedBuildingsRef.current.map(b => String(b.id) === strId ? { ...b, [field]: nextValue } : b);
+        }
+        setSelectedBuilding(prev => (prev?.building && String(prev.building.id) === strId) ? {
+            ...prev,
+            building: { ...prev.building, [field]: nextValue }
+        } : prev);
+        updateDoc(doc(db, 'buildings', strId), { [field]: nextValue }).catch(e => {
+            console.error(`Failed to update ${field}:`, e);
+        });
+    }, []);
+
+    const handleUpdateKotofeySettings = useCallback((monsterId: string, patch: Partial<KotofeySettings>) => {
+        const existingBuilding = placedBuildingsRef.current.find(b => String(b.id) === String(monsterId));
+        const nextSettings: KotofeySettings = normalizeKotofeySettings({
+            kotofeySettings: {
+                ...normalizeKotofeySettings(existingBuilding),
+                ...patch,
+            },
+        });
+        updateMonsterSettings('kotofeySettings', monsterId, nextSettings);
+    }, [updateMonsterSettings]);
+
+    const handleUpdateTrollSettings = useCallback((monsterId: string, patch: Partial<TrollSettings>) => {
+        const existingBuilding = placedBuildingsRef.current.find(b => String(b.id) === String(monsterId));
+        const nextSettings: TrollSettings = normalizeTrollSettings({
+            trollSettings: {
+                ...normalizeTrollSettings(existingBuilding),
+                ...patch,
+            },
+        });
+        updateMonsterSettings('trollSettings', monsterId, nextSettings);
+    }, [updateMonsterSettings]);
 
     const handleSetAllMonstersMode = useCallback((mode: 'stand' | 'patrol') => {
         const myMonsters = placedBuildingsRef.current.filter(b => {
@@ -2469,9 +2987,14 @@ const App: React.FC = () => {
     useEffect(() => { playerAchievementsRef.current = playerAchievements; }, [playerAchievements]);
     const [gameAlertMessage, setGameAlertMessage] = useState<string | null>(null);
     const [buildingLimitModalData, setBuildingLimitModalData] = useState<{ currentLimit: number; nextLimit: number } | null>(null);
-    const [pendingConstructionIntent, setPendingConstructionIntent] = useState<{ building: Building; x: number; y: number; retried?: boolean } | null>(null);
+    const [pendingConstructionIntent, setPendingConstructionIntent] = useState<{ building: Building; x: number; y: number; retried?: boolean; fromInventoryItemId?: number } | null>(null);
     const pendingConstructionIntentRef = useRef(pendingConstructionIntent);
     useEffect(() => { pendingConstructionIntentRef.current = pendingConstructionIntent; }, [pendingConstructionIntent]);
+    const [pendingMonsterPlacement, setPendingMonsterPlacement] = useState<{ building: Building; fromInventoryItemId: number } | null>(null);
+    const pendingMonsterPlacementRef = useRef<{ building: Building; fromInventoryItemId: number } | null>(null);
+    useEffect(() => { pendingMonsterPlacementRef.current = pendingMonsterPlacement; }, [pendingMonsterPlacement]);
+    const [isCreatingAcademyMonster, setIsCreatingAcademyMonster] = useState(false);
+    const isCreatingAcademyMonsterRef = useRef(false);
     const [energyModalState, setEnergyModalState] = useState<{ mode: 'warning' | 'shop'; requiredEnergy?: number } | null>(null);
     const [rubyModalState, setRubyModalState] = useState<{ mode: 'warning' | 'shop'; requiredRubies?: number } | null>(null);
     const gameAlertQueueRef = useRef<string[]>([]);
@@ -2596,40 +3119,68 @@ const App: React.FC = () => {
 
     useEffect(() => {
         repairMojibakeDom(document.body);
+        let pending = false;
+        const nodesToFix: Element[] = [];
+
+        const flushFixes = () => {
+            pending = false;
+            while (nodesToFix.length > 0) {
+                const el = nodesToFix.pop();
+                if (el && el.isConnected) {
+                    repairMojibakeDom(el);
+                }
+            }
+        };
+
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
-                if (mutation.type === 'characterData') {
-                    const t = mutation.target as Text;
-                    const original = t.nodeValue || '';
-                    const fixed = repairMojibakeCp1251Utf8(original);
-                    if (fixed !== original) t.nodeValue = fixed;
-                    continue;
-                }
                 for (const added of Array.from(mutation.addedNodes)) {
                     if (added.nodeType === Node.TEXT_NODE) {
                         const t = added as Text;
                         const original = t.nodeValue || '';
-                        const fixed = repairMojibakeCp1251Utf8(original);
-                        if (fixed !== original) t.nodeValue = fixed;
+                        if (/[Р РЎР’РІРѓРЉР‹Р‚Р‰РЊРЏР„РЃС’СљСџРЋР‡ТђТ‘в„–ÐÑ]/.test(original)) {
+                            const fixed = repairMojibakeCp1251Utf8(original);
+                            if (fixed !== original) t.nodeValue = fixed;
+                        }
                     } else if (added.nodeType === Node.ELEMENT_NODE) {
-                        repairMojibakeDom(added as Element);
+                        const el = added as Element;
+                        if (el.classList?.contains('pointer-events-none') || el.id === 'game-canvas') {
+                            continue; // Skip overlays & game canvas elements
+                        }
+                        nodesToFix.push(el);
+                        if (!pending) {
+                            pending = true;
+                            if (typeof requestIdleCallback === 'function') {
+                                requestIdleCallback(flushFixes);
+                            } else {
+                                setTimeout(flushFixes, 50);
+                            }
+                        }
                     }
                 }
             }
         });
-        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-        return () => observer.disconnect();
+        observer.observe(document.body, { childList: true, subtree: true });
+        const disconnectTimer = setTimeout(() => {
+            observer.disconnect();
+        }, 12000); // Disconnect after initial DOM hydration to free main thread completely
+        return () => {
+            clearTimeout(disconnectTimer);
+            observer.disconnect();
+        };
     }, []);
     
-    // Update currentTime every second for accurate ban checking
+    // Update currentTime periodically for ban and status checks without churning React root every second
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentTime(Date.now());
-        }, 1000);
+        }, 15000);
         return () => clearInterval(interval);
     }, []);
     const [userGloryAdjustments, setUserGloryAdjustments] = useState<Record<string, number>>({});
     const [friends, setFriends] = useState<Friend[]>([]);
+    const friendsRef = useRef<Friend[]>([]);
+    useEffect(() => { friendsRef.current = friends; }, [friends]);
     const [playerHistory, setPlayerHistory] = useState<HistoryEntry[]>([]);
     const [historyLoadState, setHistoryLoadState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
     const [historyClearing, setHistoryClearing] = useState(false);
@@ -2648,12 +3199,19 @@ const App: React.FC = () => {
     const [isMoveActionProcessing, setIsMoveActionProcessing] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [tooltip, setTooltip] = useState<{ visible: boolean, x: number, y: number, content: React.ReactNode | null }>({ visible: false, x: 0, y: 0, content: null });
+    const tooltipRef = useRef<HTMLDivElement>(null);
+    const lastHoveredBuildingIdRef = useRef<string | null>(null);
     const [hoveredTile, setHoveredTile] = useState<{ x: number, y: number } | null>({ x: 0, y: 0 });
+    const hoveredTileRef = useRef<{ x: number, y: number } | null>({ x: 0, y: 0 });
     const [hoveredOutOfBounds, setHoveredOutOfBounds] = useState(false);
-    const [lastPointerPos, setLastPointerPos] = useState<{ x: number, y: number }>({ x: 0, y: 0 });
+    const lastPointerPosRef = useRef<{ x: number, y: number }>({ x: 0, y: 0 });
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [showPlayerProfile, setShowPlayerProfile] = useState(false);
     const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+    const handleSelectPlayer = useCallback((uid: string) => {
+        setSelectedPlayerId(uid);
+        setShowPlayerProfile(true);
+    }, []);
     const [selectedPlayerBuildings, setSelectedPlayerBuildings] = useState<PlacedBuilding[]>([]);
     const [showInventory, setShowInventory] = useState(false);
     const [showDailyRewardModal, setShowDailyRewardModal] = useState(false);
@@ -2680,19 +3238,51 @@ const App: React.FC = () => {
     const [royalElectionEndTime, setRoyalElectionEndTime] = useState<number>(0);
     const [firstRoyalElectionCompleted, setFirstRoyalElectionCompleted] = useState(false);
     const [buildMenu, setBuildMenu] = useState<{ visible: boolean, x: number, y: number }>({ visible: false, x: 0, y: 0 });
+    const buildMenuOpenedAtRef = useRef<number>(0);
     const [selectedBuilding, setSelectedBuilding] = useState<{ building: PlacedBuilding, info: Building } | null>(null);
     const [buildConfirmation, setBuildConfirmation] = useState<{ visible: boolean, building: Building | null, x: number, y: number }>({ visible: false, building: null, x: 0, y: 0 });
-    const [visualEffects, setVisualEffects] = useState<VisualEffect[]>([]);
-    const loadedImageElementsRef = useRef<Record<string, HTMLImageElement>>({});
+    // Visual effects stored in ref to prevent 60 FPS React re-render thrashing during combat
+    const visualEffectsRef = useRef<VisualEffect[]>([]);
+    const setVisualEffects = useCallback((action: VisualEffect[] | ((prev: VisualEffect[]) => VisualEffect[])) => {
+        if (typeof action === 'function') {
+            visualEffectsRef.current = action(visualEffectsRef.current);
+        } else {
+            visualEffectsRef.current = action;
+        }
+    }, []);
+    const loadedImageElementsRef = useRef<Record<string, HTMLImageElement | HTMLCanvasElement>>({});
     const requestedImageUrlsRef = useRef<Set<string>>(new Set());
-    const lastRenderableImageByEntityRef = useRef<Map<string, HTMLImageElement>>(new Map());
+    const lastRenderableImageByEntityRef = useRef<Map<string, HTMLImageElement | HTMLCanvasElement>>(new Map());
     const [moveMode, setMoveMode] = useState<{ active: boolean, building: PlacedBuilding | null }>({ active: false, building: null });
+    const [roadBuilderMode, setRoadBuilderMode] = useState<boolean>(false);
+    const [pavementBuilderMode, setPavementBuilderMode] = useState<boolean>(false);
+    const [trebuchetTargeting, setTrebuchetTargeting] = useState<{ buildingId: string | number; sourceX: number; sourceY: number } | null>(null);
+    const trebuchetTargetingRef = useRef(trebuchetTargeting);
+    trebuchetTargetingRef.current = trebuchetTargeting;
+    const [trebuchetMovingTargeting, setTrebuchetMovingTargeting] = useState<{ buildingId: string | number; sourceX: number; sourceY: number } | null>(null);
+    const trebuchetMovingTargetingRef = useRef(trebuchetMovingTargeting);
+    trebuchetMovingTargetingRef.current = trebuchetMovingTargeting;
+    const trebuchetShotSpawnedRef = useRef<Set<string>>(new Set());
+    const trebuchetHitProcessedRef = useRef<Set<string>>(new Set());
+    const [mortarRangePreview, setMortarRangePreview] = useState<{ buildingId: string | number; sourceX: number; sourceY: number } | null>(null);
+    const mortarRangePreviewRef = useRef(mortarRangePreview);
+    mortarRangePreviewRef.current = mortarRangePreview;
+    const mortarShotSpawnedRef = useRef<Set<string>>(new Set());
+    const mortarHitProcessedRef = useRef<Set<string>>(new Set());
     const [selectedOilDeposit, setSelectedOilDeposit] = useState<MapResource | null>(null);
     const [selectedQuarry, setSelectedQuarry] = useState<MapResource | null>(null);
     const [showBlackMarketMissingModal, setShowBlackMarketMissingModal] = useState(false);
     const [blackMarketBuilding, setBlackMarketBuilding] = useState<Building | null>(null);
     const [comboState, setComboState] = useState<ComboState>(() => createInitialComboState());
     const [floatingJuiceItems, setFloatingJuiceItems] = useState<FloatingTextItem[]>([]);
+    useEffect(() => {
+        if (floatingJuiceItems.length === 0) return;
+        const timer = setTimeout(() => {
+            const now = Date.now();
+            setFloatingJuiceItems(current => current.filter(item => now - item.createdAt < item.durationMs));
+        }, 2200);
+        return () => clearTimeout(timer);
+    }, [floatingJuiceItems]);
     const [levelUpCelebration, setLevelUpCelebration] = useState<LevelUpCelebration | null>(null);
     const [showClanStockExchangeModal, setShowClanStockExchangeModal] = useState(false);
     const [clanStockListings, setClanStockListings] = useState<ClanStockListing[]>(() => {
@@ -2796,9 +3386,12 @@ const App: React.FC = () => {
                 const tryLoad = () => {
                     attempts++;
                     const img = new Image();
+                    const versionedUrl = appendAssetVersion(normalizedUrl);
                     img.onload = () => {
-                        loadedImageElementsRef.current[url] = img;
-                        loadedImageElementsRef.current[normalizedUrl] = img;
+                        const optimized = createOptimizedCanvasFromImage(img);
+                        loadedImageElementsRef.current[url] = optimized;
+                        loadedImageElementsRef.current[normalizedUrl] = optimized;
+                        loadedImageElementsRef.current[versionedUrl] = optimized;
                         finish();
                     };
                     img.onerror = () => {
@@ -2811,7 +3404,7 @@ const App: React.FC = () => {
                         requestedImageUrlsRef.current.delete(normalizedUrl);
                         finish();
                     };
-                    img.src = normalizedUrl;
+                    img.src = versionedUrl;
                 };
 
                 tryLoad();
@@ -2948,10 +3541,14 @@ const App: React.FC = () => {
     const [showBanMenu, setShowBanMenu] = useState(false);
     const [showPunishMenu, setShowPunishMenu] = useState(false);
     const [showCurseMenu, setShowCurseMenu] = useState(false);
-    const [, setLastTeleportTime] = useState(0);
-    const [, setActiveTeleportDuration] = useState(TELEPORT_COOLDOWN_MS);
-    const [, setLastDragTime] = useState(0); // Track last significant drag for cooldown
-    const [, setLastZoneChangeTime] = useState(0); // Track when zones changed
+    const lastTeleportTimeRef = useRef(0);
+    const setLastTeleportTime = useCallback((t: number) => { lastTeleportTimeRef.current = t; }, []);
+    const activeTeleportDurationRef = useRef(TELEPORT_COOLDOWN_MS);
+    const setActiveTeleportDuration = useCallback((d: number) => { activeTeleportDurationRef.current = d; }, []);
+    const lastDragTimeRef = useRef(0);
+    const setLastDragTime = useCallback((t: number) => { lastDragTimeRef.current = t; }, []);
+    const lastZoneChangeTimeRef = useRef(0);
+    const setLastZoneChangeTime = useCallback((t: number) => { lastZoneChangeTimeRef.current = t; }, []);
     const lastZoneChangeAtRef = useRef(0);
     const [activeCurses, setActiveCurses] = useState<Record<string, { prefix: string, endTime: number }>>({});
     const [lastClanChatTime, setLastClanChatTime] = useState<number>(0); // For banned players rate limiting
@@ -2962,6 +3559,7 @@ const App: React.FC = () => {
     const placedBuildingsRef = useRef(placedBuildings);
     const mapResourcesRef = useRef(mapResources);
     const droppedItemsRef = useRef(droppedItems);
+    const visibleEntitiesPoolRef = useRef<VisibleDrawableEntity[]>([]);
     const lastPlacedBuildingsSetRef = useRef(0);
     const initialResourcesLoaded = useRef(false);
     const seededZones = useRef(new Set<string>());
@@ -3004,6 +3602,7 @@ const App: React.FC = () => {
     const serverMyBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
     const serverInitiatedBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
     const serverMonsterBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
+    const serverClanBuildingsRef = useRef<Map<string | number, PlacedBuilding>>(new Map());
     const optimisticBuildDocIdByTempIdRef = useRef<Map<string, string>>(new Map());
     const optimisticBuildTempIdByDocIdRef = useRef<Map<string, string>>(new Map());
     const townHallCleanupFirstSeenRef = useRef<Map<string, number>>(new Map());
@@ -3051,7 +3650,7 @@ const App: React.FC = () => {
     const monsterSpawnInitialTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const monsterWorldSweepCursorRef = useRef(0);
     const currentZonesRef = useRef<string[]>([]);
-    const placeBuildingAtTileRef = useRef<((building: Building, x: number, y: number, traceId?: string, options?: { resumedAfterPermitPurchase?: boolean }) => Promise<PlacedBuilding | null>) | null>(null);
+    const placeBuildingAtTileRef = useRef<((building: Building, x: number, y: number, traceId?: string, options?: { resumedAfterPermitPurchase?: boolean; fromInventoryItemId?: number }) => Promise<PlacedBuilding | null>) | null>(null);
     const updatePlayerResourcesRef = useRef<((goldDelta: number, rubiesDelta: number, inventoryDeltas: Record<number, number>) => void) | null>(null);
     const addHistoryLogRef = useRef<((message: string, type: HistoryEntry['type']) => void) | null>(null);
     const lastServerSyncRef = useRef<Map<string, number>>(new Map()); // Track when each building was last seen from server
@@ -3131,7 +3730,10 @@ const App: React.FC = () => {
     useEffect(() => {
         if (typeof window === 'undefined') return;
         (window as any).__testHelpers = {
-            openBuildMenu: () => setBuildMenu({ visible: true, x: 0, y: 0 }),
+            openBuildMenu: () => {
+                buildMenuOpenedAtRef.current = Date.now();
+                setBuildMenu({ visible: true, x: 0, y: 0 });
+            },
             closeBuildMenu: () => setBuildMenu({ visible: false, x: 0, y: 0 }),
             openProfileModal: () => setShowProfileModal(true),
             closeProfileModal: () => setShowProfileModal(false),
@@ -3284,6 +3886,7 @@ const App: React.FC = () => {
         serverMyBuildingsRef.current.delete(docId);
         serverInitiatedBuildingsRef.current.delete(docId);
         serverMonsterBuildingsRef.current.delete(docId);
+        serverClanBuildingsRef.current.delete(docId);
         confirmedDeletedRef.current.add(docId);
     }, []);
     const isNotFoundBuildingError = useCallback((error: any): boolean => {
@@ -3408,6 +4011,7 @@ const App: React.FC = () => {
                         clanId: userData.clanId || null,
                         rank: userData.rank ?? 0,
                         clanPermissions: userData.clanPermissions || { canInvite: false, canGrantStars: false },
+                        joinNumber: userData.joinNumber || userData.data?.joinNumber || null,
                         ...getUserStatCounters(userData),
                     }
                 }));
@@ -3663,6 +4267,74 @@ const App: React.FC = () => {
         };
     }, []);
 
+    // High-performance spatial indexing caches for O(1) tile lookups
+    const spatialResourcesMapRef = useRef<Map<string, MapResource>>(new Map());
+    const lastResourcesRefForSpatial = useRef<MapResource[] | null>(null);
+
+    const blockedResourcePositionsSetRef = useRef<Set<string>>(new Set());
+    const lastResourcesRefForBlockedSet = useRef<MapResource[] | null>(null);
+
+    const getBlockedResourcePositionsSet = useCallback((): Set<string> => {
+        if (lastResourcesRefForBlockedSet.current !== mapResourcesRef.current) {
+            lastResourcesRefForBlockedSet.current = mapResourcesRef.current;
+            const set = blockedResourcePositionsSetRef.current;
+            set.clear();
+            const list = mapResourcesRef.current;
+            for (let i = 0; i < list.length; i++) {
+                const r = list[i];
+                set.add(`${r.x},${r.y}`);
+            }
+        }
+        return blockedResourcePositionsSetRef.current;
+    }, []);
+
+    const getSpatialResourceAt = useCallback((x: number, y: number): MapResource | undefined => {
+        if (lastResourcesRefForSpatial.current !== mapResourcesRef.current) {
+            lastResourcesRefForSpatial.current = mapResourcesRef.current;
+            const map = spatialResourcesMapRef.current;
+            map.clear();
+            const list = mapResourcesRef.current;
+            for (let i = 0; i < list.length; i++) {
+                const r = list[i];
+                map.set(`${r.x},${r.y}`, r);
+            }
+        }
+        return spatialResourcesMapRef.current.get(`${x},${y}`);
+    }, []);
+
+    const spatialBuildingsMapRef = useRef<Map<string, PlacedBuilding>>(new Map());
+    const lastBuildingsRefForSpatial = useRef<PlacedBuilding[] | null>(null);
+
+    const getSpatialBuildingAt = useCallback((x: number, y: number): PlacedBuilding | undefined => {
+        if (lastBuildingsRefForSpatial.current !== placedBuildingsRef.current) {
+            lastBuildingsRefForSpatial.current = placedBuildingsRef.current;
+            const map = spatialBuildingsMapRef.current;
+            map.clear();
+            const list = placedBuildingsRef.current;
+            for (let i = 0; i < list.length; i++) {
+                const b = list[i];
+                if (b.hp === undefined || b.hp > 0) {
+                    const coordKey = `${b.x},${b.y}`;
+                    const existing = map.get(coordKey);
+                    if (!existing || !isGroundTileId(b.buildingId)) {
+                        map.set(coordKey, b);
+                    }
+                    if (b.buildingId === TREBUCHET_ID && b.trebuchetMoveUntil && Date.now() < b.trebuchetMoveUntil && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveTargetY !== undefined) {
+                        map.set(`${b.trebuchetMoveTargetX},${b.trebuchetMoveTargetY}`, b);
+                    }
+                }
+            }
+        }
+        return spatialBuildingsMapRef.current.get(`${x},${y}`);
+    }, []);
+
+    // Macro-culling sector spatial buckets for draw()
+    const resourceSectorsMapRef = useRef<Map<string, MapResource[]>>(new Map());
+    const lastResourceListForSectorsRef = useRef<MapResource[] | null>(null);
+
+    const buildingSectorsMapRef = useRef<Map<string, PlacedBuilding[]>>(new Map());
+    const lastBuildingListForSectorsRef = useRef<PlacedBuilding[] | null>(null);
+
     const getPlacementPreviewState = useCallback((
         x: number,
         y: number,
@@ -3671,22 +4343,13 @@ const App: React.FC = () => {
         const ignoreBuildingId = options?.ignoreBuildingId !== undefined ? String(options.ignoreBuildingId) : null;
         const allowedResourceTypes = new Set(options?.allowedResourceTypes || []);
 
-        const hasLocalBuilding = placedBuildingsRef.current.some(b =>
-            b.x === x &&
-            b.y === y &&
-            (b.hp === undefined || b.hp > 0) &&
-            String(b.id) !== ignoreBuildingId
-        );
-        if (hasLocalBuilding) {
+        const localBuilding = getSpatialBuildingAt(x, y);
+        if (localBuilding && String(localBuilding.id) !== ignoreBuildingId) {
             return 'occupied';
         }
 
-        const blockingResource = mapResourcesRef.current.find(r =>
-            r.x === x &&
-            r.y === y &&
-            !allowedResourceTypes.has(r.type)
-        );
-        if (blockingResource) {
+        const blockingResource = getSpatialResourceAt(x, y);
+        if (blockingResource && !allowedResourceTypes.has(blockingResource.type)) {
             return 'occupied';
         }
 
@@ -3909,7 +4572,7 @@ const App: React.FC = () => {
     const reportPlayerMovement = useCallback((immediate = false) => {
         if (!isAuthReady || !user || !initialLoadDone.current) return;
         const now = Date.now();
-        const minInterval = 400; // ms throttle during active drag (at most 2.5 lightweight updates/sec)
+        const minInterval = 800; // ms throttle during active drag (interpolated smoothly on clients)
 
         const performSync = async () => {
             if (!user || !initialLoadDone.current) return;
@@ -4330,6 +4993,7 @@ const App: React.FC = () => {
     const playerEnergyRef = useRef(playerEnergy);
     useEffect(() => { playerEnergyRef.current = playerEnergy; }, [playerEnergy]);
     const deletingDroppedItemsRef = useRef<Map<string, number>>(new Map());
+    const emptyTileCooldownUntilRef = useRef<number>(0);
     const isDroppedItemDeleting = useCallback((id: string): boolean => {
         const deleteTime = deletingDroppedItemsRef.current.get(id);
         if (!deleteTime) return false;
@@ -4998,6 +5662,39 @@ const App: React.FC = () => {
         return () => window.removeEventListener('keydown', handleHotkey);
     }, []);
 
+    // Escape listener to cancel trebuchet targeting, movement, mortar range preview mode, road builder mode, pavement builder mode, or monster placement mode
+    useEffect(() => {
+        if (!trebuchetTargeting && !mortarRangePreview && !trebuchetMovingTargeting && !roadBuilderMode && !pavementBuilderMode && !pendingMonsterPlacement) return;
+        const handleEsc = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                if (pendingMonsterPlacement) {
+                    pendingMonsterPlacementRef.current = null;
+                    setPendingMonsterPlacement(null);
+                    playCloseSound();
+                }
+                if (mortarRangePreview) {
+                    setMortarRangePreview(null);
+                }
+                if (trebuchetTargeting) {
+                    setTrebuchetTargeting(null);
+                }
+                if (trebuchetMovingTargeting) {
+                    setTrebuchetMovingTargeting(null);
+                }
+                if (roadBuilderMode) {
+                    setRoadBuilderMode(false);
+                    playCloseSound();
+                }
+                if (pavementBuilderMode) {
+                    setPavementBuilderMode(false);
+                    playCloseSound();
+                }
+            }
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [trebuchetTargeting, mortarRangePreview, trebuchetMovingTargeting, roadBuilderMode, pavementBuilderMode, pendingMonsterPlacement, playCloseSound]);
+
     // Keyboard WASD & Arrow movement listener (screen-space panning, 30% slower than mouse)
     useEffect(() => {
         const isTextInput = (target: EventTarget | null): boolean => {
@@ -5182,21 +5879,23 @@ const App: React.FC = () => {
             });
             setMapResources(resourcesData);
 
-            // Financial Intelligence Notification Logic
+            // Financial Intelligence Notification Logic: compute intel check ONCE outside the loop
             if (initialResourcesLoaded.current) {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === "added") {
-                        const newResource = change.doc.data() as MapResource;
-                        const sectorX = Math.floor(newResource.x / ZONE_SIZE) + 1;
-                        const sectorY = Math.floor(newResource.y / ZONE_SIZE) + 1;
+                const hasIntel = user && placedBuildingsRef.current ? placedBuildingsRef.current.some(b =>
+                    [340, 341, 342].includes(b.buildingId) &&
+                    b.ownerId === user.uid &&
+                    !b.isConstructing
+                ) : false;
 
-                        const hasIntel = placedBuildingsRef.current.some(b =>
-                            [340, 341, 342].includes(b.buildingId) &&
-                            b.ownerId === user.uid &&
-                            !b.isConstructing
-                        );
+                if (hasIntel) {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === "added") {
+                            const newResource = change.doc.data() as MapResource;
+                            if (newResource.type !== 'oil' && newResource.type !== 'quarry' && newResource.type !== 'chest') return;
 
-                        if (hasIntel) {
+                            const sectorX = Math.floor(newResource.x / ZONE_SIZE) + 1;
+                            const sectorY = Math.floor(newResource.y / ZONE_SIZE) + 1;
+
                             let text = "";
                             if (newResource.type === 'oil') text = `В секторе ${sectorX}-${sectorY} обнаружено новое месторождение нефти!`;
                             else if (newResource.type === 'quarry') text = `В секторе ${sectorX}-${sectorY} обнаружено новое месторождение ресурсов!`;
@@ -5218,8 +5917,8 @@ const App: React.FC = () => {
                                 });
                             }
                         }
-                    }
-                });
+                    });
+                }
             } else {
                 initialResourcesLoaded.current = true;
             }
@@ -5548,7 +6247,19 @@ const App: React.FC = () => {
         isDraggingRef.current = false;
         hasDraggedRef.current = false;
 
-        if (!wasDragging) {
+        if (mortarRangePreviewRef.current) {
+            setMortarRangePreview(null);
+            return;
+        }
+
+        const activeTargeting = trebuchetTargetingRef.current || trebuchetTargeting;
+        const activeMovingTargeting = trebuchetMovingTargetingRef.current || trebuchetMovingTargeting;
+        const allowTargetingClick = Boolean((activeTargeting || activeMovingTargeting) && (
+            !wasDragging ||
+            (Math.hypot(clientX - dragStartRef.current.x, clientY - dragStartRef.current.y) < 25)
+        ));
+
+        if (!wasDragging || allowTargetingClick) {
             if (buildMenu.visible || buildConfirmation.visible) {
                 setBuildMenu({ visible: false, x: 0, y: 0 });
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
@@ -5559,12 +6270,420 @@ const App: React.FC = () => {
             const zoom = ZOOM_LEVELS[zoomIndex];
             const { x: gridX, y: gridY } = screenToWorld(clientX, clientY, zoom);
 
+            const activeMonsterPlacement = pendingMonsterPlacementRef.current;
+            if (activeMonsterPlacement) {
+                if (!isWorldWrapped && (gridX < 0 || gridX >= WORLD_WIDTH_TILES || gridY < 0 || gridY >= WORLD_HEIGHT_TILES)) {
+                    return;
+                }
+                const previewState = getPlacementPreviewState(gridX, gridY);
+                if (previewState === 'syncing') {
+                    alert('Сектор ещё загружается. Попробуйте снова через секунду.');
+                    return;
+                }
+                if (previewState !== 'free') {
+                    alert(`Клетка занята! Выберите другую свободную клетку (или нажмите ESC — ${activeMonsterPlacement.building.name} останется в инвентаре).`);
+                    return;
+                }
+                if (isBuildingActionProcessing) return;
+                setIsBuildingActionProcessing(true);
+                try {
+                    const placed = await placeBuildingAtTileRef.current?.(
+                        activeMonsterPlacement.building,
+                        gridX,
+                        gridY,
+                        undefined,
+                        { fromInventoryItemId: activeMonsterPlacement.fromInventoryItemId }
+                    );
+                    if (placed) {
+                        pendingMonsterPlacementRef.current = null;
+                        setPendingMonsterPlacement(null);
+                        playOpenSound();
+                    }
+                } catch (err) {
+                    console.error('[MonsterPlacement] error:', err);
+                } finally {
+                    setIsBuildingActionProcessing(false);
+                }
+                return;
+            }
+
+            if (roadBuilderMode) {
+                if (!isWorldWrapped && (gridX < 0 || gridX >= WORLD_WIDTH_TILES || gridY < 0 || gridY >= WORLD_HEIGHT_TILES)) {
+                    return;
+                }
+                const roadBuilding = buildingData.find(b => b.id === ROAD_BUILDING_ID) || buildingData.find(b => isRoadBuilding(b.id));
+                if (roadBuilding) {
+                    const previewState = getPlacementPreviewState(gridX, gridY);
+                    if (previewState !== 'free') {
+                        return;
+                    }
+                    const cost = roadBuilding.price || 100;
+                    const currentGold = playerGoldRef.current ?? playerGold;
+                    if (currentGold < cost) {
+                        alert("Недостаточно золота для постройки дороги! Требуется 100 монет.");
+                        return;
+                    }
+                    if (isBuildingActionProcessing) return;
+                    setIsBuildingActionProcessing(true);
+                    try {
+                        const placed = await placeBuildingAtTileRef.current?.(roadBuilding, gridX, gridY);
+                        if (placed) {
+                            playHammerSound();
+                            const now = Date.now();
+                            setFloatingJuiceItems(current => [
+                                ...current.filter(item => now - item.createdAt < item.durationMs),
+                                {
+                                    id: `road-gold-${now}-${Math.random()}`,
+                                    worldX: gridX,
+                                    worldY: gridY,
+                                    text: `-${cost} 🪙`,
+                                    type: 'gold',
+                                    comboLevel: 1,
+                                    color: '#f87171',
+                                    glowColor: 'rgba(239, 68, 68, 0.5)',
+                                    scale: 1.15,
+                                    createdAt: now,
+                                    durationMs: 1400,
+                                }
+                            ]);
+                        }
+                    } catch (err) {
+                        console.error('[RoadBuilderMode] placement error:', err);
+                    } finally {
+                        setIsBuildingActionProcessing(false);
+                    }
+                }
+                return;
+            }
+
+            if (pavementBuilderMode) {
+                if (!isWorldWrapped && (gridX < 0 || gridX >= WORLD_WIDTH_TILES || gridY < 0 || gridY >= WORLD_HEIGHT_TILES)) {
+                    return;
+                }
+                const paveBuilding = buildingData.find(b => b.id === PAVEMENT_BUILDING_ID) || buildingData.find(b => isPavementBuilding(b.id));
+                if (paveBuilding) {
+                    const previewState = getPlacementPreviewState(gridX, gridY);
+                    if (previewState !== 'free') {
+                        return;
+                    }
+                    const cost = paveBuilding.price || 1000;
+                    const currentGold = playerGoldRef.current ?? playerGold;
+                    if (currentGold < cost) {
+                        alert("Недостаточно золота для постройки мостовой! Требуется 1000 монет.");
+                        return;
+                    }
+                    const stoneBlocksInInv = Number(inventory[10006]) || 0;
+                    if (stoneBlocksInInv < 1) {
+                        alert("Недостаточно каменных блоков для постройки мостовой! Требуется 1 каменный блок.");
+                        return;
+                    }
+                    if (isBuildingActionProcessing) return;
+                    setIsBuildingActionProcessing(true);
+                    try {
+                        const placed = await placeBuildingAtTileRef.current?.(paveBuilding, gridX, gridY);
+                        if (placed) {
+                            playHammerSound();
+                            const now = Date.now();
+                            setFloatingJuiceItems(current => [
+                                ...current.filter(item => now - item.createdAt < item.durationMs),
+                                {
+                                    id: `pave-cost-${now}-${Math.random()}`,
+                                    worldX: gridX,
+                                    worldY: gridY,
+                                    text: `-${cost} 🪙 -1 🧱`,
+                                    type: 'gold',
+                                    comboLevel: 1,
+                                    color: '#f87171',
+                                    glowColor: 'rgba(239, 68, 68, 0.5)',
+                                    scale: 1.15,
+                                    createdAt: now,
+                                    durationMs: 1400,
+                                }
+                            ]);
+                        }
+                    } catch (err) {
+                        console.error('[PavementBuilderMode] placement error:', err);
+                    } finally {
+                        setIsBuildingActionProcessing(false);
+                    }
+                }
+                return;
+            }
+
+            if (activeTargeting) {
+                const { buildingId } = activeTargeting;
+                const trebDocId = String(buildingId);
+                const trebuchetBuilding = placedBuildingsRef.current.find(b => String(b.id) === trebDocId);
+                const sourceX = trebuchetBuilding ? trebuchetBuilding.x : activeTargeting.sourceX;
+                const sourceY = trebuchetBuilding ? trebuchetBuilding.y : activeTargeting.sourceY;
+                const currentUserId = userRef.current?.uid;
+                const trebOwnerId = trebuchetBuilding?.ownerId || currentUserId;
+
+                const isTargetableByTrebuchet = (candidate: PlacedBuilding) => {
+                    const cInfo = buildingByIdMap.get(Number(candidate.buildingId));
+                    const isMon = Boolean(cInfo?.stats.isMonster || candidate.ownerId === 'monster' || candidate.ownerId === '-1');
+                    if (isMon) return true;
+                    // Player cannot target their own buildings with their artillery
+                    if (trebOwnerId && candidate.ownerId === trebOwnerId) return false;
+                    return true;
+                };
+
+                // Hit-testing: Did the player click directly on a monster or building sprite?
+                // In isometric projection, monster and tall building sprites extend significantly upward from their ground tile.
+                // We prioritize monsters first, then check screen-space bounding boxes sorted front-to-back.
+                let clickedEntity: PlacedBuilding | null = null;
+                const candidates = [...placedBuildingsRef.current]
+                    .filter(b => (b.hp === undefined || b.hp > 0) && !b.isDestroying && String(b.id) !== trebDocId && isTargetableByTrebuchet(b))
+                    .sort((a, b) => {
+                        const aInfo = buildingByIdMap.get(Number(a.buildingId));
+                        const bInfo = buildingByIdMap.get(Number(b.buildingId));
+                        const aMon = Boolean(aInfo?.stats.isMonster || a.ownerId === 'monster' || a.ownerId === '-1');
+                        const bMon = Boolean(bInfo?.stats.isMonster || b.ownerId === 'monster' || b.ownerId === '-1');
+                        // Always prioritize monsters over buildings in targeting hit-test
+                        if (aMon && !bMon) return -1;
+                        if (!aMon && bMon) return 1;
+                        return (b.x + b.y) - (a.x + a.y);
+                    });
+
+                const scaledTileWidth = TILE_WIDTH * zoom;
+                const scaledTileHeight = TILE_HEIGHT * zoom;
+
+                for (const candidate of candidates) {
+                    const { screenX, screenY } = worldToScreen(candidate.x, candidate.y, zoom);
+                    const entityCanvasX = screenX + cameraOffsetRef.current.x;
+                    const entityCanvasY = screenY + cameraOffsetRef.current.y;
+
+                    const cInfo = buildingByIdMap.get(Number(candidate.buildingId));
+                    const isMon = Boolean(cInfo?.stats.isMonster || candidate.ownerId === 'monster' || candidate.ownerId === '-1');
+                    const isBronekur = Number(candidate.buildingId) === BRONEKUR_ID;
+                    const isGorynych = Number(candidate.buildingId) === GORYNYCH_ID;
+
+                    // Large boss sprites (e.g. Bronekur 2.5x scale) extend much higher and wider
+                    const widthMultiplier = isBronekur ? 2.5 : isGorynych ? 2.0 : isMon ? 1.6 : 1.15;
+                    const heightMultiplier = isBronekur ? 4.5 : isGorynych ? 3.5 : isMon ? 3.0 : 2.2;
+
+                    const boxHalfW = (scaledTileWidth / 2) * widthMultiplier;
+                    const boxTop = entityCanvasY - (scaledTileHeight * heightMultiplier);
+                    const boxBottom = entityCanvasY + (scaledTileHeight * 0.8);
+
+                    if (
+                        clientX >= entityCanvasX - boxHalfW &&
+                        clientX <= entityCanvasX + boxHalfW &&
+                        clientY >= boxTop &&
+                        clientY <= boxBottom
+                    ) {
+                        clickedEntity = candidate;
+                        break;
+                    }
+                }
+
+                // If clicked an entity sprite, target its tile; otherwise target ground tile (gridX, gridY)
+                const targetX = clickedEntity ? clickedEntity.x : gridX;
+                const targetY = clickedEntity ? clickedEntity.y : gridY;
+
+                // Validate that ground click does not land directly on own friendly building
+                if (!clickedEntity) {
+                    const ownBuildingAtTile = placedBuildingsRef.current.find(b =>
+                        b.x === targetX && b.y === targetY &&
+                        (b.hp === undefined || b.hp > 0) &&
+                        !b.isDestroying &&
+                        String(b.id) !== trebDocId &&
+                        !isTargetableByTrebuchet(b)
+                    );
+                    if (ownBuildingAtTile) {
+                        alert("Нельзя атаковать свои собственные здания! Выберите монстра или вражескую цель.");
+                        return;
+                    }
+                }
+
+                const dx = Math.abs(targetX - sourceX);
+                const dy = Math.abs(targetY - sourceY);
+                const dist = Math.max(dx, dy);
+
+                if (dist > TREBUCHET_ATTACK_RANGE) {
+                    alert(`Цель вне зоны досягаемости! Радиус действия требушета — ${TREBUCHET_ATTACK_RANGE} клеток во все стороны.`);
+                    return;
+                }
+
+                if (targetX === sourceX && targetY === sourceY) {
+                    alert("Требушет не может атаковать сам себя! Выберите другую цель.");
+                    return;
+                }
+
+                // Immediately clear targeting mode in both ref and state so UI menu disappears instantly
+                trebuchetTargetingRef.current = null;
+                setTrebuchetTargeting(null);
+
+                const now = Date.now();
+                const fireAt = now + TREBUCHET_COUNTDOWN_MS;
+
+                const attackFacing = getTrebuchetFacingFromDelta(targetX - sourceX, targetY - sourceY);
+                const updatedProps: Partial<PlacedBuilding> = {
+                    trebuchetTargetX: targetX,
+                    trebuchetTargetY: targetY,
+                    trebuchetTargetEntityId: clickedEntity ? clickedEntity.id : undefined,
+                    trebuchetFacing: attackFacing,
+                    trebuchetFireAt: fireAt,
+                    trebuchetLoaded: true,
+                };
+
+                const docId = trebDocId;
+
+                trebuchetShotSpawnedRef.current.delete(`${trebDocId}_${fireAt}`);
+                trebuchetHitProcessedRef.current.delete(`${trebDocId}_${fireAt}`);
+
+                setPlacedBuildings(prev => prev.map(pb => {
+                    if (String(pb.id) !== docId) return pb;
+                    const res = { ...pb, ...updatedProps, isLocal: true };
+                    delete (res as any).__trebuchetShotSpawned;
+                    delete (res as any).__trebuchetHitProcessed;
+                    return res;
+                }));
+                placedBuildingsRef.current = placedBuildingsRef.current.map(pb => {
+                    if (String(pb.id) !== docId) return pb;
+                    const res = { ...pb, ...updatedProps, isLocal: true };
+                    delete (res as any).__trebuchetShotSpawned;
+                    delete (res as any).__trebuchetHitProcessed;
+                    return res;
+                });
+
+                if (isAuthReadyRef.current && userRef.current) {
+                    updateDoc(doc(db, 'buildings', docId), updatedProps).catch(e =>
+                        handleFirestoreError(e, OperationType.UPDATE, `buildings/${docId}`)
+                    );
+                }
+
+                const targetEntityInfo = clickedEntity ? buildingByIdMap.get(Number(clickedEntity.buildingId)) : null;
+                const targetLabel = targetEntityInfo?.name || `[${targetX}, ${targetY}]`;
+                addHistoryLog(`🎯 Требушет нацелен на «${targetLabel}»! Залп через 10 секунд.`, 'attack');
+                setPermitPurchaseToast(`🎯 Цель захвачена: «${targetLabel}»! Выстрел через 10 секунд...`);
+                if (permitPurchaseToastTimerRef.current !== null) {
+                    window.clearTimeout(permitPurchaseToastTimerRef.current);
+                }
+                permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                    setPermitPurchaseToast(null);
+                    permitPurchaseToastTimerRef.current = null;
+                }, 3500);
+                return;
+            }
+
+            if (activeMovingTargeting) {
+                const { buildingId } = activeMovingTargeting;
+                const trebDocId = String(buildingId);
+                const trebuchetBuilding = placedBuildingsRef.current.find(b => String(b.id) === trebDocId);
+                if (!trebuchetBuilding) {
+                    trebuchetMovingTargetingRef.current = null;
+                    setTrebuchetMovingTargeting(null);
+                    return;
+                }
+                const sourceX = trebuchetBuilding.x;
+                const sourceY = trebuchetBuilding.y;
+
+                const { x: targetWrappedX, y: targetWrappedY } = getClosestWrappedWorldCoords(gridX, gridY, sourceX, sourceY, isWorldWrapped);
+                const dx = targetWrappedX - sourceX;
+                const dy = targetWrappedY - sourceY;
+
+                if (dx === 0 && dy === 0) {
+                    trebuchetMovingTargetingRef.current = null;
+                    setTrebuchetMovingTargeting(null);
+                    return;
+                }
+
+                if (Math.abs(dx) > TREBUCHET_MOVE_RANGE || Math.abs(dy) > TREBUCHET_MOVE_RANGE) {
+                    alert(`Требушет может перемещаться не дальше ${TREBUCHET_MOVE_RANGE} клеток во все стороны! Выберите клетку в пределах подсвеченной зоны.`);
+                    return;
+                }
+
+                // Check collision at destination and along path
+                const isTileBlocked = (tx: number, ty: number): boolean => {
+                    const normX = isWorldWrapped ? wrapCoord(tx, WORLD_WIDTH_TILES) : tx;
+                    const normY = isWorldWrapped ? wrapCoord(ty, WORLD_HEIGHT_TILES) : ty;
+                    if (!isWorldWrapped && (tx < 0 || tx >= WORLD_WIDTH_TILES || ty < 0 || ty >= WORLD_HEIGHT_TILES)) {
+                        return true;
+                    }
+                    const b = getSpatialBuildingAt(normX, normY);
+                    if (b && String(b.id) !== trebDocId) return true;
+                    const r = getSpatialResourceAt(normX, normY);
+                    if (r && (r.hp === undefined || r.hp > 0)) return true;
+                    return false;
+                };
+
+                if (isTileBlocked(targetWrappedX, targetWrappedY)) {
+                    alert("Целевая клетка занята другим объектом!");
+                    return;
+                }
+
+                // Find obstacle-avoiding zigzag path
+                const path = findTrebuchetPath(sourceX, sourceY, targetWrappedX, targetWrappedY, isTileBlocked, TREBUCHET_MOVE_RANGE * 3 + 4);
+                if (!path || path.length < 2) {
+                    alert("Не удалось проложить путь к этой клетке (путь заблокирован препятствиями)!");
+                    return;
+                }
+
+                const finalTargetX = isWorldWrapped ? wrapCoord(targetWrappedX, WORLD_WIDTH_TILES) : targetWrappedX;
+                const finalTargetY = isWorldWrapped ? wrapCoord(targetWrappedY, WORLD_HEIGHT_TILES) : targetWrappedY;
+
+                const steps = path.length - 1;
+                const duration = steps * TREBUCHET_MOVE_SPEED_MS_PER_TILE;
+                const now = Date.now();
+
+                // Determine initial facing direction based on first segment
+                const firstFrom = path[0];
+                const firstTo = path[1];
+                const initialFacing = getTrebuchetFacingFromDelta(firstTo.x - firstFrom.x, firstTo.y - firstFrom.y);
+
+                trebuchetMovingTargetingRef.current = null;
+                setTrebuchetMovingTargeting(null);
+
+                const moveProps: Partial<PlacedBuilding> = {
+                    trebuchetMoveStartX: sourceX,
+                    trebuchetMoveStartY: sourceY,
+                    trebuchetMoveTargetX: finalTargetX,
+                    trebuchetMoveTargetY: finalTargetY,
+                    trebuchetMovePath: path,
+                    trebuchetFacing: initialFacing,
+                    trebuchetMoveStartTime: now,
+                    trebuchetMoveDuration: duration,
+                    trebuchetMoveUntil: now + duration,
+                    lastMoveTime: now,
+                };
+
+                const docId = trebDocId;
+                setPlacedBuildings(prev => prev.map(pb => {
+                    if (String(pb.id) !== docId) return pb;
+                    return { ...pb, ...moveProps, isLocal: true };
+                }));
+                placedBuildingsRef.current = placedBuildingsRef.current.map(pb => {
+                    if (String(pb.id) !== docId) return pb;
+                    return { ...pb, ...moveProps, isLocal: true };
+                });
+
+                if (isAuthReadyRef.current && userRef.current) {
+                    updateDoc(doc(db, 'buildings', docId), moveProps).catch(e =>
+                        handleFirestoreError(e, OperationType.UPDATE, `buildings/${docId}`)
+                    );
+                }
+
+                addHistoryLog(`🚜 Требушет отправился на позицию [${finalTargetX}, ${finalTargetY}] (${steps} шагов)`, 'social');
+                setPermitPurchaseToast(`🚜 Требушет едет на клетку [${finalTargetX}, ${finalTargetY}] (${steps} шагов)...`);
+                if (permitPurchaseToastTimerRef.current !== null) {
+                    window.clearTimeout(permitPurchaseToastTimerRef.current);
+                }
+                permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                    setPermitPurchaseToast(null);
+                    permitPurchaseToastTimerRef.current = null;
+                }, 3500);
+                return;
+            }
+
             if (moveMode.active && moveMode.building) {
                 if (isMoveActionProcessing) return;
                 if (!isWorldWrapped && (gridX < 0 || gridX >= WORLD_WIDTH_TILES || gridY < 0 || gridY >= WORLD_HEIGHT_TILES)) return;
 
                 const buildingToMove = moveMode.building;
-                if (!isMyBuilding(buildingToMove)) {
+                const isSystemOrNeutral = !buildingToMove.ownerId || buildingToMove.ownerId === "-1" || buildingToMove.ownerId === "0" || buildingToMove.ownerId === "monster" || buildingToMove.ownerName === "Система";
+                const isMoveableTerrain = (Number(buildingToMove.buildingId) === MOUNTAIN_ID || Number(buildingToMove.buildingId) === RIVER_ID) && (isMyBuilding(buildingToMove) || isSystemOrNeutral);
+                if (!isMyBuilding(buildingToMove) && !isMoveableTerrain) {
                     setMoveMode({ active: false, building: null });
                     alert("Перемещать можно только свои постройки.");
                     return;
@@ -5611,11 +6730,26 @@ const App: React.FC = () => {
                                 zoneId: newZoneId,
                                 lastMoveTime: moveStartedAt,
                                 isLocal: true,
-                                ...(isMountainOrRiver && user ? { ownerId: user.uid } : {})
+                                ...(isMountainOrRiver && user ? { ownerId: user.uid, ownerName: playerName } : {})
                             };
                         }
                         return b;
                     }));
+
+                    placedBuildingsRef.current = placedBuildingsRef.current.map(b => {
+                        if (String(b.id) === String(buildingToMove.id) || (buildingToMove.gameId && String(b.gameId) === String(buildingToMove.gameId))) {
+                            return {
+                                ...b,
+                                x: gridX,
+                                y: gridY,
+                                zoneId: newZoneId,
+                                lastMoveTime: moveStartedAt,
+                                isLocal: true,
+                                ...(isMountainOrRiver && user ? { ownerId: user.uid, ownerName: playerName } : {})
+                            };
+                        }
+                        return b;
+                    });
 
                     // Synchronize server cache maps immediately so subsequent snapshot merges won't revert coordinates
                     const updatedMovePartial = {
@@ -5623,9 +6757,9 @@ const App: React.FC = () => {
                         y: gridY,
                         zoneId: newZoneId,
                         lastMoveTime: moveStartedAt,
-                        ...(isMountainOrRiver && user ? { ownerId: user.uid } : {})
+                        ...(isMountainOrRiver && user ? { ownerId: user.uid, ownerName: playerName } : {})
                     };
-                    [serverMyBuildingsRef.current, serverZoneBuildingsRef.current].forEach(map => {
+                    [serverMyBuildingsRef.current, serverZoneBuildingsRef.current, serverClanBuildingsRef.current].forEach(map => {
                         for (const [key, b] of map.entries()) {
                             const matches = String(key) === docId || String(b.id) === docId ||
                                 (b.gameId && String(b.gameId) === docId) ||
@@ -5645,6 +6779,7 @@ const App: React.FC = () => {
                         const updates: any = { x: gridX, y: gridY, zoneId: newZoneId, lastMoveTime: moveStartedAt };
                         if (isMountainOrRiver) {
                             updates.ownerId = user.uid;
+                            updates.ownerName = playerName;
                         }
                         await updateDoc(doc(db, 'buildings', docId), updates);
                         updateDoc(doc(db, 'users', user.uid), {
@@ -5669,7 +6804,7 @@ const App: React.FC = () => {
                         zoneId: buildingToMove.zoneId,
                         ...(buildingToMove.ownerId !== undefined ? { ownerId: buildingToMove.ownerId } : {})
                     };
-                    [serverMyBuildingsRef.current, serverZoneBuildingsRef.current].forEach(map => {
+                    [serverMyBuildingsRef.current, serverZoneBuildingsRef.current, serverClanBuildingsRef.current].forEach(map => {
                         for (const [key, b] of map.entries()) {
                             const matches = String(key) === docId || String(b.id) === docId ||
                                 (b.gameId && String(b.gameId) === docId) ||
@@ -5712,6 +6847,7 @@ const App: React.FC = () => {
                     return;
                 }
                 deletingDroppedItemsRef.current.set(String(item.id), Date.now());
+                emptyTileCooldownUntilRef.current = Date.now() + 3000;
 
                 // Add to inventory or gold
                 const numericItemId = Number(item.itemId);
@@ -5749,11 +6885,40 @@ const App: React.FC = () => {
             }
 
             // 2. Check for buildings and their interactions
-            const buildingAtTile = placedBuildings.find(b => b.x === gridX && b.y === gridY && (b.hp === undefined || b.hp > 0));
+            let buildingAtTile: PlacedBuilding | undefined;
+            for (let i = 0; i < placedBuildings.length; i++) {
+                const b = placedBuildings[i];
+                if (b.hp !== undefined && b.hp <= 0) continue;
+                let matches = b.x === gridX && b.y === gridY;
+                if (!matches && Number(b.buildingId) === TREBUCHET_ID && b.trebuchetMoveUntil && Date.now() < b.trebuchetMoveUntil) {
+                    if (b.trebuchetMoveTargetX === gridX && b.trebuchetMoveTargetY === gridY) {
+                        matches = true;
+                    } else if (b.trebuchetMoveStartX !== undefined && b.trebuchetMoveStartY !== undefined && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveTargetY !== undefined) {
+                        const elapsed = Date.now() - (b.trebuchetMoveStartTime || 0);
+                        const dur = Math.max(1, b.trebuchetMoveDuration || 1);
+                        const p = Math.min(1, Math.max(0, elapsed / dur));
+                        const curX = Math.round(b.trebuchetMoveStartX + (b.trebuchetMoveTargetX - b.trebuchetMoveStartX) * p);
+                        const curY = Math.round(b.trebuchetMoveStartY + (b.trebuchetMoveTargetY - b.trebuchetMoveStartY) * p);
+                        if (curX === gridX && curY === gridY) matches = true;
+                    }
+                }
+                if (matches) {
+                    if (!buildingAtTile || isGroundTileId(buildingAtTile.buildingId)) {
+                        buildingAtTile = b;
+                    }
+                    if (!isGroundTileId(b.buildingId)) break;
+                }
+            }
             const resourceIndex = mapResources.findIndex(r => r.x === gridX && r.y === gridY);
 
             if (buildingAtTile) {
-                if (buildingAtTile.isDestroying) return;
+                if (buildingAtTile.isDestroying) {
+                    const actualBuildingInfo = buildingData.find(bd => bd.id === buildingAtTile.buildingId);
+                    if (actualBuildingInfo) {
+                        setSelectedBuilding({ building: buildingAtTile, info: actualBuildingInfo });
+                    }
+                    return;
+                }
 
                 // Special direct interaction for Lilly/Mushroom and Factories
                 const buildingIdNum = Number(buildingAtTile.buildingId);
@@ -5839,6 +7004,8 @@ const App: React.FC = () => {
                             return;
                         }
 
+                        emptyTileCooldownUntilRef.current = Date.now() + 3000;
+
                         triggerGatherJuice({
                             worldX: resource.x,
                             worldY: resource.y,
@@ -5913,31 +7080,6 @@ const App: React.FC = () => {
                             `Рубка дерева. Получено: дерево (+${hitResult.rewardWood || 1}) и ${Math.max(0, hitResult.rewardGold || 0)} монет.`,
                             'economy'
                         );
-
-                        const resourceZone = getZoneId(resource.x, resource.y);
-                        const sectorOwnerBuilding = placedBuildings.find(b =>
-                            isWatchtowerId(b.buildingId) &&
-                            b.zoneId === resourceZone &&
-                            b.ownerId !== (user?.uid ?? '0') &&
-                            b.ownerId !== '-1' &&
-                            b.ownerId !== 'monster' &&
-                            !b.isConstructing
-                        );
-                        if (sectorOwnerBuilding) {
-                            const sectorX = Math.floor(resource.x / ZONE_SIZE) + 1;
-                            const sectorY = Math.floor(resource.y / ZONE_SIZE) + 1;
-                            const theftMsg: ChatMessage = {
-                                id: Date.now() + Math.random(),
-                                sender: 'Система',
-                                text: `🪓 Мародёр! Игрок "${playerName}" срубил дерево в вашем секторе ${sectorX}-${sectorY} [${resource.x}, ${resource.y}]!`,
-                                type: 'system',
-                                timestamp: Date.now(),
-                                tab: 'loot',
-                                teleportCoordinates: { x: resource.x, y: resource.y },
-                                localOnly: true
-                            };
-                            setChatHistory(prev => [...prev, theftMsg]);
-                        }
 
                         return;
                     } catch (error) {
@@ -6027,6 +7169,10 @@ const App: React.FC = () => {
                     }
                 }
             } else {
+                // Cooldown after chopping trees or picking up loot to prevent accidental clicks on empty ground
+                if (Date.now() < emptyTileCooldownUntilRef.current) {
+                    return;
+                }
                 // Empty ground: only open build menu or place initial town hall on LEFT click (button === 0)
                 if (button !== 0) {
                     return;
@@ -6184,12 +7330,13 @@ const App: React.FC = () => {
                         return;
                     }
 
+                    buildMenuOpenedAtRef.current = Date.now();
                     setBuildMenu({ visible: true, x: gridX, y: gridY });
                     playOpenSound();
                 }
             }
         }
-    }, [placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
+    }, [placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, roadBuilderMode, pavementBuilderMode, getPlacementPreviewState, trebuchetTargeting, trebuchetMovingTargeting, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
 
     const handleMouseUp = useCallback(async (event: React.MouseEvent<HTMLCanvasElement>) => {
         if (isDraggingRef.current && hasDraggedRef.current) {
@@ -6205,6 +7352,9 @@ const App: React.FC = () => {
         hasDraggedRef.current = false;
 
         if (!wasDragging) {
+            if (event.cancelable) {
+                event.preventDefault();
+            }
             const touch = event.changedTouches[0];
             void handleCanvasPointerUp(touch.clientX, touch.clientY, true);
         } else {
@@ -6213,7 +7363,7 @@ const App: React.FC = () => {
     }, [handleCanvasPointerUp, reportPlayerMovement]);
 
     const handleMouseMove = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-        setLastPointerPos({ x: event.clientX, y: event.clientY });
+        lastPointerPosRef.current = { x: event.clientX, y: event.clientY };
         if (isDraggingRef.current) {
             const dx = event.clientX - dragStartRef.current.x;
             const dy = event.clientY - dragStartRef.current.y;
@@ -6222,7 +7372,7 @@ const App: React.FC = () => {
                 hasDraggedRef.current = true;
                 // Track significant drag for cooldown - prevents building on unloaded cells
                 const dragDistance = Math.sqrt(dx * dx + dy * dy);
-                            if (dragDistance > 75) {
+                if (dragDistance > 75) {
                     setLastDragTime(Date.now());
                 }
             }
@@ -6235,12 +7385,21 @@ const App: React.FC = () => {
         const { x: gridX, y: gridY } = screenToWorld(event.clientX, event.clientY, zoom);
 
         if (isWorldWrapped || (gridX >= 0 && gridX < WORLD_WIDTH_TILES && gridY >= 0 && gridY < WORLD_HEIGHT_TILES)) {
-            setHoveredOutOfBounds(false);
-            setHoveredTile({ x: gridX, y: gridY });
-            const hoveredBuilding = placedBuildings.find(b => b.x === gridX && b.y === gridY && isBuildingAlive(b));
+            setHoveredOutOfBounds(prev => (prev ? false : prev));
+            hoveredTileRef.current = { x: gridX, y: gridY };
+            if (buildMenu.selectedBuilding || moveMode.active || roadBuilderMode || pavementBuilderMode) {
+                setHoveredTile(prev => (prev && prev.x === gridX && prev.y === gridY ? prev : { x: gridX, y: gridY }));
+            }
+            const allPb = placedBuildingsRef.current;
+            const hoveredBuilding = allPb.find(b => b.x === gridX && b.y === gridY && isBuildingAlive(b));
             if (hoveredBuilding && !hoveredBuilding.isConstructing && !hoveredBuilding.isDestroying) {
-                const buildingInfo = buildingData.find(b => b.id === hoveredBuilding.buildingId);
-                if (buildingInfo) {
+                const bIdStr = String(hoveredBuilding.id);
+                if (tooltipRef.current && lastHoveredBuildingIdRef.current === bIdStr) {
+                    tooltipRef.current.style.transform = `translate(${event.clientX + 15}px, ${event.clientY + 15}px)`;
+                } else {
+                    lastHoveredBuildingIdRef.current = bIdStr;
+                    const buildingInfo = getBuildingById(hoveredBuilding.buildingId);
+                    if (buildingInfo) {
                     const info = buildingData.find(bd => bd.id === hoveredBuilding.buildingId);
                     const isMonster = info?.category === 'Монстры';
                     const isNature = info?.category === 'Природа';
@@ -6294,21 +7453,24 @@ const App: React.FC = () => {
                     );
 
                     setTooltip({ visible: true, x: event.clientX, y: event.clientY, content });
+                    }
                 }
             } else {
-                if (tooltip.visible) {
+                if (lastHoveredBuildingIdRef.current !== null) {
+                    lastHoveredBuildingIdRef.current = null;
                     setTooltip({ visible: false, x: 0, y: 0, content: null });
                 }
             }
         } else {
-            setHoveredOutOfBounds(true);
-            setHoveredTile(null);
-            if (tooltip.visible) {
+            setHoveredOutOfBounds(prev => (prev ? prev : true));
+            hoveredTileRef.current = null;
+            if (lastHoveredBuildingIdRef.current !== null) {
+                lastHoveredBuildingIdRef.current = null;
                 setTooltip({ visible: false, x: 0, y: 0, content: null });
             }
         }
 
-    }, [placedBuildings, tooltip.visible, zoomIndex, screenToWorld, allUsers, isMyBuilding]);
+    }, [zoomIndex, screenToWorld, isMyBuilding, buildMenu.selectedBuilding, moveMode.active, roadBuilderMode, pavementBuilderMode]);
 
     const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
         if (isDraggingRef.current && event.touches.length === 1) {
@@ -6336,7 +7498,7 @@ const App: React.FC = () => {
         x: number,
         y: number,
         traceId?: string,
-        options?: { resumedAfterPermitPurchase?: boolean }
+        options?: { resumedAfterPermitPurchase?: boolean; fromInventoryItemId?: number }
     ): Promise<PlacedBuilding | null> => {
         if (traceId) {
             recordRuntimeTraceStage('build', traceId, 'placeBuildingAtTile entered', {
@@ -6468,7 +7630,12 @@ const App: React.FC = () => {
                 return null;
             }
             console.warn(`[PermitFlow] pending intent saved building=${building.id} x=${x} y=${y}`);
-            setPendingConstructionIntent({ building, x, y });
+            setPendingConstructionIntent({
+                building,
+                x,
+                y,
+                ...(options?.fromInventoryItemId !== undefined ? { fromInventoryItemId: options.fromInventoryItemId } : {}),
+            });
             setBuildingLimitModalData({
                 currentLimit: Math.max(0, maxBuildings),
                 nextLimit: Math.max(1, maxBuildings + 1)
@@ -6546,19 +7713,32 @@ const App: React.FC = () => {
             }
         }
 
-        const rubyCost = isTutorialFreeBuilding ? 0 : (building.rubyPrice || 0);
-        const goldCost = isTutorialFreeBuilding ? 0 : (building.price || 0);
+        const isFromInventory = options?.fromInventoryItemId !== undefined;
+        const inventoryItemIdToConsume = options?.fromInventoryItemId;
+        if (isFromInventory && inventoryItemIdToConsume !== undefined) {
+            const ownedCount = Math.max(0, Number(inventoryRef.current[inventoryItemIdToConsume] ?? inventory[inventoryItemIdToConsume]) || 0);
+            if (ownedCount < 1) {
+                alert('Предмет для размещения отсутствует в инвентаре!');
+                return null;
+            }
+        }
 
-        if (rubyCost > 0) {
-            if (playerRubies < rubyCost) {
-                openRubyWarningModal(rubyCost);
+        const rubyCost = (isTutorialFreeBuilding || isFromInventory) ? 0 : (building.rubyPrice || 0);
+        const goldCost = (isTutorialFreeBuilding || isFromInventory) ? 0 : (building.price || 0);
+        const effectiveGold = playerGoldRef.current ?? playerGold;
+
+        if (!isFromInventory) {
+            if (rubyCost > 0) {
+                if (playerRubies < rubyCost) {
+                    openRubyWarningModal(rubyCost);
+                    setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+                    return null;
+                }
+            } else if (goldCost > 0 && effectiveGold < goldCost) {
+                alert("Недостаточно золота!");
                 setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
                 return null;
             }
-        } else if (goldCost > 0 && playerGold < goldCost) {
-            alert("Недостаточно золота!");
-            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
-            return null;
         }
 
         if (building.constructionRequirements.population && building.type !== BuildingType.TownHall && !isTutorialFreeBuilding) {
@@ -6572,8 +7752,12 @@ const App: React.FC = () => {
         }
 
         const inventoryCostDeltas: Record<number, number> = {};
-        if (building.constructionRequirements.resources) {
-            const missingResources = building.constructionRequirements.resources.filter(req => (Number(inventory[req.id]) || 0) < (req.amount || 0));
+        if (isFromInventory && inventoryItemIdToConsume !== undefined) {
+            inventoryCostDeltas[inventoryItemIdToConsume] = -1;
+            updatePlayerResourcesRef.current?.(0, 0, inventoryCostDeltas);
+        } else if (building.constructionRequirements.resources) {
+            const currentInv = inventoryRef.current || inventory;
+            const missingResources = building.constructionRequirements.resources.filter(req => (Number(currentInv[req.id]) || 0) < (req.amount || 0));
             if (missingResources.length > 0) {
                 setBlackMarketBuilding(building);
                 setShowBlackMarketMissingModal(true);
@@ -6629,8 +7813,10 @@ const App: React.FC = () => {
             workState: 'idle',
             ...(building.stats.durability !== undefined ? { hp: building.stats.durability, maxHp: building.stats.durability } : {}),
             ...(isWatchtowerId(building.id) ? { taxRate: 0 } : {}),
-            isActive: Boolean(building.stats?.isMonster || building.category === 'Монстры' || CANNON_IDS.includes(building.id) || building.id === PROTECTED_TOWER_ID || isWatchtowerId(building.id)),
+            isActive: Boolean(building.stats?.isMonster || building.category === 'Монстры' || CANNON_IDS.includes(building.id) || building.id === PROTECTED_TOWER_ID || isWatchtowerId(building.id) || building.id === MORTAR_ID || building.id === TREBUCHET_ID),
             ...(building.stats?.isMonster || building.category === 'Монстры' ? { monsterMode: 'stand' as const } : {}),
+            ...(isHealerMonster(building.id) ? { kotofeySettings: { ...DEFAULT_KOTOFEY_SETTINGS } } : {}),
+            ...(isTrollMonster(building.id) ? { trollSettings: { ...DEFAULT_TROLL_SETTINGS } } : {}),
             isLocal: true
         };
 
@@ -6669,7 +7855,9 @@ const App: React.FC = () => {
             }
         }
 
-        const priceText = rubyCost > 0 ? `${rubyCost} рубинов` : `${goldCost} монет`;
+        const priceText = isFromInventory
+            ? 'из инвентаря'
+            : (rubyCost > 0 ? `${rubyCost} рубинов` : `${goldCost} монет`);
         addHistoryLogRef.current?.(`Построено здание "${building.name}" в клетке [${x}, ${y}]. Стоимость: ${priceText}.`, 'build');
 
         setBuildingsBuiltCount(prev => prev + 1);
@@ -7182,12 +8370,21 @@ const App: React.FC = () => {
         }
 
         if (actualGoldDelta !== 0) {
-            setPlayerGold(prev => prev + actualGoldDelta);
+            playerGoldRef.current = Math.max(0, playerGoldRef.current + actualGoldDelta);
+            setPlayerGold(prev => Math.max(0, prev + actualGoldDelta));
         }
         if (rubiesDelta !== 0) {
             setPlayerRubies(prev => prev + rubiesDelta);
         }
         if (Object.keys(inventoryDeltas).length > 0) {
+            const syncNext = sanitizeInventoryCounts(inventoryRef.current);
+            Object.entries(inventoryDeltas).forEach(([id, amount]) => {
+                const numericId = Number(id);
+                if (!Number.isFinite(numericId)) return;
+                const currentAmount = normalizeInventoryCount(syncNext[numericId] || 0);
+                syncNext[numericId] = normalizeInventoryCount(currentAmount + amount);
+            });
+            inventoryRef.current = syncNext;
             setInventory(prev => {
                 const next = sanitizeInventoryCounts(prev);
                 Object.entries(inventoryDeltas).forEach(([id, amount]) => {
@@ -7336,6 +8533,28 @@ const App: React.FC = () => {
                         gameId: newUser.uid
                     });
                     setPlayerName(repairMojibakeCp1251Utf8(chosenName));
+
+                    // Fetch & set static citizen passport number immediately upon registration
+                    try {
+                        const orderRes = await fetch('/api/basingse/player-order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: newUser.uid })
+                        });
+                        if (orderRes.ok) {
+                            const orderData = await orderRes.json();
+                            if (orderData.success && typeof orderData.joinNumber === 'number') {
+                                setPlayerJoinNumber(orderData.joinNumber);
+                                setAllUsers(prev => ({
+                                    ...prev,
+                                    [newUser.uid]: {
+                                        ...prev[newUser.uid],
+                                        joinNumber: orderData.joinNumber
+                                    }
+                                }));
+                            }
+                        }
+                    } catch (_err) {}
                 }
             } else {
                 await signInWithEmailAndPassword(authEmail, authPassword);
@@ -7474,7 +8693,10 @@ const App: React.FC = () => {
     
     // Load User Data
     useEffect(() => {
-        if (!user) return;
+        if (!user) {
+            initialReputationLoadedRef.current = false;
+            return;
+        }
 
         const userDocRef = doc(db, 'users', user.uid);
         const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
@@ -7600,7 +8822,7 @@ const App: React.FC = () => {
                 setPlayerRubies(rubiesValue < 0 ? 0 : rubiesValue);
                 const serverReputation = Math.max(0, Math.min(MAX_REPUTATION, Number(data.reputation ?? data.data?.reputation) || 0));
                 setPlayerReputation(prev => {
-                    if (prev !== serverReputation && initialLoadDone.current) {
+                    if (initialReputationLoadedRef.current && initialLoadDone.current && prev !== serverReputation) {
                         if (serverReputation > prev) {
                             setPermitPurchaseToast(`🌟 Вас похвалили! (+${serverReputation - prev} репутация, теперь ${serverReputation})`);
                             if (permitPurchaseToastTimerRef.current !== null) {
@@ -7613,6 +8835,7 @@ const App: React.FC = () => {
                             playCoinSound();
                         }
                     }
+                    initialReputationLoadedRef.current = true;
                     return serverReputation;
                 });
                 const serverExtraPermits = Math.max(0, Number(data.extraBuildingPermits ?? data.data?.extraBuildingPermits) || 0);
@@ -7733,7 +8956,8 @@ const App: React.FC = () => {
                     const authoritativeLevel = Math.max(playerLevelRef.current, peakLevelRef.current, data.level || 1);
                     const loadedAchievements = Array.isArray(data.achievements) ? data.achievements : (Array.isArray(data.data?.achievements) ? data.data.achievements : []);
                     const loadedClaimed = Array.isArray(data.claimedAchievements) ? data.claimedAchievements : (Array.isArray(data.data?.claimedAchievements) ? data.data.claimedAchievements : []);
-                    const loadedTitle = data.selectedTitle || data.data?.selectedTitle || null;
+                    const rawLoadedTitle = data.selectedTitle || data.data?.selectedTitle || null;
+                    const loadedTitle = rawLoadedTitle ? repairMojibakeCp1251Utf8(rawLoadedTitle) : null;
                     const loadedJoinNumber = Number(data.joinNumber || data.data?.joinNumber || 0) || null;
                     const loadedLoginDays = Math.max(1, Number(data.totalLoginDays || data.data?.totalLoginDays || 1));
                     const loadedPlayTime = Number(data.playTimeTodaySeconds || data.data?.playTimeTodaySeconds || 0);
@@ -7809,7 +9033,10 @@ const App: React.FC = () => {
             }
         }, (error) => handleFirestoreError(error, OperationType.GET, `users/${user.uid}`));
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribe();
+            initialReputationLoadedRef.current = false;
+        };
     }, [user]);
 
     const persistTutorialCompleted = useCallback(async () => {
@@ -8294,11 +9521,13 @@ const App: React.FC = () => {
             try {
                 const cutoff = Date.now() - SYSTEM_CHAT_MESSAGE_TTL_MS;
                 const chatCol = collection(db, 'chat_messages');
-                const snapshot = await getDocs(query(chatCol, where('type', '==', 'system')));
+                const snapshot = await getDocs(query(chatCol, limit(100)));
 
                 const deletions = snapshot.docs
                     .filter(docSnap => {
-                        const data = docSnap.data() as Partial<ChatMessage>;
+                        const data = docSnap.data() as Partial<ChatMessage> & { data?: any };
+                        const isSystem = data.type === 'system' || data.tab === 'loot' || data.data?.type === 'system';
+                        if (!isSystem) return false;
                         return Number(data.timestamp || 0) > 0 && Number(data.timestamp) < cutoff;
                     })
                     .map(docSnap => deleteDoc(doc(db, 'chat_messages', String(docSnap.id))).catch(err => {
@@ -8430,13 +9659,15 @@ const App: React.FC = () => {
         };
     }, [isAuthReady, user?.uid]);
 
-    const [onlinePlayersData, setOnlinePlayersData] = useState<any[]>([]);
-    const [interpolatedPlayers, setInterpolatedPlayers] = useState<Record<string, { x: number, y: number }>>({});
-
-    const onlinePlayersDataRef = useRef(onlinePlayersData);
-    useEffect(() => {
-        onlinePlayersDataRef.current = onlinePlayersData;
-    }, [onlinePlayersData]);
+    const onlinePlayersDataRef = useRef<any[]>([]);
+    const presenceListenersRef = useRef<Set<(players: any[]) => void>>(new Set());
+    const subscribeToPresence = useCallback((callback: (players: any[]) => void) => {
+        presenceListenersRef.current.add(callback);
+        callback(onlinePlayersDataRef.current);
+        return () => {
+            presenceListenersRef.current.delete(callback);
+        };
+    }, []);
     useEffect(() => { tutorialCompletedRef.current = tutorialCompleted; }, [tutorialCompleted]);
     useEffect(() => { townHallTutorialCompletedRef.current = townHallTutorialCompleted; }, [townHallTutorialCompleted]);
 
@@ -8576,74 +9807,6 @@ const App: React.FC = () => {
         };
     }, [showTopPlayers, activeTopPlayersTab]);
 
-    // Interpolation for smooth player movement using frame-time aware RAF.
-    useEffect(() => {
-        let rafId = 0;
-        let lastTs = performance.now();
-
-        const tick = (ts: number) => {
-            const dtSec = Math.max(0, Math.min(0.1, (ts - lastTs) / 1000));
-            lastTs = ts;
-
-            setInterpolatedPlayers(prev => {
-                let hasChanges = false;
-                const next: Record<string, { x: number, y: number }> = { ...prev };
-
-                onlinePlayersDataRef.current.forEach(player => {
-                    if (typeof player.x !== 'number' || typeof player.y !== 'number') return;
-                    const current = prev[player.uid] || { x: player.x, y: player.y };
-                    const dist = Math.hypot(player.x - current.x, player.y - current.y);
-
-                    if (dist > 40) {
-                        // Far jump / map warp — snap immediately
-                        if (current.x !== player.x || current.y !== player.y) {
-                            next[player.uid] = { x: player.x, y: player.y };
-                            hasChanges = true;
-                        }
-                        return;
-                    }
-
-                    if (dist < 0.02) {
-                        // At destination — snap cleanly
-                        if (current.x !== player.x || current.y !== player.y) {
-                            next[player.uid] = { x: player.x, y: player.y };
-                            hasChanges = true;
-                        }
-                        return;
-                    }
-
-                    // Adaptive smooth glide:
-                    // speed scales with distance so player moves naturally without lag or stutter
-                    const speed = Math.max(5, Math.min(24, dist * 4.5));
-                    const step = speed * dtSec;
-                    if (step >= dist) {
-                        next[player.uid] = { x: player.x, y: player.y };
-                    } else {
-                        const ratio = step / dist;
-                        next[player.uid] = {
-                            x: current.x + (player.x - current.x) * ratio,
-                            y: current.y + (player.y - current.y) * ratio
-                        };
-                    }
-                    hasChanges = true;
-                });
-
-                // CRITICAL FOR PERFORMANCE: If no player moved, return exact previous state
-                // to avoid re-rendering App component on every RAF frame!
-                if (!hasChanges) {
-                    return prev;
-                }
-
-                return next;
-            });
-
-            rafId = requestAnimationFrame(tick);
-        };
-
-        rafId = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(rafId);
-    }, []);
-
     // Sync Online Users (Phase 2 - Gameplay)
     useEffect(() => {
         if (!isAuthReady || !user || loadPhase < 2) return;
@@ -8765,6 +9928,16 @@ const App: React.FC = () => {
 
             if (Object.keys(presencePatch).length > 0) {
                 setAllUsers(prev => {
+                    let hasChanged = false;
+                    for (const uid in presencePatch) {
+                        const cur = prev[uid];
+                        const patch = presencePatch[uid];
+                        if (!cur || cur.name !== patch.name || cur.level !== patch.level || cur.clanId !== patch.clanId || cur.selectedTitle !== patch.selectedTitle || cur.avatar !== patch.avatar || cur.banEndTime !== patch.banEndTime) {
+                            hasChanged = true;
+                            break;
+                        }
+                    }
+                    if (!hasChanged) return prev;
                     const updated = { ...prev };
                     Object.entries(presencePatch).forEach(([uid, data]) => {
                         const current = updated[uid] || {};
@@ -8794,29 +9967,47 @@ const App: React.FC = () => {
                             monstersDestroyed: Math.max(Number(current.monstersDestroyed || 0) || 0, Number(data.monstersDestroyed || 0) || 0),
                             buildingsDestroyed: Math.max(Number(current.buildingsDestroyed || 0) || 0, Number(data.buildingsDestroyed || 0) || 0),
                             theftsCommitted: Math.max(Number(current.theftsCommitted || 0) || 0, Number(data.theftsCommitted || 0) || 0),
-                            selectedTitle: data.title || data.selectedTitle || current.selectedTitle || null,
+                            selectedTitle: (data.title || data.selectedTitle || current.selectedTitle) ? repairMojibakeCp1251Utf8(data.title || data.selectedTitle || current.selectedTitle) : null,
                         };
                     });
                     return updated;
                 });
             }
 
-            setOnlineUsers({
+            const nextOnlineUsers = {
                 general: dedupeUsers(tabOnlineUsers.general),
                 banya: dedupeUsers(tabOnlineUsers.banya),
                 loot: dedupeUsers(tabOnlineUsers.loot),
                 clan: dedupeUsers(tabOnlineUsers.clan),
                 police: dedupeUsers(tabOnlineUsers.police),
+            };
+            setOnlineUsers(prev => {
+                const tabs: ChatTab[] = ['general', 'banya', 'loot', 'clan', 'police'];
+                let same = true;
+                for (const t of tabs) {
+                    const a = prev[t], b = nextOnlineUsers[t];
+                    if (!a || !b || a.length !== b.length) { same = false; break; }
+                    for (let i = 0; i < a.length; i++) {
+                        if (a[i].uid !== b[i].uid || a[i].name !== b[i].name) { same = false; break; }
+                    }
+                    if (!same) break;
+                }
+                return same ? prev : nextOnlineUsers;
             });
-            setOnlinePlayersData(playersData);
+            onlinePlayersDataRef.current = playersData;
+            presenceListenersRef.current.forEach(listener => {
+                try {
+                    listener(playersData);
+                } catch (_e) {}
+            });
         };
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             processPresenceDocs(snapshot.docs);
         }, (error) => handleFirestoreError(error, OperationType.GET, 'presence'));
 
-        // Reliable fallback polling every 3 seconds to guarantee presence stays in sync
-        // even across SSE reconnects, network stutters, or device wakeups without needing reload.
+        // Fallback polling every 20 seconds to guarantee presence stays in sync
+        // while avoiding continuous network floods (realtime SSE handles instant updates).
         const syncInterval = setInterval(async () => {
             try {
                 const snap = await getDocs(q);
@@ -8826,7 +10017,7 @@ const App: React.FC = () => {
             } catch (err) {
                 // Ignore transient network errors
             }
-        }, 3000);
+        }, 20000);
 
         return () => {
             unsubscribe();
@@ -8884,7 +10075,7 @@ const App: React.FC = () => {
                                     gender: data.gender || null,
                                     achievements: data.achievements || data.data?.achievements || [],
                                     claimedAchievements: data.claimedAchievements || data.data?.claimedAchievements || [],
-                                    selectedTitle: data.selectedTitle || data.data?.selectedTitle || null,
+                                    selectedTitle: (data.selectedTitle || data.data?.selectedTitle) ? repairMojibakeCp1251Utf8(data.selectedTitle || data.data?.selectedTitle) : null,
                                     joinNumber: data.joinNumber || data.data?.joinNumber || null,
                                     totalLoginDays: data.totalLoginDays || data.data?.totalLoginDays || 1,
                                     playTimeTodaySeconds: data.playTimeTodaySeconds || data.data?.playTimeTodaySeconds || 0,
@@ -8922,7 +10113,7 @@ const App: React.FC = () => {
                                     Number(presenceData.lastSeen || 0) || 0
                                 ),
                                 avatar: prev[selectedPlayerId]?.avatar || resolveUserAvatar(presenceData),
-                                selectedTitle: presenceData.title || presenceData.selectedTitle || prev[selectedPlayerId]?.selectedTitle || null,
+                                selectedTitle: (presenceData.title || presenceData.selectedTitle || prev[selectedPlayerId]?.selectedTitle) ? repairMojibakeCp1251Utf8(presenceData.title || presenceData.selectedTitle || prev[selectedPlayerId]?.selectedTitle) : null,
                             }
                         }));
                     }
@@ -8962,20 +10153,27 @@ const App: React.FC = () => {
             const merged = new Map<string, PlacedBuilding>();
             const nowMs = Date.now();
             const currentUserId = userRef.current?.uid;
+
+            // Pre-index local buildings into fast O(1) maps to eliminate O(N^2) searches
+            const localById = new Map<string, PlacedBuilding>();
+            const localByGameId = new Map<string, PlacedBuilding>();
+            const localByTraceId = new Map<string, PlacedBuilding>();
+            for (let i = 0; i < prev.length; i++) {
+                const lb = prev[i];
+                const lid = String(lb.id);
+                localById.set(lid, lb);
+                if (lb.gameId) localByGameId.set(String(lb.gameId), lb);
+                if (lb.clientBuildTraceId) localByTraceId.set(String(lb.clientBuildTraceId), lb);
+                if ((lb as any).tempId) localByTraceId.set(String((lb as any).tempId), lb);
+            }
+
             const findLocalMatchForServerBuilding = (serverBuilding: PlacedBuilding): PlacedBuilding | undefined => {
                 const serverId = String(serverBuilding.id);
                 const serverGameId = serverBuilding.gameId ? String(serverBuilding.gameId) : '';
                 const traceId = String(serverBuilding.clientBuildTraceId || '');
-                return prev.find((localBuilding) => {
-                    const localId = String(localBuilding.id);
-                    const localGameId = localBuilding.gameId ? String(localBuilding.gameId) : '';
-                    if (localId === serverId) return true;
-                    if (serverGameId && localId === serverGameId) return true;
-                    if (localGameId && localGameId === serverId) return true;
-                    if (serverGameId && localGameId && localGameId === serverGameId) return true;
-                    if (!traceId) return false;
-                    return localId === traceId || String(localBuilding.tempId || '') === traceId;
-                });
+                return localById.get(serverId) ||
+                    (serverGameId ? (localByGameId.get(serverGameId) || localById.get(serverGameId)) : undefined) ||
+                    (traceId ? localByTraceId.get(traceId) : undefined);
             };
             const activeDeletingBuildingIds = new Set<string>();
             deletingBuildingsRef.current.forEach((_, deletedId) => {
@@ -9027,14 +10225,20 @@ const App: React.FC = () => {
                         ...(effectiveAttackTime > 0 ? { lastAttackTime: effectiveAttackTime } : {}),
                         ...(effectiveMoveTime > 0 ? { lastMoveTime: effectiveMoveTime } : {}),
                     });
-                    const isRelevantAuthority = Boolean(
-                        isAuthReadyRef.current &&
-                        userRef.current &&
-                        (b.initiatorId === userRef.current.uid || b.ownerId === userRef.current.uid)
+                    const isActivelyExploding = Boolean(
+                        normalized.isDestroying &&
+                        normalized.destructionEndTime &&
+                        normalized.destructionEndTime > nowMs
                     );
-                    if ((normalized.hp ?? 1) > 0 || isRelevantAuthority) {
-                        merged.set(strId, normalized);
+                    const effectiveHp = (normalized.hp ?? 1) - (normalized.pendingDamage || 0);
+                    const isDeadOrExpired = effectiveHp <= 0 || (Boolean(normalized.isDestroying) && !isActivelyExploding);
+                    if (isDeadOrExpired && !isActivelyExploding) {
+                        if (isAuthReadyRef.current && userRef.current) {
+                            deleteDoc(doc(db, 'buildings', strId)).catch(() => {});
+                        }
+                        return;
                     }
+                    merged.set(strId, normalized);
                 });
             };
 
@@ -9042,10 +10246,11 @@ const App: React.FC = () => {
             appendReconnectSnapshotBuildings(serverMyBuildingsRef.current.values());
             appendReconnectSnapshotBuildings(serverInitiatedBuildingsRef.current.values());
             appendReconnectSnapshotBuildings(serverMonsterBuildingsRef.current.values());
+            appendReconnectSnapshotBuildings(serverClanBuildingsRef.current.values());
 
             // Track monster movement direction when positions update
             merged.forEach((b, id) => {
-                const bInfo = buildingData.find(info => info.id === Number(b.buildingId) || info.id === b.buildingId);
+                const bInfo = getBuildingById(b.buildingId);
                 if (bInfo?.stats?.isMonster) {
                     const gId = b.gameId ? String(b.gameId) : '';
                     const prevPos = monsterPrevPosRef.current.get(id);
@@ -9066,7 +10271,7 @@ const App: React.FC = () => {
                     monsterPrevPosRef.current.set(id, { x: b.x, y: b.y });
 
                     // Synchronize monster facing direction from server doc
-                    const dir = (b as any).direction;
+                    const dir = (b as any).direction || (b as any).data?.direction;
                     if (dir && typeof dir.dx === 'number' && typeof dir.dy === 'number') {
                         monsterDirectionRef.current.set(id, dir);
                         if (gId) monsterDirectionRef.current.set(gId, dir);
@@ -9193,7 +10398,8 @@ const App: React.FC = () => {
                 const existsInZoneSnapshot = serverZoneBuildingsRef.current.has(deletedId);
                 const existsInMySnapshot = serverMyBuildingsRef.current.has(deletedId);
                 const existsInInitiatedSnapshot = serverInitiatedBuildingsRef.current.has(deletedId);
-                if (!existsInZoneSnapshot && !existsInMySnapshot && !existsInInitiatedSnapshot) {
+                const existsInClanSnapshot = serverClanBuildingsRef.current.has(deletedId);
+                if (!existsInZoneSnapshot && !existsInMySnapshot && !existsInInitiatedSnapshot && !existsInClanSnapshot) {
                     confirmedDeletedRef.current.add(deletedId);
                 }
             });
@@ -9296,7 +10502,7 @@ const App: React.FC = () => {
             const newBuildings = Array.from(dedupById.values());
             const tileDedup = new Map<string, PlacedBuilding>();
             const getTileScore = (b: PlacedBuilding) => {
-                const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
+                const info = getBuildingById(b.buildingId);
                 const isMonster = Boolean(info?.stats.isMonster);
                 const idStr = String(b.id);
                 const gameIdStr = b.gameId ? String(b.gameId) : '';
@@ -9405,22 +10611,28 @@ const App: React.FC = () => {
             }
             
             // Prevent unnecessary re-renders if building data hasn't actually changed
-            // Compare by building count and key fields to avoid flickering during camera drag
-            if (prev.length === dedupedBuildings.length) {
+            // Fast O(1) comparison against pre-indexed localById map
+            if (localById.size === dedupedBuildings.length) {
                 let same = true;
-                for (let i = 0; i < prev.length; i++) {
-                    const a = prev[i], b = dedupedBuildings[i];
-                    if (String(a.id) !== String(b?.id) || a.x !== b?.x || a.y !== b?.y || 
-                        a.buildingId !== b?.buildingId || a.hp !== b?.hp || 
-                        a.maxHp !== b?.maxHp ||
-                        a.workState !== b?.workState || a.isConstructing !== b?.isConstructing ||
-                        a.isDestroying !== b?.isDestroying || a.shieldHp !== b?.shieldHp ||
-                        a.shieldMaxHp !== b?.shieldMaxHp || a.pendingDamage !== b?.pendingDamage ||
-                        a.protectionEndTime !== b?.protectionEndTime ||
-                        a.destructionEndTime !== b?.destructionEndTime ||
-                        a.initiatorId !== b?.initiatorId ||
-                        a.lastAttackTime !== b?.lastAttackTime ||
-                        a.lastMoveTime !== b?.lastMoveTime) {
+                for (let i = 0; i < dedupedBuildings.length; i++) {
+                    const b = dedupedBuildings[i];
+                    const a = localById.get(String(b.id));
+                    if (!a || a.x !== b.x || a.y !== b.y || 
+                        a.buildingId !== b.buildingId || a.hp !== b.hp || 
+                        a.maxHp !== b.maxHp ||
+                        a.workState !== b.workState || a.isConstructing !== b.isConstructing ||
+                        a.isDestroying !== b.isDestroying || a.shieldHp !== b.shieldHp ||
+                        a.shieldMaxHp !== b.shieldMaxHp || a.pendingDamage !== b.pendingDamage ||
+                        a.protectionEndTime !== b.protectionEndTime ||
+                        a.destructionEndTime !== b.destructionEndTime ||
+                        a.initiatorId !== b.initiatorId ||
+                        a.workEndTime !== b.workEndTime ||
+                        a.monsterMode !== b.monsterMode ||
+                        a.lastTrollBoostAt !== b.lastTrollBoostAt ||
+                        a.kotofeySettings !== b.kotofeySettings ||
+                        a.trollSettings !== b.trollSettings ||
+                        a.lastAttackTime !== b.lastAttackTime ||
+                        a.lastMoveTime !== b.lastMoveTime) {
                         same = false;
                         break;
                     }
@@ -9665,6 +10877,48 @@ const App: React.FC = () => {
             if (monsterSyncTimeout) clearTimeout(monsterSyncTimeout);
             unsubscribeMonsters();
         };
+    }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
+
+    // Sync All Clan Buildings Globally from PocketBase
+    // Ensures all Bandit Castles and Watchtowers across the entire map
+    // are always known and displayed on the World Map regardless of player position
+    useEffect(() => {
+        if (!isAuthReady || !user) return;
+
+        const buildingsCol = collection(db, 'buildings');
+        const clanBuildingIdStrings = Array.from(new Set([
+            ...buildingData
+                .filter(b => b.category === 'Клан' || (b.name && (b.name.includes('Бандитский замок') || b.name.includes('Сторожевая башня'))))
+                .map(b => String(b.id)),
+            '800', '801', '214', '215', '216', '373', '374', '375', '376', '377', '378', '379', '380', '386', '387', '388', '389', '415', '416', '451'
+        ]));
+
+        const qClanBuildings = query(buildingsCol, where('buildingId', 'in', clanBuildingIdStrings));
+
+        const unsubscribeClanBuildings = onSnapshot(qClanBuildings, (snapshot) => {
+            const clanBuildingsMap = new Map<string, PlacedBuilding>();
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data() as PlacedBuilding;
+                const strId = String(docSnap.id);
+
+                if (isBuildingTombstoned(strId)) return;
+
+                clanBuildingsMap.set(strId, {
+                    ...data,
+                    id: strId,
+                    isLocal: false,
+                    status: 'normal',
+                    syncState: 'synced'
+                } as PlacedBuilding);
+            });
+
+            serverClanBuildingsRef.current = clanBuildingsMap;
+            updatePlacedBuildingsFromServer(((snapshot as any).__auditSource as BuildingTimerTraceSource | undefined) || 'onSnapshot');
+        }, (error) => {
+            handleFirestoreError(error, OperationType.GET, 'buildings_clan');
+        });
+
+        return () => unsubscribeClanBuildings();
     }, [isAuthReady, user, updatePlacedBuildingsFromServer, isBuildingTombstoned]);
 
     // Sync Zone Buildings from PocketBase
@@ -10137,7 +11391,19 @@ const App: React.FC = () => {
                     !Object.is(latest.protectionEndTime, selectedBuilding.building.protectionEndTime) ||
                     latest.isConstructing !== selectedBuilding.building.isConstructing ||
                     latest.isDestroying !== selectedBuilding.building.isDestroying ||
-                    latest.workState !== selectedBuilding.building.workState;
+                    latest.workState !== selectedBuilding.building.workState ||
+                    latest.trebuchetLoaded !== selectedBuilding.building.trebuchetLoaded ||
+                    latest.trebuchetChargingUntil !== selectedBuilding.building.trebuchetChargingUntil ||
+                    latest.trebuchetAnimStart !== selectedBuilding.building.trebuchetAnimStart ||
+                    latest.trebuchetFireAt !== selectedBuilding.building.trebuchetFireAt ||
+                    latest.trebuchetTargetX !== selectedBuilding.building.trebuchetTargetX ||
+                    latest.trebuchetTargetY !== selectedBuilding.building.trebuchetTargetY ||
+                    latest.trebuchetTargetEntityId !== selectedBuilding.building.trebuchetTargetEntityId ||
+                    latest.trebuchetMoveUntil !== selectedBuilding.building.trebuchetMoveUntil ||
+                    latest.trebuchetMoveTargetX !== selectedBuilding.building.trebuchetMoveTargetX ||
+                    latest.trebuchetMoveTargetY !== selectedBuilding.building.trebuchetMoveTargetY ||
+                    latest.isActive !== selectedBuilding.building.isActive ||
+                    latest.mortarFireAt !== selectedBuilding.building.mortarFireAt;
 
                 if (hasChanged) {
                     // If buildingId changed, also update the info
@@ -11232,6 +12498,9 @@ const App: React.FC = () => {
             groundTileImageUrl,
             treeImageUrl,
             coinImageUrl,
+            ...treeHoverBushAnimationFrames,
+            oilImageUrl,
+            ...oilSplashAnimationFrames,
             rubyImageUrl,
             populationImageUrl,
             builderIconUrl,
@@ -11241,6 +12510,11 @@ const App: React.FC = () => {
             LEVEL_ICON_URLS[playerLevel] || LEVEL_ICON_URLS[1],
             PLAYER_AVATAR_URLS[1],
             PLAYER_AVATAR_URLS[playerLevel] || PLAYER_AVATAR_URLS[1],
+            ...ALL_RIVER_ASSET_URLS,
+            ...ALL_ROAD_ASSET_URLS,
+            ...ALL_PAVEMENT_ASSET_URLS,
+            ...ALL_MOUNTAIN_ASSET_URLS,
+            ...ALL_WALL_ASSET_URLS,
         ];
 
         enqueueImagePreload(baseCriticalUrls, {
@@ -11248,10 +12522,22 @@ const App: React.FC = () => {
         });
     }, [enqueueImagePreload, playerLevel]);
 
+    const lastPreloadSignatureRef = useRef('');
     useEffect(() => {
         if (currentZones.length === 0) return;
 
         const zoneSet = new Set(currentZones);
+        const nearbyBuildings = placedBuildings.filter(b => {
+            const zoneId = b.zoneId || getZoneId(b.x, b.y);
+            return zoneSet.has(zoneId);
+        });
+
+        // Throttle preloading: only run when visible building TYPES or zones change, NOT on every 1.2s timer tick
+        const buildingTypes = Array.from(new Set(nearbyBuildings.map(b => b.buildingId))).sort().join(',');
+        const signature = `${currentZones.join(',')}|${buildingTypes}|${droppedItems.length}|${mapResources.length}`;
+        if (signature === lastPreloadSignatureRef.current) return;
+        lastPreloadSignatureRef.current = signature;
+
         const nearbyResourceUrls = mapResources
             .filter(resource => zoneSet.has(resource.zoneId || getZoneId(resource.x, resource.y)))
             .map(resource => {
@@ -11263,13 +12549,8 @@ const App: React.FC = () => {
             })
             .filter(Boolean) as string[];
 
-        const nearbyBuildings = placedBuildings.filter(b => {
-            const zoneId = b.zoneId || getZoneId(b.x, b.y);
-            return zoneSet.has(zoneId);
-        });
-
         const nearbyStaticUrls = nearbyBuildings
-            .map(building => buildingData.find(info => info.id === building.buildingId)?.imageUrl)
+            .map(building => getBuildingById(building.buildingId)?.imageUrl)
             .filter(Boolean) as string[];
 
         const nearbyDroppedItemUrls = droppedItems
@@ -11277,7 +12558,7 @@ const App: React.FC = () => {
             .map(item => {
                 const numericItemId = Number(item.itemId);
                 if (numericItemId === 999) return coinImageUrl;
-                return itemData.find(info => Number(info.id) === numericItemId)?.imageUrl;
+                return getItemById(numericItemId)?.imageUrl;
             })
             .filter(Boolean) as string[];
 
@@ -11527,6 +12808,7 @@ const App: React.FC = () => {
     const draw = useCallback(() => {
         const [canvas, context] = getCanvasContext();
         if (!canvas || !context) return;
+        const now = Date.now();
         if (!startupFirstDrawLoggedRef.current) {
             startupFirstDrawLoggedRef.current = true;
             logStartupStep('first_draw');
@@ -11542,6 +12824,7 @@ const App: React.FC = () => {
         context.save();
         context.translate(cameraOffsetRef.current.x, cameraOffsetRef.current.y);
 
+        const curHoveredTile = hoveredTileRef.current;
         const images = loadedImageElementsRef.current;
 
         // Draw ground tiles
@@ -11558,70 +12841,152 @@ const App: React.FC = () => {
         const renderCenterY = Math.floor((isoRY - isoRX) / 2);
         
         if (groundImg) {
-            // OPTIMIZATION: Only iterate tiles within RENDER_RADIUS of camera center
-            // Instead of iterating all WORLD_WIDTH_TILES * WORLD_HEIGHT_TILES (200x200 = 40000)
-            // we only iterate the visible range (~120x120 = 14400 at most)
-            const minTileX = isWorldWrapped ? renderCenterX - RENDER_RADIUS : Math.max(0, renderCenterX - RENDER_RADIUS);
-            const maxTileX = isWorldWrapped ? renderCenterX + RENDER_RADIUS : Math.min(WORLD_WIDTH_TILES - 1, renderCenterX + RENDER_RADIUS);
-            const minTileY = isWorldWrapped ? renderCenterY - RENDER_RADIUS : Math.max(0, renderCenterY - RENDER_RADIUS);
-            const maxTileY = isWorldWrapped ? renderCenterY + RENDER_RADIUS : Math.min(WORLD_HEIGHT_TILES - 1, renderCenterY + RENDER_RADIUS);
+            const halfW = scaledTileWidth / 2;
+            const halfH = scaledTileHeight / 2;
             
+            // Viewport bounds in world screen space
+            const minSX = -cameraOffsetRef.current.x - scaledTileWidth;
+            const maxSX = canvas.width - cameraOffsetRef.current.x + scaledTileWidth;
+            const minSY = -cameraOffsetRef.current.y - scaledTileHeight;
+            const maxSY = canvas.height - cameraOffsetRef.current.y + scaledTileHeight;
+            
+            // Inverse isometric projection of 4 screen corners to (i, j) tile bounds
+            const c1_i = (minSY / halfH + minSX / halfW) / 2;
+            const c1_j = (minSY / halfH - minSX / halfW) / 2;
+            const c2_i = (minSY / halfH + maxSX / halfW) / 2;
+            const c2_j = (minSY / halfH - maxSX / halfW) / 2;
+            const c3_i = (maxSY / halfH + minSX / halfW) / 2;
+            const c3_j = (maxSY / halfH - minSX / halfW) / 2;
+            const c4_i = (maxSY / halfH + maxSX / halfW) / 2;
+            const c4_j = (maxSY / halfH - maxSX / halfW) / 2;
+            
+            let minTileX = Math.floor(Math.min(c1_i, c2_i, c3_i, c4_i));
+            let maxTileX = Math.ceil(Math.max(c1_i, c2_i, c3_i, c4_i));
+            let minTileY = Math.floor(Math.min(c1_j, c2_j, c3_j, c4_j));
+            let maxTileY = Math.ceil(Math.max(c1_j, c2_j, c3_j, c4_j));
+
+            if (!isWorldWrapped) {
+                minTileX = Math.max(0, minTileX);
+                maxTileX = Math.min(WORLD_WIDTH_TILES - 1, maxTileX);
+                minTileY = Math.max(0, minTileY);
+                maxTileY = Math.min(WORLD_HEIGHT_TILES - 1, maxTileY);
+            }
+            
+            const camMinX = -cameraOffsetRef.current.x - scaledTileWidth;
+            const camMaxX = canvas.width - cameraOffsetRef.current.x + scaledTileWidth;
+            const camMinY = -cameraOffsetRef.current.y - scaledTileHeight;
+            const camMaxY = canvas.height - cameraOffsetRef.current.y + scaledTileHeight;
+
             for (let i = minTileX; i <= maxTileX; i++) {
                 for (let j = minTileY; j <= maxTileY; j++) {
-                    
-                    const { screenX, screenY } = worldToScreen(i, j, zoom);
+                    const screenX = (i - j) * halfW;
+                    const screenY = (i + j) * halfH;
 
                     if (
-                        screenX + scaledTileWidth < -cameraOffsetRef.current.x ||
-                        screenX - scaledTileWidth > canvas.width - cameraOffsetRef.current.x ||
-                        screenY + scaledTileHeight < -cameraOffsetRef.current.y ||
-                        screenY - scaledTileHeight > canvas.height - cameraOffsetRef.current.y
+                        screenX < camMinX ||
+                        screenX > camMaxX ||
+                        screenY < camMinY ||
+                        screenY > camMaxY
                     ) {
                         continue;
                     }
 
-                    context.save();
-                    context.beginPath();
-                    context.moveTo(screenX, screenY - scaledTileHeight / 2);
-                    context.lineTo(screenX + scaledTileWidth / 2, screenY);
-                    context.lineTo(screenX, screenY + scaledTileHeight / 2);
-                    context.lineTo(screenX - scaledTileWidth / 2, screenY);
-                    context.closePath();
-                    context.clip();
-
                     context.drawImage(
                         groundImg,
-                        screenX - scaledTileWidth / 2,
-                        screenY - scaledTileHeight / 2,
+                        screenX - halfW,
+                        screenY - halfH,
                         scaledTileWidth,
                         scaledTileHeight
                     );
-                    context.restore();
                 }
+            }
+
+            // Micro-pixel subtle isometric grid on tile boundaries
+            context.beginPath();
+            for (let lineJ = minTileY; lineJ <= maxTileY + 1; lineJ++) {
+                const x1 = (minTileX - lineJ) * halfW;
+                const y1 = (minTileX + lineJ - 1) * halfH;
+                const x2 = (maxTileX + 1 - lineJ) * halfW;
+                const y2 = (maxTileX + lineJ) * halfH;
+                context.moveTo(x1, y1);
+                context.lineTo(x2, y2);
+            }
+            for (let lineI = minTileX; lineI <= maxTileX + 1; lineI++) {
+                const x1 = (lineI - minTileY) * halfW;
+                const y1 = (lineI + minTileY - 1) * halfH;
+                const x2 = (lineI - 1 - maxTileY) * halfW;
+                const y2 = (lineI + maxTileY) * halfH;
+                context.moveTo(x1, y1);
+                context.lineTo(x2, y2);
+            }
+            context.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+            context.lineWidth = 1;
+            context.stroke();
+        }
+
+        // Pre-filter visible entities within RENDER_RADIUS using reusable pool without any object allocations
+        const visibleDrawableEntities = visibleEntitiesPoolRef.current;
+        let visibleCount = 0;
+
+        // 1. Resources macro-culled by active sectors
+        const resList = mapResourcesRef.current;
+        const resourceSectors = resourceSectorsMapRef.current;
+        if (lastResourceListForSectorsRef.current !== resList) {
+            lastResourceListForSectorsRef.current = resList;
+            resourceSectors.clear();
+            for (let i = 0; i < resList.length; i++) {
+                const r = resList[i];
+                const sx = Math.floor(r.x / ZONE_SIZE);
+                const sy = Math.floor(r.y / ZONE_SIZE);
+                const key = `${sx}_${sy}`;
+                let bucket = resourceSectors.get(key);
+                if (!bucket) {
+                    bucket = [];
+                    resourceSectors.set(key, bucket);
+                }
+                bucket.push(r);
             }
         }
 
-        // Pre-filter visible entities within RENDER_RADIUS directly from refs (~50-100 items), computing coords once
-        type VisibleDrawableEntity = {
-            entity: any;
-            entityVX: number;
-            entityVY: number;
-            depth: number;
-        };
-        const visibleDrawableEntities: VisibleDrawableEntity[] = [];
+        const minResSX = Math.floor((renderCenterX - RENDER_RADIUS) / ZONE_SIZE);
+        const maxResSX = Math.floor((renderCenterX + RENDER_RADIUS) / ZONE_SIZE);
+        const minResSY = Math.floor((renderCenterY - RENDER_RADIUS) / ZONE_SIZE);
+        const maxResSY = Math.floor((renderCenterY + RENDER_RADIUS) / ZONE_SIZE);
 
-        // 1. Resources from ref
-        const resList = mapResourcesRef.current;
-        for (let i = 0; i < resList.length; i++) {
-            const r = resList[i];
-            const coords = getClosestWrappedWorldCoords(r.x, r.y, renderCenterX, renderCenterY, isWorldWrapped);
-            if (Math.abs(coords.x - renderCenterX) <= RENDER_RADIUS && Math.abs(coords.y - renderCenterY) <= RENDER_RADIUS) {
-                visibleDrawableEntities.push({
-                    entity: { ...r, entityType: 'resource' as const },
-                    entityVX: coords.x,
-                    entityVY: coords.y,
-                    depth: coords.x + coords.y
-                });
+        for (let sx = minResSX; sx <= maxResSX; sx++) {
+            const wrappedSX = isWorldWrapped ? wrapCoord(sx, ZONES_X) : sx;
+            if (wrappedSX < 0 || wrappedSX >= ZONES_X) continue;
+
+            for (let sy = minResSY; sy <= maxResSY; sy++) {
+                const wrappedSY = isWorldWrapped ? wrapCoord(sy, ZONES_Y) : sy;
+                if (wrappedSY < 0 || wrappedSY >= ZONES_Y) continue;
+
+                const bucket = resourceSectors.get(`${wrappedSX}_${wrappedSY}`);
+                if (!bucket) continue;
+
+                for (let i = 0; i < bucket.length; i++) {
+                    const r = bucket[i];
+                    const vx = isWorldWrapped ? r.x + Math.round((renderCenterX - r.x) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : r.x;
+                    const vy = isWorldWrapped ? r.y + Math.round((renderCenterY - r.y) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : r.y;
+                    if (Math.abs(vx - renderCenterX) <= RENDER_RADIUS && Math.abs(vy - renderCenterY) <= RENDER_RADIUS) {
+                        (r as any).entityType = 'resource';
+                        let slot = visibleDrawableEntities[visibleCount];
+                        if (!slot) {
+                            slot = visibleDrawableEntities[visibleCount] = {
+                                entity: r,
+                                entityVX: vx,
+                                entityVY: vy,
+                                depth: vx + vy,
+                            };
+                        } else {
+                            slot.entity = r;
+                            slot.entityVX = vx;
+                            slot.entityVY = vy;
+                            slot.depth = vx + vy;
+                        }
+                        visibleCount++;
+                    }
+                }
             }
         }
 
@@ -11629,39 +12994,142 @@ const App: React.FC = () => {
         const itemList = droppedItemsRef.current;
         for (let i = 0; i < itemList.length; i++) {
             const item = itemList[i];
-            const coords = getClosestWrappedWorldCoords(item.x, item.y, renderCenterX, renderCenterY, isWorldWrapped);
-            if (Math.abs(coords.x - renderCenterX) <= RENDER_RADIUS && Math.abs(coords.y - renderCenterY) <= RENDER_RADIUS) {
-                visibleDrawableEntities.push({
-                    entity: { ...item, entityType: 'dropped_item' as const },
-                    entityVX: coords.x,
-                    entityVY: coords.y,
-                    depth: coords.x + coords.y
-                });
+            const vx = isWorldWrapped ? item.x + Math.round((renderCenterX - item.x) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : item.x;
+            const vy = isWorldWrapped ? item.y + Math.round((renderCenterY - item.y) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : item.y;
+            if (Math.abs(vx - renderCenterX) <= RENDER_RADIUS && Math.abs(vy - renderCenterY) <= RENDER_RADIUS) {
+                (item as any).entityType = 'dropped_item';
+                let slot = visibleDrawableEntities[visibleCount];
+                if (!slot) {
+                    slot = visibleDrawableEntities[visibleCount] = {
+                        entity: item,
+                        entityVX: vx,
+                        entityVY: vy,
+                        depth: vx + vy,
+                    };
+                } else {
+                    slot.entity = item;
+                    slot.entityVX = vx;
+                    slot.entityVY = vy;
+                    slot.depth = vx + vy;
+                }
+                visibleCount++;
             }
         }
 
-        // 3. Buildings & monsters from ref (skip destroyed)
+        // 3. Buildings & monsters macro-culled by active sectors (skip destroyed)
         const bList = placedBuildingsRef.current;
-        for (let i = 0; i < bList.length; i++) {
-            const b = bList[i];
-            if (b.hp !== undefined && b.hp <= 0) continue;
-            const coords = getClosestWrappedWorldCoords(b.x, b.y, renderCenterX, renderCenterY, isWorldWrapped);
-            if (Math.abs(coords.x - renderCenterX) <= RENDER_RADIUS && Math.abs(coords.y - renderCenterY) <= RENDER_RADIUS) {
-                visibleDrawableEntities.push({
-                    entity: { ...b, entityType: 'building' as const },
-                    entityVX: coords.x,
-                    entityVY: coords.y,
-                    depth: coords.x + coords.y
-                });
+        const buildingSectors = buildingSectorsMapRef.current;
+        if (lastBuildingListForSectorsRef.current !== bList) {
+            lastBuildingListForSectorsRef.current = bList;
+            buildingSectors.clear();
+            for (let i = 0; i < bList.length; i++) {
+                const b = bList[i];
+                if (b.hp !== undefined && b.hp <= 0) continue;
+                const sx = Math.floor(b.x / ZONE_SIZE);
+                const sy = Math.floor(b.y / ZONE_SIZE);
+                const key = `${sx}_${sy}`;
+                let bucket = buildingSectors.get(key);
+                if (!bucket) {
+                    bucket = [];
+                    buildingSectors.set(key, bucket);
+                }
+                bucket.push(b);
             }
         }
 
-        // Sort ONLY the visible entities (~50-100 instead of 6000+), using precalculated depth
+        for (let sx = minResSX; sx <= maxResSX; sx++) {
+            const wrappedSX = isWorldWrapped ? wrapCoord(sx, ZONES_X) : sx;
+            if (wrappedSX < 0 || wrappedSX >= ZONES_X) continue;
+
+            for (let sy = minResSY; sy <= maxResSY; sy++) {
+                const wrappedSY = isWorldWrapped ? wrapCoord(sy, ZONES_Y) : sy;
+                if (wrappedSY < 0 || wrappedSY >= ZONES_Y) continue;
+
+                const bucket = buildingSectors.get(`${wrappedSX}_${wrappedSY}`);
+                if (!bucket) continue;
+
+                for (let i = 0; i < bucket.length; i++) {
+                    const b = bucket[i];
+                    if (b.hp !== undefined && b.hp <= 0) continue;
+                    let actualX = b.x;
+                    let actualY = b.y;
+                    if (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetMoveUntil && now < b.trebuchetMoveUntil && b.trebuchetMoveStartTime) {
+                        const elapsed = now - b.trebuchetMoveStartTime;
+                        let path = b.trebuchetMovePath;
+                        if ((!path || path.length < 2) && b.trebuchetMoveStartX !== undefined && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveStartY !== undefined && b.trebuchetMoveTargetY !== undefined) {
+                            const isTileBlocked = (tx: number, ty: number): boolean => {
+                                const normX = isWorldWrapped ? wrapCoord(tx, WORLD_WIDTH_TILES) : tx;
+                                const normY = isWorldWrapped ? wrapCoord(ty, WORLD_HEIGHT_TILES) : ty;
+                                if (!isWorldWrapped && (tx < 0 || tx >= WORLD_WIDTH_TILES || ty < 0 || ty >= WORLD_HEIGHT_TILES)) {
+                                    return true;
+                                }
+                                const otherB = getSpatialBuildingAt(normX, normY);
+                                if (otherB && String(otherB.id) !== String(b.id)) return true;
+                                const r = getSpatialResourceAt(normX, normY);
+                                if (r && (r.hp === undefined || r.hp > 0)) return true;
+                                return false;
+                            };
+                            const wrappedTarget = getClosestWrappedWorldCoords(b.trebuchetMoveTargetX, b.trebuchetMoveTargetY, b.trebuchetMoveStartX, b.trebuchetMoveStartY, isWorldWrapped);
+                            const reconstructed = findTrebuchetPath(b.trebuchetMoveStartX, b.trebuchetMoveStartY, wrappedTarget.x, wrappedTarget.y, isTileBlocked, TREBUCHET_MOVE_RANGE * 3 + 4);
+                            if (reconstructed && reconstructed.length >= 2) {
+                                path = b.trebuchetMovePath = reconstructed;
+                            }
+                        }
+                        if (path && path.length >= 2) {
+                            const numSegments = path.length - 1;
+                            const segDur = Math.max(1, (b.trebuchetMoveDuration || (numSegments * TREBUCHET_MOVE_SPEED_MS_PER_TILE)) / numSegments);
+                            const curSegIdx = Math.min(numSegments - 1, Math.floor(elapsed / segDur));
+                            const segElapsed = elapsed - curSegIdx * segDur;
+                            const segProgress = Math.min(1, Math.max(0, segElapsed / segDur));
+                            const fromTile = path[curSegIdx];
+                            const toTile = path[curSegIdx + 1];
+                            actualX = fromTile.x + (toTile.x - fromTile.x) * segProgress;
+                            actualY = fromTile.y + (toTile.y - fromTile.y) * segProgress;
+                        } else if (b.trebuchetMoveStartX !== undefined && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveStartY !== undefined && b.trebuchetMoveTargetY !== undefined) {
+                            const duration = Math.max(1, b.trebuchetMoveDuration || (b.trebuchetMoveUntil - b.trebuchetMoveStartTime));
+                            const progress = Math.min(1, Math.max(0, elapsed / duration));
+                            actualX = b.trebuchetMoveStartX + (b.trebuchetMoveTargetX - b.trebuchetMoveStartX) * progress;
+                            actualY = b.trebuchetMoveStartY + (b.trebuchetMoveTargetY - b.trebuchetMoveStartY) * progress;
+                        }
+                    }
+                    const vx = isWorldWrapped ? actualX + Math.round((renderCenterX - actualX) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : actualX;
+                    const vy = isWorldWrapped ? actualY + Math.round((renderCenterY - actualY) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : actualY;
+                    if (Math.abs(vx - renderCenterX) <= RENDER_RADIUS && Math.abs(vy - renderCenterY) <= RENDER_RADIUS) {
+                        (b as any).entityType = 'building';
+                        let slot = visibleDrawableEntities[visibleCount];
+                        if (!slot) {
+                            slot = visibleDrawableEntities[visibleCount] = {
+                                entity: b,
+                                entityVX: vx,
+                                entityVY: vy,
+                                depth: vx + vy,
+                            };
+                        } else {
+                            slot.entity = b;
+                            slot.entityVX = vx;
+                            slot.entityVY = vy;
+                            slot.depth = vx + vy;
+                        }
+                        visibleCount++;
+                    }
+                }
+            }
+        }
+
+        visibleDrawableEntities.length = visibleCount;
+
+        // Sort ONLY the visible entities (~50-100 instead of 6000+), using precalculated depth and zero-allocation comparator
         visibleDrawableEntities.sort((a, b) => {
             const posDiff = a.depth - b.depth;
             if (posDiff !== 0) return posDiff;
-            const typeOrder: Record<string, number> = { 'resource': 0, 'building': 1, 'dropped_item': 2 };
-            return (typeOrder[a.entity.entityType] ?? 0) - (typeOrder[b.entity.entityType] ?? 0);
+            const groundA = a.entity.entityType === 'building' && isGroundTileId((a.entity as PlacedBuilding).buildingId) ? 0 : 1;
+            const groundB = b.entity.entityType === 'building' && isGroundTileId((b.entity as PlacedBuilding).buildingId) ? 0 : 1;
+            if (groundA !== groundB) return groundA - groundB;
+            const typeDiff = (TYPE_DEPTH_ORDER[a.entity.entityType] ?? 0) - (TYPE_DEPTH_ORDER[b.entity.entityType] ?? 0);
+            if (typeDiff !== 0) return typeDiff;
+            const idA = a.entity.id ?? 0;
+            const idB = b.entity.id ?? 0;
+            return idA < idB ? -1 : (idA > idB ? 1 : 0);
         });
 
         visibleDrawableEntities.forEach(({ entity, entityVX, entityVY }) => {
@@ -11681,8 +13149,8 @@ const App: React.FC = () => {
                 return;
             }
 
-            let img: HTMLImageElement | undefined;
-            let overlayImg: HTMLImageElement | undefined;
+            let img: HTMLImageElement | HTMLCanvasElement | undefined;
+            let overlayImg: HTMLImageElement | HTMLCanvasElement | undefined;
             let color: string = 'blue';
             let buildingInfo: Building | undefined;
 
@@ -11693,7 +13161,19 @@ const App: React.FC = () => {
                     img = images[treeImageUrl];
                     color = 'green';
                 } else if (entity.type === 'oil') {
-                    img = images[oilImageUrl];
+                    // Oil puddle splash animation: 5 second interval (active splash 1620ms of 9 frames, then static on frame 0)
+                    const now = Date.now();
+                    const frameDuration = 180;
+                    const splashDuration = oilSplashAnimationFrames.length * frameDuration; // 1620ms
+                    const cyclePeriod = 5000; // 5 seconds
+                    const entityOffset = Math.abs((entity.x * 37 + entity.y * 73) % cyclePeriod);
+                    const cycleTime = (now + entityOffset) % cyclePeriod;
+                    let frameIndex = 0;
+                    if (cycleTime < splashDuration) {
+                        frameIndex = Math.floor(cycleTime / frameDuration) % oilSplashAnimationFrames.length;
+                    }
+                    const frameUrl = oilSplashAnimationFrames[frameIndex];
+                    img = images[frameUrl] || images[normalizeAssetUrl(frameUrl)] || images[oilImageUrl];
                     color = 'black';
                 } else if (entity.type === 'chest') {
                     img = images[chestImageUrl];
@@ -11719,7 +13199,7 @@ const App: React.FC = () => {
                     }
                     color = 'gold';
                 } else {
-                    const itemInfo = itemData.find(i => Number(i.id) === numericItemId);
+                    const itemInfo = getItemById(numericItemId);
                     if (itemInfo && itemInfo.imageUrl) {
                         const url = itemInfo.imageUrl;
                         img = images[url];
@@ -11735,7 +13215,7 @@ const App: React.FC = () => {
                     color = 'yellow';
                 }
             } else if (entity.entityType === 'building' && 'buildingId' in entity) {
-                buildingInfo = buildingData.find(b => b.id === Number(entity.buildingId) || b.id === entity.buildingId);
+                buildingInfo = getBuildingById(entity.buildingId);
                 const isProtected = (entity.shieldHp || 0) > 0 || (entity.protectionEndTime && entity.protectionEndTime > Date.now());
 
                 if (isProtected) {
@@ -11746,6 +13226,7 @@ const App: React.FC = () => {
                     const isDetonatorFactory = entity.buildingId === DETONATOR_FACTORY_ID;
                     const isDevilMachine = entity.buildingId === DEVIL_MACHINE_ID;
                     const isMill = entity.buildingId === MILL_ID;
+                    const isChanVat = entity.buildingId === CHAN_VAT_BUILDING_ID;
                     const isWorking = entity.workState === 'working' && entity.workEndTime;
                     
                     if (isDetonatorFactory && isWorking) {
@@ -11769,6 +13250,113 @@ const App: React.FC = () => {
                         const frameIndex = Math.floor((now % animationDuration) / (animationDuration / millAnimationFrames.length)) % millAnimationFrames.length;
                         const frameUrl = millAnimationFrames[frameIndex];
                         img = images[frameUrl];
+                    } else if (isChanVat && isWorking) {
+                        // Cauldron animation: 12 frames over 1 second = 12 FPS, looping continuously
+                        const now = Date.now();
+                        const animationDuration = 1000; // 1 second for full loop
+                        const frameIndex = Math.floor((now % animationDuration) / (animationDuration / chanWorkingAnimationFrames.length)) % chanWorkingAnimationFrames.length;
+                        const frameUrl = chanWorkingAnimationFrames[frameIndex];
+                        img = images[frameUrl];
+                    } else if (entity.buildingId === TREBUCHET_ID) {
+                        const pb = entity as PlacedBuilding;
+                        let activeFacing: TrebuchetFacingDirection = normalizeTrebuchetFacing(pb.trebuchetFacing);
+
+                        if (pb.trebuchetMoveUntil && now < pb.trebuchetMoveUntil && pb.trebuchetMoveStartTime) {
+                            // Moving animation with dynamic facing per segment
+                            const path = pb.trebuchetMovePath;
+                            if (path && path.length >= 2) {
+                                const numSegments = path.length - 1;
+                                const segDur = Math.max(1, (pb.trebuchetMoveDuration || (numSegments * TREBUCHET_MOVE_SPEED_MS_PER_TILE)) / numSegments);
+                                const elapsed = now - pb.trebuchetMoveStartTime;
+                                const curSegIdx = Math.min(numSegments - 1, Math.floor(elapsed / segDur));
+                                const fromTile = path[curSegIdx];
+                                const toTile = path[curSegIdx + 1];
+                                activeFacing = getTrebuchetFacingFromDelta(toTile.x - fromTile.x, toTile.y - fromTile.y);
+                            } else if (pb.trebuchetMoveStartX !== undefined && pb.trebuchetMoveTargetX !== undefined && pb.trebuchetMoveStartY !== undefined && pb.trebuchetMoveTargetY !== undefined) {
+                                activeFacing = getTrebuchetFacingFromDelta(pb.trebuchetMoveTargetX - pb.trebuchetMoveStartX, pb.trebuchetMoveTargetY - pb.trebuchetMoveStartY);
+                            }
+
+                            const elapsed = now - pb.trebuchetMoveStartTime;
+                            const cycleMs = 1440;
+                            const frameIndex = Math.floor((elapsed % cycleMs) / (cycleMs / 16)) % 16;
+                            const moveFrames = getTrebuchetMoveFrames(activeFacing);
+                            const frameUrl = moveFrames[frameIndex];
+                            img = images[frameUrl] || images[getTrebuchetLoadingFrames(activeFacing)[0]] || images[buildingInfo.imageUrl];
+                        } else if (pb.trebuchetFireAt && now >= pb.trebuchetFireAt) {
+                            if (pb.trebuchetTargetX !== undefined && pb.trebuchetTargetY !== undefined) {
+                                activeFacing = getTrebuchetFacingFromDelta(pb.trebuchetTargetX - pb.x, pb.trebuchetTargetY - pb.y);
+                            }
+                            // Firing animation plays for TREBUCHET_LAUNCH_DURATION (2500ms)
+                            const elapsed = now - pb.trebuchetFireAt;
+                            const launchFrames = getTrebuchetLaunchFrames(activeFacing);
+                            if (elapsed < TREBUCHET_LAUNCH_DURATION) {
+                                let frameIndex = 0;
+                                for (let i = TREBUCHET_LAUNCH_CUMULATIVE_MS.length - 1; i >= 0; i--) {
+                                    if (elapsed >= TREBUCHET_LAUNCH_CUMULATIVE_MS[i]) {
+                                        frameIndex = i;
+                                        break;
+                                    }
+                                }
+                                const frameUrl = launchFrames[frameIndex];
+                                img = images[frameUrl] || images[launchFrames[0]];
+                            } else {
+                                // Once launch animation completes, return to unloaded frame in current facing
+                                img = images[getTrebuchetIdleUrl(activeFacing)] || images[getTrebuchetLoadingFrames(activeFacing)[0]] || images[buildingInfo.imageUrl];
+                            }
+                        } else if (pb.trebuchetFireAt && now < pb.trebuchetFireAt) {
+                            if (pb.trebuchetTargetX !== undefined && pb.trebuchetTargetY !== undefined) {
+                                activeFacing = getTrebuchetFacingFromDelta(pb.trebuchetTargetX - pb.x, pb.trebuchetTargetY - pb.y);
+                            }
+                            // During 10s countdown: stay in loaded state in current facing
+                            img = images[getTrebuchetLoadedUrl(activeFacing)] || images[getTrebuchetLoadingFrames(activeFacing)[15]];
+                        } else if (pb.trebuchetChargingUntil && now < pb.trebuchetChargingUntil) {
+                            // 5s charging countdown: show frame 1 (unloaded) in current facing
+                            img = images[getTrebuchetIdleUrl(activeFacing)] || images[getTrebuchetLoadingFrames(activeFacing)[0]];
+                        } else if (pb.trebuchetAnimStart && now >= pb.trebuchetAnimStart) {
+                            const elapsed = now - pb.trebuchetAnimStart;
+                            const loadFrames = getTrebuchetLoadingFrames(activeFacing);
+                            if (elapsed < TREBUCHET_ANIM_DURATION) {
+                                let frameIndex = 0;
+                                for (let i = TREBUCHET_FRAME_CUMULATIVE_MS.length - 1; i >= 0; i--) {
+                                    if (elapsed >= TREBUCHET_FRAME_CUMULATIVE_MS[i]) {
+                                        frameIndex = i;
+                                        break;
+                                    }
+                                }
+                                const frameUrl = loadFrames[frameIndex];
+                                img = images[frameUrl] || images[loadFrames[0]];
+                            } else {
+                                // Animation finished: leave in loaded state in current facing
+                                img = images[getTrebuchetLoadedUrl(activeFacing)] || images[loadFrames[15]];
+                            }
+                        } else if (pb.trebuchetLoaded) {
+                            // Loaded state in current facing
+                            img = images[getTrebuchetLoadedUrl(activeFacing)] || images[getTrebuchetLoadingFrames(activeFacing)[15]];
+                        } else {
+                            // Idle / unloaded in current facing
+                            img = images[getTrebuchetIdleUrl(activeFacing)] || images[getTrebuchetLoadingFrames(activeFacing)[0]] || images[buildingInfo.imageUrl];
+                        }
+                    } else if (entity.buildingId === MORTAR_ID) {
+                        const now = Date.now();
+                        const pb = entity as PlacedBuilding;
+                        if (pb.mortarFireAt && now >= pb.mortarFireAt) {
+                            const elapsed = now - pb.mortarFireAt;
+                            if (elapsed < MORTAR_ANIM_DURATION) {
+                                let frameIndex = 0;
+                                for (let i = MORTAR_FRAME_CUMULATIVE_MS.length - 1; i >= 0; i--) {
+                                    if (elapsed >= MORTAR_FRAME_CUMULATIVE_MS[i]) {
+                                        frameIndex = i;
+                                        break;
+                                    }
+                                }
+                                const frameUrl = mortarFlashFrames[frameIndex];
+                                img = images[frameUrl] || images[buildingInfo.imageUrl];
+                            } else {
+                                img = images[mortarFlashFrames[0]] || images[buildingInfo.imageUrl];
+                            }
+                        } else {
+                            img = images[mortarFlashFrames[0]] || images[buildingInfo.imageUrl];
+                        }
                     } else if (COIN_FACTORY_ID_SET.has(entity.buildingId) && isWorking) {
                         // Animation: 80 frames over 3 seconds (~27 FPS), looping continuously
                         const now = Date.now();
@@ -11786,29 +13374,33 @@ const App: React.FC = () => {
                         const frameUrl = frames[frameIndex];
                         img = images[frameUrl];
                     } else if (MONSTER_ACADEMY_ID_SET.has(entity.buildingId)) {
-                        // Monster Academy animation: working or idle state
-                        const now = Date.now();
                         const groupInfo = MONSTER_ACADEMY_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            const frames = isWorking
-                                ? monsterAcademyWorkingFrames[groupInfo.folder]
-                                : monsterAcademyIdleFrames[groupInfo.folder];
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                            if (isWorking) {
+                                const frames = monsterAcademyWorkingFrames[groupInfo.folder];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
+                            } else {
+                                const frames = monsterAcademyIdleFrames[groupInfo.folder];
+                                if (frames && frames[0]) img = images[frames[0]];
+                            }
                         }
                     } else if (ALCHEMY_FACTORY_ID_SET.has(entity.buildingId)) {
-                        // Alchemy Factory animation: working or idle state
-                        const now = Date.now();
-                        const frames = isWorking
-                            ? alchemyFactoryWorkingFrames[entity.buildingId]
-                            : alchemyFactoryIdleFrames[entity.buildingId];
-                        if (frames) {
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                        if (isWorking) {
+                            const frames = alchemyFactoryWorkingFrames[entity.buildingId];
+                            if (frames && frames.length > 0) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            }
+                        } else {
+                            const frames = alchemyFactoryIdleFrames[entity.buildingId];
+                            if (frames && frames[0]) img = images[frames[0]];
                         }
                     } else if (MILITARY_FACTORY_ID_SET.has(entity.buildingId) && isWorking) {
                         // Military Factory animation: 62 frames at 30 FPS when working
@@ -11818,135 +13410,145 @@ const App: React.FC = () => {
                         const frameUrl = militaryFactoryAnimationFrames[frameIndex];
                         img = images[frameUrl];
                     } else if (MUSHROOM_BED_ID_SET.has(entity.buildingId)) {
-                        // Mushroom Bed animation: working or idle state
-                        const now = Date.now();
                         const groupInfo = MUSHROOM_BED_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            const frames = isWorking
-                                ? mushroomBedWorkingFrames[groupInfo.folder]
-                                : mushroomBedIdleFrames[groupInfo.folder];
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                            if (isWorking) {
+                                const frames = mushroomBedWorkingFrames[groupInfo.folder];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
+                            } else {
+                                const frames = mushroomBedIdleFrames[groupInfo.folder];
+                                if (frames && frames[0]) img = images[frames[0]];
+                            }
                         }
                     } else if (MINE_ID_SET.has(entity.buildingId)) {
-                        // Mine animation: working or idle state
-                        const now = Date.now();
                         const groupInfo = MINE_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            const frames = isWorking
-                                ? mineWorkingFrames[groupInfo.folder]
-                                : mineIdleFrames[groupInfo.folder];
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                            if (isWorking) {
+                                const frames = mineWorkingFrames[groupInfo.folder];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
+                            } else {
+                                const frames = mineIdleFrames[groupInfo.folder];
+                                if (frames && frames[0]) img = images[frames[0]];
+                            }
                         }
                     } else if (EMERALD_FACTORY_ID_SET.has(entity.buildingId)) {
-                        // Emerald Factory animation: working or idle state
-                        const now = Date.now();
                         const groupInfo = EMERALD_FACTORY_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            const frames = isWorking
-                                ? emeraldFactoryWorkingFrames[groupInfo.folder]
-                                : emeraldFactoryIdleFrames[groupInfo.folder];
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                            if (isWorking) {
+                                const frames = emeraldFactoryWorkingFrames[groupInfo.folder];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
+                            } else {
+                                const frames = emeraldFactoryIdleFrames[groupInfo.folder];
+                                if (frames && frames[0]) img = images[frames[0]];
+                            }
                         }
                     } else if (GOLD_SMELTER_ID_SET.has(entity.buildingId)) {
-                        // Gold Smelter animation: level 1 working only, levels 2+ working + idle
-                        const now = Date.now();
                         const groupInfo = GOLD_SMELTER_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
                             if (isWorking) {
                                 const frames = goldSmelterWorkingFrames[groupInfo.folder];
-                                const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                const frameUrl = frames[frameIndex];
-                                img = images[frameUrl];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
                             } else if (groupInfo.idleFrames > 0) {
-                                // Levels 2+ have idle animation; level 1 falls through to static image
                                 const frames = goldSmelterIdleFrames[groupInfo.folder];
-                                const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                const frameUrl = frames[frameIndex];
-                                img = images[frameUrl];
+                                if (frames && frames[0]) img = images[frames[0]];
                             }
-                            // Level 1 idle: no animation, use default building image
                         }
                     } else if (STEEL_ROLLING_MILL_ID_SET.has(entity.buildingId)) {
-                        // Steel Rolling Mill animation: working or idle state
-                        const now = Date.now();
                         const groupInfo = STEEL_ROLLING_MILL_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            const frames = isWorking
-                                ? steelRollingMillWorkingFrames[groupInfo.folder]
-                                : steelRollingMillIdleFrames[groupInfo.folder];
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                            if (isWorking) {
+                                const frames = steelRollingMillWorkingFrames[groupInfo.folder];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
+                            } else {
+                                const frames = steelRollingMillIdleFrames[groupInfo.folder];
+                                if (frames && frames[0]) img = images[frames[0]];
+                            }
                         }
                     } else if (STEEL_SMELTING_ID_SET.has(entity.buildingId)) {
-                        // Steel Smelting Factory animation: working or idle state
-                        const now = Date.now();
-                        const frames = isWorking
-                            ? steelSmeltingWorkingFrames[entity.buildingId]
-                            : steelSmeltingIdleFrames[entity.buildingId];
-                        if (frames) {
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                        if (isWorking) {
+                            const frames = steelSmeltingWorkingFrames[entity.buildingId];
+                            if (frames && frames.length > 0) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            }
+                        } else {
+                            const frames = steelSmeltingIdleFrames[entity.buildingId];
+                            if (frames && frames[0]) img = images[frames[0]];
                         }
                     } else if (STONE_CRUSHER_ID_SET.has(entity.buildingId)) {
-                        // Stone Crusher animation: working or idle state
-                        const now = Date.now();
                         const folder = STONE_CRUSHER_ID_TO_FOLDER[entity.buildingId];
                         if (folder) {
-                            const frames = isWorking
-                                ? stoneCrusherWorkingFrames[folder]
-                                : stoneCrusherIdleFrames[folder];
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                            if (isWorking) {
+                                const frames = stoneCrusherWorkingFrames[folder];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
+                            } else {
+                                const frames = stoneCrusherIdleFrames[folder];
+                                if (frames && frames[0]) img = images[frames[0]];
+                            }
                         }
                     } else if (LILY_POND_ID_SET.has(entity.buildingId)) {
-                        // Lily Pond animation: working or idle state
-                        const now = Date.now();
                         const groupInfo = LILY_POND_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            const frames = isWorking
-                                ? lilyPondWorkingFrames[groupInfo.folder]
-                                : lilyPondIdleFrames[groupInfo.folder];
-                            const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                            const frameUrl = frames[frameIndex];
-                            img = images[frameUrl];
+                            if (isWorking) {
+                                const frames = lilyPondWorkingFrames[groupInfo.folder];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
+                            } else {
+                                const frames = lilyPondIdleFrames[groupInfo.folder];
+                                if (frames && frames[0]) img = images[frames[0]];
+                            }
                         }
                     } else if (DETONATOR_FACTORY_ID_SET.has(entity.buildingId)) {
-                        // Detonator Factory animation: working state only for levels 1-6, working + idle for levels 7+
-                        const now = Date.now();
                         const groupInfo = DETONATOR_FACTORY_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
                             if (isWorking) {
                                 const frames = detonatorFactoryWorkingFrames[groupInfo.folder];
-                                const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                const frameUrl = frames[frameIndex];
-                                img = images[frameUrl];
+                                if (frames && frames.length > 0) {
+                                    const now = Date.now();
+                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                    img = images[frames[frameIndex]];
+                                }
                             } else if (groupInfo.idleFrames > 0) {
                                 const frames = detonatorFactoryIdleFrames[groupInfo.folder];
-                                const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                const frameUrl = frames[frameIndex];
-                                img = images[frameUrl];
+                                if (frames && frames[0]) img = images[frames[0]];
                             }
-                            // For levels without idle animation (1-6), keep the static building image when not working
                         }
                     } else if (entity.buildingId === WILD_QUARRY_ID && isWorking) {
                         // Wild Quarry: keep the base building aligned to the tile
@@ -12042,7 +13644,7 @@ const App: React.FC = () => {
                         let animStartTime = lastMoveTime;
                         let playbackMultiplier = 1;
                         
-                        // PRIORITY 1: Attack animation (takes precedence over walk)
+                        // PRIORITY 1: Attack animation (direction resolved on AI tick)
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
                             (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
                             (entity as any).attackDir ||
@@ -12267,7 +13869,7 @@ const App: React.FC = () => {
                         let animStartTime = lastMoveTime;
                         let playbackMultiplier = 1;
                         
-                        // PRIORITY 1: Attack animation (takes precedence over walk)
+                        // PRIORITY 1: Attack animation (direction resolved on AI tick)
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
                             (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
                             (entity as any).attackDir ||
@@ -12298,17 +13900,18 @@ const App: React.FC = () => {
                         }
                         
                         // PRIORITY 2: Walk animation (if not attacking, and moved more recently than attack)
+                        let isBronekurWalking = false;
+                        let bronekurSelectedWalkFrames: string[] | null = null;
                         if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
                             let walkFrames: string[];
                             const absDx = Math.abs(lastDir.dx);
                             const absDy = Math.abs(lastDir.dy);
                             if (absDx === 0 && absDy === 0) {
                                 walkFrames = bronekurWalkBottomFrames;
-                            } else if (absDx >= absDy) {
-                                // isometric flip: right in grid → LeftTop frames
-                                walkFrames = lastDir.dx > 0 ? bronekurWalkLeftTopFrames : bronekurWalkBottomRightFrames;
-                            } else {
+                            } else if (absDy >= absDx) {
                                 walkFrames = lastDir.dy > 0 ? bronekurWalkTopRightFrames : bronekurWalkBottomFrames;
+                            } else {
+                                walkFrames = lastDir.dx > 0 ? bronekurWalkLeftTopFrames : bronekurWalkBottomRightFrames;
                             }
                             
                             const walkDuration = getPlaybackDurationMs(walkFrames.length, 30, MONSTER_WALK_DURATION_MULTIPLIER);
@@ -12319,6 +13922,8 @@ const App: React.FC = () => {
                                 playOnce = true;
                                 animStartTime = lastMoveTime;
                                 playbackMultiplier = MONSTER_WALK_DURATION_MULTIPLIER;
+                                isBronekurWalking = true;
+                                bronekurSelectedWalkFrames = walkFrames;
                             }
                         }
                         
@@ -12327,7 +13932,17 @@ const App: React.FC = () => {
                             // Single pass at 30fps
                             const elapsed = now - animStartTime;
                             frameIndex = getPlaybackFrameIndex(elapsed, frames.length, 30, playbackMultiplier);
+                            if (isBronekurWalking && bronekurSelectedWalkFrames) {
+                                (entity as any).__bronekurWalk = {
+                                    isWalking: true,
+                                    progress: frames.length > 1 ? frameIndex / (frames.length - 1) : 1,
+                                    walkFrames: bronekurSelectedWalkFrames
+                                };
+                            } else {
+                                (entity as any).__bronekurWalk = null;
+                            }
                         } else {
+                            (entity as any).__bronekurWalk = null;
                             // Idle: loop at 2s period with random delay (5-15s) and 3s pause between cycles
                             const animationDuration = 2000;
                             const pauseDuration = 3000; // 3 second pause between idle cycles
@@ -12384,7 +13999,7 @@ const App: React.FC = () => {
                         let animStartTime = lastMoveTime;
                         let playbackMultiplier = 1;
                         
-                        // PRIORITY 1: Attack animation (takes precedence over walk)
+                        // PRIORITY 1: Attack animation (direction resolved on AI tick)
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
                             (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
                             (entity as any).attackDir ||
@@ -12494,7 +14109,7 @@ const App: React.FC = () => {
                         let animStartTime = lastMoveTime;
                         let playbackMultiplier = 1;
                         
-                        // PRIORITY 1: Attack animation (takes precedence over walk)
+                        // PRIORITY 1: Attack animation (direction resolved on AI tick)
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
                             (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
                             (entity as any).attackDir ||
@@ -12602,7 +14217,7 @@ const App: React.FC = () => {
                         let animStartTime = lastMoveTime;
                         let playbackMultiplier = 1;
                         
-                        // PRIORITY 1: Attack animation (takes precedence over walk)
+                        // PRIORITY 1: Attack animation (direction resolved on AI tick)
                         const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
                             (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
                             (entity as any).attackDir ||
@@ -12677,6 +14292,106 @@ const App: React.FC = () => {
                         }
                         const babaYagaFrameUrl = frames[frameIndex];
                         img = images[babaYagaFrameUrl] || images[babaYagaIdleFrames[0]] || images[buildingInfo.imageUrl];
+                    } else if (buildingInfo?.stats.isMonster && getCustomMonsterAnimationSpec(entity.buildingId)) {
+                        const customSpec = getCustomMonsterAnimationSpec(entity.buildingId)!;
+                        // Custom WebP sprite monster animation - smooth idle loop, directional walk, and directional attack/repair
+                        const now = Date.now();
+                        const monsterId = String(entity.id);
+                        const monsterGameId = entity.gameId ? String(entity.gameId) : '';
+                        let lastDir = monsterDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).direction ||
+                            (entity as any).data?.direction;
+                        if (!lastDir) {
+                            const _dirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
+                            lastDir = _dirs[Math.floor(Math.random()*_dirs.length)];
+                            monsterDirectionRef.current.set(monsterId, lastDir);
+                            if (monsterGameId) monsterDirectionRef.current.set(monsterGameId, lastDir);
+                        }
+                        const lastMoveTime = Math.max(
+                            entity.lastMoveTime || 0,
+                            (entity as any).data?.lastMoveTime || 0,
+                            monsterLastMoveTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterLastMoveTimeRef.current.get(monsterGameId) || 0) : 0
+                        );
+                        const lastAttackTime = Math.max(
+                            entity.lastAttackTime || 0,
+                            (entity as any).data?.lastAttackTime || 0,
+                            monsterAttackTimeRef.current.get(monsterId) || 0,
+                            monsterGameId ? (monsterAttackTimeRef.current.get(monsterGameId) || 0) : 0,
+                            customSpec.id === TROLL_ID ? (entity.lastTrollBoostAt || (entity as any).data?.lastTrollBoostAt || 0) : 0
+                        );
+
+                        let frames: string[] = customSpec.idleFrames;
+                        let playOnce = false;
+                        let animStartTime = lastMoveTime;
+                        let playbackMultiplier = 1;
+
+                        // PRIORITY 1: Repair / Attack animation
+                        const attackDir = monsterAttackDirectionRef.current.get(monsterId) ||
+                            (monsterGameId ? monsterAttackDirectionRef.current.get(monsterGameId) : undefined) ||
+                            (entity as any).attackDir ||
+                            (entity as any).data?.attackDir ||
+                            lastDir;
+                        if (attackDir && lastAttackTime > 0) {
+                            let attackFrames: string[];
+                            const absDx = Math.abs(attackDir.dx);
+                            const absDy = Math.abs(attackDir.dy);
+                            if (absDx === 0 && absDy === 0) {
+                                attackFrames = customSpec.attackBottomFrames;
+                            } else if (absDx >= absDy) {
+                                attackFrames = attackDir.dx > 0 ? customSpec.attackRightFrames : customSpec.attackLeftFrames;
+                            } else {
+                                attackFrames = attackDir.dy > 0 ? customSpec.attackBottomFrames : customSpec.attackTopFrames;
+                            }
+
+                            const attackDuration = attackFrames.length * (1000 / customSpec.fps);
+                            const attackElapsed = now - lastAttackTime;
+                            if (attackElapsed < attackDuration) {
+                                frames = attackFrames;
+                                playOnce = true;
+                                animStartTime = lastAttackTime;
+                            }
+                        }
+
+                        // PRIORITY 2: Directional walk animation
+                        if (!playOnce && lastDir && lastMoveTime > 0 && lastMoveTime > lastAttackTime) {
+                            let walkFrames: string[];
+                            const absDx = Math.abs(lastDir.dx);
+                            const absDy = Math.abs(lastDir.dy);
+                            if (absDx === 0 && absDy === 0) {
+                                walkFrames = customSpec.walkBottomFrames;
+                            } else if (absDx >= absDy) {
+                                walkFrames = lastDir.dx > 0 ? customSpec.walkRightFrames : customSpec.walkLeftFrames;
+                            } else {
+                                walkFrames = lastDir.dy > 0 ? customSpec.walkBottomFrames : customSpec.walkTopFrames;
+                            }
+
+                            const walkDuration = getPlaybackDurationMs(walkFrames.length, customSpec.fps, MONSTER_WALK_DURATION_MULTIPLIER);
+                            const elapsed = now - lastMoveTime;
+                            if (elapsed < walkDuration) {
+                                frames = walkFrames;
+                                playOnce = true;
+                                animStartTime = lastMoveTime;
+                                playbackMultiplier = MONSTER_WALK_DURATION_MULTIPLIER;
+                            }
+                        }
+
+                        let frameIndex: number;
+                        if (playOnce) {
+                            const elapsed = now - animStartTime;
+                            frameIndex = getPlaybackFrameIndex(elapsed, frames.length, customSpec.fps, playbackMultiplier);
+                        } else {
+                            let idleDelay = monsterIdleDelayRef.current.get(monsterId);
+                            if (idleDelay === undefined) {
+                                idleDelay = Math.floor(Math.random() * 5000);
+                                monsterIdleDelayRef.current.set(monsterId, idleDelay);
+                            }
+                            const idleDurationMs = frames.length * (1000 / customSpec.fps);
+                            frameIndex = Math.floor(((now + idleDelay) % idleDurationMs) / (1000 / customSpec.fps)) % frames.length;
+                        }
+                        const customFrameUrl = frames[frameIndex];
+                        img = images[customFrameUrl] || images[customSpec.idleFrames[0]] || images[buildingInfo.imageUrl];
                     } else if (FLAG_ANIMATION_ID_SET.has(entity.buildingId)) {
                         // Decorative flag animation - continuous loop
                         const now = Date.now();
@@ -12698,6 +14413,60 @@ const App: React.FC = () => {
                             img = images[buildingInfo.imageUrl];
                         }
 
+                    } else if (isRiverBuilding(entity.buildingId)) {
+                        const isRiverAt = (nx: number, ny: number): boolean => {
+                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                            const nb = getSpatialBuildingAt(wx, wy);
+                            return Boolean(nb && isRiverBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                        };
+                        const riverUrl = getRiverTileUrl(entity.x, entity.y, isRiverAt);
+                        img = getOrLoadCachedSprite(riverUrl, loadedImageElementsRef.current);
+                    } else if (isRoadBuilding(entity.buildingId)) {
+                        const isRoadAt = (nx: number, ny: number): boolean => {
+                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                            const nb = getSpatialBuildingAt(wx, wy);
+                            return Boolean(nb && isRoadBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                        };
+                        const roadUrl = getRoadTileUrl(entity.x, entity.y, isRoadAt);
+                        img = getOrLoadCachedSprite(roadUrl, loadedImageElementsRef.current);
+                    } else if (isPavementBuilding(entity.buildingId)) {
+                        const isPavementAt = (nx: number, ny: number): boolean => {
+                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                            const nb = getSpatialBuildingAt(wx, wy);
+                            return Boolean(nb && isPavementBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                        };
+                        const paveUrl = getPavementTileUrl(entity.x, entity.y, isPavementAt);
+                        img = getOrLoadCachedSprite(paveUrl, loadedImageElementsRef.current);
+                    } else if (isWoodenWallBuilding(entity.buildingId)) {
+                        const isWoodenWallAt = (nx: number, ny: number): boolean => {
+                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                            const nb = getSpatialBuildingAt(wx, wy);
+                            return Boolean(nb && isWoodenWallBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                        };
+                        const wallUrl = getWoodenWallTileUrl(entity.x, entity.y, isWoodenWallAt);
+                        img = getOrLoadCachedSprite(wallUrl, loadedImageElementsRef.current);
+                    } else if (isStoneWallBuilding(entity.buildingId)) {
+                        const isStoneWallAt = (nx: number, ny: number): boolean => {
+                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                            const nb = getSpatialBuildingAt(wx, wy);
+                            return Boolean(nb && isStoneWallBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                        };
+                        const wallUrl = getStoneWallTileUrl(entity.x, entity.y, isStoneWallAt);
+                        img = getOrLoadCachedSprite(wallUrl, loadedImageElementsRef.current);
+                    } else if (isMountainBuilding(entity.buildingId)) {
+                        const isMountainAt = (nx: number, ny: number): boolean => {
+                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                            const nb = getSpatialBuildingAt(wx, wy);
+                            return Boolean(nb && isMountainBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                        };
+                        const mountainUrl = getMountainTileUrl(entity.x, entity.y, isMountainAt);
+                        img = getOrLoadCachedSprite(mountainUrl, loadedImageElementsRef.current);
                     } else {
                         img = images[buildingInfo.imageUrl];
                     }
@@ -12716,14 +14485,18 @@ const App: React.FC = () => {
                 }
                 if (!img && url) {
                     const normUrl = normalizeAssetUrl(url);
+                    const versionedUrl = appendAssetVersion(normUrl);
                     const newImg = new Image();
-                    newImg.src = normUrl;
+                    newImg.src = versionedUrl;
                     newImg.onload = () => {
-                        loadedImageElementsRef.current[url] = newImg;
-                        loadedImageElementsRef.current[normUrl] = newImg;
+                        const optimized = createOptimizedCanvasFromImage(newImg);
+                        loadedImageElementsRef.current[url] = optimized;
+                        loadedImageElementsRef.current[normUrl] = optimized;
+                        loadedImageElementsRef.current[versionedUrl] = optimized;
                     };
                     loadedImageElementsRef.current[url] = newImg;
                     loadedImageElementsRef.current[normUrl] = newImg;
+                    loadedImageElementsRef.current[versionedUrl] = newImg;
                     img = newImg;
                 }
             }
@@ -12732,6 +14505,9 @@ const App: React.FC = () => {
             // if a frame is temporarily missing (e.g. transient network reset), keep the last good image for this entity.
             const entityRenderKey = `${entity.entityType}:${String((entity as any).id ?? `${entity.x},${entity.y}`)}`;
             if (img) {
+                if ((img as any).naturalWidth > MAX_BUILDING_TEXTURE_DIMENSION) {
+                    img = createOptimizedCanvasFromImage(img as HTMLImageElement);
+                }
                 lastRenderableImageByEntityRef.current.set(entityRenderKey, img);
             } else {
                 const lastGoodImg = lastRenderableImageByEntityRef.current.get(entityRenderKey);
@@ -12749,8 +14525,17 @@ const App: React.FC = () => {
             const isGorynychMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === GORYNYCH_ID && buildingInfo?.stats.isMonster;
             const isKolobokMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === KOLOBOK_ID && buildingInfo?.stats.isMonster;
             const isBabaYagaMonster = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === BABA_YAGA_ID && buildingInfo?.stats.isMonster;
+            const customMonsterSpec = (entity.entityType === 'building' && buildingInfo?.stats.isMonster)
+                ? getCustomMonsterAnimationSpec((entity as PlacedBuilding).buildingId)
+                : null;
             const isWildQuarryBuilding = entity.entityType === 'building' && (entity as PlacedBuilding).buildingId === WILD_QUARRY_ID;
             const isStoneWallCorner = entity.entityType === 'building' && Number((entity as PlacedBuilding).buildingId) === 500032;
+            const isTrebuchet = entity.entityType === 'building' && Number((entity as PlacedBuilding).buildingId) === TREBUCHET_ID;
+            const isMortar = entity.entityType === 'building' && Number((entity as PlacedBuilding).buildingId) === MORTAR_ID;
+            const isRiver = entity.entityType === 'building' && isRiverBuilding((entity as PlacedBuilding).buildingId);
+            const isRoad = entity.entityType === 'building' && isRoadBuilding((entity as PlacedBuilding).buildingId);
+            const isPavement = entity.entityType === 'building' && isPavementBuilding((entity as PlacedBuilding).buildingId);
+            const isGroundTile = isRiver || isRoad;
             const santaAnimating = isSantaMonster && (entity as any).__santaAnimating;
             const santaAnimState: 'idle' | 'walk' | 'attack' = ((entity as any).__santaAnimState || 'idle');
             // Evil Santa: constant scale across idle, walk, and attack like all other monsters.
@@ -12760,20 +14545,77 @@ const App: React.FC = () => {
             const santaCropMeta = isSantaCropped && santaFrameUrl ? (SANTA_WALK_FRAME_META[santaFrameUrl] || { cx: 205.0, feetY: 250 }) : undefined;
             const CROP_W = SANTA_WALK_CROP_WINDOW.w;
             const CROP_H = SANTA_WALK_CROP_WINDOW.h;
-            const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? (364 / 240) : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : isSantaMonster ? SANTA_MONSTER_SCALE : 1;
-            const imageScaledWidth = ((buildingInfo || isResourceFullScale) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * (isStoneWallCorner ? 1.25 : 1);
-            const imageScaledHeight = imageScaledWidth * aspectRatio;
+            const customMonsterImgWidth = img ? ('naturalWidth' in img ? img.naturalWidth : img.width) : 0;
+            const customMonsterIsAnimatedFrame = Boolean(customMonsterSpec && customMonsterImgWidth >= (customMonsterSpec.spriteWidth - 20));
+            const customMonsterSpriteScale = customMonsterSpec
+                ? (customMonsterIsAnimatedFrame ? customMonsterSpec.canvasScale : 0.95)
+                : 1;
+            const monsterScale = isBronekurMonster ? 2.5 : isIzbushkaMonster ? (364 / 240) : isGorynychMonster ? 1.9 : isKolobokMonster ? 1.35 : isBabaYagaMonster ? 1.8 : customMonsterSpec ? customMonsterSpriteScale : isSantaMonster ? SANTA_MONSTER_SCALE : 1;
+            let imageScaledWidth = ((buildingInfo || isResourceFullScale || isGroundTile) ? scaledTileWidth : scaledTileWidth * 0.9) * monsterScale * (isStoneWallCorner ? 1.25 : 1) * (isTrebuchet ? 0.82 : 1) * (isMortar ? 1.05 : 1);
+            let imageScaledHeight = isGroundTile ? scaledTileHeight : (imageScaledWidth * aspectRatio);
 
             // Santa destination dimensions matching idle/walk proportions
             const santaWalkDestWidth = imageScaledWidth;
             const santaWalkDestHeight = imageScaledWidth * (CROP_H / CROP_W);
 
             let drawX = screenX - imageScaledWidth / 2;
-            let drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight;
+            let drawY = isGroundTile ? (screenY - scaledTileHeight / 2) : (screenY + (scaledTileHeight / 2) - imageScaledHeight);
+
+            // Seamless ground tile alignment:
+            // Rivers use 280x168 isometric scaling with palm and crocodile margins centered on the tile diamond;
+            // pavements use natural lantern height with bottom cobblestone diamond aligned to ground (Gnomograd oy: 4);
+            // roads use 1-2px subpixel bleed to prevent rasterization seams.
+            if (isRiver) {
+                imageScaledWidth = scaledTileWidth * (280 / 240);
+                imageScaledHeight = scaledTileHeight * (168 / 120);
+                drawX = screenX - imageScaledWidth / 2;
+                drawY = screenY - imageScaledHeight / 2;
+            } else if (isPavement) {
+                imageScaledWidth = scaledTileWidth * (241 / 240);
+                imageScaledHeight = imageScaledWidth * aspectRatio;
+                drawX = screenX - imageScaledWidth / 2;
+                drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight + (4 * (scaledTileHeight / 120));
+            } else if (isGroundTile) {
+                const bleed = Math.max(1, Math.round(zoom * 0.5));
+                imageScaledWidth += bleed * 2;
+                imageScaledHeight += bleed;
+                drawX -= bleed;
+                drawY -= bleed * 0.5;
+            }
             
             // Bronekur boss: adjust vertical position so feet align with tile (large 2.5x image offset fix)
             if (isBronekurMonster) {
                 drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight + (scaledTileHeight * 0.75);
+                const walkState = (entity as any).__bronekurWalk;
+                if (walkState?.isWalking) {
+                    const p = Math.max(0, Math.min(1, walkState.progress));
+                    const remaining = 1 - p;
+                    // Flash animation travel overshoot correction:
+                    // Flash frames step 119.5px / 59.5px in canvas (scaled: ~75px / ~38px),
+                    // whereas grid step is 64px / 32px.
+                    // This correction aligns Frame 0 perfectly with the previous tile, eliminating start-step teleportation.
+                    let corrX = 0;
+                    let corrY = 0;
+                    if (walkState.walkFrames === bronekurWalkLeftTopFrames) {
+                        // dx=+1, dy=0 (screen Down-Right): errX = -11.74, errY = -6.50
+                        corrX = 11.74 * (imageScaledWidth / 320) * remaining;
+                        corrY = 6.50 * (imageScaledHeight / 299.17) * remaining;
+                    } else if (walkState.walkFrames === bronekurWalkBottomRightFrames) {
+                        // dx=-1, dy=0 (screen Up-Left): errX = 11.11, errY = 5.24
+                        corrX = -11.11 * (imageScaledWidth / 320) * remaining;
+                        corrY = -5.24 * (imageScaledHeight / 299.17) * remaining;
+                    } else if (walkState.walkFrames === bronekurWalkTopRightFrames) {
+                        // dx=0, dy=+1 (screen Down-Left): errX = 11.11, errY = -5.87
+                        corrX = -11.11 * (imageScaledWidth / 320) * remaining;
+                        corrY = 5.87 * (imageScaledHeight / 299.17) * remaining;
+                    } else if (walkState.walkFrames === bronekurWalkBottomFrames) {
+                        // dx=0, dy=-1 (screen Up-Right): errX = -11.74, errY = 4.61
+                        corrX = 11.74 * (imageScaledWidth / 320) * remaining;
+                        corrY = -4.61 * (imageScaledHeight / 299.17) * remaining;
+                    }
+                    drawX += corrX;
+                    drawY += corrY;
+                }
             }
             
             // Izbushka monster: scale 364/240 aligns 120x60 Flash step with 128x64 isometric tile grid,
@@ -12815,9 +14657,30 @@ const App: React.FC = () => {
                 drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight + (scaledTileHeight * 0.46);
             }
 
+            // Custom WebP monsters: align the shadow center in their native sprite directly to tile center
+            if (customMonsterSpec) {
+                if (customMonsterIsAnimatedFrame) {
+                    drawX = screenX - (customMonsterSpec.shadowCenterX / customMonsterSpec.spriteWidth) * imageScaledWidth;
+                    drawY = screenY - (customMonsterSpec.shadowCenterY / customMonsterSpec.spriteHeight) * imageScaledHeight;
+                } else {
+                    drawY = screenY + (scaledTileHeight / 2) - imageScaledHeight - (scaledTileHeight * 0.05);
+                }
+            }
+
+            // Trebuchet defense building: center the chassis inside the isometric tile diamond
+            if (isTrebuchet) {
+                drawX -= scaledTileWidth * 0.065;
+                drawY -= scaledTileHeight * 0.08;
+            }
+
+            // Mortar defense building: align platform with tile center
+            if (isMortar) {
+                drawY -= scaledTileHeight * 0.04;
+            }
+
             if (entity.entityType === 'dropped_item') {
-                // Render dropped resource item directly on the tile as an icon
-                const baseItemSize = 36 * zoom;
+                // Render dropped resource item directly on the tile as an icon (~4x size to match 256x128 tiles)
+                const baseItemSize = 140 * zoom;
                 const naturalAspect = (img && img.naturalWidth > 0)
                     ? (img.naturalHeight / img.naturalWidth)
                     : 1;
@@ -12827,8 +14690,8 @@ const App: React.FC = () => {
                 // Generate a pseudo-random offset based on the item's ID so multiple dropped items spread out on the tile
                 const safeId = String(entity.id || '');
                 const hash = safeId.split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0);
-                const offsetX = (hash % 16 - 8) * zoom;
-                const offsetY = ((hash >> 4) % 10 - 5) * zoom;
+                const offsetX = (hash % 36 - 18) * zoom;
+                const offsetY = ((hash >> 4) % 20 - 10) * zoom;
 
                 drawX = screenX - itemWidth / 2 + offsetX;
                 drawY = screenY + (scaledTileHeight * 0.15) - itemHeight / 2 + offsetY;
@@ -12840,7 +14703,7 @@ const App: React.FC = () => {
                 } else {
                     context.fillStyle = color;
                     context.beginPath();
-                    context.arc(screenX + offsetX, screenY + offsetY, 5 * zoom, 0, 2 * Math.PI);
+                    context.arc(screenX + offsetX, screenY + offsetY, 16 * zoom, 0, 2 * Math.PI);
                     context.fill();
                 }
 
@@ -12848,13 +14711,13 @@ const App: React.FC = () => {
                 const amount = Number(entity.amount) || 1;
                 if (amount > 1) {
                     context.fillStyle = '#FFFFFF';
-                    context.font = `bold ${10 * zoom}px sans-serif`;
+                    context.font = `bold ${20 * zoom}px sans-serif`;
                     context.textAlign = 'center';
                     context.textBaseline = 'top';
                     context.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-                    context.lineWidth = 2.5 * zoom;
+                    context.lineWidth = 4 * zoom;
                     const amountText = `x${amount}`;
-                    const textY = drawY + itemHeight + 1 * zoom;
+                    const textY = drawY + itemHeight + 2 * zoom;
                     context.strokeText(amountText, screenX + offsetX, textY);
                     context.fillText(amountText, screenX + offsetX, textY);
                 }
@@ -12882,7 +14745,10 @@ const App: React.FC = () => {
                         const santaAttackHeight = (img.naturalHeight || 311) * santaPixelScale;
                         context.drawImage(img, santaAttackDrawX, santaAttackDrawY, santaAttackWidth, santaAttackHeight);
                     } else {
-                        context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
+                        const isTreeHovered = entity.entityType === 'resource' && entity.type === 'tree' && curHoveredTile && entity.x === curHoveredTile.x && entity.y === curHoveredTile.y;
+                        if (!isTreeHovered) {
+                            context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
+                        }
                     }
                     context.globalAlpha = 1.0;
 
@@ -13026,16 +14892,50 @@ const App: React.FC = () => {
                         }
                     }
                     
-                    // Animated coin on hover for trees
-                    if (entity.entityType === 'resource' && entity.type === 'tree' && hoveredTile && entity.x === hoveredTile.x && entity.y === hoveredTile.y) {
-                        const coinSize = 20 * zoom;
+                    // Animated swaying tropical bush + coin on hover for trees
+                    if (entity.entityType === 'resource' && entity.type === 'tree' && curHoveredTile && entity.x === curHoveredTile.x && entity.y === curHoveredTile.y) {
+                        const now = Date.now();
+                        // 12 frames at 130ms each = ~1560ms continuous loop
+                        const frameDuration = 130;
+                        const totalDuration = treeHoverBushAnimationFrames.length * frameDuration;
+                        const frameIndex = Math.floor((now % totalDuration) / frameDuration) % treeHoverBushAnimationFrames.length;
+                        const frameUrl = treeHoverBushAnimationFrames[frameIndex];
+                        let bushImg = images[frameUrl] || images[normalizeAssetUrl(frameUrl)];
+                        if (!bushImg && frameUrl) {
+                            const norm = normalizeAssetUrl(frameUrl);
+                            const vers = appendAssetVersion(norm);
+                            const newImg = new Image();
+                            newImg.src = vers;
+                            newImg.onload = () => {
+                                loadedImageElementsRef.current[frameUrl] = newImg;
+                                loadedImageElementsRef.current[norm] = newImg;
+                            };
+                            loadedImageElementsRef.current[frameUrl] = newImg;
+                            bushImg = newImg;
+                        }
+
+                        // Exact pixel-perfect bush dimensions matching the static tree sprite
+                        const bushWidth = imageScaledWidth * (1050 / 1518);
+                        const bushHeight = bushWidth * (261 / 361);
+                        const bushX = screenX - bushWidth / 2;
+                        const bushY = drawY + imageScaledHeight * (73 / 845);
+
+                        if (bushImg && bushImg.complete && bushImg.naturalWidth > 0) {
+                            context.drawImage(bushImg, bushX, bushY, bushWidth, bushHeight);
+                        } else if (img) {
+                            // Fallback to static tree image if frame not ready yet
+                            context.drawImage(img, drawX, drawY, imageScaledWidth, imageScaledHeight);
+                        }
+
+                        // Floating animated coin above the tree/bush
+                        const coinSize = 40 * zoom;
                         const coinX = screenX;
-                        const coinY = drawY + imageScaledHeight * 0.3; // Position above tree center
-                        drawAnimatedCoin(context, coinX, coinY, coinSize, Date.now());
+                        const coinY = bushY - 8 * zoom;
+                        drawAnimatedCoin(context, coinX, coinY, coinSize, now);
                     }
                     
                     // Animated golden border on hover for buildings
-                    if ('buildingId' in entity && buildingInfo && hoveredTile && entity.x === hoveredTile.x && entity.y === hoveredTile.y) {
+                    if ('buildingId' in entity && buildingInfo && curHoveredTile && entity.x === curHoveredTile.x && entity.y === curHoveredTile.y) {
                         const now = Date.now();
                         const borderPadding = 2 * zoom;
                         const bx = drawX - borderPadding;
@@ -13115,7 +15015,7 @@ const App: React.FC = () => {
                     ? Math.max(0, currentHp - (entity.pendingDamage || 0))
                     : currentHp;
 
-                if (buildingInfo.id !== MOUNTAIN_ID && buildingInfo.id !== RIVER_ID && displayHp < maxHp) {
+                if (buildingInfo.id !== MOUNTAIN_ID && buildingInfo.id !== RIVER_ID && !isRiverBuilding(buildingInfo.id) && !isRoadBuilding(buildingInfo.id) && !isPavementBuilding(buildingInfo.id) && displayHp < maxHp) {
                     const barWidth = scaledTileWidth * 0.8 * 0.9999;
                     const barHeight = 6 * zoom;
                     const barX = screenX - barWidth / 2;
@@ -13126,22 +15026,13 @@ const App: React.FC = () => {
                         barY -= (15 * zoom);
                     }
 
-                    // Glassy background (liquid glass effect)
-                    const bgGrad = context.createLinearGradient(barX, barY, barX + barWidth, barY + barHeight);
-                    bgGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
-                    bgGrad.addColorStop(0.5, 'rgba(255,255,255,0.05)');
-                    bgGrad.addColorStop(1, 'rgba(255,255,255,0.1)');
-
                     context.save();
-                    // Draw rounded background
+                    // Draw clean glassy rounded background
                     context.beginPath();
                     context.roundRect(barX, barY, barWidth, barHeight, radius);
-                    context.fillStyle = 'rgba(0, 0, 0, 0.55)';
+                    context.fillStyle = 'rgba(15, 23, 42, 0.85)';
                     context.fill();
-                    context.fillStyle = bgGrad;
-                    context.fill();
-                    // Glass border
-                    context.strokeStyle = 'rgba(255,255,255,0.2)';
+                    context.strokeStyle = 'rgba(255, 255, 255, 0.25)';
                     context.lineWidth = 1;
                     context.stroke();
 
@@ -13150,28 +15041,16 @@ const App: React.FC = () => {
 
                     if (fillWidth > 0) {
                         // Determine colors based on HP thresholds
-                        let colorStart: string, colorMid: string, colorEnd: string, glowColor: string, edgeClass: string;
+                        let barColor: string, glowColor: string;
                         if (hpPercent > 0.65) {
-                            // High HP - vibrant green
-                            colorStart = '#22c55e';
-                            colorMid = '#4ade80';
-                            colorEnd = '#16a34a';
-                            glowColor = 'rgba(34, 197, 94, 0.5)';
-                            edgeClass = 'rgba(21, 128, 61, 0.6)';
+                            barColor = '#22c55e';
+                            glowColor = 'rgba(34, 197, 94, 0.7)';
                         } else if (hpPercent > 0.35) {
-                            // Medium HP - vibrant yellow
-                            colorStart = '#ca8a04';
-                            colorMid = '#eab308';
-                            colorEnd = '#a16207';
-                            glowColor = 'rgba(234, 179, 8, 0.5)';
-                            edgeClass = 'rgba(133, 77, 14, 0.6)';
+                            barColor = '#eab308';
+                            glowColor = 'rgba(234, 179, 8, 0.7)';
                         } else {
-                            // Low HP - vibrant red
-                            colorStart = '#dc2626';
-                            colorMid = '#ef4444';
-                            colorEnd = '#b91c1c';
-                            glowColor = 'rgba(239, 68, 68, 0.5)';
-                            edgeClass = 'rgba(153, 27, 27, 0.6)';
+                            barColor = '#ef4444';
+                            glowColor = 'rgba(239, 68, 68, 0.7)';
                         }
 
                         // Clip to rounded fill area
@@ -13179,50 +15058,22 @@ const App: React.FC = () => {
                         context.roundRect(barX, barY, fillWidth, barHeight, radius);
                         context.clip();
 
-                        // Fill gradient (matching XP bar style)
-                        const fillGrad = context.createLinearGradient(barX, barY, barX + fillWidth, barY);
-                        fillGrad.addColorStop(0, colorStart);
-                        fillGrad.addColorStop(0.3, colorMid);
-                        fillGrad.addColorStop(0.7, colorMid);
-                        fillGrad.addColorStop(1, colorEnd);
-                        context.fillStyle = fillGrad;
+                        // Main vibrant fill
+                        context.fillStyle = barColor;
                         context.fillRect(barX, barY, fillWidth, barHeight);
 
-                        // Top highlight (white gloss from-white/30 to transparent, top half)
-                        const highlightGrad = context.createLinearGradient(barX, barY, barX, barY + barHeight / 2);
-                        highlightGrad.addColorStop(0, 'rgba(255,255,255,0.3)');
-                        highlightGrad.addColorStop(1, 'rgba(255,255,255,0)');
-                        context.fillStyle = highlightGrad;
-                        context.fillRect(barX, barY, fillWidth, barHeight / 2);
+                        // Top glass gloss (zero-allocation solid highlight)
+                        context.fillStyle = 'rgba(255, 255, 255, 0.35)';
+                        context.fillRect(barX, barY, fillWidth, barHeight * 0.45);
 
-                        // Edge darkening gradient at the right end of the fill
-                        const edgeWidth = Math.min(4 * zoom, fillWidth);
-                        const edgeGrad = context.createLinearGradient(barX + fillWidth - edgeWidth, barY, barX + fillWidth, barY);
-                        edgeGrad.addColorStop(0, 'rgba(0,0,0,0)');
-                        edgeGrad.addColorStop(1, edgeClass);
-                        context.fillStyle = edgeGrad;
-                        context.fillRect(barX + fillWidth - edgeWidth, barY, edgeWidth, barHeight);
-
-                        // Low HP blur effect - add extra darkened/blurred edge
-                        if (hpPercent <= 0.35) {
-                            const blurEdgeWidth = Math.min(6 * zoom, fillWidth);
-                            const blurGrad = context.createLinearGradient(barX + fillWidth - blurEdgeWidth, barY, barX + fillWidth, barY);
-                            blurGrad.addColorStop(0, 'rgba(0,0,0,0)');
-                            blurGrad.addColorStop(0.5, 'rgba(153, 27, 27, 0.3)');
-                            blurGrad.addColorStop(1, 'rgba(153, 27, 27, 0.7)');
-                            context.fillStyle = blurGrad;
-                            context.fillRect(barX + fillWidth - blurEdgeWidth, barY, blurEdgeWidth, barHeight);
-                        }
-
-                        // Outer glow
                         context.restore();
                         context.save();
-                        context.shadowColor = glowColor;
-                        context.shadowBlur = 10 * zoom;
+
+                        // Crisp glow border without expensive Gaussian shadowBlur
                         context.beginPath();
                         context.roundRect(barX, barY, fillWidth, barHeight, radius);
-                        context.strokeStyle = 'rgba(0,0,0,0)';
-                        context.lineWidth = 0.5;
+                        context.strokeStyle = glowColor;
+                        context.lineWidth = 1;
                         context.stroke();
                     }
 
@@ -13256,7 +15107,7 @@ const App: React.FC = () => {
 
                 } else if (entity.isConstructing && (entity.constructionEndTime || 0) > now) {
                     const timeRemaining = Math.max(0, entity.constructionEndTime - now);
-                    const spinnerSize = 20 * zoom;
+                    const spinnerSize = 38 * zoom;
                     const centerX = screenX;
                     const centerY = drawY + imageScaledHeight / 2;
 
@@ -13266,23 +15117,23 @@ const App: React.FC = () => {
                     // Draw time text next to spinner
                     context.textAlign = 'left';
                     context.textBaseline = 'middle';
-                    context.font = `800 ${12 * zoom}px Nunito, sans-serif`;
-                    context.lineWidth = 2;
+                    context.font = `800 ${20 * zoom}px Nunito, sans-serif`;
+                    context.lineWidth = 3.5 * zoom;
                     context.strokeStyle = 'black';
                     context.fillStyle = '#E2E8F0';
 
                     const timeText = formatTimeRussian(timeRemaining);
 
-                    context.strokeText(timeText, centerX + spinnerSize / 2 + (3 * zoom), centerY);
-                    context.fillText(timeText, centerX + spinnerSize / 2 + (3 * zoom), centerY);
+                    context.strokeText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
+                    context.fillText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
                 } else if (entity.workState === 'working' && entity.workEndTime) {
                     // Skip work timer for cannons - they don't have production
                     const isCannon = CANNON_IDS.includes(Number(entity.buildingId));
                     if (!isCannon) {
                         const timeRemaining = Math.max(0, entity.workEndTime - now);
-                        const spinnerSize = 20 * zoom;
+                        const spinnerSize = 38 * zoom;
                         const centerX = screenX;
-                        const centerY = drawY - (15 * zoom);
+                        const centerY = drawY - (22 * zoom);
 
                         // Draw rotating spinner
                         drawLoadingSpinner(context, centerX, centerY, spinnerSize, Date.now());
@@ -13290,16 +15141,58 @@ const App: React.FC = () => {
                         // Draw time text next to spinner
                         context.textAlign = 'left';
                         context.textBaseline = 'middle';
-                        context.font = `800 ${12 * zoom}px Nunito, sans-serif`;
-                        context.lineWidth = 2;
+                        context.font = `800 ${20 * zoom}px Nunito, sans-serif`;
+                        context.lineWidth = 3.5 * zoom;
                         context.strokeStyle = 'black';
                         context.fillStyle = '#E2E8F0';
 
                         const timeText = formatTimeRussian(timeRemaining);
 
-                        context.strokeText(timeText, centerX + spinnerSize / 2 + (3 * zoom), centerY);
-                        context.fillText(timeText, centerX + spinnerSize / 2 + (3 * zoom), centerY);
+                        context.strokeText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
+                        context.fillText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
                     }
+                }
+
+                // Trebuchet 5s loading countdown timer spinner
+                if (entity.buildingId === TREBUCHET_ID && (entity as PlacedBuilding).trebuchetChargingUntil && now < (entity as PlacedBuilding).trebuchetChargingUntil!) {
+                    const timeRemaining = Math.max(0, (entity as PlacedBuilding).trebuchetChargingUntil! - now);
+                    const spinnerSize = 38 * zoom;
+                    const centerX = screenX;
+                    const centerY = drawY - (22 * zoom);
+
+                    drawLoadingSpinner(context, centerX, centerY, spinnerSize, Date.now());
+
+                    context.textAlign = 'left';
+                    context.textBaseline = 'middle';
+                    context.font = `800 ${20 * zoom}px Nunito, sans-serif`;
+                    context.lineWidth = 3.5 * zoom;
+                    context.strokeStyle = 'black';
+                    context.fillStyle = '#F59E0B';
+
+                    const timeText = `${(timeRemaining / 1000).toFixed(1)}с`;
+                    context.strokeText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
+                    context.fillText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
+                }
+
+                // Trebuchet 10s attack countdown timer spinner
+                if (entity.buildingId === TREBUCHET_ID && (entity as PlacedBuilding).trebuchetFireAt && now < (entity as PlacedBuilding).trebuchetFireAt!) {
+                    const timeRemaining = Math.max(0, (entity as PlacedBuilding).trebuchetFireAt! - now);
+                    const spinnerSize = 38 * zoom;
+                    const centerX = screenX;
+                    const centerY = drawY - (22 * zoom);
+
+                    drawLoadingSpinner(context, centerX, centerY, spinnerSize, Date.now());
+
+                    context.textAlign = 'left';
+                    context.textBaseline = 'middle';
+                    context.font = `800 ${20 * zoom}px Nunito, sans-serif`;
+                    context.lineWidth = 3.5 * zoom;
+                    context.strokeStyle = 'black';
+                    context.fillStyle = '#EF4444';
+
+                    const timeText = `🎯 ${(timeRemaining / 1000).toFixed(1)}с`;
+                    context.strokeText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
+                    context.fillText(timeText, centerX + spinnerSize / 2 + (5 * zoom), centerY);
                 } else if (entity.workState === 'finished' && isMyBuilding(entity)) {
                     // Skip coin for cannons - they don't have production
                     const isCannon = CANNON_IDS.includes(Number(entity.buildingId));
@@ -13307,10 +15200,10 @@ const App: React.FC = () => {
                         // Skip coin icon for buildings that don't produce coins
                         const NO_COIN_BUILDINGS = [300, 340, 341, 342, 343, 344];
                         if (!NO_COIN_BUILDINGS.includes(buildingInfo.id) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
-                            // Draw animated canvas coin for finished buildings belonging to the local player
-                            const iconSize = 18 * zoom; // Half size
+                            // Draw animated canvas coin for finished buildings belonging to the local player (~2x size)
+                            const iconSize = 38 * zoom;
                             const iconX = screenX;
-                            const iconY = drawY - iconSize / 2 + (10 * zoom); // Lower position
+                            const iconY = drawY - iconSize / 2 + (10 * zoom);
                             drawAnimatedCoin(context, iconX, iconY, iconSize, Date.now());
                         }
                     }
@@ -13323,23 +15216,23 @@ const App: React.FC = () => {
                         if ((isMushroomOrLily || isDirectFactory) && isMyBuilding(entity) && !BANDIT_CASTLE_IDS.has(Number(buildingInfo.id))) {
                             const builderImg = images[builderIconUrl];
                             if (builderImg) {
-                                const iconSize = 17.9 * zoom; // Slightly smaller (0.5% less than 18)
+                                const iconSize = 36 * zoom; // Increased ~2x
                                 const iconX = screenX;
-                                const iconY = drawY - iconSize / 2 + (10 * zoom); // Same position as animated coin
+                                const iconY = drawY - iconSize / 2 + (10 * zoom);
 
                                 context.drawImage(builderImg, iconX - iconSize / 2, iconY - iconSize / 2, iconSize, iconSize);
 
                                 // Same font style as timer
-                                context.font = `800 ${12 * zoom}px Nunito, sans-serif`;
+                                context.font = `800 ${20 * zoom}px Nunito, sans-serif`;
                                 context.fillStyle = '#E2E8F0';
                                 context.strokeStyle = 'black';
-                                context.lineWidth = 2;
+                                context.lineWidth = 3.5 * zoom;
                                 context.textAlign = 'left';
                                 context.textBaseline = 'middle';
                                 
                                 const popNeeded = buildingInfo.stats.takesPopulation || 0;
                                 // Position text right next to icon (almost touching)
-                                const textX = iconX + iconSize / 2 + (1 * zoom);
+                                const textX = iconX + iconSize / 2 + (3 * zoom);
                                 const textY = iconY;
                                 context.strokeText(String(popNeeded), textX, textY);
                                 context.fillText(String(popNeeded), textX, textY);
@@ -13350,7 +15243,248 @@ const App: React.FC = () => {
             }
         });
 
-        visualEffects.forEach(effect => {
+        // Draw trebuchet attack range overlay when in targeting mode
+        if (trebuchetTargeting) {
+            const trebuchetBuilding = placedBuildingsRef.current.find(b => String(b.id) === String(trebuchetTargeting.buildingId));
+            const baseSourceX = trebuchetBuilding ? trebuchetBuilding.x : trebuchetTargeting.sourceX;
+            const baseSourceY = trebuchetBuilding ? trebuchetBuilding.y : trebuchetTargeting.sourceY;
+            const { x: sourceX, y: sourceY } = getClosestWrappedWorldCoords(baseSourceX, baseSourceY, renderCenterX, renderCenterY, isWorldWrapped);
+            const hoveredWrapped = curHoveredTile
+                ? getClosestWrappedWorldCoords(curHoveredTile.x, curHoveredTile.y, sourceX, sourceY, isWorldWrapped)
+                : null;
+
+            context.save();
+            for (let dy = -TREBUCHET_ATTACK_RANGE; dy <= TREBUCHET_ATTACK_RANGE; dy++) {
+                for (let dx = -TREBUCHET_ATTACK_RANGE; dx <= TREBUCHET_ATTACK_RANGE; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const tx = sourceX + dx;
+                    const ty = sourceY + dy;
+                    const { screenX, screenY } = worldToScreen(tx, ty, zoom);
+                    const isTargetHovered = hoveredWrapped && hoveredWrapped.x === tx && hoveredWrapped.y === ty;
+
+                    context.beginPath();
+                    context.moveTo(screenX, screenY - scaledTileHeight / 2);
+                    context.lineTo(screenX + scaledTileWidth / 2, screenY);
+                    context.lineTo(screenX, screenY + scaledTileHeight / 2);
+                    context.lineTo(screenX - scaledTileWidth / 2, screenY);
+                    context.closePath();
+
+                    if (isTargetHovered) {
+                        context.fillStyle = 'rgba(239, 68, 68, 0.45)';
+                        context.fill();
+                        context.strokeStyle = '#EF4444';
+                        context.lineWidth = 2.5 * zoom;
+                        context.stroke();
+                    } else {
+                        context.fillStyle = 'rgba(239, 68, 68, 0.16)';
+                        context.fill();
+                        context.strokeStyle = 'rgba(239, 68, 68, 0.45)';
+                        context.lineWidth = 1.2 * zoom;
+                        context.stroke();
+                    }
+                }
+            }
+            context.restore();
+        }
+
+        // Draw trebuchet movement area overlay (8 tiles all directions, obstacle-avoiding zigzag preview)
+        if (trebuchetMovingTargeting) {
+            const trebuchetBuilding = placedBuildingsRef.current.find(b => String(b.id) === String(trebuchetMovingTargeting.buildingId));
+            const baseSourceX = trebuchetBuilding ? trebuchetBuilding.x : trebuchetMovingTargeting.sourceX;
+            const baseSourceY = trebuchetBuilding ? trebuchetBuilding.y : trebuchetMovingTargeting.sourceY;
+            const { x: sourceX, y: sourceY } = getClosestWrappedWorldCoords(baseSourceX, baseSourceY, renderCenterX, renderCenterY, isWorldWrapped);
+
+            const isTileBlocked = (tx: number, ty: number): boolean => {
+                const normX = isWorldWrapped ? wrapCoord(tx, WORLD_WIDTH_TILES) : tx;
+                const normY = isWorldWrapped ? wrapCoord(ty, WORLD_HEIGHT_TILES) : ty;
+                if (!isWorldWrapped && (tx < 0 || tx >= WORLD_WIDTH_TILES || ty < 0 || ty >= WORLD_HEIGHT_TILES)) {
+                    return true;
+                }
+                const b = getSpatialBuildingAt(normX, normY);
+                if (b && String(b.id) !== String(trebuchetMovingTargeting.buildingId)) return true;
+                const r = getSpatialResourceAt(normX, normY);
+                if (r && (r.hp === undefined || r.hp > 0)) return true;
+                return false;
+            };
+
+            const hoveredWrapped = curHoveredTile
+                ? getClosestWrappedWorldCoords(curHoveredTile.x, curHoveredTile.y, sourceX, sourceY, isWorldWrapped)
+                : null;
+
+            let previewPath: TrebuchetPathStep[] | null = null;
+            if (
+                hoveredWrapped &&
+                (hoveredWrapped.x !== sourceX || hoveredWrapped.y !== sourceY) &&
+                Math.abs(hoveredWrapped.x - sourceX) <= TREBUCHET_MOVE_RANGE &&
+                Math.abs(hoveredWrapped.y - sourceY) <= TREBUCHET_MOVE_RANGE
+            ) {
+                previewPath = findTrebuchetPath(sourceX, sourceY, hoveredWrapped.x, hoveredWrapped.y, isTileBlocked, TREBUCHET_MOVE_RANGE * 3 + 4);
+            }
+
+            const pathTilesSet = new Set<string>();
+            if (previewPath) {
+                for (const p of previewPath) {
+                    pathTilesSet.add(`${p.x}_${p.y}`);
+                }
+            }
+
+            context.save();
+            for (let dy = -TREBUCHET_MOVE_RANGE; dy <= TREBUCHET_MOVE_RANGE; dy++) {
+                for (let dx = -TREBUCHET_MOVE_RANGE; dx <= TREBUCHET_MOVE_RANGE; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const tx = sourceX + dx;
+                    const ty = sourceY + dy;
+                    const { screenX, screenY } = worldToScreen(tx, ty, zoom);
+                    const isTileHovered = hoveredWrapped && hoveredWrapped.x === tx && hoveredWrapped.y === ty;
+                    const isPartOfPath = pathTilesSet.has(`${tx}_${ty}`);
+                    const isBlocked = isTileBlocked(tx, ty);
+
+                    context.beginPath();
+                    context.moveTo(screenX, screenY - scaledTileHeight / 2);
+                    context.lineTo(screenX + scaledTileWidth / 2, screenY);
+                    context.lineTo(screenX, screenY + scaledTileHeight / 2);
+                    context.lineTo(screenX - scaledTileWidth / 2, screenY);
+                    context.closePath();
+
+                    if (isPartOfPath) {
+                        if (isTileHovered) {
+                            context.fillStyle = 'rgba(34, 197, 94, 0.60)';
+                            context.fill();
+                            context.strokeStyle = '#22c55e';
+                            context.lineWidth = 2.8 * zoom;
+                            context.stroke();
+                        } else {
+                            const pulse = 0.35 + 0.15 * Math.sin(now / 200 + Math.abs(dx + dy));
+                            context.fillStyle = `rgba(34, 197, 94, ${pulse})`;
+                            context.fill();
+                            context.strokeStyle = 'rgba(34, 197, 94, 0.85)';
+                            context.lineWidth = 1.8 * zoom;
+                            context.stroke();
+                        }
+                    } else if (isBlocked) {
+                        context.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                        context.fill();
+                        context.strokeStyle = 'rgba(239, 68, 68, 0.35)';
+                        context.lineWidth = 1.0 * zoom;
+                        context.stroke();
+                    } else if (isTileHovered) {
+                        context.fillStyle = 'rgba(239, 68, 68, 0.40)';
+                        context.fill();
+                        context.strokeStyle = '#EF4444';
+                        context.lineWidth = 2.0 * zoom;
+                        context.stroke();
+                    } else {
+                        // General 8-tile area (blue tint)
+                        context.fillStyle = 'rgba(59, 130, 246, 0.10)';
+                        context.fill();
+                        context.strokeStyle = 'rgba(96, 165, 250, 0.35)';
+                        context.lineWidth = 1.0 * zoom;
+                        context.stroke();
+                    }
+                }
+            }
+
+            // Draw zigzag connection path line between waypoints
+            if (previewPath && previewPath.length >= 2) {
+                context.beginPath();
+                for (let i = 0; i < previewPath.length; i++) {
+                    const pt = previewPath[i];
+                    const { screenX: px, screenY: py } = worldToScreen(pt.x, pt.y, zoom);
+                    if (i === 0) {
+                        context.moveTo(px, py);
+                    } else {
+                        context.lineTo(px, py);
+                    }
+                }
+                context.strokeStyle = '#4ade80';
+                context.lineWidth = 3.5 * zoom;
+                context.setLineDash([8 * zoom, 4 * zoom]);
+                context.stroke();
+                context.setLineDash([]);
+            }
+
+            context.restore();
+        }
+
+        // Draw mortar attack range preview overlay
+        if (mortarRangePreview) {
+            const mortarBuilding = placedBuildingsRef.current.find(b => String(b.id) === String(mortarRangePreview.buildingId));
+            const baseSourceX = mortarBuilding ? mortarBuilding.x : mortarRangePreview.sourceX;
+            const baseSourceY = mortarBuilding ? mortarBuilding.y : mortarRangePreview.sourceY;
+            const { x: sourceX, y: sourceY } = getClosestWrappedWorldCoords(baseSourceX, baseSourceY, renderCenterX, renderCenterY, isWorldWrapped);
+
+            context.save();
+            for (let dy = -MORTAR_ATTACK_RANGE; dy <= MORTAR_ATTACK_RANGE; dy++) {
+                for (let dx = -MORTAR_ATTACK_RANGE; dx <= MORTAR_ATTACK_RANGE; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const tx = sourceX + dx;
+                    const ty = sourceY + dy;
+                    const { screenX, screenY } = worldToScreen(tx, ty, zoom);
+
+                    context.beginPath();
+                    context.moveTo(screenX, screenY - scaledTileHeight / 2);
+                    context.lineTo(screenX + scaledTileWidth / 2, screenY);
+                    context.lineTo(screenX, screenY + scaledTileHeight / 2);
+                    context.lineTo(screenX - scaledTileWidth / 2, screenY);
+                    context.closePath();
+
+                    context.fillStyle = 'rgba(59, 130, 246, 0.16)';
+                    context.fill();
+                    context.strokeStyle = 'rgba(96, 165, 250, 0.55)';
+                    context.lineWidth = 1.2 * zoom;
+                    context.stroke();
+                }
+            }
+            context.restore();
+        }
+
+        // Draw active target reticle on tiles targeted by trebuchets during 10s countdown
+        const nowForReticle = Date.now();
+        placedBuildingsRef.current.forEach(pb => {
+            if (Number(pb.buildingId) === TREBUCHET_ID && pb.trebuchetFireAt && nowForReticle < pb.trebuchetFireAt && pb.trebuchetTargetX !== undefined && pb.trebuchetTargetY !== undefined) {
+                let reticleTargetX = pb.trebuchetTargetX;
+                let reticleTargetY = pb.trebuchetTargetY;
+                if (pb.trebuchetTargetEntityId) {
+                    const targetEntity = placedBuildingsRef.current.find(cb => String(cb.id) === String(pb.trebuchetTargetEntityId) && (cb.hp === undefined || cb.hp > 0));
+                    if (targetEntity) {
+                        reticleTargetX = targetEntity.x;
+                        reticleTargetY = targetEntity.y;
+                    }
+                }
+                const { screenX, screenY } = worldToScreen(reticleTargetX, reticleTargetY, zoom);
+                const pulse = (Math.sin(nowForReticle / 150) + 1) / 2;
+                const radius = (18 + pulse * 6) * zoom;
+
+                context.save();
+                context.beginPath();
+                context.arc(screenX, screenY, radius, 0, Math.PI * 2);
+                context.strokeStyle = `rgba(239, 68, 68, ${0.7 + pulse * 0.3})`;
+                context.lineWidth = 2 * zoom;
+                context.stroke();
+
+                context.beginPath();
+                context.moveTo(screenX - radius - 5 * zoom, screenY);
+                context.lineTo(screenX + radius + 5 * zoom, screenY);
+                context.moveTo(screenX, screenY - radius - 5 * zoom);
+                context.lineTo(screenX, screenY + radius + 5 * zoom);
+                context.strokeStyle = 'rgba(239, 68, 68, 0.9)';
+                context.lineWidth = 1.5 * zoom;
+                context.stroke();
+
+                const secLeft = Math.max(0.1, (pb.trebuchetFireAt - nowForReticle) / 1000).toFixed(1);
+                context.font = `bold ${13 * zoom}px sans-serif`;
+                context.textAlign = 'center';
+                context.textBaseline = 'bottom';
+                context.fillStyle = '#F87171';
+                context.strokeStyle = '#000000';
+                context.lineWidth = 3 * zoom;
+                context.strokeText(`🎯 ${secLeft}с`, screenX, screenY - radius - 4 * zoom);
+                context.fillText(`🎯 ${secLeft}с`, screenX, screenY - radius - 4 * zoom);
+                context.restore();
+            }
+        });
+
+        visualEffectsRef.current.forEach(effect => {
             const now = Date.now();
             const effectStart = Number(effect.createdAt || effect.startTime || now) || now;
             const effectDuration = Math.max(1, Number(effect.durationMs || effect.duration || 1) || 1);
@@ -13367,26 +15501,61 @@ const App: React.FC = () => {
                 context.lineWidth = (4 * (1 - progress)) * zoom;
                 context.stroke();
             } else if (effect.type === 'explosion') {
+                const { x: expVX, y: expVY } = getClosestWrappedWorldCoords(effect.x, effect.y, renderCenterX, renderCenterY, isWorldWrapped);
+                const { screenX: expScreenX, screenY: expScreenY } = worldToScreen(expVX, expVY, zoom);
                 const radius = scaledTileWidth * (0.5 + progress);
                 const opacity = 1.0 - progress;
                 context.beginPath();
-                context.arc(screenX, screenY, radius, 0, 2 * Math.PI);
+                context.arc(expScreenX, expScreenY, radius, 0, 2 * Math.PI);
                 context.fillStyle = `rgba(255, 69, 0, ${opacity})`;
                 context.fill();
             } else if (effect.type === 'shot') {
-                const { screenX: startX, screenY: startY } = worldToScreen(effect.x, effect.y, zoom);
-                const { screenX: endX, screenY: endY } = worldToScreen(effect.targetX!, effect.targetY!, zoom);
+                const { x: startVX, y: startVY } = getClosestWrappedWorldCoords(effect.x, effect.y, renderCenterX, renderCenterY, isWorldWrapped);
+                const { x: endVX, y: endVY } = getClosestWrappedWorldCoords(effect.targetX!, effect.targetY!, startVX, startVY, isWorldWrapped);
+                const { screenX: startX, screenY: startY } = worldToScreen(startVX, startVY, zoom);
+                const { screenX: endX, screenY: endY } = worldToScreen(endVX, endVY, zoom);
 
                 const currentX = startX + (endX - startX) * progress;
                 const currentY = startY + (endY - startY) * progress;
 
-                context.beginPath();
-                context.arc(currentX, currentY, 4 * zoom, 0, 2 * Math.PI);
-                context.fillStyle = '#F59E0B';
-                context.shadowBlur = 10 * zoom;
-                context.shadowColor = '#F59E0B';
-                context.fill();
-                context.shadowBlur = 0;
+                if (effect.isTrebuchetRock || effect.isMortarShell) {
+                    // Parabolic arc for trebuchet boulder / mortar shell
+                    const arcPeak = effect.isMortarShell ? 160 : 140;
+                    const arcY = -Math.sin(progress * Math.PI) * arcPeak * zoom;
+                    const rockY = currentY + arcY;
+
+                    // Ground shadow
+                    context.beginPath();
+                    context.ellipse(currentX, currentY, 9 * zoom, 4.5 * zoom, 0, 0, 2 * Math.PI);
+                    context.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                    context.fill();
+
+                    // Shell / Boulder
+                    context.beginPath();
+                    context.arc(currentX, rockY, 8 * zoom, 0, 2 * Math.PI);
+                    context.fillStyle = effect.isMortarShell ? '#374151' : '#78716C';
+                    context.fill();
+                    context.strokeStyle = '#111827';
+                    context.lineWidth = 1.5 * zoom;
+                    context.stroke();
+
+                    // Fiery highlight on projectile
+                    context.beginPath();
+                    context.arc(currentX - 2 * zoom, rockY - 2 * zoom, 3.5 * zoom, 0, 2 * Math.PI);
+                    context.fillStyle = effect.isMortarShell ? '#EF4444' : '#F59E0B';
+                    context.fill();
+                } else {
+                    // Hardware-accelerated glow without software Gaussian shadowBlur
+                    context.beginPath();
+                    context.arc(currentX, currentY, 8 * zoom, 0, 2 * Math.PI);
+                    context.fillStyle = 'rgba(245, 158, 11, 0.35)';
+                    context.fill();
+
+                    context.beginPath();
+                    context.arc(currentX, currentY, 4 * zoom, 0, 2 * Math.PI);
+                    context.fillStyle = '#FEF08A';
+                    context.fill();
+                }
             } else if (effect.type === 'flash') {
                 const { screenX, screenY } = worldToScreen(effect.x, effect.y, zoom);
                 const opacity = 0.8 * (1.0 - progress);
@@ -13401,28 +15570,28 @@ const App: React.FC = () => {
             }
         });
 
-        if (hoveredTile) {
-            const placementPreviewState = getPlacementPreviewState(hoveredTile.x, hoveredTile.y);
+        if (curHoveredTile) {
+            const placementPreviewState = getPlacementPreviewState(curHoveredTile.x, curHoveredTile.y);
             const isOccupied = placementPreviewState === 'occupied';
             const isSyncingPlacement = placementPreviewState === 'syncing';
             const canPlaceByTownHall = hasTownHall || !!townHallLocation;
-            const hasTreeAtHovered = mapResourcesRef.current.some(r => r.x === hoveredTile.x && r.y === hoveredTile.y && r.type === 'tree');
+            const hasTreeAtHovered = getSpatialResourceAt(curHoveredTile.x, curHoveredTile.y)?.type === 'tree';
             const hoverDisplayCoords = getClosestWrappedWorldCoords(
-                hoveredTile.x,
-                hoveredTile.y,
+                curHoveredTile.x,
+                curHoveredTile.y,
                 renderCenterX,
                 renderCenterY,
                 isWorldWrapped
             );
 
-            if (!isOccupied && canPlaceByTownHall && !moveMode.active) {
+            if (!isOccupied && canPlaceByTownHall && !moveMode.active && !trebuchetTargeting && !trebuchetMovingTargeting) {
                 const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
                 
-                const hoveredZoneX = Math.floor(hoveredTile.x / ZONE_SIZE);
-                const hoveredZoneY = Math.floor(hoveredTile.y / ZONE_SIZE);
+                const hoveredZoneX = Math.floor(curHoveredTile.x / ZONE_SIZE);
+                const hoveredZoneY = Math.floor(curHoveredTile.y / ZONE_SIZE);
 
                 // Find a bandit castle or watchtower that controls this sector.
-                const sectorClanBuilding = placedBuildings.find((b) =>
+                const sectorClanBuilding = placedBuildingsRef.current.find((b) =>
                     (BANDIT_CASTLE_IDS.has(Number(b.buildingId)) || isWatchtowerId(b.buildingId)) &&
                     isBuildingAlive(b) &&
                     !b.isConstructing &&
@@ -13434,7 +15603,7 @@ const App: React.FC = () => {
                 const clanAvatarUrl = clan?.avatarUrl || null;
                 
                 // Base Y position for text
-                const textY = screenY + 5 * zoom;
+                const textY = screenY + 7 * zoom;
                 
                 // Draw clan avatar if this sector belongs to a clan with an avatar.
                 if (clanAvatarUrl) {
@@ -13448,9 +15617,9 @@ const App: React.FC = () => {
                         loadedImageElementsRef.current[clanAvatarUrl] = img;
                     }
                     if (img && img.complete && img.naturalWidth > 0) {
-                        const avatarSize = 22 * zoom;
+                        const avatarSize = 38 * zoom;
                         const avatarX = screenX - avatarSize / 2;
-                        const avatarY = textY - avatarSize - 8 * zoom;
+                        const avatarY = textY - avatarSize - 10 * zoom;
                         
                         context.save();
                         context.beginPath();
@@ -13479,34 +15648,48 @@ const App: React.FC = () => {
                     }
                 }
                 
-                context.font = `bold ${14 * zoom}px sans-serif`;
+                context.font = `bold ${20 * zoom}px sans-serif`;
                 context.textBaseline = 'middle';
-                context.lineWidth = 3 * zoom;
+                context.lineWidth = 4 * zoom;
                 context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
 
                 if (!isSyncingPlacement) {
                     context.textAlign = 'center';
-                    context.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                    context.strokeText('Построить', screenX, textY);
-                    context.fillText('Построить', screenX, textY);
+                    if (pendingMonsterPlacementRef.current) {
+                        context.fillStyle = 'rgba(52, 211, 153, 0.96)';
+                        context.strokeText('🐾 Поставить Котофея', screenX, textY);
+                        context.fillText('🐾 Поставить Котофея', screenX, textY);
+                    } else if (roadBuilderMode) {
+                        context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+                        context.strokeText('Дорога (100 🪙)', screenX, textY);
+                        context.fillText('Дорога (100 🪙)', screenX, textY);
+                    } else if (pavementBuilderMode) {
+                        context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+                        context.strokeText('Мостовая (1000 🪙, 1 🧱)', screenX, textY);
+                        context.fillText('Мостовая (1000 🪙, 1 🧱)', screenX, textY);
+                    } else {
+                        context.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                        context.strokeText('Построить', screenX, textY);
+                        context.fillText('Построить', screenX, textY);
+                    }
                 }
-            } else if (isOccupied && !hasTreeAtHovered && (canPlaceByTownHall || moveMode.active)) {
+            } else if (isOccupied && !hasTreeAtHovered && (canPlaceByTownHall || moveMode.active) && !trebuchetTargeting && !trebuchetMovingTargeting) {
                 const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
-                context.font = `bold ${14 * zoom}px sans-serif`;
+                context.font = `bold ${20 * zoom}px sans-serif`;
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
-                context.lineWidth = 3 * zoom;
+                context.lineWidth = 4 * zoom;
                 context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
                 context.fillStyle = 'rgba(248, 113, 113, 0.95)';
                 const occupiedText = 'Занято';
-                context.strokeText(occupiedText, screenX, screenY + 5 * zoom);
-                context.fillText(occupiedText, screenX, screenY + 5 * zoom);
+                context.strokeText(occupiedText, screenX, screenY + 7 * zoom);
+                context.fillText(occupiedText, screenX, screenY + 7 * zoom);
             } else if (!isOccupied && moveMode.active) {
                 const { screenX, screenY } = worldToScreen(hoverDisplayCoords.x, hoverDisplayCoords.y, zoom);
-                context.font = `bold ${14 * zoom}px sans-serif`;
+                context.font = `bold ${20 * zoom}px sans-serif`;
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
-                context.lineWidth = 3 * zoom;
+                context.lineWidth = 4 * zoom;
                 context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
                 context.fillStyle = isSyncingPlacement ? 'rgba(186, 230, 253, 0.95)' : 'rgba(100, 255, 100, 0.8)';
                 context.strokeText(
@@ -13522,12 +15705,12 @@ const App: React.FC = () => {
             }
         } else if (hoveredOutOfBounds && !isWorldWrapped) {
             const zoom = ZOOM_LEVELS[zoomIndex];
-            const screenX = lastPointerPos.x - cameraOffsetRef.current.x;
-            const screenY = lastPointerPos.y - cameraOffsetRef.current.y;
-            context.font = `bold ${14 * zoom}px sans-serif`;
+            const screenX = lastPointerPosRef.current.x - cameraOffsetRef.current.x;
+            const screenY = lastPointerPosRef.current.y - cameraOffsetRef.current.y;
+            context.font = `bold ${20 * zoom}px sans-serif`;
             context.textAlign = 'center';
             context.textBaseline = 'middle';
-            context.lineWidth = 3 * zoom;
+            context.lineWidth = 4 * zoom;
             context.strokeStyle = 'rgba(0, 0, 0, 0.85)';
             context.fillStyle = 'rgba(248, 113, 113, 0.95)';
             const mapEdgeText = 'Край карты';
@@ -13536,7 +15719,7 @@ const App: React.FC = () => {
         }
 
         context.restore();
-    }, [hoveredTile, hoveredOutOfBounds, hasTownHall, visualEffects, zoomIndex, worldToScreen, moveMode.active, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, lastPointerPos.x, lastPointerPos.y]);
+    }, [hoveredOutOfBounds, hasTownHall, zoomIndex, worldToScreen, moveMode.active, trebuchetTargeting, trebuchetMovingTargeting, mortarRangePreview, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, getSpatialResourceAt]);
 
     const drawRef = useRef(draw);
     const lastDrawAtRef = useRef(0);
@@ -13548,31 +15731,8 @@ const App: React.FC = () => {
         let animationFrameId: number;
         const gameLoop = () => {
             const now = Date.now();
-            const monsterAiTickReady = (now - lastMonsterAiTickRef.current) >= MONSTER_AI_TICK_INTERVAL_MS;
-            if (monsterAiTickReady) {
-                lastMonsterAiTickRef.current = now;
-            }
-            let monsterWriteUpdatesThisTick = 0;
-
-            // Use refs to avoid re-running the effect on every state change
-            const buildingsToUpdate = placedBuildingsRef.current.filter(b => {
-                const isOwner = b.ownerId === "0" || (isAuthReadyRef.current && userRef.current && b.ownerId === userRef.current.uid);
-                const isHost = b.ownerId === "monster" && isAuthReadyRef.current && userRef.current && (b.hostId === userRef.current.uid || !b.hostId);
-                const isInitiator = b.initiatorId && isAuthReadyRef.current && userRef.current && b.initiatorId === userRef.current.uid;
-
-                const canFinalizeConstructionForAnyone =
-                    !!b.isConstructing &&
-                    !!b.constructionEndTime &&
-                    now >= b.constructionEndTime;
-                if (!isOwner && !isHost && !isInitiator && !canFinalizeConstructionForAnyone) return false;
-
-                return (b.isConstructing && now >= b.constructionEndTime) ||
-                    (b.workState === 'working' && b.workEndTime && now >= b.workEndTime) ||
-                    (b.isDestroying && !!getEffectiveDestructionExpiresAt(b) && now >= (getEffectiveDestructionExpiresAt(b) || 0)) ||
-                    (b.hp !== undefined && b.hp <= 0 && !TOWN_HALL_IDS.includes(Number(b.buildingId)));
-            });
-
-            const tryClaimNeutralHost = (b: PlacedBuilding) => {
+            try {
+                const tryClaimNeutralHost = (b: PlacedBuilding) => {
                 if (!isAuthReadyRef.current || !userRef.current) return false;
                 const docId = String(b.id);
                 if (pendingHostClaimsRef.current.has(docId)) return false;
@@ -13586,52 +15746,68 @@ const App: React.FC = () => {
 
             const getIsMonsterHost = (b: PlacedBuilding) => {
                 if (!isAuthReadyRef.current || !userRef.current) return false;
-                // Player-owned monsters: if owner is online, owner processes their own monsters
                 if (b.ownerId !== "monster" && b.ownerId !== "0" && b.ownerId !== "-1") {
                     if (b.ownerId === userRef.current.uid) return true;
                     const ownerIsOnline = onlinePlayersDataRef.current.some(p => p.uid === b.ownerId);
                     if (ownerIsOnline) return false;
-                    // Owner is offline: delegate to neutral host arbitration so the monster never freezes in place
                 }
 
-                // Neutral monsters require active zone awareness so combat, collisions, and targets can be resolved.
                 const monsterZone = b.zoneId || getZoneId(b.x, b.y);
                 const isMonsterInMyActiveZones = currentZonesRef.current.includes(monsterZone);
                 if (!isMonsterInMyActiveZones) {
                     return false;
                 }
+
+                const zoneStatus = zonePlacementStatusRef.current.get(monsterZone);
+                if (!zoneStatus || !zoneStatus.buildingsLoaded) {
+                    return false;
+                }
+
+                if (Date.now() - lastZoneChangeAtRef.current < 1000) {
+                    return false;
+                }
                 
-                // Neutral buildings or offline-player monsters are only handled by one host
-                // If this user already claimed it, they're the host
                 if (b.hostId === userRef.current.uid) return true;
 
-                // If another ONLINE user claimed it, verify they are actively acting on it (not stagnant)
                 if (b.hostId && b.hostId !== userRef.current.uid) {
                     const hostIsOnline = onlinePlayersDataRef.current.some(p => p.uid === b.hostId);
                     const lastActionTime = Math.max(b.lastMoveTime || 0, b.lastAttackTime || 0);
-                    const isStagnant = (now - lastActionTime) >= 8000;
+                    const isStagnant = (now - lastActionTime) >= (MONSTER_ATTACK_INTERVAL_MS + 10000);
                     if (hostIsOnline && !isStagnant) return false;
                 }
 
-                // Deterministic host election among online players in this zone:
-                // When hostId is unclaimed, offline, or stagnant, claim the slot for this active viewer.
                 b.hostId = userRef.current.uid;
                 tryClaimNeutralHost(b);
                 return true;
             };
+
             const getIsNeutralDefenseHost = (b: PlacedBuilding) => {
                 if (!isAuthReadyRef.current || !userRef.current) return false;
-                if (b.ownerId !== "0" && b.ownerId !== "monster" && b.ownerId !== "-1") {
-                    return b.ownerId === userRef.current.uid;
+
+                // 1) If the current user owns the building, always host it
+                if (b.ownerId === userRef.current.uid) return true;
+
+                // 2) If owned by another player, check if that owner is currently online
+                if (b.ownerId && b.ownerId !== "0" && b.ownerId !== "monster" && b.ownerId !== "-1") {
+                    const ownerIsOnline = onlinePlayersDataRef.current.some(p => p.uid === b.ownerId);
+                    if (ownerIsOnline) return false; // The owner is online, let owner host their own defense
                 }
+
+                // 3) Owner is offline (or building is neutral "0"/system):
+                // Allocate hosting to the nearest active online observer via distributed hostId
                 if (b.hostId === userRef.current.uid) return true;
                 if (b.hostId && b.hostId !== userRef.current.uid) {
                     const hostIsOnline = onlinePlayersDataRef.current.some(p => p.uid === b.hostId);
-                    if (hostIsOnline) return false;
+                    const lastActionTime = Math.max(b.lastAttackTime || 0, b.mortarFireAt || 0);
+                    const isStagnant = (now - lastActionTime) >= (MORTAR_ATTACK_INTERVAL_MS + 10000);
+                    if (hostIsOnline && !isStagnant) return false;
                 }
+                b.hostId = userRef.current.uid;
                 tryClaimNeutralHost(b);
                 return true;
             };
+
+            let monsterWriteUpdatesThisTick = 0;
             const isMonsterDiagEnabled = () => (window as any).__MONSTER_DIAG__ === true;
             const isNotFoundUpdateError = (error: any) => {
                 const msg = String(error?.message || '');
@@ -13681,22 +15857,595 @@ const App: React.FC = () => {
                 console.log(`[MONSTER_DIAG] ${reason} monster=${monsterId} type=${label} pos=(${monster.x},${monster.y}) hostId=${monster.hostId || 'none'} ownerId=${monster.ownerId}${extra ? ` ${extra}` : ''}`);
             };
 
+            // Trebuchet attack & projectile lifecycle (runs every frame for smooth timing & deterministic damage)
+            const allPlaced = placedBuildingsRef.current;
+            for (let i = 0; i < allPlaced.length; i++) {
+                const b = allPlaced[i];
+                    if (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetFireAt && now >= b.trebuchetFireAt) {
+                    const fireElapsed = now - b.trebuchetFireAt;
+                    const trebDocId = String(b.id);
+                    
+                    // Live tracking: if targeted an entity (e.g. monster), track its current coordinates if it moved
+                    let liveTargetX = b.trebuchetTargetX;
+                    let liveTargetY = b.trebuchetTargetY;
+                    let liveTargetEntity: PlacedBuilding | undefined = undefined;
+                    if (b.trebuchetTargetEntityId) {
+                        liveTargetEntity = allPlaced.find(cb => String(cb.id) === String(b.trebuchetTargetEntityId) && (cb.hp === undefined || cb.hp > 0));
+                        if (liveTargetEntity) {
+                            liveTargetX = liveTargetEntity.x;
+                            liveTargetY = liveTargetEntity.y;
+                        }
+                    }
+
+                    const shotKey = `${trebDocId}_${b.trebuchetFireAt}`;
+
+                    // 1) Spawn flying boulder at ~1050ms
+                    if (fireElapsed >= 1050 && liveTargetX !== undefined && liveTargetY !== undefined && !trebuchetShotSpawnedRef.current.has(shotKey)) {
+                        trebuchetShotSpawnedRef.current.add(shotKey);
+                        (b as any).__trebuchetShotSpawned = true;
+                        visualEffectsRef.current.push(createVisualEffect({
+                            id: Date.now() + Math.random(),
+                            x: b.x,
+                            y: b.y,
+                            targetX: liveTargetX,
+                            targetY: liveTargetY,
+                            type: 'shot',
+                            startTime: now,
+                            duration: 800,
+                            isTrebuchetRock: true,
+                        } as any));
+                    }
+
+                    // 2) Boulder lands at ~1850ms: explosion + 10 damage!
+                    if (fireElapsed >= 1850 && liveTargetX !== undefined && liveTargetY !== undefined && !trebuchetHitProcessedRef.current.has(shotKey)) {
+                        trebuchetHitProcessedRef.current.add(shotKey);
+                        (b as any).__trebuchetHitProcessed = true;
+
+                        visualEffectsRef.current.push(createVisualEffect({
+                            id: Date.now() + Math.random(),
+                            x: liveTargetX,
+                            y: liveTargetY,
+                            type: 'explosion',
+                            startTime: now,
+                            duration: 1200,
+                        }));
+
+                        // Target must be a monster or an enemy building (never friendly fire on own buildings)
+                        const isEnemyOrMonsterTarget = (cb: PlacedBuilding) => {
+                            const cbId = Number(cb.buildingId);
+                            if (cbId === 50005 || cbId === 50004) return false; // Exclude mountain and river
+                            const mInfo = buildingByIdMap.get(cbId);
+                            const isMonster = Boolean(cb.ownerId === 'monster' || (cb.ownerId === '-1' && mInfo?.stats.isMonster) || mInfo?.stats.isMonster);
+                            if (isMonster) return true;
+                            // Enemy player building
+                            if (b.ownerId && cb.ownerId && cb.ownerId !== b.ownerId && cb.ownerId !== '0') return true;
+                            return false;
+                        };
+
+                        // Find target building or monster at target tile or adjacent within 1 tile
+                        let hitTarget = (liveTargetEntity && isEnemyOrMonsterTarget(liveTargetEntity)) ? liveTargetEntity : undefined;
+                        if (!hitTarget) {
+                            hitTarget = allPlaced.find(cb =>
+                                cb.x === liveTargetX && cb.y === liveTargetY &&
+                                (cb.hp === undefined || cb.hp > 0) &&
+                                !cb.isDestroying &&
+                                String(cb.id) !== trebDocId &&
+                                isEnemyOrMonsterTarget(cb)
+                            );
+                        }
+                        if (!hitTarget) {
+                            hitTarget = allPlaced.find(cb =>
+                                Math.max(Math.abs(cb.x - liveTargetX), Math.abs(cb.y - liveTargetY)) <= 1 &&
+                                (cb.hp === undefined || cb.hp > 0) &&
+                                !cb.isDestroying &&
+                                String(cb.id) !== trebDocId &&
+                                isEnemyOrMonsterTarget(cb)
+                            );
+                        }
+
+                        if (hitTarget) {
+                            const targetDocId = String(hitTarget.id);
+                            const TREBUCHET_DAMAGE = 10;
+                            const bInfo = buildingByIdMap.get(Number(hitTarget.buildingId));
+                            const isMonster = Boolean(bInfo?.stats.isMonster || hitTarget.ownerId === 'monster' || hitTarget.ownerId === '-1');
+                            const fullDurability = bInfo?.stats.durability ?? 100;
+                            const currentHp = hitTarget.hp ?? fullDurability;
+                            const currentShield = Math.max(0, hitTarget.shieldHp || 0);
+
+                            let shieldDmg = 0;
+                            let hpDmg = TREBUCHET_DAMAGE;
+                            if (currentShield > 0) {
+                                shieldDmg = Math.min(currentShield, TREBUCHET_DAMAGE);
+                                hpDmg = TREBUCHET_DAMAGE - shieldDmg;
+                            }
+
+                            const nextShield = Math.max(0, currentShield - shieldDmg);
+                            const nextHp = Math.max(0, currentHp - hpDmg);
+
+                            lastInteractionRef.current.set(targetDocId, now);
+
+                            if (isMonster) {
+                                if (nextHp <= 0) {
+                                    hitTarget.hp = 0;
+                                    hitTarget.isDestroying = false;
+                                    hitTarget.destructionEndTime = undefined;
+                                    hitTarget.pendingDamage = 0;
+
+                                    removeBuildingFromSnapshotCaches(targetDocId);
+
+                                    // Drop monster loot
+                                    if (bInfo?.drops) {
+                                        const spawnDrops = (dropsList: any[], defaultChance = 100) => {
+                                            dropsList.forEach(drop => {
+                                                const chance = drop.chance !== undefined ? drop.chance : defaultChance;
+                                                if (Math.random() * 100 < chance && drop.amount) {
+                                                    const droppedItemId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                                                    const newDroppedItem: DroppedItem = {
+                                                        id: droppedItemId,
+                                                        x: hitTarget.x,
+                                                        y: hitTarget.y,
+                                                        zoneId: getZoneId(hitTarget.x, hitTarget.y),
+                                                        itemId: drop.id,
+                                                        amount: drop.amount,
+                                                        ownerName: playerName || "Неизвестный"
+                                                    };
+                                                    setDroppedItems(prev => [...prev, newDroppedItem]);
+                                                    if (isAuthReadyRef.current && userRef.current) {
+                                                        setDoc(doc(db, 'dropped_items', droppedItemId), newDroppedItem).catch(console.warn);
+                                                    }
+                                                }
+                                            });
+                                        };
+                                        if (bInfo.drops.frequent) spawnDrops(bInfo.drops.frequent, 100);
+                                        if (bInfo.drops.rare) spawnDrops(bInfo.drops.rare, 35);
+                                    }
+
+                                    // Guaranteed +1 Bone drop
+                                    const droppedBoneId = `${Date.now()}_bone_${Math.random().toString(36).substr(2, 6)}`;
+                                    const boneItem: DroppedItem = {
+                                        id: droppedBoneId,
+                                        x: hitTarget.x,
+                                        y: hitTarget.y,
+                                        zoneId: getZoneId(hitTarget.x, hitTarget.y),
+                                        itemId: BONE_ITEM_ID,
+                                        amount: 1,
+                                        ownerName: playerName || "Неизвестный"
+                                    };
+                                    setDroppedItems(prev => [...prev, boneItem]);
+                                    if (isAuthReadyRef.current && userRef.current) {
+                                        setDoc(doc(db, 'dropped_items', droppedBoneId), boneItem).catch(console.warn);
+                                    }
+
+                                    const expReward = bInfo?.stats.gloryOnExplosion || 5;
+                                    addHistoryLog(`💥 Требушет уничтожил монстра «${bInfo?.name || 'Монстр'}»! Получено +${expReward} опыта.`, 'attack');
+
+                                    if (isAuthReadyRef.current && userRef.current) {
+                                        deleteDoc(doc(db, 'buildings', targetDocId)).catch(console.warn);
+                                        updateDoc(doc(db, 'users', userRef.current.uid), {
+                                            monstersDestroyed: increment(1),
+                                            glory: increment(expReward)
+                                        }).catch(console.warn);
+                                    }
+
+                                    setPlacedBuildings(prev => prev.filter(pb => String(pb.id) !== targetDocId));
+                                    placedBuildingsRef.current = placedBuildingsRef.current.filter(pb => String(pb.id) !== targetDocId);
+                                    setSelectedBuilding(prev => (prev && String(prev.building.id) === targetDocId) ? null : prev);
+                                } else {
+                                    hitTarget.hp = nextHp;
+                                    setPlacedBuildings(prev => prev.map(pb => String(pb.id) === targetDocId ? { ...pb, hp: nextHp } : pb));
+                                    placedBuildingsRef.current = placedBuildingsRef.current.map(pb => String(pb.id) === targetDocId ? { ...pb, hp: nextHp } : pb);
+                                    if (isAuthReadyRef.current && userRef.current) {
+                                        updateDoc(doc(db, 'buildings', targetDocId), { hp: nextHp }).catch(console.warn);
+                                    }
+                                    addHistoryLog(`💥 Требушет нанес ${TREBUCHET_DAMAGE} ед. урона монстру «${bInfo?.name || 'Монстр'}»! HP: ${nextHp}/${fullDurability}`, 'attack');
+                                }
+                            } else {
+                                // Target is a building
+                                const isDead = nextHp <= 0 && !TOWN_HALL_IDS.includes(Number(hitTarget.buildingId));
+                                hitTarget.hp = nextHp;
+                                if (currentShield > 0) {
+                                    hitTarget.shieldHp = nextShield > 0 ? nextShield : undefined;
+                                }
+                                if (isDead) {
+                                    hitTarget.isDestroying = true;
+                                    hitTarget.destructionStartedAt = now;
+                                    hitTarget.destructionEndTime = now + 1500;
+                                }
+
+                                setPlacedBuildings(prev => prev.map(pb => {
+                                    if (String(pb.id) !== targetDocId) return pb;
+                                    return {
+                                        ...pb,
+                                        hp: nextHp,
+                                        shieldHp: nextShield > 0 ? nextShield : undefined,
+                                        ...(isDead ? { isDestroying: true, destructionStartedAt: now, destructionEndTime: now + 1500 } : {})
+                                    };
+                                }));
+
+                                setSelectedBuilding(prev => (prev && String(prev.building.id) === targetDocId) ? {
+                                    ...prev,
+                                    building: {
+                                        ...prev.building,
+                                        hp: nextHp,
+                                        shieldHp: nextShield > 0 ? nextShield : undefined,
+                                        ...(isDead ? { isDestroying: true, destructionStartedAt: now, destructionEndTime: now + 1500 } : {})
+                                    }
+                                } : prev);
+
+                                const targetUpdates: any = { hp: nextHp };
+                                if (currentShield > 0) {
+                                    if (nextShield > 0) {
+                                        targetUpdates.shieldHp = nextShield;
+                                    } else {
+                                        targetUpdates.shieldHp = deleteField();
+                                        targetUpdates.shieldMaxHp = deleteField();
+                                        targetUpdates.protectionEndTime = deleteField();
+                                    }
+                                }
+                                if (isDead) {
+                                    targetUpdates.isDestroying = true;
+                                    targetUpdates.destructionStartedAt = now;
+                                    targetUpdates.destructionEndTime = now + 1500;
+                                    targetUpdates.destructionStatus = 'active';
+                                }
+                                if (isAuthReadyRef.current && userRef.current) {
+                                    updateDoc(doc(db, 'buildings', targetDocId), targetUpdates).catch(e =>
+                                        handleFirestoreError(e, OperationType.UPDATE, `buildings/${targetDocId}`)
+                                    );
+                                }
+
+                                addHistoryLog(`💥 Требушет нанес ${TREBUCHET_DAMAGE} ед. урона зданию «${bInfo?.name || targetDocId}»! HP: ${nextHp}/${fullDurability}`, 'attack');
+                            }
+                        }
+                    }
+
+                    // 3) Launch animation finishes at 2500ms: reset Trebuchet to unloaded
+                    if (fireElapsed >= TREBUCHET_LAUNCH_DURATION) {
+                        trebuchetShotSpawnedRef.current.delete(shotKey);
+                        trebuchetHitProcessedRef.current.delete(shotKey);
+                        b.trebuchetLoaded = false;
+                        b.trebuchetFireAt = undefined;
+                        b.trebuchetTargetX = undefined;
+                        b.trebuchetTargetY = undefined;
+                        b.trebuchetTargetEntityId = undefined;
+                        b.trebuchetAnimStart = undefined;
+                        b.trebuchetChargingUntil = undefined;
+                        delete (b as any).__trebuchetShotSpawned;
+                        delete (b as any).__trebuchetHitProcessed;
+
+                        setPlacedBuildings(prev => prev.map(pb => {
+                            if (String(pb.id) !== trebDocId) return pb;
+                            const copy = {
+                                ...pb,
+                                trebuchetLoaded: false,
+                                trebuchetFireAt: undefined,
+                                trebuchetTargetX: undefined,
+                                trebuchetTargetY: undefined,
+                                trebuchetTargetEntityId: undefined,
+                                trebuchetAnimStart: undefined,
+                                trebuchetChargingUntil: undefined,
+                            };
+                            delete (copy as any).__trebuchetShotSpawned;
+                            delete (copy as any).__trebuchetHitProcessed;
+                            return copy;
+                        }));
+
+                        setSelectedBuilding(prev => (prev && String(prev.building.id) === trebDocId) ? {
+                            ...prev,
+                            building: {
+                                ...prev.building,
+                                trebuchetLoaded: false,
+                                trebuchetFireAt: undefined,
+                                trebuchetTargetX: undefined,
+                                trebuchetTargetY: undefined,
+                                trebuchetTargetEntityId: undefined,
+                                trebuchetAnimStart: undefined,
+                                trebuchetChargingUntil: undefined,
+                            }
+                        } : prev);
+
+                        if (isAuthReadyRef.current && userRef.current) {
+                            updateDoc(doc(db, 'buildings', trebDocId), {
+                                trebuchetLoaded: false,
+                                trebuchetFireAt: null,
+                                trebuchetTargetX: null,
+                                trebuchetTargetY: null,
+                                trebuchetTargetEntityId: null,
+                                trebuchetAnimStart: null,
+                                trebuchetChargingUntil: null,
+                            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${trebDocId}`));
+                        }
+                    }
+                }
+            }
+
+            // Mortar attack & projectile lifecycle (runs every frame for smooth timing & autonomous targeting)
+            for (let i = 0; i < allPlaced.length; i++) {
+                const b = allPlaced[i];
+                if (Number(b.buildingId) !== MORTAR_ID) continue;
+                if (b.isConstructing || b.isDestroying) continue;
+
+                const isOwnerOrHost = b.ownerId === "0" ||
+                    (isAuthReadyRef.current && userRef.current && b.ownerId === userRef.current.uid) ||
+                    getIsNeutralDefenseHost(b);
+                if (!isOwnerOrHost) continue;
+
+                const mortarDocId = String(b.id);
+
+                // 1) Handle active firing sequence
+                if (b.mortarFireAt && now >= b.mortarFireAt) {
+                    const fireElapsed = now - b.mortarFireAt;
+                    const shotKey = `${mortarDocId}_${b.mortarFireAt}`;
+
+                    let liveTargetX = b.mortarTargetX;
+                    let liveTargetY = b.mortarTargetY;
+                    let liveTargetEntity: PlacedBuilding | undefined = undefined;
+                    if (b.mortarTargetEntityId) {
+                        liveTargetEntity = allPlaced.find(cb => String(cb.id) === String(b.mortarTargetEntityId) && (cb.hp === undefined || cb.hp > 0));
+                        if (liveTargetEntity) {
+                            liveTargetX = liveTargetEntity.x;
+                            liveTargetY = liveTargetEntity.y;
+                        }
+                    }
+
+                    // a) Spawn flying shell at ~320ms (when muzzle flash peaks!)
+                    if (fireElapsed >= 320 && liveTargetX !== undefined && liveTargetY !== undefined && !mortarShotSpawnedRef.current.has(shotKey)) {
+                        mortarShotSpawnedRef.current.add(shotKey);
+                        visualEffectsRef.current.push(createVisualEffect({
+                            id: Date.now() + Math.random(),
+                            x: b.x,
+                            y: b.y,
+                            targetX: liveTargetX,
+                            targetY: liveTargetY,
+                            type: 'shot',
+                            startTime: now,
+                            duration: MORTAR_SHELL_FLIGHT_MS,
+                            isMortarShell: true,
+                            isTrebuchetRock: true,
+                        } as any));
+                    }
+
+                    // b) Shell impacts at ~320 + MORTAR_SHELL_FLIGHT_MS (1170ms): explosion + damage to monster
+                    if (fireElapsed >= (320 + MORTAR_SHELL_FLIGHT_MS) && liveTargetX !== undefined && liveTargetY !== undefined && !mortarHitProcessedRef.current.has(shotKey)) {
+                        mortarHitProcessedRef.current.add(shotKey);
+
+                        visualEffectsRef.current.push(createVisualEffect({
+                            id: Date.now() + Math.random(),
+                            x: liveTargetX,
+                            y: liveTargetY,
+                            type: 'explosion',
+                            startTime: now,
+                            duration: 1200,
+                        }));
+
+                        // Target must be a monster!
+                        const isMonsterEntity = (cb: PlacedBuilding) => {
+                            const cbId = Number(cb.buildingId);
+                            if (cbId === 50005 || cbId === 50004) return false;
+                            const mInfo = buildingByIdMap.get(cbId);
+                            return Boolean(cb.ownerId === 'monster' || (cb.ownerId === '-1' && mInfo?.stats.isMonster) || mInfo?.stats.isMonster);
+                        };
+                        let hitMonster = (liveTargetEntity && isMonsterEntity(liveTargetEntity)) ? liveTargetEntity : allPlaced.find(cb =>
+                            cb.x === liveTargetX && cb.y === liveTargetY &&
+                            (cb.hp === undefined || cb.hp > 0) &&
+                            !cb.isDestroying &&
+                            isMonsterEntity(cb)
+                        );
+                        if (!hitMonster) {
+                            hitMonster = allPlaced.find(cb =>
+                                Math.max(Math.abs(cb.x - liveTargetX!), Math.abs(cb.y - liveTargetY!)) <= 1 &&
+                                (cb.hp === undefined || cb.hp > 0) &&
+                                !cb.isDestroying &&
+                                isMonsterEntity(cb)
+                            );
+                        }
+
+                        if (hitMonster) {
+                            const targetDocId = String(hitMonster.id);
+                            const bInfo = buildingByIdMap.get(Number(hitMonster.buildingId));
+                            const mortarInfo = buildingByIdMap.get(MORTAR_ID);
+                            const MORTAR_DAMAGE = mortarInfo?.stats.damage ? parseInt(mortarInfo.stats.damage) : 15;
+                            const fullDurability = bInfo?.stats.durability ?? 100;
+                            const currentHp = hitMonster.hp ?? fullDurability;
+                            const currentShield = Math.max(0, hitMonster.shieldHp || 0);
+
+                            let shieldDmg = 0;
+                            let hpDmg = MORTAR_DAMAGE;
+                            if (currentShield > 0) {
+                                shieldDmg = Math.min(currentShield, MORTAR_DAMAGE);
+                                hpDmg = MORTAR_DAMAGE - shieldDmg;
+                            }
+
+                            const nextShield = Math.max(0, currentShield - shieldDmg);
+                            const nextHp = Math.max(0, currentHp - hpDmg);
+
+                            lastInteractionRef.current.set(targetDocId, now);
+
+                            if (nextHp <= 0) {
+                                hitMonster.hp = 0;
+                                hitMonster.shieldHp = 0;
+                                hitMonster.isDestroying = true;
+                                hitMonster.destructionStartedAt = now;
+                                hitMonster.destructionEndTime = now + MONSTER_FATAL_HIT_DELAY_MS;
+                                hitMonster.destructionExpiresAt = now + MONSTER_FATAL_HIT_DELAY_MS;
+                                hitMonster.destructionDurationMs = MONSTER_FATAL_HIT_DELAY_MS;
+                                hitMonster.destructionMaxLifetimeMs = Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS);
+                                hitMonster.destructionStatus = 'active';
+                                hitMonster.pendingDamage = currentHp;
+
+                                addHistoryLog(`💥 Мортира уничтожила монстра «${bInfo?.name || 'Монстр'}»!`, 'attack');
+
+                                if (isAuthReadyRef.current && userRef.current) {
+                                    updateBuildingDocSafe(targetDocId, {
+                                        hp: 0,
+                                        shieldHp: 0,
+                                        isDestroying: true,
+                                        destructionStartedAt: now,
+                                        destructionEndTime: now + MONSTER_FATAL_HIT_DELAY_MS,
+                                        destructionExpiresAt: now + MONSTER_FATAL_HIT_DELAY_MS,
+                                        destructionDurationMs: MONSTER_FATAL_HIT_DELAY_MS,
+                                        destructionMaxLifetimeMs: Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                                        destructionStatus: 'active',
+                                        pendingDamage: currentHp
+                                    });
+                                }
+                            } else {
+                                hitMonster.hp = nextHp;
+                                hitMonster.shieldHp = nextShield;
+                                addHistoryLog(`💥 Мортира нанесла ${MORTAR_DAMAGE} ед. урона монстру «${bInfo?.name || 'Монстр'}»! HP: ${nextHp}/${fullDurability}`, 'attack');
+
+                                if (isAuthReadyRef.current && userRef.current) {
+                                    updateBuildingDocSafe(targetDocId, {
+                                        hp: nextHp,
+                                        shieldHp: nextShield
+                                    });
+                                }
+                            }
+                        }
+                    }
+
+                    // c) Firing animation completes at MORTAR_ANIM_DURATION (2650ms)
+                    if (fireElapsed >= MORTAR_ANIM_DURATION) {
+                        mortarShotSpawnedRef.current.delete(shotKey);
+                        mortarHitProcessedRef.current.delete(shotKey);
+                        b.mortarFireAt = undefined;
+                        b.mortarTargetEntityId = undefined;
+                        b.mortarTargetX = undefined;
+                        b.mortarTargetY = undefined;
+                        b.lastAttackTime = now;
+
+                        const docId = String(b.id);
+                        if (isAuthReadyRef.current && userRef.current) {
+                            updateBuildingDocSafe(docId, {
+                                mortarFireAt: null,
+                                mortarTargetEntityId: null,
+                                mortarTargetX: null,
+                                mortarTargetY: null,
+                                lastAttackTime: now
+                            });
+                        }
+                    }
+                } else if (!b.mortarFireAt) {
+                    // Check cooldown and throttle search to 500ms intervals instead of 60 FPS loop
+                    const lastAttack = Math.max(b.lastAttackTime || 0, (b.mortarFireAt || 0) + MORTAR_ANIM_DURATION);
+                    const lastCheck = (b as any).__lastTargetCheckTs || 0;
+                    if (now - lastAttack >= MORTAR_ATTACK_INTERVAL_MS && (now - lastCheck) >= 500) {
+                        (b as any).__lastTargetCheckTs = now;
+                        // Find nearest alive monster within 8 tiles
+                        let nearestMonster: PlacedBuilding | null = null;
+                        let minDist = MORTAR_ATTACK_RANGE + 1;
+
+                        for (let j = 0; j < allPlaced.length; j++) {
+                            const mb = allPlaced[j];
+                            if (mb.hp !== undefined && mb.hp <= 0) continue;
+                            if (mb.isDestroying) continue;
+                            const mbId = Number(mb.buildingId);
+                            if (mbId === 50005 || mbId === 50004) continue; // Exclude mountain and river
+                            const mInfo = buildingByIdMap.get(mbId);
+                            const isMonster = Boolean(mb.ownerId === 'monster' || (mb.ownerId === '-1' && mInfo?.stats.isMonster) || mInfo?.stats.isMonster);
+                            if (!isMonster) continue;
+                            if (b.ownerId && b.ownerId !== '0' && b.ownerId !== 'monster' && b.ownerId !== '-1' && mb.ownerId === b.ownerId) continue;
+
+                            const dist = getWrappedChebyshevDistance(b, mb, isWorldWrapped);
+                            if (dist <= MORTAR_ATTACK_RANGE && dist < minDist) {
+                                minDist = dist;
+                                nearestMonster = mb;
+                            }
+                        }
+
+                        if (nearestMonster) {
+                            b.mortarFireAt = now;
+                            b.mortarTargetEntityId = String(nearestMonster.id);
+                            b.mortarTargetX = nearestMonster.x;
+                            b.mortarTargetY = nearestMonster.y;
+
+                            const docId = String(b.id);
+                            if (isAuthReadyRef.current && userRef.current) {
+                                updateBuildingDocSafe(docId, {
+                                    mortarFireAt: now,
+                                    mortarTargetEntityId: String(nearestMonster.id),
+                                    mortarTargetX: nearestMonster.x,
+                                    mortarTargetY: nearestMonster.y
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            const monsterAiTickReady = (now - lastMonsterAiTickRef.current) >= MONSTER_AI_TICK_INTERVAL_MS;
+            if (monsterAiTickReady) {
+                lastMonsterAiTickRef.current = now;
+            }
+            monsterWriteUpdatesThisTick = 0;
+
+            // Only evaluate building status updates on AI tick (every 250ms) instead of burning CPU every 16ms frame
+            let buildingsToUpdate: PlacedBuilding[] = [];
+            if (monsterAiTickReady) {
+                buildingsToUpdate = placedBuildingsRef.current.filter(b => {
+                    const isOwner = b.ownerId === "0" || b.ownerId === GUEST_ID || Boolean(b.isLocal) || (isAuthReadyRef.current && userRef.current && b.ownerId === userRef.current.uid);
+                    const isHost = b.ownerId === "monster" && isAuthReadyRef.current && userRef.current && (b.hostId === userRef.current.uid || !b.hostId);
+                    const isInitiator = b.initiatorId && isAuthReadyRef.current && userRef.current && b.initiatorId === userRef.current.uid;
+
+                    const canFinalizeConstructionForAnyone =
+                        !!b.isConstructing &&
+                        !!b.constructionEndTime &&
+                        now >= b.constructionEndTime;
+                    if (!isOwner && !isHost && !isInitiator && !canFinalizeConstructionForAnyone) return false;
+
+                    return (b.isConstructing && now >= b.constructionEndTime) ||
+                        (b.workState === 'working' && b.workEndTime && now >= b.workEndTime) ||
+                        (b.isDestroying && !!getEffectiveDestructionExpiresAt(b) && now >= (getEffectiveDestructionExpiresAt(b) || 0)) ||
+                        (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetAnimStart && now >= b.trebuchetAnimStart + TREBUCHET_ANIM_DURATION && !b.trebuchetLoaded) ||
+                        (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetMoveUntil && now >= b.trebuchetMoveUntil) ||
+                        (b.hp !== undefined && b.hp <= 0 && !TOWN_HALL_IDS.includes(Number(b.buildingId)));
+                });
+            }
+
             const pendingDestroyedIds = new Set<string>();
             const blockedTargetIds = new Set(deletingBuildingsRef.current);
 
-            const snapshot = buildMonsterRuntimeSnapshot({
-                now,
-                buildings: placedBuildingsRef.current as any,
-                buildingData: buildingData as any,
-                monsterLastAction: monsterLastActionRef.current as any,
-                monsterAttackTime: monsterAttackTimeRef.current as any,
-                isMonsterHost: (b: any) => getIsMonsterHost(b),
-                isWorldWrapped,
-                pendingDestroyedIds,
-                maxMovesPerBatch: MAX_MONSTER_MOVES_PER_BATCH,
-            });
-            const monstersReadyToAttack = snapshot.monstersReadyToAttack as PlacedBuilding[];
-            const monsterZoneCounts = snapshot.monsterZoneCounts;
+            let monstersReadyToAttack: PlacedBuilding[] = [];
+            let trollsReadyToWhip: PlacedBuilding[] = [];
+            let monsterZoneCounts: Record<string, number> = {};
+            let actingMonsters: PlacedBuilding[] = [];
+            const kotofeyContext = {
+                allUsers: allUsersRef.current,
+                clans: clansRef.current,
+                localUserUid: userRef.current?.uid || null,
+                localFriends: friendsRef.current,
+            };
+
+            if (monsterAiTickReady) {
+                const snapshot = buildMonsterRuntimeSnapshot({
+                    now,
+                    buildings: placedBuildingsRef.current as any,
+                    buildingData: buildingData as any,
+                    monsterLastAction: monsterLastActionRef.current as any,
+                    monsterAttackTime: monsterAttackTimeRef.current as any,
+                    isMonsterHost: (b: any) => getIsMonsterHost(b),
+                    isWorldWrapped,
+                    pendingDestroyedIds,
+                    maxMovesPerBatch: MAX_MONSTER_MOVES_PER_BATCH,
+                    kotofeyContext,
+                });
+                monstersReadyToAttack = snapshot.monstersReadyToAttack as PlacedBuilding[];
+                monsterZoneCounts = snapshot.monsterZoneCounts;
+                actingMonsters = snapshot.actingMonsters as PlacedBuilding[];
+                trollsReadyToWhip = placedBuildingsRef.current.filter(b => {
+                    if (!isTrollMonster(b.buildingId)) return false;
+                    if (b.isConstructing || b.isDestroying) return false;
+                    if (b.hp !== undefined && b.hp <= 0) return false;
+                    if (!getIsMonsterHost(b)) return false;
+                    const lastBoostAt = Number(b.lastTrollBoostAt || 0);
+                    if (lastBoostAt > now || (now - lastBoostAt) < TROLL_WORK_BOOST_COOLDOWN_MS) return false;
+                    return Boolean(getTrollAdjacentProductionTarget(b, placedBuildingsRef.current, buildingData, {
+                        isWrappedWorld: isWorldWrapped,
+                        pendingDestroyedIds,
+                        now,
+                    }));
+                });
+            }
 
             // Cannon defense - lightweight frequent checks, but firing itself is still cooldown-limited.
             const _lastCannonTickKey = '__lastCannonTick';
@@ -13707,7 +16456,7 @@ const App: React.FC = () => {
                 (window as any)[_lastCannonTickKey] = now;
                 cannonsAttacking = placedBuildingsRef.current.filter(b => {
                     const isDefense = [...CANNON_IDS, PROTECTED_TOWER_ID, ...WATCHTOWER_IDS].includes(Number(b.buildingId));
-                    if (!isDefense) return false;
+                    if (!isDefense || Number(b.buildingId) === TREBUCHET_ID || Number(b.buildingId) === MORTAR_ID) return false;
                     if (b.isConstructing || b.isDestroying) return false;
 
                     const isOwner = getIsNeutralDefenseHost(b);
@@ -13731,7 +16480,7 @@ const App: React.FC = () => {
                         .map(b => `${b.x},${b.y}`)
                 );
                 const allOccupied = new Set(allBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`));
-                const blockedResourcePositionsForTeleport = new Set(mapResourcesRef.current.map(r => `${r.x},${r.y}`));
+                const blockedResourcePositionsForTeleport = getBlockedResourcePositionsSet();
 
                 // Track which monsters are currently stuck this check
                 const currentlyStuckIds = new Set<string | number>();
@@ -13741,7 +16490,8 @@ const App: React.FC = () => {
                 allBuildings.forEach(b => {
                     if (stuckTeleported >= MAX_STUCK_TELEPORTS_PER_CHECK) return;
                     if (b.ownerId !== 'monster' && b.ownerId !== '-1') return;
-                    const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
+                    if (isRoadCapableCustomMonster(b.buildingId)) return;
+                    const info = buildingByIdMap.get(Number(b.buildingId));
                     if (!info || !info.stats.isMonster) return;
                     if (b.hp !== undefined && b.hp <= 0) return;
                     if (b.isDestroying || (b.pendingDamage || 0) > 0 || (typeof b.destructionEndTime === 'number' && b.destructionEndTime > now)) return;
@@ -13825,23 +16575,30 @@ const App: React.FC = () => {
                 }
             }
 
-            if (buildingsToUpdate.length > 0 || monstersReadyToAttack.length > 0 || cannonsAttacking.length > 0) {
+            if (buildingsToUpdate.length > 0 || monstersReadyToAttack.length > 0 || cannonsAttacking.length > 0 || trollsReadyToWhip.length > 0) {
                 let gloryGained = 0;
                 const newExplosions: Array<Omit<VisualEffect, 'createdAt' | 'expiresAt' | 'durationMs' | 'maxLifetimeMs' | 'status'>> = [];
                 const damageInitiatorMap = new Map<string, string | null>();
                 const monsterAttackSourceMap = new Map<string, string>();
 
                 const currentBuildings = placedBuildingsRef.current;
-                const occupiedPositions = new Set(currentBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`));
+                const occupiedPositions = new Set<string>();
+                for (let i = 0; i < currentBuildings.length; i++) {
+                    const b = currentBuildings[i];
+                    if (b.hp === undefined || b.hp > 0) {
+                        occupiedPositions.add(`${b.x},${b.y}`);
+                    }
+                }
                 // Monsters cannot move onto map resources (forest/trees, chests, oil, quarry, etc.).
                 // Rivers/mountains/buildings are already blocked by occupiedPositions.
-                const blockedResourcePositions = new Set(
-                    mapResourcesRef.current.map(r => `${r.x},${r.y}`)
-                );
+                const blockedResourcePositions = getBlockedResourcePositionsSet();
 
                 // Key damage by entity id, not by tile coordinates.
                 // Using coordinates caused cross-damage when multiple entities shared a tile.
                 const damageMap = new Map<string, number>();
+                const healMap = new Map<string, number>();
+                const workEndTimeUpdates = new Map<string, number>();
+                const floatingHeals: Array<{ x: number; y: number; text: string; color?: string; glowColor?: string }> = [];
                 const markPendingDestroyed = (entityId: string) => {
                     const targetId = String(entityId);
                     if (pendingDestroyedIds.has(targetId)) return;
@@ -13855,14 +16612,15 @@ const App: React.FC = () => {
                 monstersReadyToAttack.forEach(monster => {
                     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
                     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return;
-                    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
+                    const monsterInfo = buildingByIdMap.get(Number(monster.buildingId));
                     const monsterId = String(monster.id || '');
                     const attackId = `${monsterId}:${now}:${Math.random().toString(36).slice(2, 8)}`;
                     const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
                     const target = getMonsterAdjacentAttackTarget(monster, currentBuildings, buildingData, {
                         preferredTargetId,
                         isWrappedWorld: isWorldWrapped,
-                        pendingDestroyedIds
+                        pendingDestroyedIds,
+                        kotofeyContext,
                     });
 
                     if (!target) {
@@ -13888,8 +16646,8 @@ const App: React.FC = () => {
                         });
                     }
                     if (
-                        target.isDestroying ||
                         (target.hp !== undefined && target.hp <= 0) ||
+                        (target.destructionEndTime && target.destructionEndTime <= now) ||
                         pendingDestroyedIds.has(targetId) ||
                         isBuildingDeleting(targetId) ||
                         isBuildingTombstoned(targetId)
@@ -13911,58 +16669,69 @@ const App: React.FC = () => {
                     }
                     monsterTargetLockRef.current.set(monsterId, targetId);
 
-                    let dmg = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
-                    const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
-                    if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
-                        dmg *= 2;
-                    }
-
-                    const targetDamageKey = targetId;
-                    damageMap.set(targetDamageKey, (damageMap.get(targetDamageKey) || 0) + dmg);
-                    const targetCurrentHp = target.hp ?? (targetInfo?.stats.durability ?? 100);
-                    if (isMonsterDiagEnabled()) {
-                        console.log("[COMBAT DAMAGE QUEUED]", {
-                            combatTraceId: attackId,
-                            source,
-                            monsterId,
-                            targetId: targetDamageKey,
-                            damage: dmg,
-                            damageMapTotal: damageMap?.get?.(String(targetDamageKey)),
-                            recipientIds: [targetDamageKey],
-                            recipientCount: 1,
-                            timestamp: Date.now(),
+                    const targetInfo = buildingByIdMap.get(Number(target.buildingId));
+                    if (isHealerMonster(monster.buildingId)) {
+                        const healAmount = getKotofeyRepairAmount(monsterInfo, targetInfo, target, {
+                            monster,
+                            allBuildings: currentBuildings,
+                            now,
                         });
-                    }
-                    if ((damageMap.get(targetDamageKey) || 0) >= targetCurrentHp) {
+                        healMap.set(targetId, (healMap.get(targetId) || 0) + healAmount);
+                    } else {
+                        let dmg = isTrollMonster(monster.buildingId)
+                            ? getTrollCombatDamage(monster, target, currentBuildings, buildingData, now)
+                            : (monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4);
+                        if (!isTrollMonster(monster.buildingId) && monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
+                            dmg *= 2;
+                        }
+
+                        const targetDamageKey = targetId;
+                        damageMap.set(targetDamageKey, (damageMap.get(targetDamageKey) || 0) + dmg);
+                        const targetCurrentHp = target.hp ?? (targetInfo?.stats.durability ?? 100);
                         if (isMonsterDiagEnabled()) {
-                            console.log("[COMBAT FATAL HIT]", {
+                            console.log("[COMBAT DAMAGE QUEUED]", {
                                 combatTraceId: attackId,
                                 source,
                                 monsterId,
-                                buildingId: targetDamageKey,
-                                hpBefore: targetCurrentHp,
-                                hpAfterCalculated: 0,
-                                wasAlreadyDestroying: Boolean(target.isDestroying),
-                                oldDestructionEndTime: target.destructionEndTime,
+                                targetId: targetDamageKey,
+                                damage: dmg,
+                                damageMapTotal: damageMap?.get?.(String(targetDamageKey)),
+                                recipientIds: [targetDamageKey],
+                                recipientCount: 1,
                                 timestamp: Date.now(),
                             });
                         }
-                        markPendingDestroyed(targetDamageKey);
-                    }
-                    monsterAttackSourceMap.set(targetDamageKey, monsterId);
-                    const monsterOwnerId = String(monster.ownerId || '');
-                    const monsterIsNeutral = monsterOwnerId === 'monster' || monsterOwnerId === '-1' || monsterOwnerId === '0';
-                    damageInitiatorMap.set(targetDamageKey, monsterIsNeutral ? null : monsterOwnerId);
-                    const recipientIds = [targetDamageKey];
-                    if (isMonsterDiagEnabled()) {
-                        console.log("[MONSTER DAMAGE RECIPIENTS]", {
-                            attackId,
-                            monsterId,
-                            selectedTargetId: targetDamageKey,
-                            recipientIds,
-                            recipientCount: recipientIds.length,
-                            timestamp: Date.now(),
-                        });
+                        if ((damageMap.get(targetDamageKey) || 0) >= targetCurrentHp) {
+                            if (isMonsterDiagEnabled()) {
+                                console.log("[COMBAT FATAL HIT]", {
+                                    combatTraceId: attackId,
+                                    source,
+                                    monsterId,
+                                    buildingId: targetDamageKey,
+                                    hpBefore: targetCurrentHp,
+                                    hpAfterCalculated: 0,
+                                    wasAlreadyDestroying: Boolean(target.isDestroying),
+                                    oldDestructionEndTime: target.destructionEndTime,
+                                    timestamp: Date.now(),
+                                });
+                            }
+                            markPendingDestroyed(targetDamageKey);
+                        }
+                        monsterAttackSourceMap.set(targetDamageKey, monsterId);
+                        const monsterOwnerId = String(monster.ownerId || '');
+                        const monsterIsNeutral = monsterOwnerId === 'monster' || monsterOwnerId === '-1' || monsterOwnerId === '0';
+                        damageInitiatorMap.set(targetDamageKey, monsterIsNeutral ? null : monsterOwnerId);
+                        const recipientIds = [targetDamageKey];
+                        if (isMonsterDiagEnabled()) {
+                            console.log("[MONSTER DAMAGE RECIPIENTS]", {
+                                attackId,
+                                monsterId,
+                                selectedTargetId: targetDamageKey,
+                                recipientIds,
+                                recipientCount: recipientIds.length,
+                                timestamp: Date.now(),
+                            });
+                        }
                     }
 
                     const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
@@ -14005,6 +16774,78 @@ const App: React.FC = () => {
                     }
                 });
 
+                trollsReadyToWhip.forEach(troll => {
+                    const trollId = String(troll.id);
+                    if (pendingDestroyedIds.has(trollId)) return;
+                    const target = getTrollAdjacentProductionTarget(troll, currentBuildings, buildingData, {
+                        isWrappedWorld: isWorldWrapped,
+                        pendingDestroyedIds,
+                        now,
+                    });
+                    if (!target) return;
+                    const targetId = String(target.id);
+                    if (
+                        pendingDestroyedIds.has(targetId) ||
+                        isBuildingDeleting(targetId) ||
+                        isBuildingTombstoned(targetId)
+                    ) {
+                        return;
+                    }
+                    const targetInfo = buildingByIdMap.get(Number(target.buildingId));
+                    const whip = resolveTrollProductionWhip(target, targetInfo, now);
+
+                    workEndTimeUpdates.set(targetId, whip.nextWorkEndTime);
+                    target.workEndTime = whip.nextWorkEndTime;
+                    if (whip.selfDamage > 0) {
+                        damageMap.set(targetId, (damageMap.get(targetId) || 0) + whip.selfDamage);
+                        const targetCurrentHp = target.hp ?? (targetInfo?.stats.durability ?? 100);
+                        if ((damageMap.get(targetId) || 0) >= targetCurrentHp) {
+                            markPendingDestroyed(targetId);
+                        }
+                        // Own worker whip must not award self-PvP glory or destruction stats
+                        damageInitiatorMap.set(targetId, null);
+                    }
+
+                    floatingHeals.push({
+                        x: target.x,
+                        y: target.y,
+                        text: whip.selfDamage > 0 ? `-5с ⚡ (-${whip.selfDamage} HP)` : '-5с ⚡',
+                        color: '#fbbf24',
+                        glowColor: 'rgba(251, 191, 36, 0.6)',
+                    });
+
+                    const whipDir = getWrappedDirectionToTarget(troll, target, isWorldWrapped);
+                    monsterDirectionRef.current.set(trollId, whipDir);
+                    monsterAttackDirectionRef.current.set(trollId, whipDir);
+                    const gIdStr = troll.gameId ? String(troll.gameId) : '';
+                    if (gIdStr) {
+                        monsterDirectionRef.current.set(gIdStr, whipDir);
+                        monsterAttackDirectionRef.current.set(gIdStr, whipDir);
+                    }
+
+                    const baseTroll = monsterUpdates.get(trollId) || troll;
+                    monsterUpdates.set(trollId, {
+                        ...baseTroll,
+                        lastTrollBoostAt: now,
+                        direction: whipDir,
+                        attackDir: whipDir,
+                        hostId: userRef.current?.uid || null,
+                    });
+                    troll.lastTrollBoostAt = now;
+                    (troll as any).attackDir = whipDir;
+                    (troll as any).direction = whipDir;
+                    troll.hostId = userRef.current?.uid || null;
+                    lastInteractionRef.current.set(trollId, now);
+                    if (getIsMonsterHost(troll)) {
+                        updateBuildingDocSafe(trollId, {
+                            lastTrollBoostAt: now,
+                            direction: whipDir,
+                            attackDir: whipDir,
+                            hostId: userRef.current?.uid || null,
+                        });
+                    }
+                });
+
                 // Process monster movement separately from attacks so adjacent monsters can keep fighting on cooldown.
                 // Movement itself stays staggered to avoid mass updates and teleport-like jumps.
                 const GLOBAL_MONSTER_COOLDOWN = MONSTER_MOVE_BATCH_INTERVAL_MS;
@@ -14016,15 +16857,12 @@ const App: React.FC = () => {
                     console.log(`[MONSTER_DIAG] movement batch cooldown active waitMs=${waitMs}`);
                 }
                  
-                const actingMonsters = snapshot.actingMonsters as PlacedBuilding[];
                 if (canMoveMonsters && actingMonsters.length > 0) {
                     lastGlobalMonsterMoveRef.current = now;
-                }
-
-                actingMonsters.forEach(monster => {
-                    const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
-                    if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return;
-                    const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
+                    actingMonsters.forEach(monster => {
+                        const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+                        if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return;
+                        const monsterInfo = buildingByIdMap.get(Number(monster.buildingId));
                     const monsterId = monster.id || '';
                     const recentPositions = monsterRecentPositionsRef.current.get(monsterId) || [];
                     
@@ -14040,13 +16878,26 @@ const App: React.FC = () => {
                     const preferredTargetId = monsterTargetLockRef.current.get(monsterId) || null;
                     const target = getMonsterAdjacentAttackTarget(monster, currentBuildings, buildingData, {
                         preferredTargetId,
-                        isWrappedWorld: isWorldWrapped
+                        isWrappedWorld: isWorldWrapped,
+                        kotofeyContext,
+                    }) || getMonsterAdjacentHoldTarget(monster, currentBuildings, buildingData, {
+                        preferredTargetId,
+                        isWrappedWorld: isWorldWrapped,
+                        kotofeyContext,
                     });
-                        if (target) {
-                            monsterTargetLockRef.current.set(monsterId, String(target.id));
-                        } else {
-                            monsterTargetLockRef.current.delete(monsterId);
+                    if (target) {
+                        monsterTargetLockRef.current.set(monsterId, String(target.id));
+                    } else {
+                        const currentLockedTargetId = monsterTargetLockRef.current.get(monsterId);
+                        if (currentLockedTargetId) {
+                            const lockedBuilding = currentBuildings.find(b => String(b.id) === currentLockedTargetId);
+                            if (!lockedBuilding || (lockedBuilding.hp !== undefined && lockedBuilding.hp <= 0)) {
+                                monsterTargetLockRef.current.delete(monsterId);
+                                monsterAttackDirectionRef.current.delete(monsterId);
+                                if (gIdStr) monsterAttackDirectionRef.current.delete(gIdStr);
+                            }
                         }
+                    }
 
                     const gIdStr = monster.gameId ? String(monster.gameId) : '';
                     const lastAttackTime = Math.max(
@@ -14062,6 +16913,11 @@ const App: React.FC = () => {
                     if (shouldHoldPositionForAttack && target) {
                         const attackDir = getWrappedDirectionToTarget(monster, target, isWorldWrapped);
                         monsterDirectionRef.current.set(monsterId, attackDir);
+                        monsterAttackDirectionRef.current.set(monsterId, attackDir);
+                        if (gIdStr) {
+                            monsterDirectionRef.current.set(gIdStr, attackDir);
+                            monsterAttackDirectionRef.current.set(gIdStr, attackDir);
+                        }
                         // Refresh action timestamps so the monster is known to be actively engaged in combat
                         // and does not accumulate overdue movement debt or get picked up by background patrol sweeps.
                         // NOTE: Do NOT set monster.lastMoveTime here, because lastMoveTime triggers the walk animation,
@@ -14076,14 +16932,24 @@ const App: React.FC = () => {
                     } else {
                         // MOVEMENT: Try to move toward nearby buildings, fallback to wandering
                         const validMoves = neighbors.filter(move =>
-                            !isMonsterTileBlocked(
-                                move.x,
-                                move.y,
-                                occupiedPositions,
-                                blockedResourcePositions,
-                                undefined,
-                                isWorldWrapped
-                            )
+                            isRoadCapableCustomMonster(monster.buildingId)
+                                ? !isKotofeyTileBlocked(
+                                    monster,
+                                    move.x,
+                                    move.y,
+                                    currentBuildings,
+                                    blockedResourcePositions,
+                                    kotofeyContext,
+                                    isWorldWrapped
+                                )
+                                : !isMonsterTileBlocked(
+                                    move.x,
+                                    move.y,
+                                    occupiedPositions,
+                                    blockedResourcePositions,
+                                    undefined,
+                                    isWorldWrapped
+                                )
                         );
                         const recentKeys = new Set(recentPositions.map(pos => `${pos.x},${pos.y}`));
                         const preferredMoves = validMoves.filter(move => !recentKeys.has(`${move.x},${move.y}`));
@@ -14094,11 +16960,12 @@ const App: React.FC = () => {
                                 blockedTargetIds,
                                 pendingDestroyedIds,
                                 isWrappedWorld: isWorldWrapped,
+                                kotofeyContext,
                             });
 
                             let chosenMove: { x: number; y: number; dx: number; dy: number } | null = null;
                             if (chaseTarget) {
-                                chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWorldWrapped);
+                                chosenMove = chooseMonsterMoveTowardTarget(candidateMoves, chaseTarget, isWorldWrapped, { x: monster.x, y: monster.y });
                             } else {
                                 // Natural patrol wandering (forward with straight paths, smooth turns at obstacles)
                                 const lastTurnWasLeft = monsterTurnStateRef.current.get(monsterId) || false;
@@ -14135,7 +17002,12 @@ const App: React.FC = () => {
                                 monsterDirectionRef.current.set(monsterId, {dx: chosenMove.dx, dy: chosenMove.dy});
                                 
                                 occupiedPositions.add(`${chosenMove.x},${chosenMove.y}`);
-                                occupiedPositions.delete(`${monster.x},${monster.y}`);
+                                const oldTileHasOtherAliveBuilding = currentBuildings.some(
+                                    b => String(b.id) !== monsterId && b.x === monster.x && b.y === monster.y && (b.hp === undefined || b.hp > 0)
+                                );
+                                if (!oldTileHasOtherAliveBuilding) {
+                                    occupiedPositions.delete(`${monster.x},${monster.y}`);
+                                }
 
                                 const newMoveZoneId = getZoneId(chosenMove.x, chosenMove.y);
                                 const newMonsterState = {
@@ -14176,19 +17048,23 @@ const App: React.FC = () => {
                                 logMonsterDiag(monster, 'stuck_no_valid_moves', `neighborsBlocked=${blockedNeighbors || 'none'}`);
                                 monsterLastActionRef.current.set(monsterId, now);
                             }
+                        } else if (isRoadCapableCustomMonster(monster.buildingId)) {
+                            // Custom road-capable monsters stand in place when surrounded (e.g. walkRoads is off)
+                            monsterLastActionRef.current.set(monsterId, now);
                         }
                     }
                 });
+                }
 
                 // Process cannons - attack nearby monsters within defense radius
                 const monsters = currentBuildings.filter(b => {
                     if (b.isConstructing || b.isDestroying) return false;
-                    const info = buildingData.find(i => Number(i.id) === Number(b.buildingId));
+                    const info = buildingByIdMap.get(Number(b.buildingId));
                     return !!(info && info.stats.isMonster);
                 });
 
                 cannonsAttacking.forEach(cannon => {
-                    const cannonInfo = buildingData.find(i => Number(i.id) === Number(cannon.buildingId));
+                    const cannonInfo = buildingByIdMap.get(Number(cannon.buildingId));
 
                     let damage = cannonInfo?.stats.damage ? parseInt(cannonInfo.stats.damage) : 1;
                     if (Number(cannon.buildingId) === CANNON_ID) damage = 5;
@@ -14262,13 +17138,14 @@ const App: React.FC = () => {
                             structuralStateChanged = true;
                             return;
                         }
-                        if (shouldDeferBuildingAuthorityToOwner(updatedB)) {
+                        const hasOwnerGracePassed = now >= (getEffectiveDestructionExpiresAt(updatedB) || 0) + 3000;
+                        if (shouldDeferBuildingAuthorityToOwner(updatedB) && !hasOwnerGracePassed) {
                             nextBuildings.push(updatedB);
                             return;
                         }
                         const damage = updatedB.pendingDamage || 0;
-                        // Use maxHp as fallback if hp is undefined Р Р†Р вЂљРІР‚Сњ never default to 0
-                        const bInfo = buildingData.find(i => Number(i.id) === Number(updatedB.buildingId));
+                        // Use maxHp as fallback if hp is undefined – never default to 0
+                        const bInfo = buildingByIdMap.get(Number(updatedB.buildingId));
                         const fullHp2 = updatedB.maxHp ?? bInfo?.stats.durability ?? 100;
                         const currentHp = updatedB.hp ?? fullHp2;
                         const remainingHp = currentHp - damage;
@@ -14315,6 +17192,17 @@ const App: React.FC = () => {
                         stateChanged = true;
                         structuralStateChanged = true;
                     } else {
+                        if (workEndTimeUpdates.has(entityId)) {
+                            const spedUpWorkEndTime = workEndTimeUpdates.get(entityId)!;
+                            updatedB.workEndTime = spedUpWorkEndTime;
+                            b.workEndTime = spedUpWorkEndTime;
+                            stateChanged = true;
+                            structuralStateChanged = true;
+                            lastInteractionRef.current.set(entityId, now);
+                            const rawId = String(updatedB.id);
+                            const docId = optimisticBuildDocIdByTempIdRef.current.get(rawId) || rawId;
+                            updateBuildingDocSafe(docId, { workEndTime: spedUpWorkEndTime });
+                        }
                         const constructionCompletionResult = resolveLocalConstructionCompletion({
                             building: updatedB,
                             now,
@@ -14360,6 +17248,112 @@ const App: React.FC = () => {
                             }
                             stateChanged = true;
                             structuralStateChanged = true;
+                        } else if (Number(updatedB.buildingId) === TREBUCHET_ID && updatedB.trebuchetAnimStart && now >= updatedB.trebuchetAnimStart + TREBUCHET_ANIM_DURATION && !updatedB.trebuchetLoaded) {
+                            updatedB.trebuchetLoaded = true;
+                            updatedB.trebuchetChargingUntil = undefined;
+                            b.trebuchetLoaded = true;
+                            b.trebuchetChargingUntil = undefined;
+                            if (updatedB.ownerId === "0" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid)) {
+                                const rawId = String(updatedB.id);
+                                const docId = optimisticBuildDocIdByTempIdRef.current.get(rawId) || rawId;
+                                updateBuildingDocSafe(docId, { trebuchetLoaded: true, trebuchetChargingUntil: null });
+                            }
+                            stateChanged = true;
+                            structuralStateChanged = true;
+                        } else if (Number(updatedB.buildingId) === TREBUCHET_ID && updatedB.trebuchetMoveUntil && now >= updatedB.trebuchetMoveUntil) {
+                            const finalX = updatedB.trebuchetMoveTargetX ?? updatedB.x;
+                            const finalY = updatedB.trebuchetMoveTargetY ?? updatedB.y;
+                            const newZoneId = getZoneId(finalX, finalY);
+
+                            let finalFacing: TrebuchetFacingDirection = normalizeTrebuchetFacing(updatedB.trebuchetFacing);
+                            const path = updatedB.trebuchetMovePath;
+                            if (path && path.length >= 2) {
+                                const lastStepFrom = path[path.length - 2];
+                                const lastStepTo = path[path.length - 1];
+                                finalFacing = getTrebuchetFacingFromDelta(lastStepTo.x - lastStepFrom.x, lastStepTo.y - lastStepFrom.y);
+                            } else if (updatedB.trebuchetMoveStartX !== undefined && updatedB.trebuchetMoveTargetX !== undefined && updatedB.trebuchetMoveStartY !== undefined && updatedB.trebuchetMoveTargetY !== undefined) {
+                                finalFacing = getTrebuchetFacingFromDelta(updatedB.trebuchetMoveTargetX - updatedB.trebuchetMoveStartX, updatedB.trebuchetMoveTargetY - updatedB.trebuchetMoveStartY);
+                            }
+
+                            updatedB.x = finalX;
+                            updatedB.y = finalY;
+                            updatedB.zoneId = newZoneId;
+                            updatedB.trebuchetFacing = finalFacing;
+                            updatedB.trebuchetMoveStartX = undefined;
+                            updatedB.trebuchetMoveStartY = undefined;
+                            updatedB.trebuchetMoveTargetX = undefined;
+                            updatedB.trebuchetMoveTargetY = undefined;
+                            updatedB.trebuchetMoveStartTime = undefined;
+                            updatedB.trebuchetMoveDuration = undefined;
+                            updatedB.trebuchetMoveUntil = undefined;
+                            updatedB.trebuchetMovePath = undefined;
+
+                            b.x = finalX;
+                            b.y = finalY;
+                            b.zoneId = newZoneId;
+                            b.trebuchetFacing = finalFacing;
+                            b.trebuchetMoveStartX = undefined;
+                            b.trebuchetMoveStartY = undefined;
+                            b.trebuchetMoveTargetX = undefined;
+                            b.trebuchetMoveTargetY = undefined;
+                            b.trebuchetMoveStartTime = undefined;
+                            b.trebuchetMoveDuration = undefined;
+                            b.trebuchetMoveUntil = undefined;
+                            b.trebuchetMovePath = undefined;
+
+                            if (updatedB.ownerId === "0" || (isAuthReadyRef.current && userRef.current && updatedB.ownerId === userRef.current.uid)) {
+                                const rawId = String(updatedB.id);
+                                const docId = optimisticBuildDocIdByTempIdRef.current.get(rawId) || rawId;
+                                updateBuildingDocSafe(docId, {
+                                    x: finalX,
+                                    y: finalY,
+                                    zoneId: newZoneId,
+                                    trebuchetFacing: finalFacing,
+                                    trebuchetMoveStartX: null,
+                                    trebuchetMoveStartY: null,
+                                    trebuchetMoveTargetX: null,
+                                    trebuchetMoveTargetY: null,
+                                    trebuchetMoveStartTime: null,
+                                    trebuchetMoveDuration: null,
+                                    trebuchetMoveUntil: null,
+                                    trebuchetMovePath: null
+                                });
+                            }
+                            stateChanged = true;
+                            structuralStateChanged = true;
+                        }
+                    }
+
+                    // Apply Kotofey repair heals before combat damage
+                    if (healMap.has(entityDamageKey) && !updatedB.isDestroying) {
+                        const totalHeal = healMap.get(entityDamageKey)!;
+                        const healTargetInfo = buildingByIdMap.get(Number(updatedB.buildingId));
+                        const healFullHp = Math.max(1, updatedB.maxHp ?? healTargetInfo?.stats.durability ?? 100);
+                        const hpBeforeHeal = updatedB.hp ?? healFullHp;
+                        const nextHpAfterHeal = Math.min(healFullHp, hpBeforeHeal + totalHeal);
+                        const appliedHeal = Math.max(0, nextHpAfterHeal - hpBeforeHeal);
+
+                        if (appliedHeal > 0) {
+                            updatedB.hp = nextHpAfterHeal;
+                            updatedB.maxHp = updatedB.maxHp ?? healFullHp;
+                            stateChanged = true;
+                            if (nextHpAfterHeal >= healFullHp) {
+                                structuralStateChanged = true;
+                                clearMonsterTargetLocksForBuilding(entityDamageKey);
+                            }
+                            lastInteractionRef.current.set(String(updatedB.id), now);
+                            floatingHeals.push({
+                                x: updatedB.x,
+                                y: updatedB.y,
+                                text: `+${appliedHeal} 💚`,
+                            });
+                            const docId = String(updatedB.id);
+                            if (!deletingBuildingsRef.current.has(docId)) {
+                                updateBuildingDocSafe(docId, {
+                                    hp: nextHpAfterHeal,
+                                    maxHp: updatedB.maxHp,
+                                });
+                            }
                         }
                     }
 
@@ -14371,7 +17365,7 @@ const App: React.FC = () => {
                         const shieldDamage = hadShield ? Math.min(currentShield, totalDamage) : 0;
                         // Game rule: while shield exists at hit start, this hit only damages shield.
                         const overflowDamage = hadShield ? 0 : totalDamage;
-                        const fullHp = buildingData.find(i => Number(i.id) === Number(updatedB.buildingId))?.stats.durability ?? 100;
+                        const fullHp = buildingByIdMap.get(Number(updatedB.buildingId))?.stats.durability ?? 100;
                         const currentHpBeforeHit = updatedB.hp ?? fullHp;
                         const nextHpAfterHit = currentHpBeforeHit - overflowDamage;
                         const monsterFatalHit = overflowDamage > 0 && nextHpAfterHit <= 0;
@@ -14389,8 +17383,8 @@ const App: React.FC = () => {
                             updatedB.maxHp = updatedB.maxHp ?? fullHp;
                             updatedB.isDestroying = true;
                             updatedB.destructionStartedAt = now;
-                            updatedB.destructionEndTime = now + MONSTER_FATAL_HIT_DELAY_MS;
-                            updatedB.destructionExpiresAt = now + MONSTER_FATAL_HIT_DELAY_MS;
+                            updatedB.destructionEndTime = Math.min(updatedB.destructionEndTime || Infinity, now + MONSTER_FATAL_HIT_DELAY_MS);
+                            updatedB.destructionExpiresAt = Math.min(updatedB.destructionExpiresAt || Infinity, now + MONSTER_FATAL_HIT_DELAY_MS);
                             updatedB.destructionDurationMs = MONSTER_FATAL_HIT_DELAY_MS;
                             updatedB.destructionMaxLifetimeMs = Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS);
                             updatedB.destructionStatus = 'active';
@@ -14456,7 +17450,7 @@ const App: React.FC = () => {
                         const defenseLastAttackTime = updatedB.lastAttackTime || 0;
                         const defenseCanFire = defenseLastAttackTime <= now && (now - defenseLastAttackTime >= CANNON_ATTACK_INTERVAL_MS);
                             if (isDefenseBuilding && defenseCanFire && (updatedB.hp ?? fullHp) > 0 && !updatedB.isConstructing && !updatedB.isDestroying) {
-                                const cannonInfo = buildingData.find(i => Number(i.id) === Number(updatedB.buildingId));
+                                const cannonInfo = buildingByIdMap.get(Number(updatedB.buildingId));
                                 let counterDmg = cannonInfo?.stats.damage ? parseInt(cannonInfo.stats.damage) : 1;
                                 if (Number(updatedB.buildingId) === CANNON_ID) counterDmg = 5;
                                 // Find nearest monster within range to counter-attack
@@ -14466,7 +17460,7 @@ const App: React.FC = () => {
                                     : null;
                                 const adjMonster = directAttacker || currentBuildings.find(m => {
                                     if (m.ownerId !== 'monster' && m.ownerId !== '-1') return false;
-                                    const mInfo = buildingData.find(i => Number(i.id) === Number(m.buildingId));
+                                    const mInfo = buildingByIdMap.get(Number(m.buildingId));
                                     if (!mInfo || !mInfo.stats.isMonster) return false;
                                     if (m.hp !== undefined && m.hp <= 0) return false;
                                     return getWrappedChebyshevDistance(updatedB, m, isWorldWrapped) <= 3;
@@ -14476,7 +17470,7 @@ const App: React.FC = () => {
                                     const processedIndex = nextBuildings.findIndex(nb => String(nb.id) === counterKey);
                                     if (processedIndex !== -1) {
                                         const targetObj = nextBuildings[processedIndex];
-                                        const targetDurability = buildingData.find(i => Number(i.id) === Number(targetObj.buildingId))?.stats.durability ?? 100;
+                                        const targetDurability = buildingByIdMap.get(Number(targetObj.buildingId))?.stats.durability ?? 100;
                                         const currentHp = targetObj.hp ?? targetDurability;
                                         const newHp = Math.max(0, currentHp - counterDmg);
                                         targetObj.hp = newHp;
@@ -14500,7 +17494,7 @@ const App: React.FC = () => {
                                 (updatedB.constructionEndTime !== undefined &&
                                     now < (updatedB.constructionEndTime + 120000)));
                         if (inTownHallSafetyWindow) {
-                            const bInfo = buildingData.find(i => i.id === updatedB.buildingId);
+                            const bInfo = buildingByIdMap.get(Number(updatedB.buildingId));
                             const safeHp = bInfo?.stats.durability ?? 100;
                             updatedB.hp = Math.max(1, safeHp);
                             updatedB.isDestroying = false;
@@ -14537,18 +17531,18 @@ const App: React.FC = () => {
                             duration: 1000
                         });
 
-                        const buildingInfo = buildingData.find(bd => bd.id === updatedB.buildingId);
+                        const buildingInfo = buildingByIdMap.get(Number(updatedB.buildingId));
                         if (buildingInfo) {
                             const damageInitiatorId = damageInitiatorMap.has(entityDamageKey)
                                 ? damageInitiatorMap.get(entityDamageKey)
                                 : undefined;
                             const isInitiator = updatedB.initiatorId === userRef.current?.uid;
                             const isNeutralMonsterKillHost =
-                                damageInitiatorId === null &&
                                 Boolean(buildingInfo.stats.isMonster) &&
                                 isAuthReadyRef.current &&
-                                Boolean(userRef.current);
-                            const canFinalizeDelete = isAuthReadyRef.current && Boolean(userRef.current) && (isInitiator || isNeutralMonsterKillHost || !buildingInfo.stats.isMonster);
+                                Boolean(userRef.current) &&
+                                (damageInitiatorId === null || getIsMonsterHost(updatedB));
+                            const canFinalizeDelete = isAuthReadyRef.current && Boolean(userRef.current) && (isInitiator || isNeutralMonsterKillHost || !buildingInfo.stats.isMonster || getIsMonsterHost(updatedB));
                             if (canFinalizeDelete) {
                                 removeBuildingFromSnapshotCaches(docId);
 
@@ -14580,6 +17574,26 @@ const App: React.FC = () => {
                                     }
                                     if (buildingInfo.drops.rare) {
                                         spawnDrops(buildingInfo.drops.rare, 35);
+                                    }
+                                }
+
+                                // Guaranteed +1 Bone (ID 10051) drop on ANY monster kill/explosion
+                                if (buildingInfo.stats?.isMonster || buildingInfo.category === 'Монстры') {
+                                    const droppedBoneId = `${Date.now()}_bone_${Math.random().toString(36).substr(2, 6)}`;
+                                    const boneItem: DroppedItem = {
+                                        id: droppedBoneId,
+                                        x: updatedB.x,
+                                        y: updatedB.y,
+                                        zoneId: getZoneId(updatedB.x, updatedB.y),
+                                        itemId: BONE_ITEM_ID,
+                                        amount: 1,
+                                        ownerName: updatedB.ownerName || playerName || "Неизвестный"
+                                    };
+                                    setDroppedItems(prev => [...prev, boneItem]);
+                                    if (isAuthReadyRef.current && userRef.current) {
+                                        setDoc(doc(db, 'dropped_items', droppedBoneId), boneItem).catch(e =>
+                                            handleFirestoreError(e, OperationType.CREATE, `dropped_items/${droppedBoneId}`)
+                                        );
                                     }
                                 }
 
@@ -14724,7 +17738,28 @@ const App: React.FC = () => {
                 }
 
                 if (newExplosions.length > 0) {
-                    setVisualEffects(prev => [...prev, ...newExplosions.map(createVisualEffect)]);
+                    for (let i = 0; i < newExplosions.length; i++) {
+                        visualEffectsRef.current.push(createVisualEffect(newExplosions[i]));
+                    }
+                }
+
+                if (floatingHeals.length > 0) {
+                    setFloatingJuiceItems(current => [
+                        ...current.filter(item => now - item.createdAt < item.durationMs),
+                        ...floatingHeals.map((fh, idx) => ({
+                            id: `kotofey-heal-${now}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+                            worldX: fh.x,
+                            worldY: fh.y,
+                            text: fh.text,
+                            type: 'resource' as const,
+                            comboLevel: 1,
+                            color: fh.color || '#4ade80',
+                            glowColor: fh.glowColor || 'rgba(74, 222, 128, 0.55)',
+                            scale: 1.1,
+                            createdAt: now,
+                            durationMs: 1300,
+                        })),
+                    ]);
                 }
 
                 if (gloryGained > 0) {
@@ -14746,14 +17781,10 @@ const App: React.FC = () => {
                 }
             }
 
-            setVisualEffects(prev => {
+            if (visualEffectsRef.current.length > 0) {
                 const nowTs = Date.now();
-                const next = prev
-                    .map(effect => (isVisualEffectAlive(effect, nowTs) ? effect : { ...effect, status: 'finished' as const }))
-                    .filter(effect => effect.status === 'active');
-                if (next.length === prev.length) return prev;
-                return next;
-            });
+                visualEffectsRef.current = visualEffectsRef.current.filter(effect => isVisualEffectAlive(effect, nowTs));
+            }
 
             // WASD & Arrow Camera Panning (screen-space, 30% slower than mouse)
             if (!isLoadingScreenRef.current) {
@@ -14790,11 +17821,18 @@ const App: React.FC = () => {
                     reportPlayerMovementRef.current?.(true);
                 }
             }
-
-            drawRef.current();
+        } catch (loopError) {
+            console.error('[GameLoop Uncaught Exception]', loopError);
+        } finally {
+            try {
+                drawRef.current();
+            } catch (drawErr) {
+                console.error('[Draw Uncaught Exception]', drawErr);
+            }
             lastDrawAtRef.current = Date.now();
             animationFrameId = requestAnimationFrame(gameLoop);
-        };
+        }
+    };
         animationFrameId = requestAnimationFrame(gameLoop);
         return () => cancelAnimationFrame(animationFrameId);
     }, []);
@@ -15098,6 +18136,12 @@ const App: React.FC = () => {
                 const monsterZoneCounts = buildMonsterZoneCounts(allBuildings, buildingData);
                 let worldSweepActions = 0;
                 const nowTs = Date.now();
+                const kotofeyContext = {
+                    allUsers: allUsersRef.current,
+                    clans: clansRef.current,
+                    localUserUid: userRef.current?.uid || null,
+                    localFriends: friendsRef.current,
+                };
 
                 const updateWorldMonster = async (monsterId: string, data: Record<string, any>) => {
                     await updateDoc(doc(db, 'buildings', monsterId), {
@@ -15121,14 +18165,92 @@ const App: React.FC = () => {
 
                     for (const monster of zoneMonsters) {
                         if (worldSweepActions >= WORLD_MONSTER_SWEEP_MAX_ACTIONS_PER_CYCLE) break;
+                        const monsterId = String(monster.id);
                         const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
+                        if (isTrollMonster(monster.buildingId)) {
+                            const isOwnerOrSweepHost =
+                                !isPlayerOwned ||
+                                userRef.current?.uid === monster.ownerId ||
+                                !onlinePlayersDataRef.current.some(p => p.uid === monster.ownerId);
+                            const lastBoostAt = Number(monster.lastTrollBoostAt || 0);
+                            if (isOwnerOrSweepHost && lastBoostAt <= nowTs && (nowTs - lastBoostAt) >= TROLL_WORK_BOOST_COOLDOWN_MS) {
+                                const whipTarget = getTrollAdjacentProductionTarget(monster, allBuildings, buildingData, {
+                                    isWrappedWorld: isWorldWrapped,
+                                    now: nowTs,
+                                });
+                                if (whipTarget) {
+                                    const whipTargetId = String(whipTarget.id);
+                                    const whipTargetInfo = buildingData.find(i => Number(i.id) === Number(whipTarget.buildingId));
+                                    const whip = resolveTrollProductionWhip(whipTarget, whipTargetInfo, nowTs);
+                                    const whipDir = getWrappedDirectionToTarget(monster, whipTarget, isWorldWrapped);
+                                    const targetUpdate: Record<string, any> = { workEndTime: whip.nextWorkEndTime };
+                                    whipTarget.workEndTime = whip.nextWorkEndTime;
+                                    if (whip.nextWorkEndTime <= nowTs && whipTarget.workState === 'working') {
+                                        whipTarget.workState = 'finished';
+                                        targetUpdate.workState = 'finished';
+                                    }
+                                    if (whip.selfDamage > 0) {
+                                        const currentShield = Math.max(0, Number(whipTarget.shieldHp) || 0);
+                                        let nextShield = currentShield;
+                                        let remainingDmg = whip.selfDamage;
+                                        if (nextShield > 0) {
+                                            const sDmg = Math.min(nextShield, remainingDmg);
+                                            nextShield -= sDmg;
+                                            remainingDmg -= sDmg;
+                                            whipTarget.shieldHp = nextShield > 0 ? nextShield : undefined;
+                                            targetUpdate.shieldHp = nextShield > 0 ? nextShield : deleteField();
+                                            if (nextShield <= 0) {
+                                                targetUpdate.shieldMaxHp = deleteField();
+                                                targetUpdate.protectionEndTime = deleteField();
+                                            }
+                                        }
+                                        if (remainingDmg > 0) {
+                                            const baseHp = whipTarget.hp ?? (whipTargetInfo?.stats.durability ?? 100);
+                                            const nextHp = Math.max(0, baseHp - remainingDmg);
+                                            if (nextHp <= 0) {
+                                                whipTarget.isDestroying = true;
+                                                whipTarget.destructionStartedAt = nowTs;
+                                                whipTarget.destructionEndTime = nowTs + MONSTER_FATAL_HIT_DELAY_MS;
+                                                whipTarget.destructionExpiresAt = nowTs + MONSTER_FATAL_HIT_DELAY_MS;
+                                                whipTarget.destructionDurationMs = MONSTER_FATAL_HIT_DELAY_MS;
+                                                whipTarget.destructionMaxLifetimeMs = Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS);
+                                                whipTarget.destructionStatus = 'active';
+                                                whipTarget.pendingDamage = baseHp;
+                                                Object.assign(targetUpdate, {
+                                                    hp: baseHp,
+                                                    maxHp: whipTarget.maxHp ?? (whipTargetInfo?.stats.durability ?? 100),
+                                                    isDestroying: true,
+                                                    destructionStartedAt: nowTs,
+                                                    destructionEndTime: nowTs + MONSTER_FATAL_HIT_DELAY_MS,
+                                                    destructionExpiresAt: nowTs + MONSTER_FATAL_HIT_DELAY_MS,
+                                                    destructionDurationMs: MONSTER_FATAL_HIT_DELAY_MS,
+                                                    destructionMaxLifetimeMs: Math.max(MONSTER_FATAL_HIT_DELAY_MS, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                                                    destructionStatus: 'active',
+                                                    pendingDamage: baseHp,
+                                                });
+                                            } else {
+                                                whipTarget.hp = nextHp;
+                                                targetUpdate.hp = nextHp;
+                                            }
+                                        }
+                                    }
+                                    monster.lastTrollBoostAt = nowTs;
+                                    (monster as any).attackDir = whipDir;
+                                    (monster as any).direction = whipDir;
+                                    await Promise.all([
+                                        updateDoc(doc(db, 'buildings', whipTargetId), targetUpdate),
+                                        updateWorldMonster(monsterId, { lastTrollBoostAt: nowTs, attackDir: whipDir, direction: whipDir }),
+                                    ]);
+                                    worldSweepActions++;
+                                }
+                            }
+                        }
                         if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) continue;
-                        // Skip monsters that were recently engaged in local combat (within 10 seconds)
-                        if ((nowTs - (monster.lastAttackTime || 0)) < 10000) {
+                        // Skip monsters that were recently engaged in local combat (within attack cooldown)
+                        if ((nowTs - (monster.lastAttackTime || 0)) < MONSTER_ATTACK_INTERVAL_MS) {
                             continue;
                         }
 
-                        const monsterId = String(monster.id);
                         const actualZoneId = getZoneId(monster.x, monster.y);
                         if (monster.zoneId !== actualZoneId) {
                             monster.zoneId = actualZoneId;
@@ -15137,16 +18259,26 @@ const App: React.FC = () => {
 
                         const attackTarget = getMonsterAdjacentAttackTarget(monster, allBuildings, buildingData, {
                             preferredTargetId: monsterTargetLockRef.current.get(monsterId) || null,
-                            isWrappedWorld: isWorldWrapped
+                            isWrappedWorld: isWorldWrapped,
+                            kotofeyContext,
                         });
                         const holdTarget = attackTarget || getMonsterAdjacentHoldTarget(monster, allBuildings, buildingData, {
                             preferredTargetId: monsterTargetLockRef.current.get(monsterId) || null,
-                            isWrappedWorld: isWorldWrapped
+                            isWrappedWorld: isWorldWrapped,
+                            kotofeyContext,
                         });
                         if (holdTarget) {
                             monsterTargetLockRef.current.set(monsterId, String(holdTarget.id));
                         } else {
-                            monsterTargetLockRef.current.delete(monsterId);
+                            const currentLockedTargetId = monsterTargetLockRef.current.get(monsterId);
+                            if (currentLockedTargetId) {
+                                const lockedBuilding = allBuildings.find(b => String(b.id) === currentLockedTargetId);
+                                if (!lockedBuilding || (lockedBuilding.hp !== undefined && lockedBuilding.hp <= 0)) {
+                                    monsterTargetLockRef.current.delete(monsterId);
+                                    monsterAttackDirectionRef.current.delete(monsterId);
+                                    if (gIdStr) monsterAttackDirectionRef.current.delete(gIdStr);
+                                }
+                            }
                         }
                         const gIdStr = monster.gameId ? String(monster.gameId) : '';
                         const lastAttackTime = Math.max(
@@ -15160,22 +18292,68 @@ const App: React.FC = () => {
                             const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
                             const targetInfo = buildingData.find(i => Number(i.id) === Number(attackTarget.buildingId));
                             const selectedTargetId = String(attackTarget.id);
-                            console.log("[COMBAT TARGET BEFORE HIT]", {
-                                combatTraceId,
-                                source,
-                                monsterId,
-                                targetId: selectedTargetId,
-                                targetHp: attackTarget.hp,
-                                targetIsDestroying: attackTarget.isDestroying,
-                                targetPendingDamage: attackTarget.pendingDamage,
-                                targetDestructionEndTime: attackTarget.destructionEndTime,
-                                deleting: isBuildingDeleting(selectedTargetId),
-                                tombstoned: isBuildingTombstoned(selectedTargetId),
-                                preferredTargetId: monsterTargetLockRef.current.get(monsterId),
-                                timestamp: Date.now(),
-                            });
-                            let damage = monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4;
-                            if (monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
+                            if (isHealerMonster(monster.buildingId)) {
+                                const healAmount = getKotofeyRepairAmount(monsterInfo, targetInfo, attackTarget, {
+                                    monster,
+                                    allBuildings,
+                                    now: nowTs,
+                                });
+                                const fullHp = Math.max(1, attackTarget.maxHp ?? targetInfo?.stats.durability ?? 100);
+                                const targetBaseHp = attackTarget.hp ?? fullHp;
+                                const nextHp = Math.min(fullHp, targetBaseHp + healAmount);
+                                if (nextHp > targetBaseHp) {
+                                    attackTarget.hp = nextHp;
+                                    attackTarget.maxHp = attackTarget.maxHp ?? fullHp;
+                                    if (nextHp >= fullHp) {
+                                        monsterTargetLockRef.current.delete(monsterId);
+                                    }
+                                    const attackDir = getWrappedDirectionToTarget(monster, attackTarget, isWorldWrapped);
+                                    monsterDirectionRef.current.set(monsterId, attackDir);
+                                    monsterAttackDirectionRef.current.set(monsterId, attackDir);
+                                    if (gIdStr) {
+                                        monsterDirectionRef.current.set(gIdStr, attackDir);
+                                        monsterAttackDirectionRef.current.set(gIdStr, attackDir);
+                                    }
+                                    monster.lastAttackTime = nowTs;
+                                    (monster as any).attackDir = attackDir;
+                                    (monster as any).direction = attackDir;
+                                    monsterAttackTimeRef.current.set(monsterId, nowTs);
+                                    if (gIdStr) {
+                                        monsterAttackTimeRef.current.set(gIdStr, nowTs);
+                                    }
+                                    monsterLastActionRef.current.set(monsterId, nowTs);
+
+                                    await Promise.all([
+                                        updateDoc(doc(db, 'buildings', selectedTargetId), {
+                                            hp: nextHp,
+                                            maxHp: attackTarget.maxHp,
+                                        }),
+                                        updateWorldMonster(monsterId, { lastAttackTime: nowTs, attackDir, direction: attackDir }),
+                                    ]);
+                                    worldSweepActions++;
+                                }
+                                continue;
+                            }
+                            if (DEBUG_FLAG_ENABLED) {
+                                console.log("[COMBAT TARGET BEFORE HIT]", {
+                                    combatTraceId,
+                                    source,
+                                    monsterId,
+                                    targetId: selectedTargetId,
+                                    targetHp: attackTarget.hp,
+                                    targetIsDestroying: attackTarget.isDestroying,
+                                    targetPendingDamage: attackTarget.pendingDamage,
+                                    targetDestructionEndTime: attackTarget.destructionEndTime,
+                                    deleting: isBuildingDeleting(selectedTargetId),
+                                    tombstoned: isBuildingTombstoned(selectedTargetId),
+                                    preferredTargetId: monsterTargetLockRef.current.get(monsterId),
+                                    timestamp: Date.now(),
+                                });
+                            }
+                            let damage = isTrollMonster(monster.buildingId)
+                                ? getTrollCombatDamage(monster, attackTarget, allBuildings, buildingData, nowTs)
+                                : (monsterInfo?.stats.damage ? parseInt(monsterInfo.stats.damage) : 4);
+                            if (!isTrollMonster(monster.buildingId) && monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates) {
                                 damage *= 2;
                             }
 
@@ -15191,44 +18369,48 @@ const App: React.FC = () => {
                             const targetBaseHp = attackTarget.hp ?? (targetInfo?.stats.durability ?? 100);
                             const nextHp = Math.max(0, targetBaseHp - remainingDamage);
                             const isFatalHit = remainingDamage > 0 && nextHp <= 0;
-                            console.log("[COMBAT DAMAGE QUEUED]", {
-                                combatTraceId,
-                                source,
-                                monsterId,
-                                targetId: selectedTargetId,
-                                damage,
-                                targetHpBefore: targetBaseHp,
-                                targetHpAfter: nextHp,
-                                targetShieldBefore: targetCurrentShield,
-                                targetShieldAfter: nextShield,
-                                recipientIds: [selectedTargetId],
-                                recipientCount: 1,
-                                timestamp: Date.now(),
-                            });
-                            if (isFatalHit) {
-                        console.log("[COMBAT FATAL HIT]", {
+                            if (DEBUG_FLAG_ENABLED) {
+                                console.log("[COMBAT DAMAGE QUEUED]", {
                                     combatTraceId,
                                     source,
                                     monsterId,
-                                    buildingId: selectedTargetId,
-                                    hpBefore: targetBaseHp,
-                                    hpAfterCalculated: nextHp,
-                                    wasAlreadyDestroying: Boolean(attackTarget.isDestroying),
-                                    oldDestructionEndTime: attackTarget.destructionEndTime,
+                                    targetId: selectedTargetId,
+                                    damage,
+                                    targetHpBefore: targetBaseHp,
+                                    targetHpAfter: nextHp,
+                                    targetShieldBefore: targetCurrentShield,
+                                    targetShieldAfter: nextShield,
+                                    recipientIds: [selectedTargetId],
+                                    recipientCount: 1,
                                     timestamp: Date.now(),
                                 });
-                                if (attackTarget.isDestroying || attackTarget.destructionEndTime !== undefined) {
-                                    console.error("[DESTRUCTION RESTART DETECTED]", {
+                            }
+                            if (isFatalHit) {
+                                if (DEBUG_FLAG_ENABLED) {
+                                    console.log("[COMBAT FATAL HIT]", {
                                         combatTraceId,
                                         source,
+                                        monsterId,
                                         buildingId: selectedTargetId,
-                                        hp: attackTarget.hp,
-                                        isDestroying: attackTarget.isDestroying,
-                                        destructionEndTime: attackTarget.destructionEndTime,
-                                        pendingDamage: attackTarget.pendingDamage,
+                                        hpBefore: targetBaseHp,
+                                        hpAfterCalculated: nextHp,
+                                        wasAlreadyDestroying: Boolean(attackTarget.isDestroying),
+                                        oldDestructionEndTime: attackTarget.destructionEndTime,
                                         timestamp: Date.now(),
-                                        stack: new Error().stack,
                                     });
+                                    if (attackTarget.isDestroying || attackTarget.destructionEndTime !== undefined) {
+                                        console.error("[DESTRUCTION RESTART DETECTED]", {
+                                            combatTraceId,
+                                            source,
+                                            buildingId: selectedTargetId,
+                                            hp: attackTarget.hp,
+                                            isDestroying: attackTarget.isDestroying,
+                                            destructionEndTime: attackTarget.destructionEndTime,
+                                            pendingDamage: attackTarget.pendingDamage,
+                                            timestamp: Date.now(),
+                                            stack: new Error().stack,
+                                        });
+                                    }
                                 }
                             }
                             const targetUpdate = isFatalHit
@@ -15267,7 +18449,16 @@ const App: React.FC = () => {
                                 attackTarget.destructionStatus = 'active';
                                 attackTarget.pendingDamage = targetBaseHp;
                             }
+                            const attackDir = getWrappedDirectionToTarget(monster, attackTarget, isWorldWrapped);
+                            monsterDirectionRef.current.set(monsterId, attackDir);
+                            monsterAttackDirectionRef.current.set(monsterId, attackDir);
+                            if (gIdStr) {
+                                monsterDirectionRef.current.set(gIdStr, attackDir);
+                                monsterAttackDirectionRef.current.set(gIdStr, attackDir);
+                            }
                             monster.lastAttackTime = nowTs;
+                            (monster as any).attackDir = attackDir;
+                            (monster as any).direction = attackDir;
                             monsterAttackTimeRef.current.set(monsterId, nowTs);
                             if (gIdStr) {
                                 monsterAttackTimeRef.current.set(gIdStr, nowTs);
@@ -15276,13 +18467,20 @@ const App: React.FC = () => {
 
                             await Promise.all([
                                 updateDoc(doc(db, 'buildings', String(attackTarget.id)), targetUpdate),
-                                updateWorldMonster(monsterId, { lastAttackTime: nowTs })
+                                updateWorldMonster(monsterId, { lastAttackTime: nowTs, attackDir, direction: attackDir })
                             ]);
                             worldSweepActions++;
                             continue;
                         }
 
                         if (holdTarget) {
+                            const holdDir = getWrappedDirectionToTarget(monster, holdTarget, isWorldWrapped);
+                            monsterDirectionRef.current.set(monsterId, holdDir);
+                            monsterAttackDirectionRef.current.set(monsterId, holdDir);
+                            if (gIdStr) {
+                                monsterDirectionRef.current.set(gIdStr, holdDir);
+                                monsterAttackDirectionRef.current.set(gIdStr, holdDir);
+                            }
                             continue;
                         }
 
@@ -15300,11 +18498,17 @@ const App: React.FC = () => {
                             isWorldWrapped,
                             monsterPrevPosRef.current.get(monsterId),
                             monsterDirectionRef.current.get(monsterId),
-                            monsterRecentPositionsRef.current.get(monsterId) || []
+                            monsterRecentPositionsRef.current.get(monsterId) || [],
+                            kotofeyContext
                         );
 
                         if (movePlan.chosenMove) {
-                            occupied.delete(`${monster.x},${monster.y}`);
+                            const oldTileHasOtherAliveBuilding = allBuildings.some(
+                                b => String(b.id) !== monsterId && b.x === monster.x && b.y === monster.y && (b.hp === undefined || b.hp > 0)
+                            );
+                            if (!oldTileHasOtherAliveBuilding) {
+                                occupied.delete(`${monster.x},${monster.y}`);
+                            }
                             occupied.add(`${movePlan.chosenMove.x},${movePlan.chosenMove.y}`);
                             monsterPrevPosRef.current.set(monsterId, { x: monster.x, y: monster.y });
                             const recentPositions = monsterRecentPositionsRef.current.get(monsterId) || [];
@@ -15328,7 +18532,7 @@ const App: React.FC = () => {
                             continue;
                         }
 
-                        if ((nowTs - lastMoveTime) >= (moveInterval * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER)) {
+                        if (!isRoadCapableCustomMonster(monster.buildingId) && (nowTs - lastMoveTime) >= (moveInterval * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER)) {
                             const teleportSpot = findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions);
                             if (teleportSpot) {
                                 occupied.delete(`${monster.x},${monster.y}`);
@@ -16739,6 +19943,18 @@ const App: React.FC = () => {
                 type: projectedUpgradeBuilding.type || existing.type,
             });
         }
+        if (serverClanBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverClanBuildingsRef.current.get(buildingDocId)!;
+            serverClanBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                buildingId: projectedUpgradeBuilding.buildingId,
+                isConstructing: projectedUpgradeBuilding.isConstructing,
+                constructionEndTime: upgradeConstructionEndTime,
+                hp: projectedUpgradeBuilding.hp,
+                maxHp: projectedUpgradeBuilding.maxHp,
+                type: projectedUpgradeBuilding.type || existing.type,
+            });
+        }
 
         if (isAuthReady && user) {
             updateDoc(doc(db, 'buildings', buildingDocId), {
@@ -16837,6 +20053,10 @@ const App: React.FC = () => {
         if (serverZoneBuildingsRef.current.has(buildingDocId)) {
             const existing = serverZoneBuildingsRef.current.get(buildingDocId)!;
             serverZoneBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
+        }
+        if (serverClanBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverClanBuildingsRef.current.get(buildingDocId)!;
+            serverClanBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
         }
         lastInteractionRef.current.set(buildingDocId, Date.now());
 
@@ -17195,6 +20415,16 @@ const App: React.FC = () => {
                     maxHp: newB.maxHp,
                 });
             }
+            if (serverClanBuildingsRef.current.has(buildingDocId)) {
+                serverClanBuildingsRef.current.set(buildingDocId, {
+                    ...serverClanBuildingsRef.current.get(buildingDocId)!,
+                    buildingId: nextBid,
+                    workState: 'idle',
+                    workEndTime: undefined,
+                    hp: newB.hp,
+                    maxHp: newB.maxHp,
+                });
+            }
             setSelectedBuilding(prev => prev && String(prev.building.id) === buildingDocId ? { building: newB, info: nextInfo || info } : prev);
             lastInteractionRef.current.set(buildingDocId, Date.now());
 
@@ -17322,6 +20552,14 @@ const App: React.FC = () => {
             if (serverZoneBuildingsRef.current.has(buildingDocId)) {
                 serverZoneBuildingsRef.current.set(buildingDocId, {
                     ...serverZoneBuildingsRef.current.get(buildingDocId)!,
+                    buildingId: u.nextBid,
+                    workState: 'idle',
+                    workEndTime: undefined,
+                });
+            }
+            if (serverClanBuildingsRef.current.has(buildingDocId)) {
+                serverClanBuildingsRef.current.set(buildingDocId, {
+                    ...serverClanBuildingsRef.current.get(buildingDocId)!,
                     buildingId: u.nextBid,
                     workState: 'idle',
                     workEndTime: undefined,
@@ -17468,6 +20706,10 @@ const App: React.FC = () => {
         if (serverZoneBuildingsRef.current.has(buildingDocId)) {
             const existing = serverZoneBuildingsRef.current.get(buildingDocId)!;
             serverZoneBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
+        }
+        if (serverClanBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverClanBuildingsRef.current.get(buildingDocId)!;
+            serverClanBuildingsRef.current.set(buildingDocId, { ...existing, workState: 'working', workEndTime });
         }
         lastInteractionRef.current.set(buildingDocId, Date.now());
 
@@ -18161,7 +21403,10 @@ const App: React.FC = () => {
 
     const handleMoveClick = () => {
         if (!selectedBuilding) return;
-        if (!isMyBuilding(selectedBuilding.building)) {
+        const b = selectedBuilding.building;
+        const isSystemOrNeutral = !b.ownerId || b.ownerId === "-1" || b.ownerId === "0" || b.ownerId === "monster" || b.ownerName === "Система";
+        const isMoveableTerrain = (Number(b.buildingId) === MOUNTAIN_ID || Number(b.buildingId) === RIVER_ID) && (isMyBuilding(b) || isSystemOrNeutral);
+        if (!isMyBuilding(b) && !isMoveableTerrain) {
             alert("Перемещать можно только свои постройки.");
             return;
         }
@@ -18297,7 +21542,7 @@ const App: React.FC = () => {
         }
         const buildingDocId = String(building.id);
         const duplicateSoldIds = new Set<string>([buildingDocId]);
-        [serverMyBuildingsRef.current, serverZoneBuildingsRef.current].forEach((snapshotMap) => {
+        [serverMyBuildingsRef.current, serverZoneBuildingsRef.current, serverClanBuildingsRef.current].forEach((snapshotMap) => {
             snapshotMap.forEach((candidate, candidateId) => {
                 if (
                     candidate.x === building.x &&
@@ -18719,6 +21964,15 @@ const App: React.FC = () => {
                 workState: 'idle',
             });
         }
+        if (serverClanBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverClanBuildingsRef.current.get(buildingDocId)!;
+            serverClanBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                isConstructing: false,
+                constructionEndTime: 0,
+                workState: 'idle',
+            });
+        }
 
         if (isAuthReady && user) {
             speedUpInFlightRef.current.add(buildingDocId);
@@ -18834,8 +22088,25 @@ const App: React.FC = () => {
     };
 
     const handleSelectBuildingFromMenu = useCallback((building: Building) => {
+        if (Date.now() - buildMenuOpenedAtRef.current < 400) {
+            return;
+        }
         if (building.id === 6000 && playerLevel < 2) {
             alert('Для постройки «Воровского логова» требуется 2 уровень аккаунта.');
+            return;
+        }
+        if (isRoadBuilding(building.id)) {
+            setBuildMenu({ visible: false, x: 0, y: 0 });
+            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+            playCloseSound();
+            setRoadBuilderMode(true);
+            return;
+        }
+        if (isPavementBuilding(building.id)) {
+            setBuildMenu({ visible: false, x: 0, y: 0 });
+            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+            playCloseSound();
+            setPavementBuilderMode(true);
             return;
         }
         setBuildMenu({ visible: false, x: 0, y: 0 });
@@ -18844,6 +22115,9 @@ const App: React.FC = () => {
     }, [playerLevel, buildMenu.x, buildMenu.y, playCloseSound]);
 
     const closeBuildMenu = useCallback(() => {
+        if (Date.now() - buildMenuOpenedAtRef.current < 400) {
+            return;
+        }
         setBuildMenu({ visible: false, x: 0, y: 0 });
     }, []);
 
@@ -18853,6 +22127,7 @@ const App: React.FC = () => {
 
     const backToBuildMenu = useCallback(() => {
         const { x, y } = buildConfirmation;
+        buildMenuOpenedAtRef.current = Date.now();
         setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
         setBuildMenu({ visible: true, x, y });
     }, [buildConfirmation]);
@@ -19084,6 +22359,433 @@ const App: React.FC = () => {
         return () => clearInterval(interval);
     }, [user, townHallOrdersCycle, playerTownHallLevel, playerLevel]);
 
+    const handleUseBoneMeal = useCallback((targetBuilding?: PlacedBuilding | unknown) => {
+        const isPlacedBuilding = (val: any): val is PlacedBuilding => {
+            return Boolean(
+                val &&
+                typeof val === 'object' &&
+                ('buildingId' in val || 'ownerId' in val) &&
+                !('nativeEvent' in val) &&
+                !('preventDefault' in val) &&
+                !('bubbles' in val)
+            );
+        };
+
+        let b: PlacedBuilding | null = isPlacedBuilding(targetBuilding)
+            ? targetBuilding
+            : (selectedBuilding ? (placedBuildingsRef.current.find(pb => String(pb.id) === String(selectedBuilding.building.id)) || selectedBuilding.building) : null);
+
+        if (!b) {
+            // Find a player-owned garden bed that can grow (prefer working bed, then any bed)
+            const myWorkingBed = placedBuildingsRef.current.find(pb =>
+                (isMyBuilding(pb) || (user && pb.isLocal && (pb.ownerId === GUEST_ID || pb.ownerId === '0'))) &&
+                pb.workState === 'working' &&
+                getNextGardenBedStage(Number(pb.buildingId)) !== null
+            );
+            const myAnyBed = myWorkingBed || placedBuildingsRef.current.find(pb =>
+                (isMyBuilding(pb) || (user && pb.isLocal && (pb.ownerId === GUEST_ID || pb.ownerId === '0'))) &&
+                getNextGardenBedStage(Number(pb.buildingId)) !== null
+            );
+            if (myAnyBed) {
+                b = myAnyBed;
+            }
+        }
+
+        if (!b) {
+            setPermitPurchaseToast('Выберите грядку для удобрения костяной мукой!');
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 3000);
+            return;
+        }
+
+        const isOwner = isMyBuilding(b) || (!!user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === '0'));
+        if (!isOwner) {
+            alert('Вы можете удобрять только свои грядки!');
+            return;
+        }
+
+        const currentBid = Number(b.buildingId);
+        const nextBid = getNextGardenBedStage(currentBid);
+        if (!nextBid) {
+            alert('Эту грядку нельзя удобрить (она уже достигла максимального уровня роста)!');
+            return;
+        }
+
+        const availableBoneMeal = Math.max(0, Number(inventory[BONE_MEAL_ITEM_ID]) || 0);
+        if (availableBoneMeal < 1) {
+            alert('У вас нет костяной муки! Её можно приготовить в чане из костей или купить на черном рынке.');
+            return;
+        }
+
+        // Deduct 1 bone meal
+        updatePlayerResources(0, 0, { [BONE_MEAL_ITEM_ID]: -1 });
+
+        const nextInfo = buildingData.find(bd => bd.id === nextBid);
+        const buildingDocId = String(b.id);
+
+        const updates: any = {
+            buildingId: nextBid,
+            workState: 'idle',
+            workEndTime: deleteField()
+        };
+        if (nextInfo) {
+            const currentMaxHp = b.maxHp ?? nextInfo.stats.durability;
+            const currentHp = b.hp ?? currentMaxHp;
+            const currentDamage = Math.max(0, currentMaxHp - currentHp);
+            const nextMaxHp = nextInfo.stats.durability ?? currentMaxHp;
+            const nextHp = Math.max(1, nextMaxHp - currentDamage);
+            updates.hp = currentDamage > 0 ? nextHp : nextMaxHp;
+            updates.maxHp = nextMaxHp;
+            updates.type = nextInfo.type || b.type;
+        }
+
+        // Optimistically update placed buildings
+        setPlacedBuildings(prev => prev.map(pb =>
+            String(pb.id) === buildingDocId ? { ...pb, ...updates, isLocal: true } : pb
+        ));
+        placedBuildingsRef.current = placedBuildingsRef.current.map(pb =>
+            String(pb.id) === buildingDocId ? { ...pb, ...updates, isLocal: true } : pb
+        );
+
+        if (serverMyBuildingsRef.current.has(buildingDocId)) {
+            serverMyBuildingsRef.current.set(buildingDocId, {
+                ...serverMyBuildingsRef.current.get(buildingDocId)!,
+                buildingId: nextBid,
+                workState: 'idle',
+                workEndTime: undefined,
+                hp: updates.hp,
+                maxHp: updates.maxHp,
+            });
+        }
+        if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+            serverZoneBuildingsRef.current.set(buildingDocId, {
+                ...serverZoneBuildingsRef.current.get(buildingDocId)!,
+                buildingId: nextBid,
+                workState: 'idle',
+                workEndTime: undefined,
+                hp: updates.hp,
+                maxHp: updates.maxHp,
+            });
+        }
+
+        if (selectedBuilding && String(selectedBuilding.building.id) === buildingDocId && nextInfo) {
+            setSelectedBuilding({
+                building: { ...selectedBuilding.building, ...updates, buildingId: nextBid },
+                info: nextInfo
+            });
+        }
+
+        if (isAuthReadyRef.current && userRef.current) {
+            updateDoc(doc(db, 'buildings', buildingDocId), updates).catch(e =>
+                handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`)
+            );
+        }
+
+        playCoinSound();
+        triggerGatherJuice({
+            worldX: b.x,
+            worldY: b.y,
+            gold: 0,
+            resources: { [BONE_MEAL_ITEM_ID]: -1 },
+        });
+        const nextName = nextInfo?.name || `уровня ${nextBid}`;
+        addHistoryLog(`Грядка удобрена костяной мукой и мгновенно выросла: «${nextName}»!`, 'economy');
+        setPermitPurchaseToast('🌱 Грядка мгновенно выросла на следующий уровень!');
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 2500);
+    }, [selectedBuilding, inventory, buildingData, isMyBuilding, user, updatePlayerResources, playCoinSound, triggerGatherJuice, addHistoryLog]);
+
+    const handleChargeTrebuchet = useCallback((targetBuilding?: PlacedBuilding | unknown) => {
+        const isPlacedBuilding = (val: any): val is PlacedBuilding => {
+            return Boolean(
+                val &&
+                typeof val === 'object' &&
+                ('buildingId' in val || 'ownerId' in val) &&
+                !('nativeEvent' in val) &&
+                !('preventDefault' in val) &&
+                !('bubbles' in val)
+            );
+        };
+
+        const b: PlacedBuilding | null = isPlacedBuilding(targetBuilding)
+            ? targetBuilding
+            : (selectedBuilding ? (placedBuildingsRef.current.find(pb => String(pb.id) === String(selectedBuilding.building.id)) || selectedBuilding.building) : null);
+
+        if (!b) return;
+
+        if (!isMyBuilding(b) && !(user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === '0'))) {
+            alert('Вы можете заряжать только свои требушеты!');
+            return;
+        }
+
+        const stoneBlocksCount = inventory[STONE_BLOCK_ID] || 0;
+        if (stoneBlocksCount < 1) {
+            alert('Недостаточно каменных блоков! Для зарядки требушета требуется 1 каменный блок.');
+            return;
+        }
+
+        const now = Date.now();
+        if (b.trebuchetChargingUntil && now < b.trebuchetChargingUntil) {
+            return; // Already charging
+        }
+
+        // Deduct 1 stone block
+        setInventory(prev => ({
+            ...prev,
+            [STONE_BLOCK_ID]: Math.max(0, (prev[STONE_BLOCK_ID] || 0) - 1)
+        }));
+
+        if (isAuthReadyRef.current && userRef.current) {
+            updateDoc(doc(db, 'users', userRef.current.uid), {
+                [`inventory.${STONE_BLOCK_ID}`]: increment(-1)
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${userRef.current?.uid}`));
+        }
+
+        const chargingEndTime = now + 5000; // 5-second countdown timer
+        const animStartTime = now + 5000; // Animation plays after 5 seconds
+
+        const updatedProps: Partial<PlacedBuilding> = {
+            trebuchetChargingUntil: chargingEndTime,
+            trebuchetAnimStart: animStartTime,
+            trebuchetLoaded: false
+        };
+
+        const buildingDocId = String(b.id);
+
+        setPlacedBuildings(prev => prev.map(pb =>
+            String(pb.id) === buildingDocId ? { ...pb, ...updatedProps, isLocal: true } : pb
+        ));
+        placedBuildingsRef.current = placedBuildingsRef.current.map(pb =>
+            String(pb.id) === buildingDocId ? { ...pb, ...updatedProps, isLocal: true } : pb
+        );
+
+        setSelectedBuilding(null);
+
+        if (isAuthReadyRef.current && userRef.current) {
+            updateDoc(doc(db, 'buildings', buildingDocId), updatedProps).catch(e =>
+                handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`)
+            );
+        }
+
+        playCoinSound();
+        addHistoryLog('Начата зарядка требушета каменным блоком (5 сек.)', 'defense');
+        setPermitPurchaseToast('⚙️ Зарядка требушета началась (5 сек.)');
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 2500);
+    }, [selectedBuilding, isMyBuilding, user, inventory, playCoinSound, addHistoryLog, db]);
+
+    const handleStartTrebuchetAttack = useCallback((building: PlacedBuilding) => {
+        const liveB = placedBuildingsRef.current.find(b => String(b.id) === String(building.id)) ||
+                      placedBuildings.find(b => String(b.id) === String(building.id)) ||
+                      building;
+        setSelectedBuilding(null);
+        setTrebuchetTargeting({
+            buildingId: liveB.id,
+            sourceX: liveB.x,
+            sourceY: liveB.y
+        });
+        setPermitPurchaseToast('🎯 Выберите цель для требушета в радиусе 6 клеток');
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 3500);
+    }, [placedBuildings]);
+
+    const handleStartTrebuchetMove = useCallback((building: PlacedBuilding) => {
+        const liveB = placedBuildingsRef.current.find(b => String(b.id) === String(building.id)) ||
+                      placedBuildings.find(b => String(b.id) === String(building.id)) ||
+                      building;
+        setSelectedBuilding(null);
+        setTrebuchetTargeting(null);
+        setMortarRangePreview(null);
+        const targetState = {
+            buildingId: liveB.id,
+            sourceX: liveB.x,
+            sourceY: liveB.y
+        };
+        trebuchetMovingTargetingRef.current = targetState;
+        setTrebuchetMovingTargeting(targetState);
+        setPermitPurchaseToast('🚜 Выберите клетку для передвижения (до 8 клеток во всех направлениях)');
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 3500);
+    }, [placedBuildings]);
+
+    const handleShowMortarRange = useCallback((building: PlacedBuilding) => {
+        const liveB = placedBuildingsRef.current.find(b => String(b.id) === String(building.id)) ||
+                      placedBuildings.find(b => String(b.id) === String(building.id)) ||
+                      building;
+        setSelectedBuilding(null);
+        setMortarRangePreview({
+            buildingId: liveB.id,
+            sourceX: liveB.x,
+            sourceY: liveB.y
+        });
+    }, [placedBuildings]);
+
+    const handleStartPlaceMonsterFromInventory = useCallback((itemId: number, buildingId: number) => {
+        const currentInv = inventoryRef.current || inventory;
+        const count = Math.max(0, Number(currentInv[itemId]) || 0);
+        const monsterBuilding = buildingData.find(b => b.id === buildingId);
+        if (!monsterBuilding) return;
+        if (count < 1) {
+            alert(`${monsterBuilding.name} отсутствует в инвентаре.`);
+            return;
+        }
+
+        setShowInventory(false);
+        setShowMonsterAcademyModal(false);
+        setShowBlackMarketMissingModal(false);
+        setBlackMarketBuilding(null);
+        setSelectedBuilding(null);
+        setRoadBuilderMode(false);
+        setPavementBuilderMode(false);
+        setTrebuchetTargeting(null);
+        setTrebuchetMovingTargeting(null);
+        setMortarRangePreview(null);
+        setMoveMode({ active: false, building: null });
+        setBuildMenu(prev => ({ ...prev, visible: false }));
+
+        const nextPlacement = { building: monsterBuilding, fromInventoryItemId: itemId };
+        pendingMonsterPlacementRef.current = nextPlacement;
+        setPendingMonsterPlacement(nextPlacement);
+        setPermitPurchaseToast(`🐾 Выберите свободную клетку на карте для размещения «${monsterBuilding.name}» (ESC — отмена)`);
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 4000);
+    }, [inventory, buildingData]);
+
+    const handleCreateAcademyMonster = useCallback(async (buildingId: number) => {
+        if (isCreatingAcademyMonsterRef.current) return;
+        const itemId = ACADEMY_CRAFTABLE_MONSTER_ITEM_BY_BUILDING_ID[buildingId as keyof typeof ACADEMY_CRAFTABLE_MONSTER_ITEM_BY_BUILDING_ID];
+        const monsterBuilding = buildingData.find(b => b.id === buildingId);
+        if (!itemId || !monsterBuilding) return;
+
+        const currentInv = inventoryRef.current || inventory;
+        const recipeResources = monsterBuilding.constructionRequirements?.resources || (buildingId === KOTOFEY_ID ? KOTOFEY_RECIPE_RESOURCES : []);
+        const missingResources = recipeResources.filter(
+            req => (Number(currentInv[req.id]) || 0) < (req.amount || 0)
+        );
+        if (missingResources.length > 0) {
+            setBlackMarketBuilding(monsterBuilding);
+            setShowBlackMarketMissingModal(true);
+            return;
+        }
+
+        const priceGold = monsterBuilding.price ?? (buildingId === KOTOFEY_ID ? KOTOFEY_PRICE_GOLD : 0);
+        const currentGold = playerGoldRef.current ?? playerGold;
+        if (currentGold < priceGold) {
+            alert(`Недостаточно монет! Требуется ${priceGold.toLocaleString('ru-RU')} монет.`);
+            return;
+        }
+
+        const currentUser = userRef.current;
+        if (!isAuthReadyRef.current || !currentUser) {
+            alert(`Необходимо авторизоваться, чтобы создать «${monsterBuilding.name}».`);
+            return;
+        }
+
+        isCreatingAcademyMonsterRef.current = true;
+        setIsCreatingAcademyMonster(true);
+        try {
+            const pbUpdates: Record<string, any> = {
+                gold: increment(-priceGold),
+                [`inventory.${itemId}`]: increment(1),
+            };
+            const invDeltas: Record<number, number> = {
+                [itemId]: 1,
+            };
+            for (const req of recipeResources) {
+                const amt = req.amount || 0;
+                if (amt > 0) {
+                    pbUpdates[`inventory.${req.id}`] = increment(-amt);
+                    invDeltas[req.id] = (invDeltas[req.id] || 0) - amt;
+                }
+            }
+
+            // Commit payment and grant monster inventory item atomically in DB before
+            // tile placement so any disconnect/reload preserves it in inventory.
+            await updateDoc(doc(db, 'users', currentUser.uid), pbUpdates);
+
+            playerGoldRef.current = Math.max(0, playerGoldRef.current - priceGold);
+            setPlayerGold(prev => Math.max(0, prev - priceGold));
+
+            const syncNext = sanitizeInventoryCounts(inventoryRef.current || currentInv);
+            Object.entries(invDeltas).forEach(([id, amount]) => {
+                const numericId = Number(id);
+                if (!Number.isFinite(numericId)) return;
+                syncNext[numericId] = normalizeInventoryCount(normalizeInventoryCount(syncNext[numericId] || 0) + amount);
+            });
+            inventoryRef.current = syncNext;
+            setInventory(prev => {
+                const next = sanitizeInventoryCounts(prev);
+                Object.entries(invDeltas).forEach(([id, amount]) => {
+                    const numericId = Number(id);
+                    if (!Number.isFinite(numericId)) return;
+                    next[numericId] = normalizeInventoryCount(normalizeInventoryCount(next[numericId] || 0) + amount);
+                });
+                return next;
+            });
+
+            playCoinSound();
+            addHistoryLog(`Академия монстров: создан "${monsterBuilding.name}" за ${priceGold.toLocaleString('ru-RU')} монет и добавлен в инвентарь.`, 'build');
+            setShowMonsterAcademyModal(false);
+            setSelectedBuilding(null);
+            setRoadBuilderMode(false);
+            setPavementBuilderMode(false);
+            setTrebuchetTargeting(null);
+            setTrebuchetMovingTargeting(null);
+            setMortarRangePreview(null);
+            setMoveMode({ active: false, building: null });
+            setBuildMenu(prev => ({ ...prev, visible: false }));
+
+            const nextPlacement = { building: monsterBuilding, fromInventoryItemId: itemId };
+            pendingMonsterPlacementRef.current = nextPlacement;
+            setPendingMonsterPlacement(nextPlacement);
+
+            setPermitPurchaseToast(`🐾 ${monsterBuilding.name} создан! Выберите свободную клетку на карте (при отмене останется в инвентаре).`);
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 5000);
+        } catch (err) {
+            console.error('[MonsterAcademy] Failed to create monster:', buildingId, err);
+            alert(`Не удалось создать «${monsterBuilding.name}» (нет ответа от сервера). Монеты и ресурсы не списаны.`);
+        } finally {
+            isCreatingAcademyMonsterRef.current = false;
+            setIsCreatingAcademyMonster(false);
+        }
+    }, [buildingData, inventory, playerGold, playCoinSound, addHistoryLog]);
+
     const handleUseInventoryItem = useCallback(async (itemId: number) => {
         const available = Math.max(0, Number(inventory[itemId]) || 0);
         if (available <= 0) {
@@ -19179,7 +22881,27 @@ const App: React.FC = () => {
             }, 2500);
             return;
         }
-    }, [inventory, user, itemData, lumberjackBuffUntil, mortarBuffUntil, updatePlayerResources, playCoinSound, addHistoryLog]);
+
+        // 4. Bone Meal (10052) -> Skip garden bed growth stage and advance to next level
+        if (itemId === BONE_MEAL_ITEM_ID) {
+            handleUseBoneMeal();
+            return;
+        }
+
+        // 5. Academy monsters from inventory (10053 Котофей, 10054 Тролль, 10055 Айболит)
+        if (itemId === KOTOFEY_ITEM_ID) {
+            handleStartPlaceMonsterFromInventory(KOTOFEY_ITEM_ID, KOTOFEY_ID);
+            return;
+        }
+        if (itemId === TROLL_ITEM_ID) {
+            handleStartPlaceMonsterFromInventory(TROLL_ITEM_ID, TROLL_ID);
+            return;
+        }
+        if (itemId === AIBOLIT_ITEM_ID) {
+            handleStartPlaceMonsterFromInventory(AIBOLIT_ITEM_ID, AIBOLIT_ID);
+            return;
+        }
+    }, [inventory, user, itemData, lumberjackBuffUntil, mortarBuffUntil, updatePlayerResources, playCoinSound, addHistoryLog, handleUseBoneMeal, handleStartPlaceMonsterFromInventory]);
 
     const handleCraftInventoryItem = useCallback(async (recipeId: string, count: number = 1) => {
         const recipe = getCraftingRecipe(recipeId);
@@ -20837,7 +24559,7 @@ const App: React.FC = () => {
         }
 
         const profileData = allUsers[targetUid];
-        const onlinePresence = onlinePlayersData.find(player => player.uid === targetUid);
+        const onlinePresence = onlinePlayersDataRef.current.find(player => player.uid === targetUid);
         const lastSeen = Number(onlinePresence?.lastSeen || profileData?.lastSeen || 0) || 0;
         const isCurrentPlayer = targetUid === user?.uid;
         const isOnline = isCurrentPlayer || !!onlinePresence || (lastSeen > 0 && (currentTime - lastSeen) < 120000);
@@ -21391,7 +25113,10 @@ const App: React.FC = () => {
                 const resumeTraceId = `permit-resume-${Date.now()}-${intent.building.id}-${intent.x}-${intent.y}`;
                 const result = await placeBuildingAtTileRef.current(
                     { ...intent.building }, intent.x, intent.y, resumeTraceId,
-                    { resumedAfterPermitPurchase: true }
+                    {
+                        resumedAfterPermitPurchase: true,
+                        ...(intent.fromInventoryItemId !== undefined ? { fromInventoryItemId: intent.fromInventoryItemId } : {}),
+                    }
                 );
                 if (result) {
                     console.warn(`[PermitFlow] placement succeeded`);
@@ -21589,6 +25314,80 @@ const App: React.FC = () => {
 
             {/* ... (MoveMode, OilModal, QuarryModal, UserContextModal, BuildingContextModal, MarketModal, BuildMenu, BuildConfirmation, InventoryModal, ShopModal, ExchangeModal, MapModal, ShoutModal unchanged) ... */}
 
+            {pendingMonsterPlacement && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-5 sm:px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-3 sm:gap-4 border border-emerald-500/80 animate-fade-in max-w-[95vw]">
+                    <img
+                        src={pendingMonsterPlacement.building.imageUrl || "/buildings/Монстры/Котофей/70007.webp"}
+                        alt={pendingMonsterPlacement.building.name}
+                        className="w-9 h-9 object-contain flex-shrink-0"
+                    />
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-emerald-300">Размещение: {pendingMonsterPlacement.building.name}</span>
+                            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">из инвентаря</span>
+                        </div>
+                        <span className="text-xs text-gray-300">Нажмите на любую свободную клетку карты. При отмене монстр останется в инвентаре.</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            pendingMonsterPlacementRef.current = null;
+                            setPendingMonsterPlacement(null);
+                            playCloseSound();
+                        }}
+                        className="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap cursor-pointer flex-shrink-0"
+                    >
+                        <span>Отмена</span>
+                        <span className="bg-red-800/80 px-1.5 py-0.5 rounded text-[10px] text-red-200">ESC</span>
+                    </button>
+                </div>
+            )}
+
+            {roadBuilderMode && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-5 sm:px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-3 sm:gap-4 border border-amber-500/70 animate-fade-in max-w-[95vw]">
+                    <span className="text-2xl flex-shrink-0 animate-pulse">🚧</span>
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-amber-300">Редактор строительства дороги</span>
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">100 🪙 / клетка</span>
+                        </div>
+                        <span className="text-xs text-gray-300">Нажимайте по клеткам, чтобы строить дорогу. Для того чтобы закрыть редактор нажмите esc</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setRoadBuilderMode(false);
+                            playCloseSound();
+                        }}
+                        className="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap cursor-pointer flex-shrink-0"
+                    >
+                        <span>Закрыть редактор строительства дороги</span>
+                        <span className="bg-red-800/80 px-1.5 py-0.5 rounded text-[10px] text-red-200">ESC</span>
+                    </button>
+                </div>
+            )}
+
+            {pavementBuilderMode && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-5 sm:px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-3 sm:gap-4 border border-amber-500/70 animate-fade-in max-w-[95vw]">
+                    <span className="text-2xl flex-shrink-0 animate-pulse">🏛️</span>
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-amber-300">Редактор строительства мостовой</span>
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">1000 🪙 + 1 🧱 / клетка</span>
+                        </div>
+                        <span className="text-xs text-gray-300">Нажимайте по клеткам, чтобы строить мостовую. Для того чтобы закрыть редактор нажмите esc</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setPavementBuilderMode(false);
+                            playCloseSound();
+                        }}
+                        className="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap cursor-pointer flex-shrink-0"
+                    >
+                        <span>Закрыть редактор строительства мостовой</span>
+                        <span className="bg-red-800/80 px-1.5 py-0.5 rounded text-[10px] text-red-200">ESC</span>
+                    </button>
+                </div>
+            )}
+
             {moveMode.active && (
                 <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-blue-600/90 backdrop-blur-md text-white px-6 py-3 rounded-lg shadow-xl z-50 flex items-center gap-4 border border-blue-400">
                     <div className="flex flex-col items-center">
@@ -21596,6 +25395,54 @@ const App: React.FC = () => {
                         <span className="text-xs text-blue-200">Стоимость: {(Number(moveMode.building?.buildingId) === MOUNTAIN_ID || Number(moveMode.building?.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии</span>
                     </div>
                     <button onClick={() => setMoveMode({ active: false, building: null })} className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm font-bold transition-colors">Отмена</button>
+                </div>
+            )}
+
+            {trebuchetTargeting && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-950/95 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-4 border border-red-500/70 animate-fade-in">
+                    <span className="text-2xl animate-pulse">🎯</span>
+                    <div className="flex flex-col">
+                        <span className="font-black text-base text-red-200">Выберите цель для требушета</span>
+                        <span className="text-xs text-gray-300">Любая цель в радиусе 6 клеток (монстры, здания или свои постройки)</span>
+                    </div>
+                    <button
+                        onClick={() => setTrebuchetTargeting(null)}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-gray-600 transition-colors cursor-pointer"
+                    >
+                        Отмена (Esc)
+                    </button>
+                </div>
+            )}
+
+            {trebuchetMovingTargeting && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-emerald-950/95 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-4 border border-emerald-500/70 animate-fade-in">
+                    <span className="text-2xl animate-bounce">🚜</span>
+                    <div className="flex flex-col">
+                        <span className="font-black text-base text-emerald-200">Передвижение требушета</span>
+                        <span className="text-xs text-gray-300">Выберите подсвеченную клетку для перемещения (до 8 клеток во всех направлениях)</span>
+                    </div>
+                    <button
+                        onClick={() => setTrebuchetMovingTargeting(null)}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-gray-600 transition-colors cursor-pointer"
+                    >
+                        Отмена (Esc)
+                    </button>
+                </div>
+            )}
+
+            {mortarRangePreview && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-4 border border-blue-500/70 animate-fade-in">
+                    <span className="text-2xl animate-pulse">🎯</span>
+                    <div className="flex flex-col">
+                        <span className="font-black text-base text-blue-200">Зона обзора мортиры (8 клеток)</span>
+                        <span className="text-xs text-gray-300">Мортира автоматически атакует монстров в этом радиусе</span>
+                    </div>
+                    <button
+                        onClick={() => setMortarRangePreview(null)}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-gray-600 transition-colors cursor-pointer"
+                    >
+                        Закрыть (Esc)
+                    </button>
                 </div>
             )}
 
@@ -21727,7 +25574,7 @@ const App: React.FC = () => {
                 handleExplode={handleExplode}
                 handleApplyProtection={handleApplyProtection}
                 onOpenMarket={(type) => { setMarketType(type); setShowMarketModal(true); }}
-                onSelectPlayer={(playerId) => { setSelectedPlayerId(playerId); setShowPlayerProfile(true); }}
+                onSelectPlayer={handleSelectPlayer}
                 onOpenClanStockExchange={() => setShowClanStockExchangeModal(true)}
                 isMortarActive={mortarBuffUntil > currentTime}
                 onUseItem={handleUseInventoryItem}
@@ -21741,8 +25588,15 @@ const App: React.FC = () => {
                     setShowFinancialProductionModal(true);
                 }}
                 onSetMonsterMode={handleSetMonsterMode}
+                onUpdateKotofeySettings={handleUpdateKotofeySettings}
+                onUpdateTrollSettings={handleUpdateTrollSettings}
                 lastFinancialCollectTime={lastFinancialCollectTime}
                 hasEgyptianObelisk={hasEgyptianObelisk}
+                handleUseBoneMeal={handleUseBoneMeal}
+                handleChargeTrebuchet={handleChargeTrebuchet}
+                onStartTrebuchetAttack={handleStartTrebuchetAttack}
+                onStartTrebuchetMove={handleStartTrebuchetMove}
+                onShowMortarRange={handleShowMortarRange}
             />
 
             <FinancialProductionModal
@@ -21751,8 +25605,11 @@ const App: React.FC = () => {
                 userUid={user?.uid}
                 onSetMonsterMode={handleSetMonsterMode}
                 onSetAllMonstersMode={handleSetAllMonstersMode}
+                onUpdateKotofeySettings={handleUpdateKotofeySettings}
+                onUpdateTrollSettings={handleUpdateTrollSettings}
                 onOpenMonstersShop={() => {
                     setShowFinancialProductionModal(false);
+                    buildMenuOpenedAtRef.current = Date.now();
                     setBuildMenu(prev => ({ ...prev, visible: true }));
                 }}
                 onClose={() => {
@@ -21978,6 +25835,22 @@ const App: React.FC = () => {
             <MonsterAcademyModal
                 isOpen={showMonsterAcademyModal}
                 onClose={closeMonsterAcademyModal}
+                buildingData={buildingData}
+                kotofeyBuilding={buildingData.find(b => b.id === KOTOFEY_ID) || null}
+                placedBuildings={placedBuildings}
+                userUid={user?.uid}
+                playerGold={playerGold}
+                inventory={inventory}
+                itemData={itemData}
+                coinImageUrl={coinImageUrl}
+                isProcessing={isCreatingAcademyMonster}
+                onCreateAcademyMonster={handleCreateAcademyMonster}
+                onOpenBlackMarketForBuilding={(targetBuilding) => {
+                    setBlackMarketBuilding(targetBuilding);
+                    setShowBlackMarketMissingModal(true);
+                }}
+                onPlaceAcademyMonsterFromInventory={handleStartPlaceMonsterFromInventory}
+                getCanonicalItemName={getCanonicalItemName}
             />
 
             <WorldMapModal
@@ -22134,6 +26007,7 @@ const App: React.FC = () => {
                 onClose={() => { setShowProfileModal(false); playCloseSound(); }}
                 activeProfileTab={activeProfileTab}
                 setActiveProfileTab={setActiveProfileTab}
+                playerJoinNumber={playerJoinNumber}
                 completedAchievements={playerAchievements}
                 claimedAchievements={claimedAchievements}
                 selectedTitle={selectedTitle}
@@ -22244,83 +26118,21 @@ const App: React.FC = () => {
             />
 
 
-            {/* Никнеймы игроков на карте */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                {onlinePlayersData.map(player => {
-                    if (typeof player.x !== 'number' || typeof player.y !== 'number') return null;
-                    const zoom = ZOOM_LEVELS[zoomIndex];
-                    const pos = interpolatedPlayers[player.uid] || { x: player.x, y: player.y };
-                    const { screenX, screenY } = worldToScreen(pos.x, pos.y, zoom);
-
-                    const finalX = screenX + cameraOffsetRef.current.x;
-                    const finalY = screenY + cameraOffsetRef.current.y;
-
-                    if (isNaN(finalX) || isNaN(finalY) || finalX < -150 || finalX > window.innerWidth + 150 || finalY < -150 || finalY > window.innerHeight + 150) {
-                        return null;
-                    }
-
-                    const displayLevel = (user && player.uid === user.uid)
-                        ? playerLevel
-                        : Math.max(Number(player.level || 1) || 1, Number(allUsers[player.uid]?.level || 1) || 1);
-
-                    const playerNameDisplay = (player.name && player.name !== 'Неизвестный')
-                        ? player.name
-                        : (allUsers[player.uid]?.name && allUsers[player.uid]?.name !== 'Неизвестный')
-                            ? allUsers[player.uid]?.name
-                            : (user && player.uid === user.uid)
-                                ? playerName
-                                : player.name || 'Неизвестный';
-
-                    const playerTitle = (user && player.uid === user.uid)
-                        ? selectedTitle
-                        : (player.title || allUsers[player.uid]?.selectedTitle || allUsers[player.uid]?.data?.selectedTitle || null);
-
-                    return (
-                        <div
-                            key={player.uid}
-                            className="absolute transform -translate-x-1/2 -translate-y-full pointer-events-auto cursor-pointer group z-10"
-                            style={{ left: finalX, top: finalY - 120, willChange: 'left, top' }}
-                            onClick={() => {
-                                setSelectedPlayerId(player.uid);
-                                setShowPlayerProfile(true);
-                            }}
-                        >
-                            {/* Title prefix badge over player avatar */}
-                            {playerTitle && (
-                                <div className="flex justify-center mb-1">
-                                    <span className="bg-black/80 text-yellow-300 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full border border-yellow-400/50 shadow-lg whitespace-nowrap drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] tracking-wide">
-                                        [{playerTitle}]
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Player nickname tag with level icon */}
-                            <div className="bg-black/60 backdrop-blur-sm text-white px-3 py-1 rounded-full border border-blue-400/50 shadow-lg group-hover:bg-blue-600/80 group-hover:scale-110 transition-all duration-200 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                                <span className="font-bold text-sm whitespace-nowrap drop-shadow-md">{playerNameDisplay}</span>
-                                {/* Level icon inside nickname tag */}
-                                <img 
-                                    src={LEVEL_ICON_URLS[displayLevel] || LEVEL_ICON_URLS[1]}
-                                    alt={`Level ${displayLevel}`}
-                                    className="w-5 h-5 object-contain"
-                                    style={{ imageRendering: 'pixelated' }}
-                                />
-                            </div>
-                            {/* Triangle pointer */}
-                            <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-blue-400/50 mx-auto mt-[-1px]"></div>
-                            {/* Player avatar below nickname - fixed size, no zoom scaling */}
-                            <div className="flex justify-center mt-1">
-                                <img 
-                                    src={(sheriffId === player.uid || deputies.includes(player.uid)) ? POLICE_SKIN_URL : (PLAYER_AVATAR_URLS[displayLevel] || PLAYER_AVATAR_URLS[1])}
-                                    alt="Player"
-                                    className="object-contain"
-                                    style={{ width: '80px', height: '80px', imageRendering: 'pixelated', minWidth: '80px', minHeight: '80px' }}
-                                />
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+            {/* Никнеймы игроков на карте (изолированный RAF рендер) */}
+            <PlayerNameplatesOverlay
+                subscribeToPresence={subscribeToPresence}
+                worldToScreen={worldToScreen}
+                cameraOffsetRef={cameraOffsetRef}
+                zoomIndex={zoomIndex}
+                user={user}
+                playerLevel={playerLevel}
+                allUsersRef={allUsersRef}
+                playerName={playerName}
+                selectedTitle={selectedTitle}
+                sheriffId={sheriffId}
+                deputies={deputies}
+                onSelectPlayer={handleSelectPlayer}
+            />
 
             {/* Combo & Gathering Juice Overlay (Floating numbers, combo badges, combo streak HUD, and Level-Up Fireworks/Confetti) */}
             <ComboJuiceOverlay
@@ -22506,56 +26318,8 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Active Buffs Pill Displays */}
-                    {(lumberjackBuffUntil > currentTime || mortarBuffUntil > currentTime) && (
-                        <div className="flex flex-col gap-1 mt-1 z-30">
-                            {lumberjackBuffUntil > currentTime && (() => {
-                                const remainingSec = Math.max(0, Math.ceil((lumberjackBuffUntil - currentTime) / 1000));
-                                const mins = Math.floor(remainingSec / 60);
-                                const secs = remainingSec % 60;
-                                const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-                                return (
-                                    <div
-                                        className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-md backdrop-blur-md"
-                                        style={{
-                                            background: 'rgba(5, 150, 105, 0.55)',
-                                            border: '1px solid rgba(52, 211, 153, 0.75)',
-                                            color: '#d1fae5',
-                                            textShadow: '0 1px 2px rgba(0,0,0,0.8)'
-                                        }}
-                                        title="Эликсир дровосека: +1 дерево за каждый срубленный ствол"
-                                    >
-                                        <span>🪓</span>
-                                        <span>Лесоруб: +1</span>
-                                        <span className="text-emerald-200 font-mono font-bold">({formatted})</span>
-                                    </div>
-                                );
-                            })()}
-
-                            {mortarBuffUntil > currentTime && (() => {
-                                const remainingSec = Math.max(0, Math.ceil((mortarBuffUntil - currentTime) / 1000));
-                                const mins = Math.floor(remainingSec / 60);
-                                const secs = remainingSec % 60;
-                                const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-                                return (
-                                    <div
-                                        className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black shadow-md backdrop-blur-md"
-                                        style={{
-                                            background: 'rgba(2, 132, 199, 0.55)',
-                                            border: '1px solid rgba(56, 189, 248, 0.75)',
-                                            color: '#e0f2fe',
-                                            textShadow: '0 1px 2px rgba(0,0,0,0.8)'
-                                        }}
-                                        title="Каменный укрепляющий раствор: -30% стоимость ремонта зданий"
-                                    >
-                                        <span>🧱</span>
-                                        <span>Раствор: -30%</span>
-                                        <span className="text-sky-200 font-mono font-bold">({formatted})</span>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-                    )}
+                    {/* Active Buffs Pill Displays (Isolated component with local timer) */}
+                    <ActiveBuffsPills lumberjackBuffUntil={lumberjackBuffUntil} mortarBuffUntil={mortarBuffUntil} />
                 </div>
             </div>
 
@@ -22691,6 +26455,7 @@ const App: React.FC = () => {
 
             {tooltip.visible && (
                 <div
+                    ref={tooltipRef}
                     className="absolute bg-gray-900/80 backdrop-blur-sm border border-gray-600 rounded-lg p-2 text-sm text-white pointer-events-none shadow-lg"
                     style={{ transform: `translate(${tooltip.x + 15}px, ${tooltip.y + 15}px)` }}
                 >

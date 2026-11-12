@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
       '/api': {
         target: 'http://127.0.0.1:8090',
         changeOrigin: true,
+        timeout: 0,
+        proxyTimeout: 0,
         configure: (proxy) => {
           proxy.on('proxyRes', (proxyRes, req, res) => {
             if (req.url && req.url.includes('/realtime')) {
@@ -38,8 +40,41 @@ export default defineConfig(({ mode }) => {
           name: 'static-assets-cache-control',
           configureServer(server) {
             server.middlewares.use((req, res, next) => {
-              if (req.url && (req.url.startsWith('/buildings/') || req.url.startsWith('/Gui/') || req.url.startsWith('/Chat/') || /\.(webp|png|jpg|jpeg|gif|svg)$/i.test(req.url))) {
-                res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+              const url = req.url || '';
+              if (
+                url.startsWith('/buildings/') ||
+                url.startsWith('/animation/') ||
+                url.startsWith('/music/') ||
+                url.startsWith('/last_appx/') ||
+                url.startsWith('/Grid/') ||
+                url.startsWith('/Gui/') ||
+                url.startsWith('/Chat/') ||
+                url.startsWith('/assets/') ||
+                /\.(webp|png|jpg|jpeg|gif|svg|mp3|mp4|wav|ogg|woff2?)$/i.test(url)
+              ) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+              }
+              next();
+            });
+          },
+          configurePreviewServer(server) {
+            server.middlewares.use((req, res, next) => {
+              const url = req.url || '';
+              if (!url.startsWith('/assets/') && !url.endsWith('.webp')) {
+                console.log('[REQ]', req.method, url);
+              }
+              if (
+                url.startsWith('/buildings/') ||
+                url.startsWith('/animation/') ||
+                url.startsWith('/music/') ||
+                url.startsWith('/last_appx/') ||
+                url.startsWith('/Grid/') ||
+                url.startsWith('/Gui/') ||
+                url.startsWith('/Chat/') ||
+                url.startsWith('/assets/') ||
+                /\.(webp|png|jpg|jpeg|gif|svg|mp3|mp4|wav|ogg|woff2?)$/i.test(url)
+              ) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
               }
               next();
             });

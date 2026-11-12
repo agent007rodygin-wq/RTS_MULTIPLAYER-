@@ -1,7 +1,8 @@
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect, useMemo } from 'react';
 import { ClanIcon } from '../../../components/IconComponents';
 import { ZONES_X, ZONES_Y, ZONE_SIZE } from '../../world.js';
 import type { Building, PlacedBuilding, Clan } from '../../../types';
+import { db, collection, query, where, getDocs } from '../../pocketbase';
 
 export interface WorldMapModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ export interface WorldMapModalProps {
 }
 
 const WATCHTOWER_IDS = [801, 214, 215, 216];
+const BANDIT_CASTLE_IDS = [800, 373, 374, 375, 376, 377, 378, 379, 380, 386, 387, 388, 389, 415, 416, 451];
 
 interface PendingTeleportSector {
     col: number;
@@ -46,12 +48,54 @@ const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
     coinImageUrl
 }) => {
     const [pendingTeleport, setPendingTeleport] = useState<PendingTeleportSector | null>(null);
+    const [remoteClanBuildings, setRemoteClanBuildings] = useState<PlacedBuilding[]>([]);
 
     useEffect(() => {
         if (!isOpen) {
             setPendingTeleport(null);
+            return;
         }
-    }, [isOpen]);
+
+        let cancelled = false;
+        const fetchClanBuildings = async () => {
+            try {
+                const buildingsCol = collection(db, 'buildings');
+                const clanBuildingIdStrings = Array.from(new Set([
+                    ...buildingData
+                        .filter(b => b.category === 'Клан' || (b.name && (b.name.includes('Бандитский замок') || b.name.includes('Сторожевая башня'))))
+                        .map(b => String(b.id)),
+                    ...BANDIT_CASTLE_IDS.map(String),
+                    ...WATCHTOWER_IDS.map(String)
+                ]));
+                const q = query(buildingsCol, where('buildingId', 'in', clanBuildingIdStrings));
+                const snap = await getDocs(q);
+                if (cancelled) return;
+                const fetched: PlacedBuilding[] = [];
+                snap.docs.forEach(d => {
+                    const data = d.data() as PlacedBuilding;
+                    fetched.push({ ...data, id: String(d.id) });
+                });
+                setRemoteClanBuildings(fetched);
+            } catch (e) {
+                console.warn('[WorldMapModal] Failed to fetch clan buildings directly:', e);
+            }
+        };
+        fetchClanBuildings();
+        return () => { cancelled = true; };
+    }, [isOpen, buildingData]);
+
+    const allMapBuildings = useMemo(() => {
+        if (remoteClanBuildings.length === 0) return placedBuildings;
+        const map = new Map<string, PlacedBuilding>();
+        placedBuildings.forEach(b => map.set(String(b.id), b));
+        remoteClanBuildings.forEach(b => {
+            const id = String(b.id);
+            if (!map.has(id)) {
+                map.set(id, b);
+            }
+        });
+        return Array.from(map.values());
+    }, [placedBuildings, remoteClanBuildings]);
 
     if (!isOpen) return null;
 
@@ -92,23 +136,26 @@ const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
                                 Math.floor(townHallLocation.y / ZONE_SIZE) === row;
 
                             // Find all clan buildings in this zone/sector
-                            const sectorClanBuildings = placedBuildings.filter(b => {
+                            const sectorClanBuildings = allMapBuildings.filter(b => {
                                 const bCol = Math.floor(b.x / ZONE_SIZE);
                                 const bRow = Math.floor(b.y / ZONE_SIZE);
                                 if (bCol !== col || bRow !== row) return false;
                                 if (typeof b.hp === 'number' && b.hp <= 0) return false;
-                                const info = buildingData.find(i => i.id === b.buildingId);
+                                const numBid = Number(b.buildingId);
+                                const info = buildingData.find(i => Number(i.id) === numBid);
                                 return (
                                     info?.category === 'Клан' ||
-                                    WATCHTOWER_IDS.includes(Number(b.buildingId)) ||
+                                    WATCHTOWER_IDS.includes(numBid) ||
+                                    BANDIT_CASTLE_IDS.includes(numBid) ||
                                     (info?.name && (info.name.includes('Бандитский замок') || info.name.includes('Сторожевая башня')))
                                 );
                             });
 
                             // Primary clan building: prefer Bandit Castle, then Watchtower, then first clan building
                             const primaryClanBuilding = sectorClanBuildings.find(b => {
-                                const info = buildingData.find(i => i.id === b.buildingId);
-                                return info?.name && info.name.includes('Бандитский замок');
+                                const numBid = Number(b.buildingId);
+                                const info = buildingData.find(i => Number(i.id) === numBid);
+                                return BANDIT_CASTLE_IDS.includes(numBid) || (info?.name && info.name.includes('Бандитский замок'));
                             }) || sectorClanBuildings.find(b => WATCHTOWER_IDS.includes(Number(b.buildingId))) || sectorClanBuildings[0];
 
                             // Resolve clan occupying this sector
@@ -116,22 +163,34 @@ const WorldMapModalComponent: React.FC<WorldMapModalProps> = ({
                             if (primaryClanBuilding && clans && clans.length > 0) {
                                 const ownerIdStr = String(primaryClanBuilding.ownerId || '');
                                 if (currentUserUid && (ownerIdStr === currentUserUid || ownerIdStr === '0')) {
-                                    sectorClan = currentClan || clans.find(c => c.leaderUid === currentUserUid) || null;
+                                    sectorClan = currentClan || clans.find(c => c.leaderUid === currentUserUid || (c as any).leaderId === currentUserUid) || null;
                                 }
                                 if (!sectorClan && ownerIdStr && ownerIdStr !== '0') {
-                                    sectorClan = clans.find(c => c.leaderUid === ownerIdStr) || null;
+                                    sectorClan = clans.find(c => c.leaderUid === ownerIdStr || (c as any).leaderId === ownerIdStr) || null;
                                     if (!sectorClan && allUsers && allUsers[ownerIdStr]?.clanId) {
                                         const uClanId = Number(allUsers[ownerIdStr].clanId);
                                         sectorClan = clans.find(c => Number(c.id) === uClanId) || null;
                                     }
+                                }
+                                if (!sectorClan && (primaryClanBuilding as any).clanId) {
+                                    const bClanId = Number((primaryClanBuilding as any).clanId);
+                                    sectorClan = clans.find(c => Number(c.id) === bClanId) || null;
                                 }
                                 // Fallback: try other clan buildings in this zone
                                 if (!sectorClan) {
                                     for (const b of sectorClanBuildings) {
                                         const oId = String(b.ownerId || '');
                                         if (oId && oId !== '0') {
-                                            const found = clans.find(c => c.leaderUid === oId) ||
+                                            const found = clans.find(c => c.leaderUid === oId || (c as any).leaderId === oId) ||
                                                 (allUsers && allUsers[oId]?.clanId ? clans.find(c => Number(c.id) === Number(allUsers[oId].clanId)) : null);
+                                            if (found) {
+                                                sectorClan = found;
+                                                break;
+                                            }
+                                        }
+                                        if ((b as any).clanId) {
+                                            const bClanId = Number((b as any).clanId);
+                                            const found = clans.find(c => Number(c.id) === bClanId);
                                             if (found) {
                                                 sectorClan = found;
                                                 break;

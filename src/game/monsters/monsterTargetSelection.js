@@ -2,8 +2,28 @@
 
 import { getCardinalNeighborTiles, getWrappedManhattanDistance } from '../../world.js';
 import { isBuildingAlive } from '../buildings/isBuildingAlive.js';
+import {
+    isKotofeyMonster,
+    isHealerMonster,
+    isKotofeyRepairCandidate,
+    selectKotofeyAdjacentTarget,
+    isTargetGiftCategory,
+    KOTOFEY_SEARCH_RADIUS,
+} from './kotofeyLogic.js';
+import {
+    isTrollMonster,
+    isTrollCombatCandidate,
+    selectTrollAdjacentCombatTarget,
+    getTrollChaseTarget,
+} from './trollLogic.js';
 
 export function isMonsterAttackTargetCandidate(monster, target, buildingData, options) {
+    if (isHealerMonster(monster?.buildingId)) {
+        return isKotofeyRepairCandidate(monster, target, buildingData, options);
+    }
+    if (isTrollMonster(monster?.buildingId)) {
+        return isTrollCombatCandidate(monster, target, buildingData, { ...(options?.kotofeyContext || {}), now: options?.now });
+    }
     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
     const targetId = String(target.id);
@@ -16,12 +36,18 @@ export function isMonsterAttackTargetCandidate(monster, target, buildingData, op
     if (targetInfo?.stats.isMonster) return false;
     if (options?.blockedTargetIds?.has(targetId)) return false;
     if (options?.pendingDestroyedIds?.has(targetId)) return false;
-    if (target.isDestroying) return false;
     if (target.hp !== undefined && target.hp <= 0) return false;
+    if (target.destructionEndTime && target.destructionEndTime <= Date.now()) return false;
     return true;
 }
 
 export function isMonsterHoldTargetCandidate(monster, target, buildingData, options) {
+    if (isHealerMonster(monster?.buildingId)) {
+        return isKotofeyRepairCandidate(monster, target, buildingData, options);
+    }
+    if (isTrollMonster(monster?.buildingId)) {
+        return isTrollCombatCandidate(monster, target, buildingData, { ...(options?.kotofeyContext || {}), now: options?.now });
+    }
     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return false;
     const targetId = String(target.id);
@@ -35,6 +61,7 @@ export function isMonsterHoldTargetCandidate(monster, target, buildingData, opti
     if (options?.blockedTargetIds?.has(targetId)) return false;
     if (options?.pendingDestroyedIds?.has(targetId)) return false;
     if (target.hp !== undefined && target.hp <= 0) return false;
+    if (target.destructionEndTime && target.destructionEndTime <= Date.now()) return false;
     return true;
 }
 
@@ -47,6 +74,18 @@ export function getMonsterAdjacentAttackTarget(monster, buildings, buildingData,
         isMonsterAttackTargetCandidate(monster, target, buildingData, options)
     );
     if (candidates.length === 0) return null;
+
+    if (isHealerMonster(monster?.buildingId)) {
+        return selectKotofeyAdjacentTarget(monster, candidates, buildings, buildingData, options);
+    }
+    if (isTrollMonster(monster?.buildingId)) {
+        return selectTrollAdjacentCombatTarget(monster, buildings, buildingData, {
+            ...(options?.kotofeyContext || {}),
+            isWrappedWorld: options?.isWrappedWorld,
+            searchRadius: options?.searchRadius,
+            now: options?.now,
+        });
+    }
 
     const preferredTargetId = options?.preferredTargetId ? String(options.preferredTargetId) : null;
     if (preferredTargetId) {
@@ -72,6 +111,18 @@ export function getMonsterAdjacentHoldTarget(monster, buildings, buildingData, o
     );
     if (candidates.length === 0) return null;
 
+    if (isHealerMonster(monster?.buildingId)) {
+        return selectKotofeyAdjacentTarget(monster, candidates, buildings, buildingData, options);
+    }
+    if (isTrollMonster(monster?.buildingId)) {
+        return selectTrollAdjacentCombatTarget(monster, buildings, buildingData, {
+            ...(options?.kotofeyContext || {}),
+            isWrappedWorld: options?.isWrappedWorld,
+            searchRadius: options?.searchRadius,
+            now: options?.now,
+        });
+    }
+
     const preferredTargetId = options?.preferredTargetId ? String(options.preferredTargetId) : null;
     if (preferredTargetId) {
         const preferredTarget = candidates.find((t) => String(t.id) === preferredTargetId);
@@ -90,7 +141,21 @@ export function getMonsterChaseTarget(monster, buildings, buildingData, options)
     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) return null;
     const monsterInfo = buildingData.find(i => Number(i.id) === Number(monster.buildingId));
-    const searchRadius = options?.searchRadius ?? (Number(monster.buildingId) === Number(options?.bronekurId) ? 10 : (isPlayerOwned ? 8 : 5));
+    if (isTrollMonster(monster?.buildingId)) {
+        return getTrollChaseTarget(monster, buildings, buildingData, {
+            ...(options?.kotofeyContext || {}),
+            isWrappedWorld: options?.isWrappedWorld,
+            searchRadius: options?.searchRadius,
+            now: options?.now,
+        });
+    }
+
+    const isKotofey = isHealerMonster(monster?.buildingId);
+    const searchRadius = options?.searchRadius ?? (
+        isKotofey
+            ? KOTOFEY_SEARCH_RADIUS
+            : (Number(monster.buildingId) === Number(options?.bronekurId) ? 10 : (isPlayerOwned ? 8 : 5))
+    );
     let nearestTarget = null;
 
     buildings.forEach((target) => {
@@ -99,7 +164,9 @@ export function getMonsterChaseTarget(monster, buildings, buildingData, options)
         const dist = getWrappedManhattanDistance(monster, target, !!options?.isWrappedWorld);
         if (dist > searchRadius) return;
         const targetInfo = buildingData.find(i => Number(i.id) === Number(target.buildingId));
-        const hated = Boolean(monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates);
+        const hated = isKotofey
+            ? isTargetGiftCategory(monsterInfo, targetInfo)
+            : Boolean(monsterInfo?.stats.hates && targetInfo?.category === monsterInfo.stats.hates);
         if (
             !nearestTarget ||
             (hated && !nearestTarget.hated) ||

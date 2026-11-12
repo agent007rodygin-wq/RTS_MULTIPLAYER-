@@ -1,18 +1,22 @@
 // @ts-check
 
-import { getWrappedManhattanDistance, normalizeWorldCoord, WORLD_WIDTH_TILES, WORLD_HEIGHT_TILES } from '../../world.js';
-import { KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID, KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID } from './monsterIds.js';
+import { getWrappedDelta, getWrappedManhattanDistance, normalizeWorldCoord, WORLD_WIDTH_TILES, WORLD_HEIGHT_TILES } from '../../world.js';
+import { KILLING_HUT_ID, KIND_SANTA_ID, GORYNYCH_ID, KOLOBOK_ID, BABA_YAGA_ID, BRONEKUR_ID, KOTOFEY_ID, TROLL_ID, AIBOLIT_ID, BIG_AIBOLIT_ID } from './monsterIds.js';
 
 /** @type {Record<number, number>} */
 export const MONSTER_MOVE_INTERVALS = {
-  [KILLING_HUT_ID]: 4500,
-  [KIND_SANTA_ID]: 4000,
-  [GORYNYCH_ID]: 5000,
-  [KOLOBOK_ID]: 3500,
-  [BABA_YAGA_ID]: 4500,
-  [BRONEKUR_ID]: 4500,
+  [KILLING_HUT_ID]: 26000,
+  [KIND_SANTA_ID]: 23000,
+  [GORYNYCH_ID]: 30000,
+  [KOLOBOK_ID]: 28000,
+  [BABA_YAGA_ID]: 29000,
+  [BRONEKUR_ID]: 18000,
+  [KOTOFEY_ID]: 22000,
+  [TROLL_ID]: 22000,
+  [AIBOLIT_ID]: 22000,
+  [BIG_AIBOLIT_ID]: 22000,
 };
-export const DEFAULT_MONSTER_MOVE_INTERVAL = 4500;
+export const DEFAULT_MONSTER_MOVE_INTERVAL = 30000;
 export const MONSTER_MOVE_JITTER_RATIO = 0.18;
 export const MONSTER_RECENT_POSITIONS_LIMIT = 6;
 export const MONSTER_MOVE_BATCH_INTERVAL_MS = 500;
@@ -60,7 +64,7 @@ export function getMonsterMoveInterval(buildingId, monsterId) {
     const baseInterval = MONSTER_MOVE_INTERVALS[Number(buildingId)] || MONSTER_MOVE_INTERVALS[buildingId] || DEFAULT_MONSTER_MOVE_INTERVAL;
     const seed = getMonsterMoveSeed(monsterId, buildingId) % 1000;
     const jitter = ((seed / 999) * 2 - 1) * MONSTER_MOVE_JITTER_RATIO;
-    return Math.max(2500, Math.round(baseInterval * (1 + jitter)));
+    return Math.max(12000, Math.round(baseInterval * (1 + jitter)));
 }
 
 export function getPlaybackDurationMs(frameCount, fps, durationMultiplier = 1) {
@@ -72,15 +76,26 @@ export function getPlaybackFrameIndex(elapsedMs, frameCount, fps, durationMultip
     return Math.min(Math.floor(elapsedMs / (1000 / effectiveFps)), frameCount - 1);
 }
 
-export function chooseMonsterMoveTowardTarget(validMoves, target, isWrappedWorld) {
+export function chooseMonsterMoveTowardTarget(validMoves, target, isWrappedWorld, currentPos) {
     if (validMoves.length === 0) return null;
     let bestMove = validMoves[0];
     let bestDist = getWrappedManhattanDistance(validMoves[0], target, isWrappedWorld);
+
+    const dxToTarget = currentPos ? Math.abs(getWrappedDelta(currentPos.x, target.x, WORLD_WIDTH_TILES, isWrappedWorld)) : 0;
+    const dyToTarget = currentPos ? Math.abs(getWrappedDelta(currentPos.y, target.y, WORLD_HEIGHT_TILES, isWrappedWorld)) : 0;
+    const preferY = dyToTarget > dxToTarget;
+
     validMoves.forEach(move => {
         const dist = getWrappedManhattanDistance(move, target, isWrappedWorld);
         if (dist < bestDist) {
             bestDist = dist;
             bestMove = move;
+        } else if (dist === bestDist && currentPos) {
+            if (preferY && move.dy !== 0 && bestMove.dy === 0) {
+                bestMove = move;
+            } else if (!preferY && move.dx !== 0 && bestMove.dx === 0) {
+                bestMove = move;
+            }
         }
     });
     return bestMove;

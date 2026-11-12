@@ -23,6 +23,7 @@ export interface ProfileModalProps {
     onClose: () => void;
     activeProfileTab: ProfileTab;
     setActiveProfileTab: (tab: ProfileTab) => void;
+    playerJoinNumber?: number | null;
     // Achievements tab props
     completedAchievements?: string[];
     claimedAchievements?: string[];
@@ -118,6 +119,7 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
     onClose,
     activeProfileTab,
     setActiveProfileTab,
+    playerJoinNumber,
     // Achievements tab props
     completedAchievements = [],
     claimedAchievements = [],
@@ -311,8 +313,30 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
 
                 {/* Tab Content */}
                 <div className="build-menu-scroll profile-content-scroll" style={{ flex: 1, overflowY: 'auto', padding: '8px', minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
-                    {activeProfileTab === 'info' && (
-                        <div className="flex flex-col items-center max-w-md mx-auto">
+                    {activeProfileTab === 'info' && (() => {
+                        const effectiveStaticId = playerJoinNumber || achievementStats?.joinNumber || (user?.uid && allUsers?.[user.uid]?.joinNumber) || 1;
+                        return (
+                        <div className="flex flex-col items-center max-w-md mx-auto relative w-full">
+                            {/* Passport / Static ID at top-right under the Achievements tab */}
+                            <div className="w-full flex justify-end items-center mb-2 -mt-1 pr-1">
+                                <div 
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border shadow-sm select-none"
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.9) 100%)',
+                                        borderColor: 'rgba(250, 204, 21, 0.4)',
+                                        backdropFilter: 'blur(8px)',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)'
+                                    }}
+                                    title={`Паспорт жителя (статик: #${effectiveStaticId})`}
+                                >
+                                    <span className="text-[13px]">🪪</span>
+                                    <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600, fontFamily: 'Nunito, sans-serif' }}>Паспорт:</span>
+                                    <span style={{ fontSize: '13px', color: '#facc15', fontWeight: 800, fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                                        #{effectiveStaticId}
+                                    </span>
+                                </div>
+                            </div>
+
                             <div className="flex flex-col items-center mb-6">
                                 <div className="relative">
                                     <input type="file" id="avatarUpload" className="hidden" accept="image/*" onChange={onAvatarChange} />
@@ -390,7 +414,8 @@ export const ProfileModalComponent: React.FC<ProfileModalProps> = ({
                                 )}
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
 
                     {activeProfileTab === 'clan' && (
                         <ClanTab

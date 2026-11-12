@@ -70,6 +70,8 @@ export interface Building {
     consumes?: ResourceInfo[];
     damage?: string;
     damageWithStatue?: string;
+    monsterDamage?: string;
+    monsterDamageWithStatue?: string;
     repair?: string;
     repairWithStatue?: string;
     hates?: string;
@@ -94,8 +96,29 @@ export interface Building {
   upgradeCost?: number;
   destructionInfo?: DestructionInfo[];
   description: string;
+  englishDescription?: string;
   imageUrl: string;
   imagePrompt?: string;
+}
+
+export interface KotofeySettings {
+  walkRoads: boolean;
+  repairClan: boolean;
+  repairClanGifts: boolean;
+  repairFriends: boolean;
+  repairFriendGifts: boolean;
+  walkFriendRoads: boolean;
+}
+
+export interface TrollSettings {
+  attackEnabled: boolean;
+  walkRoads: boolean;
+  walkFriendRoads: boolean;
+  attackClan: boolean;
+  attackFriends: boolean;
+  attackNeutralMonsters: boolean;
+  attackPlayerMonsters: boolean;
+  boostOwnProduction: boolean;
 }
 
 export type GameEntity = Item | Building;
@@ -161,6 +184,32 @@ export interface PlacedBuilding {
   hostId?: string; // UID of the client responsible for AI logic
   timestamp?: number; // Legacy or explicit creation timestamp
   monsterMode?: 'stand' | 'patrol'; // 'stand' = hold position, 'patrol' = roam and attack foreign buildings
+  kotofeySettings?: KotofeySettings;
+  trollSettings?: TrollSettings;
+  lastTrollBoostAt?: number;
+  direction?: { dx: number; dy: number };
+  attackDir?: { dx: number; dy: number };
+  trebuchetChargingUntil?: number; // 5-second loading countdown end timestamp
+  trebuchetAnimStart?: number; // Timestamp when trebuchet loading animation starts
+  trebuchetLoaded?: boolean; // True when trebuchet is in loaded state (shows frame 16)
+  trebuchetTargetX?: number; // Target tile X coordinate
+  trebuchetTargetY?: number; // Target tile Y coordinate
+  trebuchetTargetEntityId?: string | number; // Target entity (building or monster) ID
+  trebuchetFireAt?: number; // 10-second countdown end timestamp when trebuchet fires
+  trebuchetLaunchAnimStart?: number; // Timestamp when launch animation starts (16 frames over 2.5s)
+  trebuchetMoveStartX?: number; // Starting tile X coordinate when moving
+  trebuchetMoveStartY?: number; // Starting tile Y coordinate when moving
+  trebuchetMoveTargetX?: number; // Target tile X coordinate when moving
+  trebuchetMoveTargetY?: number; // Target tile Y coordinate when moving
+  trebuchetMoveStartTime?: number; // Timestamp when trebuchet movement started
+  trebuchetMoveDuration?: number; // Total duration in ms for the movement
+  trebuchetMoveUntil?: number; // Timestamp when trebuchet movement completes
+  trebuchetFacing?: 'up_right' | 'up_left' | 'down_left' | 'down_right' | 'right' | 'left'; // Current facing direction ('up_right', 'up_left', 'down_left', 'down_right')
+  trebuchetMovePath?: Array<{ x: number; y: number }>; // Multi-step waypoint path for zigzag & obstacle navigation
+  mortarFireAt?: number; // Timestamp when mortar starts firing animation
+  mortarTargetX?: number; // Target tile X coordinate for mortar shell
+  mortarTargetY?: number; // Target tile Y coordinate for mortar shell
+  mortarTargetEntityId?: string | number; // Target monster entity ID
 }
 
 export interface VisualEffect {
@@ -177,6 +226,8 @@ export interface VisualEffect {
   status: 'active' | 'finished';
   targetX?: number;
   targetY?: number;
+  isTrebuchetRock?: boolean;
+  isMortarShell?: boolean;
 }
 
 export interface MarketListing {

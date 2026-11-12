@@ -4567,6 +4567,75 @@ export const buildings: Building[] = [
     upgradeCost: 6400,
   },
   {
+    id: 703,
+    name: 'Требушет',
+    englishName: 'Trebuchet',
+    category: 'Защита',
+    type: BuildingType.Default,
+    price: 800,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10001, name: 'Дерево', amount: 10 },
+        { id: 10005, name: 'Камни', amount: 10 }
+      ],
+      population: 4,
+    },
+    stats: {
+      constructionTimeSeconds: 3600, // 1 hour
+      accelerationCost: 12,
+      durability: 260,
+      gloryOnExplosion: 35,
+      damage: '15'
+    },
+    drops: {
+      frequent: [
+        { id: 10001, name: 'Дерево', amount: 6 },
+        { id: 10005, name: 'Камни', amount: 8 }
+      ],
+      rare: [
+        { id: 10006, name: 'Каменные блоки', amount: 2 }
+      ]
+    },
+    description: 'Оборонительное метательное орудие. Забрасывает врагов тяжелыми каменными снарядами.',
+    imageUrl: '/buildings/защита/trebuchet_loading_transparent.webp',
+  },
+  {
+    id: 704,
+    name: 'Мортира',
+    englishName: 'Mortar',
+    category: 'Защита',
+    type: BuildingType.Default,
+    price: 1500,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10001, name: 'Дерево', amount: 15 },
+        { id: 10005, name: 'Камни', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 5 }
+      ],
+      population: 5,
+    },
+    stats: {
+      constructionTimeSeconds: 5400, // 1.5 hours
+      accelerationCost: 18,
+      durability: 350,
+      gloryOnExplosion: 50,
+      damage: '15'
+    },
+    drops: {
+      frequent: [
+        { id: 10001, name: 'Дерево', amount: 10 },
+        { id: 10005, name: 'Камни', amount: 12 }
+      ],
+      rare: [
+        { id: 10006, name: 'Каменные блоки', amount: 4 }
+      ]
+    },
+    description: 'Оборонительная мортира на кладбищенской платформе. Автоматически обстреливает приближающихся монстров навесным огнем в радиусе 8 клеток.',
+    imageUrl: '/buildings/защита/мортира/mortar_static.webp',
+  },
+  {
     id: 701,
     name: 'Пушка 2 уровня',
     englishName: 'Cannon Level 2',
@@ -5256,10 +5325,10 @@ export const buildings: Building[] = [
     id: 50004,
     name: 'Река',
     englishName: 'River',
-    category: 'Природа',
+    category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 0,
-    buildable: false,
+    price: 25,
+    buildable: true,
     constructionRequirements: { population: 0 },
     stats: {
       constructionTimeSeconds: 0,
@@ -5268,7 +5337,7 @@ export const buildings: Building[] = [
       takesPopulation: 0,
     },
     drops: {},
-    description: 'Бурная река.',
+    description: 'Бурная река. Автоматически соединяется с соседними реками.',
     imageUrl: '/buildings/Реки и Горы/50004.webp'
   },
   {
@@ -12140,11 +12209,11 @@ export const buildings: Building[] = [
   },
   {
     id: 50001,
-    name: 'Дорога (прямая С-Ю)',
-    englishName: 'Road (Straight NS)',
+    name: 'Дорога',
+    englishName: 'Road',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
+    price: 100,
     buildable: true,
     constructionRequirements: {
       population: 0,
@@ -12157,8 +12226,8 @@ export const buildings: Building[] = [
     drops: {
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
-    description: 'Обычная дорога (прямая С-Ю).',
-    imageUrl: '/buildings/Дороги/Дорога/road_straight_ns.webp',
+    description: 'Изометрическая плиточная дорога с тротуарами. Автоматически соединяется с соседними дорогами.',
+    imageUrl: '/buildings/Дороги/new tiles roade/roads/300000.png',
   },
   {
     id: 500012,
@@ -12166,8 +12235,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Straight EW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12188,8 +12257,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Corner NE)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12210,8 +12279,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Corner ES)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12232,8 +12301,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Corner SW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12254,8 +12323,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Corner WN)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12276,8 +12345,8 @@ export const buildings: Building[] = [
     englishName: 'Road (T-Junction NES)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12298,8 +12367,8 @@ export const buildings: Building[] = [
     englishName: 'Road (T-Junction ESW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12320,8 +12389,8 @@ export const buildings: Building[] = [
     englishName: 'Road (T-Junction NSW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12342,8 +12411,8 @@ export const buildings: Building[] = [
     englishName: 'Road (T-Junction NEW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12364,8 +12433,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Crossroad)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12386,8 +12455,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Dead End N)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12408,8 +12477,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Dead End E)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12430,8 +12499,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Dead End S)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12452,8 +12521,8 @@ export const buildings: Building[] = [
     englishName: 'Road (Dead End W)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 70,
-    buildable: true,
+    price: 100,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -12498,7 +12567,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Мостовая.',
-    imageUrl: '/buildings/Дороги/Мостовая/50006.webp',
+    imageUrl: '/buildings/Дороги/new tiles roade/pavement/350000.png',
   },
   {
     id: 500061,
@@ -12534,15 +12603,15 @@ export const buildings: Building[] = [
   },
   {
     id: 50007,
-    name: 'Улучшенная мостовая (прямая С-Ю)',
-    englishName: 'Enhanced Pavement (Straight NS)',
+    name: 'Улучшенная мостовая',
+    englishName: 'Enhanced Pavement',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
+    price: 1000,
     buildable: true,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12553,7 +12622,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12561,8 +12630,8 @@ export const buildings: Building[] = [
         { id: 10023, name: 'Сталь', amount: 3, chance: 30 }
       ]
     },
-    description: 'Улучшенная мостовая из тёплого камня (прямая С-Ю).',
-    imageUrl: '/buildings/Дороги/Улучшиная Мостовая/pave_straight_ns.webp',
+    description: 'Улучшенная мостовая из тёплого камня. Соединяется автоматически.',
+    imageUrl: '/buildings/Дороги/New Улучшиная Мостовая/Изометрическая терракотовая мостовая_cut_all_rotations/Изометрическая терракотовая мостовая_cut_0deg.png',
   },
   {
     id: 500072,
@@ -12570,11 +12639,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Straight EW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12585,7 +12654,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12602,11 +12671,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Corner NE)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12617,7 +12686,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12634,11 +12703,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Corner ES)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12649,7 +12718,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12666,11 +12735,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Corner SW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12681,7 +12750,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12698,11 +12767,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Corner WN)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12713,7 +12782,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12730,11 +12799,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (T-Junction NES)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12745,7 +12814,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12762,11 +12831,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (T-Junction ESW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12777,7 +12846,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12794,11 +12863,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (T-Junction NSW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12809,7 +12878,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12826,11 +12895,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (T-Junction NEW)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12841,7 +12910,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12858,11 +12927,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Crossroad)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12873,7 +12942,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12890,11 +12959,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Dead End N)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12905,7 +12974,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12922,11 +12991,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Dead End E)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12937,7 +13006,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12954,11 +13023,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Dead End S)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -12969,7 +13038,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -12986,11 +13055,11 @@ export const buildings: Building[] = [
     englishName: 'Enhanced Pavement (Dead End W)',
     category: 'Дороги и стены',
     type: BuildingType.Default,
-    price: 15000,
-    buildable: true,
+    price: 1000,
+    buildable: false,
     constructionRequirements: {
       resources: [
-        { id: 10006, name: 'Каменные блоки', amount: 20 },
+        { id: 10006, name: 'Каменные блоки', amount: 1 },
       ],
       population: 0,
     },
@@ -13001,7 +13070,7 @@ export const buildings: Building[] = [
     },
     drops: {
       frequent: [
-        { id: 10013, name: 'Петарда', amount: 20, chance: 30 },
+        { id: 10013, name: 'Петарда', amount: 1, chance: 30 },
         { id: 10010, name: 'Садовая бомба', amount: 8, chance: 30 },
         { id: 999, name: 'Монеты', amount: 1200, chance: 30 }
       ],
@@ -13917,7 +13986,7 @@ export const buildings: Building[] = [
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
     description: 'Стена.',
-    imageUrl: '/buildings/Дороги/Стена/50002.webp',
+    imageUrl: '/buildings/Дороги/new wals/wooden/310000.png',
   },
   {
     id: 500021,
@@ -13939,7 +14008,7 @@ export const buildings: Building[] = [
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
     description: 'Стена.',
-    imageUrl: '/buildings/Дороги/Стена/Icogram-12026-04-01-14-24-1.webp',
+    imageUrl: '/buildings/Дороги/new wals/wooden/310000.png',
   },
   {
     id: 50003,
@@ -13961,7 +14030,7 @@ export const buildings: Building[] = [
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
     description: 'Каменная стена.',
-    imageUrl: '/buildings/Дороги/Каменная стена/50003_restored.webp?v=restored',
+    imageUrl: '/buildings/Дороги/new wals/stone/320000.png',
   },
   {
     id: 500031,
@@ -13983,7 +14052,7 @@ export const buildings: Building[] = [
       rare: [{ id: 10002, name: 'Доски', amount: 5, chance: 30 }]
     },
     description: 'Каменная стена.',
-    imageUrl: '/buildings/Дороги/Каменная стена/Icogram-2026-1_restored.webp?v=restored',
+    imageUrl: '/buildings/Дороги/new wals/stone/320000.png',
   },
   {
     id: 500032,
@@ -14249,6 +14318,47 @@ export const buildings: Building[] = [
     },
     description: 'Страшно кошмарно ужасная мощь. Если в городе он, бегите все прочь!',
     imageUrl: '/buildings/Монстры/Бронекур/70006.webp'
+  },
+  {
+    id: 70007,
+    name: 'Котофей',
+    englishName: 'Kotofey',
+    category: 'Монстры',
+    type: BuildingType.Default,
+    price: 3300000,
+    buildable: true,
+    constructionRequirements: {
+      resources: [
+        { id: 10034, name: 'Изумруд', amount: 10 },
+        { id: 10030, name: 'Цветок подсолнуха', amount: 100 },
+        { id: 10019, name: 'Мешок муки', amount: 10 }
+      ],
+      population: 0
+    },
+    stats: {
+      durability: 27432,
+      constructionTimeSeconds: 30,
+      repair: '300',
+      loves: 'Подарки',
+      givesCoins: 13538,
+      isMonster: true,
+      moveIntervalSeconds: 22,
+      gloryOnExplosion: 1500
+    },
+    drops: {
+      frequent: [
+        { id: 10026, name: 'Золото', amount: 22 },
+        { id: 10045, name: 'Супер детонатор', amount: 12 },
+        { id: 10040, name: 'Стальной лист', amount: 21 },
+        { id: 999, name: 'Монеты', amount: 13538 }
+      ],
+      rare: [
+        { id: 10043, name: 'Суператомная бомба', amount: 8 }
+      ]
+    },
+    description: 'Ходит и ремонтирует всё что под руку попадется: дома, монстров. Странный он...',
+    englishDescription: "Walks and repair everything that comes to hand: the house, the monsters. He's a strange…",
+    imageUrl: '/buildings/Монстры/Котофей/70007.webp'
   },
   {
     id: 53,
@@ -29996,7 +30106,7 @@ export const buildings: Building[] = [
       gloryOnExplosion: 350000,
       populationBonus: 0
     },
-    upgradesTo: 50001,
+    upgradesTo: 50011,
     upgradeCost: 8260000,
     drops: {
       frequent: [
@@ -30010,7 +30120,7 @@ export const buildings: Building[] = [
     imageUrl: '/buildings/Статуи/Статуя Гнома Воителя/490.webp'
   },
   {
-    id: 50001,
+    id: 50011,
     name: 'Статуя Гнома Воителя уровень - 11',
     englishName: 'Statue Dwarf Warrior Level 11',
     category: 'Статуи',
@@ -32019,7 +32129,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Телебашня 1 уровня. TV Tower Level 1.',
-    imageUrl: '/buildings/watchtower/147.webp',
+    imageUrl: '/buildings/Бизнес/Телебашня/60.webp',
     upgradesTo: 61,
     upgradeCost: 500000
   },
@@ -32055,7 +32165,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Телебашня 2 уровня. TV Tower Level 2.',
-    imageUrl: '/buildings/watchtower/214.webp',
+    imageUrl: '/buildings/Бизнес/Телебашня/61.webp',
     upgradesTo: 62,
     upgradeCost: 600000
   },
@@ -32091,7 +32201,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Телебашня 3 уровня. TV Tower Level 3.',
-    imageUrl: '/buildings/watchtower/215.webp'
+    imageUrl: '/buildings/Бизнес/Телебашня/62.webp'
   },
   {
     id: 39,
@@ -32571,6 +32681,48 @@ export const buildings: Building[] = [
     },
     description: 'Магазин. Shop.',
     imageUrl: '/buildings/Бизнес/магазинчик/21.webp'
+  },
+  {
+    id: 910,
+    name: 'Чан',
+    englishName: 'Cauldron',
+    category: 'Бизнес',
+    type: BuildingType.Default,
+    price: 500,
+    buildable: true,
+    constructionRequirements: {
+      population: 1,
+      resources: [
+        { id: 10001, name: 'Дерево', amount: 10 },
+        { id: 10005, name: 'Камни', amount: 10 }
+      ]
+    },
+    stats: {
+      constructionTimeSeconds: 45,
+      accelerationCost: 2,
+      durability: 1200,
+      gloryOnExplosion: 100,
+      takesPopulation: 1,
+      workTimeSeconds: 30,
+      workYieldGold: 10,
+      consumes: [
+        { id: 10051, name: 'Кости', amount: 3 }
+      ],
+      produces: [
+        { id: 10052, name: 'Костяная мука', amount: 1 }
+      ]
+    },
+    drops: {
+      frequent: [
+        { id: 10051, name: 'Кости', amount: 2 },
+        { id: 10005, name: 'Камни', amount: 5 }
+      ],
+      rare: [
+        { id: 10052, name: 'Костяная мука', amount: 1 }
+      ]
+    },
+    description: 'Магический чан. Позволяет из 3 костей монстров приготовить 1 костяную муку.',
+    imageUrl: '/buildings/Бизнес/чан/Изометрический котёл с зелёным зельем и скелетом.webp',
   },
   {
     id: 2,
@@ -36497,7 +36649,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'ЖД вокзал. Специальное здание для города.',
-    imageUrl: '/buildings/спецальное/89022223.png',
+    imageUrl: '/buildings/спецальное/89022223.webp',
   },
   {
     id: 7980001,
@@ -36589,7 +36741,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Верфь. Специальное здание для строительства и обслуживания судов.',
-    imageUrl: '/buildings/спецальное/7980003.png',
+    imageUrl: '/buildings/спецальное/7980003.webp',
   },
   {
     id: 7980004,
@@ -38022,6 +38174,127 @@ export const buildings: Building[] = [
     description: "Святилище с множеством священных лингамов и древней резьбой по песчанику.",
     imageUrl: '/buildings/Античность/Храм тысячи лингамов в изометрии.webp',
   },
+  {
+    id: 70008,
+    name: 'Тролль',
+    englishName: 'Troll',
+    category: 'Монстры',
+    type: BuildingType.Default,
+    price: 700000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+      resources: [
+        { id: 10021, name: 'Куски супер репки', amount: 10 },
+        { id: 10037, name: 'Камень Тролля', amount: 1 }
+      ]
+    },
+    stats: {
+      durability: 2800,
+      gloryOnExplosion: 100,
+      isMonster: true,
+      moveIntervalSeconds: 22,
+      damage: '4',
+      damageWithStatue: '12',
+      monsterDamage: '2',
+      monsterDamageWithStatue: '6',
+      hates: 'Грядки',
+      givesCoins: 13538
+    },
+    drops: {
+      frequent: [
+        { id: 10026, name: 'Золото', amount: 5 },
+        { id: 10022, name: 'Руда', amount: 61 },
+        { id: 10023, name: 'Сталь', amount: 12 },
+        { id: 999, name: 'Монеты', amount: 13538 }
+      ],
+      rare: [
+        { id: 10034, name: 'Изумруд', amount: 13 }
+      ]
+    },
+    description: 'Злой и неуклюжий. Но обладает уникальной способностью заставлять гномов работать. Для этого достаточно оставить его рядом с заводом или грядкой. Но не забывайте за ним приглядывать, ведь он может разрушить ваше производство.',
+    englishDescription: "Angry and clumsy. But he has a unique ability to make gnomes work. It's enough to leave troll near the factory or plantation. But do not forget to keep an eye on him, because it can destroy your buildings.",
+    imageUrl: '/buildings/Монстры/Тролль/70008.webp'
+  },
+  {
+    id: 70009,
+    name: 'Айболит',
+    englishName: 'Aibolit',
+    category: 'Монстры',
+    type: BuildingType.Default,
+    price: 50000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+      resources: [
+        { id: 10024, name: 'Супер лилия', amount: 3 },
+        { id: 10004, name: 'Куски супер тыквы', amount: 2 }
+      ]
+    },
+    stats: {
+      durability: 2248,
+      gloryOnExplosion: 50,
+      isMonster: true,
+      moveIntervalSeconds: 22,
+      repair: '5',
+      repairWithStatue: '15',
+      loves: 'Монстры',
+      givesCoins: 3260
+    },
+    drops: {
+      frequent: [
+        { id: 10035, name: 'Элитная древесина', amount: 4 },
+        { id: 10011, name: 'Садовая супер бомба', amount: 2 },
+        { id: 10003, name: 'Куски супер гриба', amount: 6 },
+        { id: 999, name: 'Монеты', amount: 3260 }
+      ],
+      rare: [
+        { id: 10045, name: 'Супер детонатор', amount: 2 }
+      ]
+    },
+    description: 'Любит и лечит зверушек, всех',
+    englishDescription: 'He loves and treats animals all',
+    imageUrl: '/buildings/Монстры/Айболит/70009.webp'
+  },
+  {
+    id: 70010,
+    name: 'Большой Айболит',
+    englishName: 'Big Aibolit',
+    category: 'Монстры',
+    type: BuildingType.Default,
+    price: 1000000,
+    buildable: true,
+    constructionRequirements: {
+      population: 0,
+      resources: [
+        { id: 10004, name: 'Куски супер тыквы', amount: 100 }
+      ]
+    },
+    stats: {
+      durability: 10072,
+      gloryOnExplosion: 150,
+      isMonster: true,
+      moveIntervalSeconds: 22,
+      repair: '50',
+      repairWithStatue: '155',
+      loves: 'Хранилища монет',
+      givesCoins: 13538
+    },
+    drops: {
+      frequent: [
+        { id: 10025, name: 'Золотая руда', amount: 16 },
+        { id: 10036, name: 'Изумрудная руда', amount: 5 },
+        { id: 10040, name: 'Стальной лист', amount: 7 },
+        { id: 999, name: 'Монеты', amount: 13538 }
+      ],
+      rare: [
+        { id: 10036, name: 'Изумрудная руда', amount: 37 }
+      ]
+    },
+    description: 'АйБолит спасёт от порчи хранилища и залечит повреждения с двойной любовью. Только главный символ Дня всех святых – тыквы – помогут вам приобрести этого доброго монстра.',
+    englishDescription: 'Senior Doctor saves buildings from any damages and heals it with a double love. Only the main Halloween character pumpkin will help you to buy this good monster.',
+    imageUrl: '/buildings/Монстры/Большой Айболит/70010.webp'
+  }
 ];
 
 if (import.meta.env.DEV) {

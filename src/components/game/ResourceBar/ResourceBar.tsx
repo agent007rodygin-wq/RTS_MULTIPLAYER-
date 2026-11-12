@@ -82,4 +82,4 @@ const ResourceBar: React.FC<ResourceBarProps> = ({
   );
 };
 
-export default ResourceBar;
+export default React.memo(ResourceBar);

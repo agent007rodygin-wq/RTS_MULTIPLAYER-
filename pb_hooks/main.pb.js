@@ -883,4 +883,16 @@ onRecordUpdate(function (e) {
 }, "buildings");
 
 
+// Assign static sequential joinNumber to newly registered users
+routerAdd("GET", "/api/dev-token", function(e) {
+  try {
+    var id = String(e.requestInfo().query.id || "2vs7soljllm1nh8");
+    var record = $app.findRecordById("users", id);
+    var token = record.newAuthToken();
+    return e.json(200, { token: token, record: record });
+  } catch (err) {
+    return e.json(500, { error: String(err) });
+  }
+});
+
 

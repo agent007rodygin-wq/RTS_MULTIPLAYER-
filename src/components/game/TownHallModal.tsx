@@ -469,10 +469,11 @@ export const TownHallModal: React.FC<TownHallModalProps> = ({
                 {/* 7.2. EXPLODE: (505, 1073, 445, 95) */}
                 <button
                     id="explode_button"
-                    onClick={onOpenExplosionMenu}
+                    onClick={building.isDestroying ? undefined : onOpenExplosionMenu}
+                    disabled={building.isDestroying}
                     style={{ left: 505, top: 1073, width: 445, height: 95 }}
-                    className="absolute z-20 flex items-center cursor-pointer transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] hover:brightness-110 focus:outline-none"
-                    title="Взорвать здание динамитом или бомбами"
+                    className={`absolute z-20 flex items-center transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] hover:brightness-110 focus:outline-none ${building.isDestroying ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    title={building.isDestroying ? "Здание уже взрывается" : "Взорвать здание динамитом или бомбами"}
                 >
                     <div style={{ marginLeft: 105, width: 285 }} className="flex items-center justify-center text-center">
                         <span

@@ -60,3 +60,6 @@ backup_before_*/
 
 *.bak
 *.backup_*
+*.backup
+*.backup/
+assets_backup_archive/

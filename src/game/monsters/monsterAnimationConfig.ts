@@ -89,6 +89,9 @@ export const babaYagaWalkLeftFrames: string[] = Array.from({ length: 62 }, (_, i
 export const babaYagaWalkRightFrames: string[] = Array.from({ length: 63 }, (_, i) => `${BABA_YAGA_BASE}/анимация ходьбы монстра/идет на право/${528 + i}.webp`);
 export const babaYagaIdleFrames: string[] = Array.from({ length: 93 }, (_, i) => `${BABA_YAGA_BASE}/анимация когда мнстр стоит/${1 + i}.webp`);
 export const babaYagaAttackTopFrames: string[] = Array.from({ length: 66 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/атака верх/${204 + i}.webp`);
-export const babaYagaAttackLeftFrames: string[] = Array.from({ length: 80 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/левая атака атакует левую клетку/${269 + i}.webp`);
-export const babaYagaAttackBottomFrames: string[] = Array.from({ length: 48 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/нижняя атака/${91 + i}.webp`);
+export const babaYagaAttackLeftFrames: string[] = Array.from({ length: 81 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/левая атака атакует левую клетку/${269 + i}.webp`);
+export const babaYagaAttackBottomFrames: string[] = Array.from({ length: 49 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/нижняя атака/${91 + i}.webp`);
 export const babaYagaAttackRightFrames: string[] = Array.from({ length: 66 }, (_, i) => `${BABA_YAGA_BASE}/анимация атаки монстра/правая атака/${139 + i}.webp`);
+
+export * from './kotofeyAnimationConfig';
+export * from './newMonstersAnimationConfig';

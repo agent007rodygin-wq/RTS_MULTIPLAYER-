@@ -661,10 +661,11 @@ export const TaxiDepotModal: React.FC<TaxiDepotModalProps> = ({
                                 {/* 10.5 Взорвать: (355, 1149, 290, 71) */}
                                 <button
                                     id="destroy_button"
-                                    onClick={onOpenExplosionMenu || handleExplode}
+                                    onClick={building.isDestroying ? undefined : (onOpenExplosionMenu || handleExplode)}
+                                    disabled={building.isDestroying}
                                     style={{ left: 355, top: 1149, width: 290, height: 71 }}
-                                    className="absolute z-20 transition-transform active:scale-95 hover:brightness-110 focus:outline-none"
-                                    title="Взорвать здание"
+                                    className={`absolute z-20 transition-transform active:scale-95 hover:brightness-110 focus:outline-none ${building.isDestroying ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={building.isDestroying ? "Здание уже взрывается" : "Взорвать здание"}
                                 >
                                     <img
                                         src="/Gui/TaxiGui/button_destroy.png"

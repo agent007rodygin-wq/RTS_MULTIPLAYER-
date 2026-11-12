@@ -31,7 +31,14 @@ export const MORTAR_BUFF_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 export const FIRECRACKER_BUNDLE_ID = 10050;
 export const FIRECRACKER_BUNDLE_DAMAGE = 25;
 
-export type CraftEffectType = 'energy' | 'woodcutter_buff' | 'mortar_discount' | 'weapon';
+export const BONE_ID = 10051;
+export const BONE_MEAL_ID = 10052;
+export const KOTOFEY_ITEM_ID = 10053;
+export const TROLL_ITEM_ID = 10054;
+export const AIBOLIT_ITEM_ID = 10055;
+export const SUMMONABLE_MONSTER_ITEM_IDS = new Set([KOTOFEY_ITEM_ID, TROLL_ITEM_ID, AIBOLIT_ITEM_ID]);
+
+export type CraftEffectType = 'energy' | 'woodcutter_buff' | 'mortar_discount' | 'weapon' | 'fertilizer';
 
 export interface CraftingIngredient {
     itemId: number;
@@ -307,7 +314,9 @@ export function isUsableInventoryItem(itemId: number): boolean {
         itemId === ENERGY_DRINK_ID ||
         itemId === PUMPKIN_PIE_ID ||
         itemId === LUMBERJACK_ELIXIR_ID ||
-        itemId === REINFORCING_MORTAR_ID
+        itemId === REINFORCING_MORTAR_ID ||
+        itemId === BONE_MEAL_ID ||
+        SUMMONABLE_MONSTER_ITEM_IDS.has(itemId)
     );
 }
 
@@ -337,6 +346,10 @@ export function getItemActionLabel(itemId: number): string {
             return '🧱 Применить (-30%)';
         case FIRECRACKER_BUNDLE_ID:
             return '💥 Оружие (25)';
+        case KOTOFEY_ITEM_ID:
+        case TROLL_ITEM_ID:
+        case AIBOLIT_ITEM_ID:
+            return '🐾 Поставить';
         default:
             return 'Использовать';
     }
@@ -354,6 +367,10 @@ export function getItemBadgeInfo(itemId: number): { text: string; bg: string; co
             return { text: '-30% 🧱', bg: 'rgba(56, 189, 248, 0.9)', color: '#0f172a' };
         case FIRECRACKER_BUNDLE_ID:
             return { text: '💥 Урон 25', bg: 'rgba(239, 68, 68, 0.9)' };
+        case KOTOFEY_ITEM_ID:
+        case TROLL_ITEM_ID:
+        case AIBOLIT_ITEM_ID:
+            return { text: '🐾 Монстр', bg: 'rgba(245, 158, 11, 0.92)', color: '#ffffff' };
         default:
             return null;
     }

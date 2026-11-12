@@ -57,9 +57,12 @@ const gryadkiSortOrder: number[] = [400, 70, 82, 102, 240, 274, 313, 600];
 const zavodySortOrder: number[] = [577, 430, 874, 55, 307, 668, 615, 689, 620, 330, 60332, 262, 266, 601, 853, 273, 640, 602];
 const zhilyeSortOrder: number[] = [1, 5, 7, 1002, 39, 64, 146, 205, 7980022];
 const biznesSortOrder: number[] = [2, 27, 11, 6000, 31532, 66, 8, 4, 340, 31612, 3, 12, 36, 310, 60, 308, 57, 311, 328, 7980020, 7980021];
+const zashchitaSortOrder: number[] = [700, 703];
 
 const buildTabCategoryAliases: Record<string, string[]> = {
     'Жилье': ['Жилые', 'Жилье'],
+    'Дороги и стены': ['Дороги и стены', 'дороги и стены', 'Дороги', 'Реки и Горы', 'Природа'],
+    'Декор': ['Декор', 'декор', 'Природа', 'Реки и Горы'],
     'Спецальное': ['Спецальное', 'спецальное', 'Специальное', 'специальное'],
     'Специальное': ['Спецальное', 'спецальное', 'Специальное', 'специальное'],
     'Античность': ['Античность', 'античность'],
@@ -82,10 +85,33 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
     const [giftSubTab, setGiftSubTab] = useState<GiftSubTab>('main');
     const [decorSubTab, setDecorSubTab] = useState<DecorSubTab>('other');
 
+    const openTimeRef = React.useRef(0);
+    useEffect(() => {
+        if (isOpen) {
+            openTimeRef.current = Date.now();
+        }
+    }, [isOpen]);
+
     const handleClose = () => {
         setBuildMenuSearch('');
         playCloseSound();
         onClose();
+    };
+
+    const handleBackdropClick = () => {
+        // Prevent ghost click / tap-through from canvas touch (< 400ms)
+        if (Date.now() - openTimeRef.current < 400) {
+            return;
+        }
+        handleClose();
+    };
+
+    const handleBuildingSelect = (building: Building) => {
+        // Prevent ghost click / tap-through from canvas touch on mobile (< 400ms)
+        if (Date.now() - openTimeRef.current < 400) {
+            return;
+        }
+        onSelectBuilding(building);
     };
 
     const normalizedActiveBuildTab = repairMojibakeCp1251Utf8(activeBuildTab);
@@ -152,6 +178,11 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
                 const bi = biznesSortOrder.indexOf(b.id);
                 return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
             }
+            if (normalizedActiveBuildTab === 'Защита') {
+                const ai = zashchitaSortOrder.indexOf(a.id);
+                const bi = zashchitaSortOrder.indexOf(b.id);
+                return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            }
             return 0;
         });
     }, [
@@ -177,7 +208,7 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 bg-black/75 flex items-center justify-center z-50 backdrop-blur-sm" onClick={handleClose}>
+        <div className="absolute inset-0 bg-black/75 flex items-center justify-center z-50 backdrop-blur-sm" onClick={handleBackdropClick}>
             <div className="relative flex flex-col" onClick={e => e.stopPropagation()} style={{ backgroundImage: 'url(/Gui/build_menu_bg.webp)', backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', width: 'min(var(--ui-modal-width), calc(100vw - 20px))', height: 'min(var(--ui-modal-height), calc(100vh - 12px))', padding: 'var(--ui-modal-padding-top) var(--ui-modal-padding-right) var(--ui-modal-padding-bottom) var(--ui-modal-padding-left)' }}>
                 {/* Title centered + close button */}
                 <div className="flex items-center justify-center relative build-menu-header" style={{ padding: '0 8px', marginTop: '10px', marginBottom: '4px' }}>
@@ -329,7 +360,7 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
                         )}
                         <div className="grid grid-cols-3 gap-2">
                             {buildingsInCurrentTab.map(building => (
-                                <div key={building.id} onClick={() => onSelectBuilding(building)} className="cursor-pointer transition-all building-card-item" style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '4px 4px 3px 4px', border: '2px solid rgba(255,255,255,0.07)', textAlign: 'center' }}
+                                <div key={building.id} onClick={() => handleBuildingSelect(building)} className="cursor-pointer transition-all building-card-item" style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '4px 4px 3px 4px', border: '2px solid rgba(255,255,255,0.07)', textAlign: 'center' }}
                                     onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.10)'; e.currentTarget.style.borderColor = 'rgba(96,165,250,0.4)'; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.25)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
                                 >

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { repairMojibakeCp1251Utf8 } from '../../game/utils/mojibake.js';
 import {
     ACHIEVEMENTS_DATA,
     ACHIEVEMENT_TIERS_MAP,
@@ -101,7 +102,7 @@ export const AchievementsView: React.FC<AchievementsViewProps> = ({
                                 <span>{isOwnProfile ? 'Мои очивки' : `Очивки: ${playerName}`}</span>
                                 {selectedTitle && (
                                     <span className="text-yellow-400 font-bold text-xs bg-yellow-500/20 border border-yellow-500/40 px-2 py-0.5 rounded-full shadow-sm">
-                                        [{selectedTitle}]
+                                        [{repairMojibakeCp1251Utf8(selectedTitle)}]
                                     </span>
                                 )}
                             </div>

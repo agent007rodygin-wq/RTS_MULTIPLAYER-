@@ -8,7 +8,7 @@ import { buildMonsterZoneCounts } from './monsterCrowding.js';
 import { getMonsterAdjacentAttackTarget } from './monsterTargetSelection.js';
 
 /**
- * @typedef {{ x: number; y: number; id?: string|number; gameId?: string|number; buildingId: number; hp?: number; ownerId?: string|number; isConstructing?: boolean; isDestroying?: boolean; lastMoveTime?: number; lastAttackTime?: number }} MonsterRecord
+ * @typedef {{ x: number; y: number; id?: string|number; gameId?: string|number; buildingId: number; hp?: number; ownerId?: string|number; isConstructing?: boolean; isDestroying?: boolean; lastMoveTime?: number; lastAttackTime?: number; monsterMode?: string; kotofeySettings?: any }} MonsterRecord
  */
 
 /**
@@ -25,6 +25,7 @@ import { getMonsterAdjacentAttackTarget } from './monsterTargetSelection.js';
  *   isWorldWrapped: boolean,
  *   pendingDestroyedIds: Set<string>,
  *   maxMovesPerBatch: number,
+ *   kotofeyContext?: any,
  * }} params
  * @returns {{
  *   actingMonsters: MonsterRecord[],
@@ -36,6 +37,7 @@ export function buildMonsterRuntimeSnapshot({
     now, buildings, buildingData,
     monsterLastAction, monsterAttackTime, isMonsterHost,
     isWorldWrapped, pendingDestroyedIds, maxMovesPerBatch,
+    kotofeyContext,
 }) {
     const monstersMoving = buildings.filter(b => {
         if (b.isConstructing || b.isDestroying) return false;
@@ -80,6 +82,7 @@ export function buildMonsterRuntimeSnapshot({
         return !!getMonsterAdjacentAttackTarget(monster, buildings, buildingData, {
             isWrappedWorld: isWorldWrapped,
             pendingDestroyedIds,
+            kotofeyContext,
         });
     });
 

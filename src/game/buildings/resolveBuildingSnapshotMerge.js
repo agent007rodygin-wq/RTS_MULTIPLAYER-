@@ -32,6 +32,101 @@
 
 export const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
 
+function preserveTrebuchetState(mergedBuilding, serverBuilding, localBuilding, now) {
+    if (!localBuilding && !serverBuilding) return mergedBuilding;
+    const bId = Number(mergedBuilding?.buildingId || localBuilding?.buildingId || serverBuilding?.buildingId);
+    if (bId !== 703) return mergedBuilding;
+
+    const res = { ...mergedBuilding };
+
+    const localIsMoving = Boolean(localBuilding?.trebuchetMoveUntil && localBuilding.trebuchetMoveUntil > now);
+    const serverIsMoving = Boolean(serverBuilding?.trebuchetMoveUntil && serverBuilding.trebuchetMoveUntil > now);
+
+    if (localIsMoving && localBuilding) {
+        res.x = localBuilding.x;
+        res.y = localBuilding.y;
+        res.zoneId = localBuilding.zoneId;
+        res.trebuchetMoveStartX = localBuilding.trebuchetMoveStartX;
+        res.trebuchetMoveStartY = localBuilding.trebuchetMoveStartY;
+        res.trebuchetMoveTargetX = localBuilding.trebuchetMoveTargetX;
+        res.trebuchetMoveTargetY = localBuilding.trebuchetMoveTargetY;
+        res.trebuchetMoveStartTime = localBuilding.trebuchetMoveStartTime;
+        res.trebuchetMoveDuration = localBuilding.trebuchetMoveDuration;
+        res.trebuchetMoveUntil = localBuilding.trebuchetMoveUntil;
+        res.trebuchetMovePath = localBuilding.trebuchetMovePath;
+    } else if (serverIsMoving && serverBuilding) {
+        res.trebuchetMoveStartX = serverBuilding.trebuchetMoveStartX;
+        res.trebuchetMoveStartY = serverBuilding.trebuchetMoveStartY;
+        res.trebuchetMoveTargetX = serverBuilding.trebuchetMoveTargetX;
+        res.trebuchetMoveTargetY = serverBuilding.trebuchetMoveTargetY;
+        res.trebuchetMoveStartTime = serverBuilding.trebuchetMoveStartTime;
+        res.trebuchetMoveDuration = serverBuilding.trebuchetMoveDuration;
+        res.trebuchetMoveUntil = serverBuilding.trebuchetMoveUntil;
+        res.trebuchetMovePath = serverBuilding.trebuchetMovePath || localBuilding?.trebuchetMovePath;
+    }
+
+    res.trebuchetFacing = localBuilding?.trebuchetFacing ?? serverBuilding?.trebuchetFacing ?? res.trebuchetFacing;
+    if (localBuilding?.trebuchetLoaded !== undefined) {
+        res.trebuchetLoaded = localBuilding.trebuchetLoaded;
+    } else if (serverBuilding?.trebuchetLoaded !== undefined) {
+        res.trebuchetLoaded = serverBuilding.trebuchetLoaded;
+    }
+    if (localBuilding?.trebuchetChargingUntil && localBuilding.trebuchetChargingUntil > now) {
+        res.trebuchetChargingUntil = localBuilding.trebuchetChargingUntil;
+    } else if (serverBuilding?.trebuchetChargingUntil && serverBuilding.trebuchetChargingUntil > now) {
+        res.trebuchetChargingUntil = serverBuilding.trebuchetChargingUntil;
+    }
+    if (localBuilding?.trebuchetFireAt && localBuilding.trebuchetFireAt > now) {
+        res.trebuchetFireAt = localBuilding.trebuchetFireAt;
+    } else if (serverBuilding?.trebuchetFireAt && serverBuilding.trebuchetFireAt > now) {
+        res.trebuchetFireAt = serverBuilding.trebuchetFireAt;
+    }
+    if (localBuilding?.trebuchetAnimStart && (now - localBuilding.trebuchetAnimStart) < 3000) {
+        res.trebuchetAnimStart = localBuilding.trebuchetAnimStart;
+    } else if (serverBuilding?.trebuchetAnimStart && (now - serverBuilding.trebuchetAnimStart) < 3000) {
+        res.trebuchetAnimStart = serverBuilding.trebuchetAnimStart;
+    }
+    if (localBuilding?.trebuchetTargetX !== undefined) {
+        res.trebuchetTargetX = localBuilding.trebuchetTargetX;
+        res.trebuchetTargetY = localBuilding.trebuchetTargetY;
+    }
+    if (localBuilding?.trebuchetTargetEntityId !== undefined) {
+        res.trebuchetTargetEntityId = localBuilding.trebuchetTargetEntityId;
+    }
+
+    return res;
+}
+
+function preserveMortarState(mergedBuilding, serverBuilding, localBuilding, now) {
+    if (!localBuilding && !serverBuilding) return mergedBuilding;
+    const bId = Number(mergedBuilding?.buildingId || localBuilding?.buildingId || serverBuilding?.buildingId);
+    if (bId !== 704) return mergedBuilding;
+
+    const res = { ...mergedBuilding };
+    const localFiring = Boolean(localBuilding?.mortarFireAt && (now - localBuilding.mortarFireAt) < 3000);
+    const serverFiring = Boolean(serverBuilding?.mortarFireAt && (now - serverBuilding.mortarFireAt) < 3000);
+
+    if (localFiring && localBuilding) {
+        res.mortarFireAt = localBuilding.mortarFireAt;
+        res.mortarTargetEntityId = localBuilding.mortarTargetEntityId;
+        res.mortarTargetX = localBuilding.mortarTargetX;
+        res.mortarTargetY = localBuilding.mortarTargetY;
+    } else if (serverFiring && serverBuilding) {
+        res.mortarFireAt = serverBuilding.mortarFireAt;
+        res.mortarTargetEntityId = serverBuilding.mortarTargetEntityId;
+        res.mortarTargetX = serverBuilding.mortarTargetX;
+        res.mortarTargetY = serverBuilding.mortarTargetY;
+    }
+
+    return res;
+}
+
+function preserveDefenseState(mergedBuilding, serverBuilding, localBuilding, now) {
+    let res = preserveTrebuchetState(mergedBuilding, serverBuilding, localBuilding, now);
+    res = preserveMortarState(res, serverBuilding, localBuilding, now);
+    return res;
+}
+
 function preserveTownHallTier(targetBuilding, localBuilding) {
     if (!localBuilding || !targetBuilding) return targetBuilding;
     const localThIdx = TOWN_HALL_IDS.indexOf(Number(localBuilding.buildingId));
@@ -92,6 +187,19 @@ export function shouldPreferServerRevivedBuildingState(localBuilding, serverBuil
     );
 }
 
+function areSettingsObjectsEqual(a, b) {
+    if (!a && !b) return true;
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false;
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+    for (let i = 0; i < keysA.length; i++) {
+        const k = keysA[i];
+        if (a[k] !== b[k]) return false;
+    }
+    return true;
+}
+
 /**
  * @param {BuildingSnapshotMergeInput} input
  * @returns {BuildingSnapshotMergeResult}
@@ -121,10 +229,10 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
 
     if (localIsProtectedByCombat && localBuilding) {
         return {
-            mergedBuilding: {
+            mergedBuilding: preserveDefenseState({
                 ...localBuilding,
                 isLocal: false,
-            },
+            }, serverBuilding, localBuilding, now),
             decision: 'keep_local_protected',
             clearLastInteraction: false,
             shouldStickPosition: false,
@@ -142,7 +250,7 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
     if (timeSinceInt < constructionStickyMs && localInteractionAllowed && localBuilding) {
         if (serverBuilding.hp !== undefined && serverBuilding.hp <= 0) {
             return {
-                mergedBuilding: serverBuilding,
+                mergedBuilding: preserveDefenseState(serverBuilding, serverBuilding, localBuilding, now),
                 decision: 'skip_server_dead',
                 clearLastInteraction: false,
                 shouldStickPosition: false,
@@ -152,10 +260,10 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
 
         if (shouldPreferServerRevivedBuildingState(localBuilding, serverBuilding, now)) {
             return {
-                mergedBuilding: {
+                mergedBuilding: preserveDefenseState({
                     ...serverBuilding,
                     isLocal: false,
-                },
+                }, serverBuilding, localBuilding, now),
                 decision: 'replace_local_with_server',
                 clearLastInteraction: true,
                 shouldStickPosition: false,
@@ -179,7 +287,11 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
             serverBuilding.constructionEndTime === localBuilding.constructionEndTime &&
             serverBuilding.isDestroying === localBuilding.isDestroying &&
             serverBuilding.pendingDamage === localBuilding.pendingDamage &&
-            serverBuilding.destructionEndTime === localBuilding.destructionEndTime;
+            serverBuilding.destructionEndTime === localBuilding.destructionEndTime &&
+            serverBuilding.monsterMode === localBuilding.monsterMode &&
+            areSettingsObjectsEqual(serverBuilding.kotofeySettings, localBuilding.kotofeySettings) &&
+            areSettingsObjectsEqual(serverBuilding.trollSettings, localBuilding.trollSettings) &&
+            (serverBuilding.lastTrollBoostAt || 0) === (localBuilding.lastTrollBoostAt || 0);
 
         if (!serverMatchesLocal) {
             const shouldStickPosition = (now - lastMoveAt) < stickyInteractionMs;
@@ -193,7 +305,7 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
                 localBuilding.destructionEndTime !== serverBuilding.destructionEndTime;
 
             return {
-                mergedBuilding: {
+                mergedBuilding: preserveDefenseState({
                     ...serverBuilding,
                     x: shouldStickPosition ? localBuilding.x : serverBuilding.x,
                     y: shouldStickPosition ? localBuilding.y : serverBuilding.y,
@@ -203,6 +315,10 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
                     buildingId: localBuilding.buildingId,
                     isConstructing: localBuilding.isConstructing,
                     constructionEndTime: localBuilding.constructionEndTime,
+                    ...(localBuilding.monsterMode !== undefined ? { monsterMode: localBuilding.monsterMode } : {}),
+                    ...(localBuilding.kotofeySettings !== undefined ? { kotofeySettings: localBuilding.kotofeySettings } : {}),
+                    ...(localBuilding.trollSettings !== undefined ? { trollSettings: localBuilding.trollSettings } : {}),
+                    ...(localBuilding.lastTrollBoostAt !== undefined ? { lastTrollBoostAt: localBuilding.lastTrollBoostAt } : {}),
                     lastAttackTime: Math.max(serverBuilding.lastAttackTime || 0, localBuilding.lastAttackTime || 0),
                     lastMoveTime: Math.max(serverBuilding.lastMoveTime || 0, localBuilding.lastMoveTime || 0),
                     hp: shouldStickHealthState ? localBuilding.hp : serverBuilding.hp,
@@ -216,7 +332,7 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
                     initiatorId: shouldStickHealthState ? localBuilding.initiatorId : serverBuilding.initiatorId,
                     timestamp: localBuilding.timestamp ?? serverBuilding.timestamp,
                     isLocal: false,
-                },
+                }, serverBuilding, localBuilding, now),
                 decision: shouldStickHealthState ? 'keep_local_sticky' : 'accept_server_update',
                 clearLastInteraction: false,
                 shouldStickPosition,
@@ -224,12 +340,14 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
             };
         }
 
+        const matchedLastTrollBoostAt = Math.max(serverBuilding.lastTrollBoostAt || 0, localBuilding.lastTrollBoostAt || 0);
         return {
-            mergedBuilding: preserveTownHallTier({
+            mergedBuilding: preserveDefenseState(preserveTownHallTier({
                 ...serverBuilding,
                 lastAttackTime: Math.max(serverBuilding.lastAttackTime || 0, localBuilding.lastAttackTime || 0),
                 lastMoveTime: Math.max(serverBuilding.lastMoveTime || 0, localBuilding.lastMoveTime || 0),
-            }, localBuilding),
+                ...(matchedLastTrollBoostAt > 0 ? { lastTrollBoostAt: matchedLastTrollBoostAt } : {}),
+            }, localBuilding), serverBuilding, localBuilding, now),
             decision: 'accepted_server_matches_local',
             clearLastInteraction: true,
             shouldStickPosition: false,
@@ -239,6 +357,7 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
 
     const effectiveLastAttack = Math.max(serverBuilding.lastAttackTime || 0, localBuilding?.lastAttackTime || 0);
     const effectiveLastMove = Math.max(serverBuilding.lastMoveTime || 0, localBuilding?.lastMoveTime || 0);
+    const effectiveLastTrollBoostAt = Math.max(serverBuilding.lastTrollBoostAt || 0, localBuilding?.lastTrollBoostAt || 0);
 
     // Protect active production timer from stale server snapshots that lack workEndTime
     // or haven't registered that production started yet.
@@ -252,14 +371,15 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
         const effectiveWorkEndTime = Math.max(localBuilding.workEndTime, serverWorkEndTime);
 
         return {
-            mergedBuilding: preserveTownHallTier({
+            mergedBuilding: preserveDefenseState(preserveTownHallTier({
                 ...serverBuilding,
                 workState: 'working',
                 workEndTime: effectiveWorkEndTime,
                 ...(effectiveLastAttack > 0 ? { lastAttackTime: effectiveLastAttack } : {}),
                 ...(effectiveLastMove > 0 ? { lastMoveTime: effectiveLastMove } : {}),
+                ...(effectiveLastTrollBoostAt > 0 ? { lastTrollBoostAt: effectiveLastTrollBoostAt } : {}),
                 isLocal: false,
-            }, localBuilding),
+            }, localBuilding), serverBuilding, localBuilding, now),
             decision: 'accept_server_update',
             clearLastInteraction: false,
             shouldStickPosition: false,
@@ -268,11 +388,12 @@ export function resolvePlacedBuildingSnapshotMerge(input) {
     }
 
     return {
-        mergedBuilding: preserveTownHallTier({
+        mergedBuilding: preserveDefenseState(preserveTownHallTier({
             ...serverBuilding,
             ...(effectiveLastAttack > 0 ? { lastAttackTime: effectiveLastAttack } : {}),
             ...(effectiveLastMove > 0 ? { lastMoveTime: effectiveLastMove } : {}),
-        }, localBuilding),
+            ...(effectiveLastTrollBoostAt > 0 ? { lastTrollBoostAt: effectiveLastTrollBoostAt } : {}),
+        }, localBuilding), serverBuilding, localBuilding, now),
         decision: 'accept_server_update',
         clearLastInteraction: false,
         shouldStickPosition: false,

@@ -11,7 +11,7 @@ export const EGYPTIAN_OBELISK_IDS: number[] = Array.from({ length: 20 }, (_, i) 
 export const FINANCIAL_INTELLIGENCE_IDS: number[] = [340, 341, 342];
 export const FINANCIAL_COLLECT_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
-const CANNON_IDS = new Set([700, 701, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385]);
+const CANNON_IDS = new Set([700, 701, 703, 704, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385]);
 const BANDIT_CASTLE_IDS = new Set([200, 201, 202, 203]);
 const EXCLUDED_PRODUCTION_IDS = new Set([301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752, 328, 329, 311, 801, 214, 215, 216]);
 

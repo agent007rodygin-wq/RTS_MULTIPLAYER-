@@ -53,10 +53,18 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
     }, [building, inventory]);
     const hasMissingResources = missingResources.length > 0;
 
+    const openTimeRef = React.useRef(0);
+    React.useEffect(() => {
+        if (isOpen) {
+            openTimeRef.current = Date.now();
+        }
+    }, [isOpen]);
+
     if (!isOpen || !building) return null;
 
     const handleConfirm = () => {
-        if (!building) return;
+        if (!building || isBuildingActionProcessing) return;
+        if (Date.now() - openTimeRef.current < 400) return;
         const traceId = `build-${Date.now()}-${building.id}-${coords.x}-${coords.y}`;
         recordRuntimeTraceStage?.('build', traceId, 'click', {
             buildingId: building.id,
@@ -66,13 +74,16 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
         onConfirmBuild(traceId);
     };
 
+    const handleBackdropClose = () => {
+        if (isBuildingActionProcessing) return;
+        if (Date.now() - openTimeRef.current < 400) return;
+        onClose();
+    };
+
     return (
         <div
             className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 animate-fade-in"
-            onClick={() => {
-                if (isBuildingActionProcessing) return;
-                onClose();
-            }}
+            onClick={handleBackdropClose}
         >
             <div
                 className="w-full max-w-sm max-h-[calc(100vh-20px)] bg-gradient-to-b from-gray-900 via-gray-950 to-black border-2 border-purple-500/50 rounded-2xl shadow-[0_0_50px_rgba(168,85,247,0.3)] flex flex-col overflow-hidden text-white animate-scale-up"
@@ -87,10 +98,7 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
                         </h2>
                     </div>
                     <button
-                        onClick={() => {
-                            if (isBuildingActionProcessing) return;
-                            onClose();
-                        }}
+                        onClick={handleBackdropClose}
                         disabled={isBuildingActionProcessing}
                         className={`w-8 h-8 rounded-full bg-gray-800 hover:bg-red-600/80 border border-white/10 hover:border-red-500 flex items-center justify-center text-gray-300 hover:text-white transition-all duration-200 ${isBuildingActionProcessing ? 'cursor-not-allowed opacity-50' : ''}`}
                     >
@@ -106,6 +114,14 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
                             Хранилище нужно, чтобы хранить накопленные монеты. Чем больше у вас монет, тем больше нужно хранилищ. При взрыве часть монет перейдет к нападающему.
                         </p>
                     )}
+                    {building.stats?.isMonster && building.description && (
+                        <div className="text-xs text-purple-100/90 leading-5 mb-3 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20 space-y-1">
+                            <p>{building.description}</p>
+                            {building.englishDescription && (
+                                <p className="text-[11px] text-gray-400 italic">{building.englishDescription}</p>
+                            )}
+                        </div>
+                    )}
                     <div className="bg-gray-900/60 p-3.5 rounded-xl border border-purple-500/20 shadow-md space-y-2 text-xs">
                         <div className="flex justify-between items-center">
                             <span className="text-purple-300/80 font-medium">Прочность:</span>
@@ -113,8 +129,42 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
                         </div>
                         {building.stats.damage && (
                             <div className="flex justify-between items-center">
-                                <span className="text-purple-300/80 font-medium">Урон:</span>
-                                <span className="text-red-400 font-bold">{building.stats.damage}</span>
+                                <span className="text-purple-300/80 font-medium">{building.stats.monsterDamage ? 'Постройкам:' : 'Урон:'}</span>
+                                <span className="text-red-400 font-bold">
+                                    {building.stats.damage}
+                                    {building.stats.damageWithStatue ? ` (со статуей до ${building.stats.damageWithStatue})` : ''}
+                                </span>
+                            </div>
+                        )}
+                        {building.stats.monsterDamage && (
+                            <div className="flex justify-between items-center">
+                                <span className="text-purple-300/80 font-medium">Монстрам:</span>
+                                <span className="text-orange-400 font-bold">
+                                    {building.stats.monsterDamage}
+                                    {building.stats.monsterDamageWithStatue ? ` (со статуей до ${building.stats.monsterDamageWithStatue})` : ''}
+                                </span>
+                            </div>
+                        )}
+                        {building.stats.hates && (
+                            <div className="flex justify-between items-center">
+                                <span className="text-purple-300/80 font-medium">Ненавидит (x2):</span>
+                                <span className="text-rose-300 font-bold">😡 {building.stats.hates}</span>
+                            </div>
+                        )}
+                        {building.stats.repair && (
+                            <div className="flex justify-between items-center">
+                                <span className="text-purple-300/80 font-medium">Чинит постройки:</span>
+                                <span className="text-emerald-400 font-bold">
+                                    +{building.stats.repair}
+                                    {building.stats.repairWithStatue ? ` (до +${building.stats.repairWithStatue})` : ''}
+                                    {building.stats.loves ? ` (x2 «${building.stats.loves}»)` : ''}
+                                </span>
+                            </div>
+                        )}
+                        {building.stats.loves && (
+                            <div className="flex justify-between items-center">
+                                <span className="text-purple-300/80 font-medium">Любит:</span>
+                                <span className="text-pink-300 font-bold">❤️ {building.stats.loves}</span>
                             </div>
                         )}
                         <div className="flex justify-between items-center">
@@ -247,6 +297,7 @@ const BuildConfirmationModalComponent: React.FC<BuildConfirmationModalProps> = (
                     <button
                         onClick={() => {
                             if (isBuildingActionProcessing) return;
+                            if (Date.now() - openTimeRef.current < 400) return;
                             onBackToMenu();
                         }}
                         disabled={isBuildingActionProcessing}

@@ -1578,6 +1578,13 @@ export async function setDoc(ref: DocRef, data: AnyRecord): Promise<void> {
 }
 
 /** updateDoc — partial update with increment & dot-notation support */
+const updateDocMetadataCache = new Map<string, {
+  targetId: string;
+  current: AnyRecord;
+  rawJson: Record<string, any> | null;
+  ts: number;
+}>();
+
 export async function updateDoc(
   ref: DocRef,
   data: AnyRecord
@@ -1621,6 +1628,9 @@ export async function updateDoc(
   let currentRawDataJson: Record<string, any> | null = null;
   let targetId = pbId;
   const startedAt = Date.now();
+  const cacheKey = `${ref.collectionName}:${pbId}`;
+  const cachedMeta = updateDocMetadataCache.get(cacheKey);
+
   logPbAudit('updateDoc-start', {
     collectionName: ref.collectionName,
     id: ref.id,
@@ -1628,56 +1638,64 @@ export async function updateDoc(
     targetId,
     payload: summarizeWritePayloadForAudit(ref.collectionName, data),
   });
-  try {
-    if (ref.collectionName === 'users') {
-      try {
-        const rawRecord = await findUserRecord(ref.id);
-        lookupSucceeded = true;
-        if (!rawRecord) {
-          missingUserIds.add(pbId);
-          return;
-        }
-        recordResolved = true;
-        current = unwrapData(rawRecord);
-        missingUserIds.delete(pbId);
-        const rawJson = (rawRecord as AnyRecord).data;
-        if (rawJson && typeof rawJson === 'object') {
-          currentRawDataJson = { ...rawJson };
-        }
-        targetId = rawRecord.id;
-      } catch (e: any) {
-        if (e?.status === 404 || e?.originalError?.status === 404) {
-          missingUserIds.add(pbId);
-          return;
-        }
-        throw e;
-      }
-    } else {
-      let list = await queuedGetList(ref.collectionName, 1, 1, {
-        filter: buildIdLookupFilter(ref.collectionName, pbId, String(ref.id)),
-      });
-      lookupSucceeded = true;
-      if (list.items.length === 0 && ref.collectionName === 'map_resources') {
-          const [x, y] = String(ref.id).split('_');
-          if (x && y) {
-              list = await queuedGetList(ref.collectionName, 1, 1, { filter: `x=${x} && y=${y}` });
+  if (cachedMeta && (startedAt - cachedMeta.ts) < 25000) {
+    lookupSucceeded = true;
+    recordResolved = true;
+    targetId = cachedMeta.targetId;
+    current = { ...cachedMeta.current };
+    currentRawDataJson = cachedMeta.rawJson ? { ...cachedMeta.rawJson } : null;
+  } else {
+    try {
+      if (ref.collectionName === 'users') {
+        try {
+          const rawRecord = await findUserRecord(ref.id);
+          lookupSucceeded = true;
+          if (!rawRecord) {
+            missingUserIds.add(pbId);
+            return;
           }
-      }
-      if (list.items.length > 0) {
-        recordResolved = true;
-        const rawRecord = list.items[0] as RecordModel;
-        current = unwrapData(rawRecord);
-        // Save the RAW data JSON field from PocketBase (before unwrapData merges it).
-        // This is critical for data preservation: PB PATCH replaces the entire JSON field,
-        // so we must include ALL existing data.json fields to avoid losing them.
-        const rawJson = (rawRecord as AnyRecord).data;
-        if (rawJson && typeof rawJson === 'object') {
-          currentRawDataJson = { ...rawJson };
+          recordResolved = true;
+          current = unwrapData(rawRecord);
+          missingUserIds.delete(pbId);
+          const rawJson = (rawRecord as AnyRecord).data;
+          if (rawJson && typeof rawJson === 'object') {
+            currentRawDataJson = { ...rawJson };
+          }
+          targetId = rawRecord.id;
+        } catch (e: any) {
+          if (e?.status === 404 || e?.originalError?.status === 404) {
+            missingUserIds.add(pbId);
+            return;
+          }
+          throw e;
         }
-        targetId = rawRecord.id;
+      } else {
+        let list = await queuedGetList(ref.collectionName, 1, 1, {
+          filter: buildIdLookupFilter(ref.collectionName, pbId, String(ref.id)),
+        });
+        lookupSucceeded = true;
+        if (list.items.length === 0 && ref.collectionName === 'map_resources') {
+            const [x, y] = String(ref.id).split('_');
+            if (x && y) {
+                list = await queuedGetList(ref.collectionName, 1, 1, { filter: `x=${x} && y=${y}` });
+            }
+        }
+        if (list.items.length > 0) {
+          recordResolved = true;
+          const rawRecord = list.items[0] as RecordModel;
+          current = unwrapData(rawRecord);
+          // Save the RAW data JSON field from PocketBase (before unwrapData merges it).
+          // This is critical for data preservation: PB PATCH replaces the entire JSON field,
+          // so we must include ALL existing data.json fields to avoid losing them.
+          const rawJson = (rawRecord as AnyRecord).data;
+          if (rawJson && typeof rawJson === 'object') {
+            currentRawDataJson = { ...rawJson };
+          }
+          targetId = rawRecord.id;
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   // If lookup succeeded and the record is missing, avoid sending PATCH that will 404.
   // This stops tight update loops for entities that were already removed.
@@ -1872,6 +1890,12 @@ export async function updateDoc(
         });
       } catch { console.warn('[PBWriteVerify:AFTER]', { recordId: targetId, error: 'freshRead failed' }); }
     }
+    updateDocMetadataCache.set(cacheKey, {
+      targetId,
+      current: { ...current, ...resolved },
+      rawJson: currentRawDataJson ? { ...currentRawDataJson, ...(payload.data || {}) } : (payload.data || null),
+      ts: Date.now(),
+    });
     clearDeletedRecord(ref.collectionName, logicalId, pbId, String(targetId));
     logPbAudit('updateDoc-end', {
       collectionName: ref.collectionName,
@@ -1882,6 +1906,7 @@ export async function updateDoc(
       payload: summarizeWritePayloadForAudit(ref.collectionName, payload),
     });
   } catch (e: any) {
+    updateDocMetadataCache.delete(cacheKey);
     const isNotFoundError =
       e?.status === 404 ||
       e?.response?.status === 404 ||

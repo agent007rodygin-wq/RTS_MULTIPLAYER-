@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { BuildingType, type Building, type PlacedBuilding, type Item } from '../../../types';
+import { BuildingType, type Building, type KotofeySettings, type TrollSettings, type PlacedBuilding, type Item } from '../../../types';
 import {
     CloseIcon,
     DefenseIcon,
@@ -20,6 +20,12 @@ import {
 } from '../../game/economy/productionCollectLogic';
 import { TaxiDepotModal } from './TaxiDepotModal';
 import { TownHallModal } from './TownHallModal';
+import { getNextGardenBedStage, BONE_MEAL_ITEM_ID } from '../../game/farming/gardenBedLogic';
+import { isKotofeyMonster, isHealerMonster, isMonsterAcademyBuilding } from '../../game/monsters/kotofeyLogic';
+import { isTrollMonster } from '../../game/monsters/trollLogic';
+import { getCustomMonsterScaledStats } from '../../game/monsters/statueBonusLogic';
+import { KotofeyControlsPanel } from './KotofeyControlsPanel';
+import { TrollControlsPanel } from './TrollControlsPanel';
 
 const WATCHTOWER_ID = 801;
 export const WATCHTOWER_IDS = [801, 214, 215, 216];
@@ -27,7 +33,11 @@ export const isWatchtowerId = (id: number | string | undefined | null) => id != 
 const MOUNTAIN_ID = 50005;
 const RIVER_ID = 50004;
 const AUCTION_ID = 311;
-const CANNON_IDS = [700, 701, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385];
+const TREBUCHET_ID = 703;
+const MORTAR_ID = 704;
+const STONE_BLOCK_ID = 10006;
+const TREBUCHET_ANIM_DURATION = 2350;
+const CANNON_IDS = [700, 701, 703, 365, 366, 367, 368, 369, 370, 382, 383, 384, 385];
 const PROTECTED_TOWER_ID = 702;
 const CASINO_IDS = [328, 329];
 const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
@@ -153,6 +163,11 @@ export interface SelectedBuildingModalProps {
     handleApplyProtection: (cost: number, duration: number) => void;
     onOpenMarket: (type: 'general' | 'military') => void;
     onSelectPlayer: (playerId: string) => void;
+    handleUseBoneMeal?: (building?: PlacedBuilding) => void;
+    handleChargeTrebuchet?: (building?: PlacedBuilding) => void;
+    onStartTrebuchetAttack?: (building: PlacedBuilding) => void;
+    onStartTrebuchetMove?: (building: PlacedBuilding) => void;
+    onShowMortarRange?: (building: PlacedBuilding) => void;
     onOpenClanStockExchange?: () => void;
     isMortarActive?: boolean;
     onUseItem?: (itemId: number) => void;
@@ -160,6 +175,8 @@ export interface SelectedBuildingModalProps {
     onOpenFinancialProductionModal?: () => void;
     onOpenFinancialMonsterControl?: () => void;
     onSetMonsterMode?: (monsterId: string, mode: 'stand' | 'patrol') => void;
+    onUpdateKotofeySettings?: (monsterId: string, patch: Partial<KotofeySettings>) => void;
+    onUpdateTrollSettings?: (monsterId: string, patch: Partial<TrollSettings>) => void;
     lastFinancialCollectTime?: number;
     hasEgyptianObelisk?: boolean;
 }
@@ -208,6 +225,11 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     handleApplyProtection,
     onOpenMarket,
     onSelectPlayer,
+    handleUseBoneMeal,
+    handleChargeTrebuchet,
+    onStartTrebuchetAttack,
+    onStartTrebuchetMove,
+    onShowMortarRange,
     onOpenClanStockExchange,
     isMortarActive = false,
     onUseItem,
@@ -215,6 +237,8 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     onOpenFinancialProductionModal,
     onOpenFinancialMonsterControl,
     onSetMonsterMode,
+    onUpdateKotofeySettings,
+    onUpdateTrollSettings,
     lastFinancialCollectTime = 0,
     hasEgyptianObelisk = false
 }) => {
@@ -228,6 +252,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     const [buyRubyAmount, setBuyRubyAmount] = useState(1);
     const [sellRubyAmount, setSellRubyAmount] = useState(1);
     const [auctionMode, setAuctionMode] = useState<'buy' | 'sell'>('buy');
+    const [, setTrebuchetTimerTick] = useState(0);
 
     // Reset sub-menus when selected building changes
     useEffect(() => {
@@ -241,12 +266,32 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
         setBuyRubyAmount(1);
     }, [selectedBuilding?.building.id]);
 
+    // Live update interval for trebuchet charging countdown & animation
+    useEffect(() => {
+        if (!selectedBuilding) return;
+        const b = placedBuildings.find(pb => String(pb.id) === String(selectedBuilding.building.id)) || selectedBuilding.building;
+        if (Number(selectedBuilding.info.id) !== TREBUCHET_ID) return;
+        const now = Date.now();
+        const isCharging = Boolean(b.trebuchetChargingUntil && now < b.trebuchetChargingUntil);
+        const isAnim = Boolean(b.trebuchetAnimStart && now >= b.trebuchetAnimStart && now < b.trebuchetAnimStart + TREBUCHET_ANIM_DURATION);
+        const isFiring = Boolean(b.trebuchetFireAt && now < b.trebuchetFireAt);
+        const isLaunchAnim = Boolean(b.trebuchetLaunchAnimStart && now >= b.trebuchetLaunchAnimStart && now < b.trebuchetLaunchAnimStart + 2500);
+        const isMoving = Boolean(b.trebuchetMoveUntil && now < b.trebuchetMoveUntil);
+        if (!isCharging && !isAnim && !isFiring && !isLaunchAnim && !isMoving) return;
+
+        const interval = setInterval(() => setTrebuchetTimerTick(t => t + 1), 200);
+        return () => clearInterval(interval);
+    }, [selectedBuilding, placedBuildings]);
+
     if (!selectedBuilding) return null;
 
     const liveBuilding = placedBuildings.find(b => String(b.id) === String(selectedBuilding.building.id)) || selectedBuilding.building;
     const building = liveBuilding;
     const { info } = selectedBuilding;
     const isMine = isMyBuilding(building);
+    const isSystemOrNeutral = !building.ownerId || building.ownerId === "-1" || building.ownerId === "0" || building.ownerId === "monster" || building.ownerName === "Система";
+    const isMoveableTerrain = (Number(building.buildingId) === MOUNTAIN_ID || Number(building.buildingId) === RIVER_ID) && (isMine || isSystemOrNeutral);
+    const showSellButton = isMine && Number(building.buildingId) !== MOUNTAIN_ID;
     const repairCost = calculateRepairCost(building, info, isMortarActive ? 0.7 : 1);
 
     const destructionInfo = generateDestructionInfo({
@@ -278,6 +323,38 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     const cooldownMinutes = Math.floor(financialCooldown.remainingMs / 60000);
     const cooldownSeconds = Math.floor((financialCooldown.remainingMs % 60000) / 1000);
     const financialCooldownFormatted = `${cooldownMinutes}:${cooldownSeconds.toString().padStart(2, '0')}`;
+
+    const isTrebuchet = Number(info.id) === TREBUCHET_ID;
+    const isMortar = Number(info.id) === MORTAR_ID;
+    const now = Date.now();
+    const isTrebuchetMoving = Boolean(building.trebuchetMoveUntil && now < building.trebuchetMoveUntil);
+    const trebuchetMovingSecondsLeft = isTrebuchetMoving
+        ? Math.max(0.1, ((building.trebuchetMoveUntil! - now) / 1000)).toFixed(1)
+        : '0';
+    const isTrebuchetCharging = !isTrebuchetMoving && Boolean(building.trebuchetChargingUntil && now < building.trebuchetChargingUntil);
+    const trebuchetSecondsLeft = isTrebuchetCharging
+        ? Math.max(1, Math.ceil((building.trebuchetChargingUntil! - now) / 1000))
+        : 0;
+    const isTrebuchetAnimPlaying = !isTrebuchetMoving && Boolean(
+        building.trebuchetAnimStart &&
+        now >= building.trebuchetAnimStart &&
+        now < building.trebuchetAnimStart + TREBUCHET_ANIM_DURATION
+    );
+    const isTrebuchetFiring = !isTrebuchetMoving && Boolean(building.trebuchetFireAt && now < building.trebuchetFireAt);
+    const trebuchetFiringSecondsLeft = isTrebuchetFiring
+        ? Math.max(0.1, ((building.trebuchetFireAt! - now) / 1000)).toFixed(1)
+        : '0';
+    const isTrebuchetLaunchAnim = !isTrebuchetMoving && Boolean(
+        building.trebuchetLaunchAnimStart &&
+        now >= building.trebuchetLaunchAnimStart &&
+        now < building.trebuchetLaunchAnimStart + 2500
+    );
+    const isTrebuchetLoaded = Boolean(
+        !isTrebuchetMoving && !isTrebuchetFiring && !isTrebuchetLaunchAnim && (
+            building.trebuchetLoaded ||
+            (building.trebuchetAnimStart && now >= building.trebuchetAnimStart + TREBUCHET_ANIM_DURATION)
+        )
+    );
 
     const handleClose = () => {
         setShowExplosionMenu(false);
@@ -371,6 +448,28 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                 </div>
                 {!showExplosionMenu && !showProtectionMenu ? (
                     <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1">
+                        {/* Exploding / Destruction Status Banner */}
+                        {building.isDestroying && (
+                            <div className="bg-gradient-to-br from-red-950/80 via-rose-950/60 to-black p-3.5 rounded-xl border border-red-500/50 mb-4 shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <h4 className="text-red-300 font-extrabold text-sm flex items-center gap-1.5 animate-pulse">
+                                        <span>💣</span> Здание взрывается / атаковано!
+                                    </h4>
+                                    {building.destructionEndTime && (
+                                        <span className="text-yellow-300 font-mono text-xs font-bold px-2 py-0.5 rounded bg-black/50 border border-yellow-500/30">
+                                            ⏱️ {Math.max(0, Math.ceil((building.destructionEndTime - Date.now()) / 1000))} сек
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-300">
+                                    Кто атакует: <span className="font-bold text-yellow-300">
+                                        {building.initiatorId ? (
+                                            allUsers[building.initiatorId]?.name || "Игрок"
+                                        ) : (building.ownerId === "monster" || building.ownerId === "-1" ? "Игроки" : "Монстры")}
+                                    </span>
+                                </p>
+                            </div>
+                        )}
                         {/* Casino Under Construction Banner */}
                         {CASINO_IDS.includes(info.id) && isUnderConstruction && (
                             <div className="bg-gradient-to-br from-yellow-950/40 via-gray-900 to-black p-4 rounded-xl border border-yellow-500/40 mb-4 shadow-lg">
@@ -444,6 +543,200 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             </div>
                         )}
 
+                        {/* Bone Meal Fertilizer for Garden Beds */}
+                        {isMine && !isUnderConstruction && getNextGardenBedStage(Number(info.id)) !== null && (
+                            <div className="bg-gray-900/60 p-4 rounded-xl border border-emerald-500/40 mb-4 shadow-md">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-base font-black text-emerald-300 flex items-center gap-2">
+                                        <img src="/items/bone_meal.webp" className="w-5 h-5 object-contain" alt="Мука" />
+                                        <span>Удобрение грядки</span>
+                                    </h3>
+                                    <span className="text-xs bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-full font-bold">
+                                        В наличии: {inventory[BONE_MEAL_ITEM_ID] || 0} шт.
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => handleUseBoneMeal?.(building)}
+                                    className="w-full py-2.5 px-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01]"
+                                >
+                                    <img src="/items/bone_meal.webp" className="w-5 h-5 object-contain" alt="" />
+                                    <span>Удобрить костяной мукой (1 шт.)</span>
+                                </button>
+                                <p className="text-[11px] text-gray-400 text-center mt-1.5">
+                                    Пропускает таймер и мгновенно выращивает грядку на следующий уровень!
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Trebuchet Charging Menu */}
+                        {isTrebuchet && isMine && !isUnderConstruction && (
+                            <div className="bg-gray-900/60 p-4 rounded-xl border border-amber-500/40 mb-4 shadow-md">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-base font-black text-amber-300 flex items-center gap-2">
+                                        <img src="/buildings/ресурсы/Ресурсы/Каменные блоки/10006.webp" className="w-5 h-5 object-contain" alt="" />
+                                        <span>Зарядка требушета</span>
+                                    </h3>
+                                    <span className="text-xs bg-amber-950/80 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                                        В наличии: {inventory[STONE_BLOCK_ID] || 0} шт.
+                                    </span>
+                                </div>
+
+                                {isTrebuchetMoving ? (
+                                    <div className="text-center py-2.5 px-3 bg-amber-950/60 border border-amber-500/50 rounded-xl">
+                                        <div className="flex items-center justify-center gap-2 text-amber-300 font-extrabold text-sm">
+                                            <span className="animate-bounce">🚜</span>
+                                            <span>Требушет в пути...</span>
+                                        </div>
+                                        <p className="text-xs text-gray-300 mt-1">
+                                            Назначение: клетка <span className="font-mono font-bold text-white">({building.trebuchetMoveTargetX}, {building.trebuchetMoveTargetY})</span>
+                                        </p>
+                                        <p className="text-xs text-amber-200 mt-0.5">Осталось: <span className="font-extrabold text-white">{trebuchetMovingSecondsLeft} сек.</span></p>
+                                        <div className="w-full bg-gray-800 h-2 rounded-full mt-2 overflow-hidden px-0.5">
+                                            <div
+                                                className="bg-gradient-to-r from-amber-500 to-yellow-400 h-1.5 rounded-full transition-all duration-200"
+                                                style={{ width: `${Math.min(100, Math.max(0, (((building.trebuchetMoveDuration || 1) - (building.trebuchetMoveUntil! - now)) / (building.trebuchetMoveDuration || 1)) * 100))}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : isTrebuchetCharging ? (
+                                    <div className="text-center py-2.5 px-3 bg-black/40 rounded-xl border border-amber-500/30">
+                                        <p className="text-amber-400 font-bold animate-pulse text-sm">Идет зарядка требушета...</p>
+                                        <p className="text-xs text-gray-300 mt-1">Осталось: <span className="font-extrabold text-white">{trebuchetSecondsLeft} сек.</span></p>
+                                        <div className="w-full bg-gray-800 h-2 rounded-full mt-2 overflow-hidden px-0.5">
+                                            <div
+                                                className="bg-gradient-to-r from-amber-500 to-yellow-400 h-1.5 rounded-full transition-all duration-200"
+                                                style={{ width: `${Math.min(100, Math.max(0, ((5000 - (building.trebuchetChargingUntil! - now)) / 5000) * 100))}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : isTrebuchetAnimPlaying ? (
+                                    <div className="text-center py-2.5 px-3 bg-black/40 rounded-xl border border-amber-500/30">
+                                        <p className="text-yellow-400 font-bold animate-pulse text-sm">Взведение механизма...</p>
+                                        <p className="text-xs text-gray-400 mt-1">Активация снаряда</p>
+                                    </div>
+                                ) : isTrebuchetFiring ? (
+                                    <div className="text-center py-2.5 px-3 bg-red-950/60 border border-red-500/50 rounded-xl">
+                                        <div className="flex items-center justify-center gap-2 text-red-300 font-black text-sm animate-pulse">
+                                            <span>🎯 Прицеливание орудия...</span>
+                                        </div>
+                                        <p className="text-xs text-gray-200 mt-1">
+                                            Выстрел через: <span className="font-extrabold text-amber-400">{trebuchetFiringSecondsLeft} сек.</span>
+                                        </p>
+                                        <div className="w-full bg-gray-800 h-2 rounded-full mt-2 overflow-hidden px-0.5">
+                                            <div
+                                                className="bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 h-1.5 rounded-full transition-all duration-200"
+                                                style={{ width: `${Math.min(100, Math.max(0, ((10000 - (building.trebuchetFireAt! - now)) / 10000) * 100))}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : isTrebuchetLaunchAnim ? (
+                                    <div className="text-center py-2.5 px-3 bg-red-950/60 border border-red-500/50 rounded-xl">
+                                        <p className="text-red-400 font-extrabold animate-bounce text-sm">🔥 Выстрел!</p>
+                                        <p className="text-xs text-gray-300 mt-1">Запуск снаряда по цели</p>
+                                    </div>
+                                ) : isTrebuchetLoaded ? (
+                                    <div className="text-center py-2.5 px-3 bg-emerald-950/60 border border-emerald-500/40 rounded-xl">
+                                        <div className="flex items-center justify-center gap-2 text-emerald-300 font-black text-sm">
+                                            <img
+                                                src={building.trebuchetFacing === 'left' || building.trebuchetFacing === 'up_left'
+                                                    ? "/buildings/защита/требушет _двигаеться/в перед или в верх только в лево/trebuchet_loaded_left.webp"
+                                                    : building.trebuchetFacing === 'down_left'
+                                                    ? "/buildings/защита/требушет _двигаеться/в низ в лево/trebuchet_rear_loaded_left.webp"
+                                                    : building.trebuchetFacing === 'down_right'
+                                                    ? "/buildings/защита/требушет _двигаеться/в низ в право/trebuchet_rear_loaded_right.webp"
+                                                    : "/buildings/защита/требушет _двигаеться/в перед или в верх в право/trebuchet_loaded_transparent.webp"}
+                                                className="w-6 h-6 object-contain"
+                                                alt=""
+                                            />
+                                            <span>Требушет заряжен</span>
+                                        </div>
+                                        <p className="text-[11px] text-gray-400 mt-1">Каменный блок заряжен. Орудие готово к бою!</p>
+                                        <button
+                                            onClick={() => {
+                                                onClose();
+                                                onStartTrebuchetAttack?.(building);
+                                            }}
+                                            className="w-full mt-3 py-2.5 px-3 bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] border border-red-400/50 cursor-pointer active:scale-95"
+                                        >
+                                            <span className="text-base">🎯</span>
+                                            <span>Атаковать!</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => {
+                                                handleChargeTrebuchet?.(building);
+                                                onClose();
+                                            }}
+                                            disabled={(inventory[STONE_BLOCK_ID] || 0) < 1}
+                                            className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:border-transparent disabled:cursor-not-allowed text-white font-black text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01]"
+                                        >
+                                            <img src="/buildings/ресурсы/Ресурсы/Каменные блоки/10006.webp" className="w-5 h-5 object-contain" alt="" />
+                                            <span>Зарядить требушет (1 каменный блок)</span>
+                                        </button>
+                                        <p className="text-[11px] text-gray-400 text-center mt-1.5">
+                                            Заряжает орудие 1 каменным блоком. Зарядка длится 5 секунд.
+                                        </p>
+                                    </>
+                                )}
+
+                                {!isTrebuchetMoving && !isTrebuchetCharging && !isTrebuchetFiring && !isTrebuchetLaunchAnim && (
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            onStartTrebuchetMove?.(building);
+                                        }}
+                                        className="w-full mt-3 py-2.5 px-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 hover:from-emerald-500 hover:to-cyan-600 text-white font-extrabold text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-[1.01] border border-emerald-400/40 cursor-pointer active:scale-95"
+                                    >
+                                        <span className="text-base">🚜</span>
+                                        <span>Передвижение</span>
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Mortar Combat Controls */}
+                        {isMortar && isMine && (
+                            <div className="bg-gray-900/60 p-4 rounded-xl border border-blue-500/30 mb-4 space-y-3 shadow-md">
+                                <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl">💣</span>
+                                        <div>
+                                            <h3 className="text-sm font-black text-blue-300">Мортира на платформе</h3>
+                                            <span className="text-[11px] text-gray-400">Авто-огонь по монстрам (радиус 8 клеток)</span>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${building.isActive !== false ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' : 'bg-red-950/80 text-red-300 border-red-500/40'}`}>
+                                        {building.isActive !== false ? '🟢 Огонь активен' : '🔴 Стрельба отключена'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <button
+                                        onClick={handleToggleActive}
+                                        className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer ${building.isActive !== false ? 'bg-gradient-to-r from-red-700 to-rose-700 hover:from-red-600 hover:to-rose-600 text-white border border-red-500/30' : 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white border border-emerald-400/30'}`}
+                                    >
+                                        <span>{building.isActive !== false ? '🛑 Выключить стрельбу' : '⚡ Включить стрельбу'}</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            onShowMortarRange?.(building);
+                                        }}
+                                        className="py-2.5 px-3 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white border border-blue-400/30 flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+                                    >
+                                        <span>🎯 Посмотреть радиус</span>
+                                    </button>
+                                </div>
+
+                                <p className="text-[11px] text-gray-400 text-center">
+                                    Мортира реагирует только на монстров. При обнаружении врага в радиусе 8 клеток производит выстрел навесным снарядом.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Watchtower Tax Settings & Stock Market */}
                         {isWatchtowerId(info.id) && (
                             <div className="bg-gray-900/60 p-4 rounded-xl border border-purple-500/30 mb-4 space-y-3 shadow-md">
@@ -508,7 +801,12 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             </div>
                         )}
 
-                        <p className="text-gray-300 mb-4">{info.description}</p>
+                        <div className="mb-4 space-y-1">
+                            <p className="text-gray-300">{info.description}</p>
+                            {info.englishDescription && (
+                                <p className="text-xs text-gray-400 italic">{info.englishDescription}</p>
+                            )}
+                        </div>
 
                         <div className="text-sm space-y-1 text-gray-400">
                             {info.id !== MOUNTAIN_ID && info.id !== RIVER_ID && (
@@ -534,7 +832,58 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                 })()
                             )}
                             {info.stats.populationBonus && <p>Дает населения: <span className="font-bold text-white">{info.stats.populationBonus}</span></p>}
-                            {info.stats.damage && <p>Урон: <span className="font-bold text-red-400">{info.stats.damage}</span></p>}
+                            {(() => {
+                                const scaled = getCustomMonsterScaledStats({
+                                    buildingId: info.id,
+                                    ownerId: building.ownerId,
+                                    buildings: placedBuildings,
+                                });
+                                if (isTrollMonster(info.id)) {
+                                    return (
+                                        <>
+                                            <p>
+                                                Урон постройкам: <span className="font-bold text-red-400">{scaled.damageToBuilding}</span>
+                                                <span className="text-xs text-red-300/80 ml-1">({scaled.lovedDamageToBuilding} по «{info.stats.hates || 'Грядки'}»)</span>
+                                                <span className="text-xs text-gray-400 ml-1">
+                                                    {scaled.warriorLevel > 0 ? `(Статуя Воителя ур.${scaled.warriorLevel})` : '(без статуи)'}
+                                                </span>
+                                            </p>
+                                            <p>
+                                                Урон монстрам: <span className="font-bold text-orange-400">{scaled.damageToMonster}</span>
+                                            </p>
+                                        </>
+                                    );
+                                }
+                                return info.stats.damage ? <p>Урон: <span className="font-bold text-red-400">{info.stats.damage}</span></p> : null;
+                            })()}
+                            {info.stats.hates && (
+                                <p>Ненавидит: <span className="font-bold text-rose-300">😡 {info.stats.hates}</span> <span className="text-xs text-gray-500">(наносит двойной урон и не отвлекается)</span></p>
+                            )}
+                            {info.stats.repair && (() => {
+                                const scaled = getCustomMonsterScaledStats({
+                                    buildingId: info.id,
+                                    ownerId: building.ownerId,
+                                    buildings: placedBuildings,
+                                });
+                                const baseVal = (info.id === 70009 || info.id === 70010) ? scaled.baseRepair : Number(info.stats.repair);
+                                const lovedVal = baseVal * 2;
+                                return (
+                                    <p>
+                                        Чинит постройки: <span className="font-bold text-emerald-400">+{baseVal}</span>
+                                        {info.stats.loves && (
+                                            <span className="text-xs text-emerald-300/80 ml-1">(+{lovedVal} для «{info.stats.loves}»)</span>
+                                        )}
+                                        {(info.id === 70009 || info.id === 70010) && (
+                                            <span className="text-xs text-gray-400 ml-1">
+                                                {scaled.defenderLevel > 0 ? `(Статуя Защитника ур.${scaled.defenderLevel})` : '(без статуи)'}
+                                            </span>
+                                        )}
+                                    </p>
+                                );
+                            })()}
+                            {info.stats.loves && (
+                                <p>Любит: <span className="font-bold text-pink-300">🎁 {info.stats.loves}</span> <span className="text-xs text-gray-500">(чинит с удвоенной силой и не отвлекается)</span></p>
+                            )}
                             {info.stats.givesCoins && !isBanditCastleBuildingId(info.id) && <p>Дает монет: <span className="font-bold text-white">{info.stats.givesCoins}</span></p>}
                             {info.stats.increasesGoldCapacity && (
                                 <p className="flex items-center">
@@ -917,60 +1266,98 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                         )}
 
                         {/* Monster Behavior Controls for player-owned monster */}
-                        {isMonster && isMine && !isUnderConstruction && (
-                            <div className="mt-4 p-3.5 bg-gradient-to-r from-purple-950/70 via-gray-900/90 to-rose-950/60 rounded-xl border border-purple-500/50 shadow-lg space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xl">👾</span>
-                                        <div>
-                                            <h4 className="text-purple-300 font-extrabold text-sm">
-                                                Приказ монстру
-                                            </h4>
-                                            <p className="text-[11px] text-gray-300">
-                                                {building.monsterMode === 'patrol' 
-                                                    ? '⚔️ Патрулирует район и атакует чужие постройки' 
-                                                    : '🛑 Стоит на месте и удерживает позицию'}
-                                            </p>
+                        {isMonster && isMine && !isUnderConstruction && (() => {
+                            const isHealer = isHealerMonster(info.id);
+                            const isTroll = isTrollMonster(info.id);
+                            const isKotofey = isKotofeyMonster(info.id);
+                            const isPatrol = building.monsterMode === 'patrol';
+                            return (
+                                <div className={`mt-4 p-3.5 rounded-xl border shadow-lg space-y-3 ${
+                                    isHealer
+                                        ? 'bg-gradient-to-r from-emerald-950/70 via-gray-900/90 to-teal-950/60 border-emerald-500/50'
+                                        : isTroll
+                                            ? 'bg-gradient-to-r from-amber-950/70 via-gray-900/90 to-orange-950/60 border-amber-500/50'
+                                            : 'bg-gradient-to-r from-purple-950/70 via-gray-900/90 to-rose-950/60 border-purple-500/50'
+                                }`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl">{isHealer ? '🐾' : isTroll ? '🧌' : '👾'}</span>
+                                            <div>
+                                                <h4 className={`${isHealer ? 'text-emerald-300' : isTroll ? 'text-amber-300' : 'text-purple-300'} font-extrabold text-sm`}>
+                                                    {isKotofey ? 'Приказ Котофею' : isHealer ? `Приказ (${info.name})` : isTroll ? 'Приказ Троллю' : 'Приказ монстру'}
+                                                </h4>
+                                                <p className="text-[11px] text-gray-300">
+                                                    {isPatrol
+                                                        ? (isHealer
+                                                            ? '💚 Патрулирует город и ремонтирует постройки и монстров'
+                                                            : isTroll
+                                                                ? '⚔️ Патрулирует район, сносит грядки (x2), постройки и монстров'
+                                                                : '⚔️ Патрулирует район и атакует чужие постройки')
+                                                        : (isTroll
+                                                            ? '🛑 Стоит на месте и подгоняет соседний завод/грядку каждые 40с'
+                                                            : '🛑 Стоит на месте и удерживает позицию')}
+                                                </p>
+                                            </div>
                                         </div>
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                            isPatrol
+                                                ? isHealer
+                                                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 animate-pulse'
+                                                    : 'bg-red-950/80 text-rose-300 border-rose-500/40 animate-pulse'
+                                                : 'bg-blue-950/80 text-sky-300 border-sky-500/40'
+                                        }`}>
+                                            {isPatrol ? (isHealer ? '💚 В патруле' : '⚔️ В патруле') : '🛑 На месте'}
+                                        </span>
                                     </div>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                        building.monsterMode === 'patrol'
-                                            ? 'bg-red-950/80 text-rose-300 border-rose-500/40 animate-pulse'
-                                            : 'bg-blue-950/80 text-sky-300 border-sky-500/40'
-                                    }`}>
-                                        {building.monsterMode === 'patrol' ? '⚔️ В патруле' : '🛑 На месте'}
-                                    </span>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => onSetMonsterMode && onSetMonsterMode(String(building.id), 'stand')}
-                                        className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
-                                            (building.monsterMode || 'stand') === 'stand'
-                                                ? 'bg-sky-600 text-white border-2 border-sky-300 shadow-lg shadow-sky-500/30 font-black'
-                                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-white/10'
-                                        }`}
-                                    >
-                                        <span>🛑</span>
-                                        <span>Стоять на месте</span>
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => onSetMonsterMode && onSetMonsterMode(String(building.id), 'stand')}
+                                            className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
+                                                (building.monsterMode || 'stand') === 'stand'
+                                                    ? 'bg-sky-600 text-white border-2 border-sky-300 shadow-lg shadow-sky-500/30 font-black'
+                                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-white/10'
+                                            }`}
+                                        >
+                                            <span>🛑</span>
+                                            <span>Стоять на месте</span>
+                                        </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => onSetMonsterMode && onSetMonsterMode(String(building.id), 'patrol')}
-                                        className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
-                                            building.monsterMode === 'patrol'
-                                                ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-2 border-rose-300 shadow-lg shadow-red-500/30 font-black'
-                                                : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-white/10'
-                                        }`}
-                                    >
-                                        <span>⚔️</span>
-                                        <span>Патрулировать</span>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => onSetMonsterMode && onSetMonsterMode(String(building.id), 'patrol')}
+                                            className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow ${
+                                                isPatrol
+                                                    ? isHealer
+                                                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-2 border-emerald-300 shadow-lg shadow-emerald-500/30 font-black'
+                                                        : 'bg-gradient-to-r from-red-600 to-rose-600 text-white border-2 border-rose-300 shadow-lg shadow-red-500/30 font-black'
+                                                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white border border-white/10'
+                                            }`}
+                                        >
+                                            <span>{isHealer ? '💚' : '⚔️'}</span>
+                                            <span>Патрулировать</span>
+                                        </button>
+                                    </div>
+
+                                    {isHealer && onUpdateKotofeySettings && (
+                                        <KotofeyControlsPanel
+                                            buildingId={info.id}
+                                            settings={building.kotofeySettings}
+                                            onChange={(patch) => onUpdateKotofeySettings(String(building.id), patch)}
+                                        />
+                                    )}
+                                    {isTroll && onUpdateTrollSettings && (
+                                        <TrollControlsPanel
+                                            monsterMode={building.monsterMode || 'stand'}
+                                            trollSettings={building.trollSettings}
+                                            onSetMode={(mode) => onSetMonsterMode && onSetMonsterMode(String(building.id), mode)}
+                                            onChange={(patch) => onUpdateTrollSettings(String(building.id), patch)}
+                                        />
+                                    )}
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* Egyptian Obelisk Perk Banner */}
                         {isEgyptianObelisk && isMine && !isUnderConstruction && (
@@ -998,7 +1385,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                         )}
 
                         {/* Monster Academy - Enter Button */}
-                        {info.id >= 689 && info.id <= 696 && isMine && (
+                        {isMonsterAcademyBuilding(info.id) && isMine && (
                             <button
                                 onClick={() => setShowMonsterAcademyModal(true)}
                                 className="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs shadow-md border border-purple-400/30 transition-all flex items-center justify-center gap-1.5"
@@ -1073,10 +1460,10 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                         </button>
                                     )}
 
-                                    {isMine && (
+                                    {(isMine || isMoveableTerrain) && (
                                         <button
                                             onClick={handleMoveClick}
-                                            className={`${(Number(building.buildingId) === MOUNTAIN_ID || Number(building.buildingId) === RIVER_ID) ? 'col-span-2' : ''} bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-purple-400/30 transition-all disabled:from-gray-800 disabled:to-gray-800 disabled:grayscale disabled:cursor-not-allowed`}
+                                            className={`${(Number(building.buildingId) === MOUNTAIN_ID || Number(building.buildingId) === RIVER_ID) ? (showSellButton ? 'col-span-2' : 'col-span-3') : ''} bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-purple-400/30 transition-all disabled:from-gray-800 disabled:to-gray-800 disabled:grayscale disabled:cursor-not-allowed`}
                                             title={`Переместить за ${(Number(building.buildingId) === MOUNTAIN_ID || Number(building.buildingId) === RIVER_ID) ? MOUNTAIN_MOVE_COST : MOVE_ENERGY_COST} энергии`}
                                         >
                                             <MoveIcon className="w-4 h-4 mb-1" />
@@ -1084,7 +1471,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                         </button>
                                     )}
 
-                                    {isMine && Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
+                                    {isMine && Number(building.buildingId) !== MOUNTAIN_ID && (
                                         <button
                                             onClick={handleSell}
                                             className="bg-gradient-to-r from-rose-900 to-red-950 hover:from-rose-800 hover:to-red-900 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-rose-500/30 transition-all disabled:from-gray-800 disabled:to-gray-800 disabled:cursor-not-allowed"
@@ -1098,12 +1485,22 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             )}
 
                             {Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
-                                <button
-                                    onClick={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
-                                    className={`bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md shadow-red-950/40 border border-red-500/30 transition-all ${!isMine ? 'col-span-3' : ''}`}
-                                >
-                                    <span>Взорвать</span>
-                                </button>
+                                building.isDestroying ? (
+                                    <button
+                                        disabled
+                                        className={`bg-gray-800/80 text-gray-400 font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 border border-red-500/30 cursor-not-allowed opacity-75 ${!isMine ? 'col-span-3' : ''}`}
+                                        title="Здание уже взрывается, повторный взрыв невозможен"
+                                    >
+                                        <span className="text-red-400 font-bold">💣 Взрывается...</span>
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
+                                        className={`bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md shadow-red-950/40 border border-red-500/30 transition-all ${!isMine ? 'col-span-3' : ''}`}
+                                    >
+                                        <span>Взорвать</span>
+                                    </button>
+                                )
                             )}
 
                             {!isMine && building.workState === 'finished' && placedBuildings.some(b => b.buildingId === 6000 && isMyBuilding(b) && !b.isConstructing) && playerLevel >= 2 && (
@@ -1329,7 +1726,9 @@ const arePropsEqual = (prevProps: SelectedBuildingModalProps, nextProps: Selecte
         prevB.isActive !== nextB.isActive ||
         prevB.bank !== nextB.bank ||
         prevB.taxRate !== nextB.taxRate ||
-        prevB.monsterMode !== nextB.monsterMode
+        prevB.monsterMode !== nextB.monsterMode ||
+        prevB.kotofeySettings !== nextB.kotofeySettings ||
+        prevB.trollSettings !== nextB.trollSettings
     ) {
         return false;
     }
