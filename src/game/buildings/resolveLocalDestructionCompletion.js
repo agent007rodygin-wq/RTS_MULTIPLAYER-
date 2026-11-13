@@ -64,7 +64,12 @@ export function resolveLocalDestructionCompletion(input) {
     // cause any pending damage to instantly kill a building with unknown HP.
     const fullHp = building.maxHp ?? buildingInfo?.stats?.durability ?? 100;
     const currentHp = building.hp ?? fullHp;
-    const remainingHp = currentHp - damage;
+
+    const currentShieldHp = Math.max(0, building.shieldHp || 0);
+    const shieldDamage = Math.min(damage, currentShieldHp);
+    const remainingShieldHp = currentShieldHp - shieldDamage;
+    const remainingDamage = damage - shieldDamage;
+    const remainingHp = currentHp - remainingDamage;
 
     const completedBuilding = {
         ...building,
@@ -80,7 +85,18 @@ export function resolveLocalDestructionCompletion(input) {
         destructionMaxLifetimeMs: undefined,
         destructionStatus: /** @type {'finished'} */ ('finished'),
         pendingDamage: 0,
+        initiatorId: undefined,
     };
+
+    if (currentShieldHp > 0) {
+        if (remainingShieldHp > 0) {
+            completedBuilding.shieldHp = remainingShieldHp;
+        } else {
+            completedBuilding.shieldHp = undefined;
+            completedBuilding.shieldMaxHp = undefined;
+            completedBuilding.protectionEndTime = undefined;
+        }
+    }
 
     if (remainingHp <= 0) {
         completedBuilding.hp = 0;

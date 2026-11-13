@@ -53,7 +53,7 @@ const buildTabs: { name: BuildMenuTab; icon: React.ReactNode; label?: string }[]
     { name: 'Античность', icon: <AntiquityIcon className="w-6 h-6" /> },
 ];
 
-const gryadkiSortOrder: number[] = [400, 70, 82, 102, 240, 274, 313, 600];
+const gryadkiSortOrder: number[] = [400, 70, 82, 911, 102, 240, 274, 313, 600];
 const zavodySortOrder: number[] = [577, 430, 874, 55, 307, 668, 615, 689, 620, 330, 60332, 262, 266, 601, 853, 273, 640, 602];
 const zhilyeSortOrder: number[] = [1, 5, 7, 1002, 39, 64, 146, 205, 7980022];
 const biznesSortOrder: number[] = [2, 27, 11, 6000, 31532, 66, 8, 4, 340, 31612, 3, 12, 36, 310, 60, 308, 57, 311, 328, 7980020, 7980021];

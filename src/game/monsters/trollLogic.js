@@ -57,6 +57,7 @@ const FARM_SELF_DAMAGE_RANGES = [
     { ids: [70, 71, 72, 73, 77, 78, 79, 80], damage: 3 },
     { range: [874, 894], damage: 3 },
     { ids: [82, 83, 84, 85, 86, 87, 89, 90, 91, 92, 93, 94], damage: 10 },
+    { range: [911, 931], damage: 10 },
     { ids: [102, 103, 104, 105, 106, 107, 109, 110, 111, 112], damage: 15 },
     { range: [240, 259], damage: 30 },
     { range: [274, 295], damage: 50 },

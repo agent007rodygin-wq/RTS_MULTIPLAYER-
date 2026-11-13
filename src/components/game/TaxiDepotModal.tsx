@@ -44,6 +44,7 @@ export interface TaxiDepotModalProps {
     handleMoveClick?: () => void;
     handleSell?: () => void;
     handleExplode?: (...args: any[]) => void;
+    handleDefuse?: () => void;
     handleApplyProtection?: (...args: any[]) => void;
     handleUpgrade?: () => void;
     onOpenExplosionMenu?: () => void;
@@ -73,6 +74,7 @@ export const TaxiDepotModal: React.FC<TaxiDepotModalProps> = ({
     handleMoveClick,
     handleSell,
     handleExplode,
+    handleDefuse,
     handleApplyProtection,
     handleUpgrade,
     onOpenExplosionMenu,
@@ -658,18 +660,18 @@ export const TaxiDepotModal: React.FC<TaxiDepotModalProps> = ({
                                     />
                                 </button>
 
-                                {/* 10.5 Взорвать: (355, 1149, 290, 71) */}
+                                {/* 10.5 Взорвать / Разминировать: (355, 1149, 290, 71) */}
                                 <button
                                     id="destroy_button"
-                                    onClick={building.isDestroying ? undefined : (onOpenExplosionMenu || handleExplode)}
-                                    disabled={building.isDestroying}
+                                    onClick={building.isDestroying ? handleDefuse : (onOpenExplosionMenu || handleExplode)}
+                                    disabled={building.isDestroying && !handleDefuse}
                                     style={{ left: 355, top: 1149, width: 290, height: 71 }}
-                                    className={`absolute z-20 transition-transform active:scale-95 hover:brightness-110 focus:outline-none ${building.isDestroying ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    title={building.isDestroying ? "Здание уже взрывается" : "Взорвать здание"}
+                                    className={`absolute z-20 transition-transform active:scale-95 hover:brightness-110 focus:outline-none ${(building.isDestroying && !handleDefuse) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                    title={building.isDestroying ? "Здание заминировано — нажать для разминирования" : "Взорвать здание"}
                                 >
                                     <img
                                         src="/Gui/TaxiGui/button_destroy.png"
-                                        alt="Взорвать"
+                                        alt={building.isDestroying ? "Разминировать" : "Взорвать"}
                                         className="w-full h-full object-fill pointer-events-none drop-shadow-md"
                                     />
                                 </button>

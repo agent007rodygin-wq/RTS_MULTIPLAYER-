@@ -1,0 +1,1035 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Грибная грядка — Анимация всех 21 уровней (Гномоград)</title>
+<style>
+  :root {
+    --bg: #141518;
+    --card-bg: #1f2126;
+    --card-border: #2e3138;
+    --text: #e6e6e6;
+    --dim: #90949f;
+    --accent: #f5c443;
+    --blue: #5865f2;
+    --green: #43b581;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  header {
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  h1 { font-size: 24px; color: var(--accent); display: flex; align-items: center; gap: 10px; }
+  .subtitle { font-size: 14px; color: var(--dim); margin-top: 4px; }
+  .levels-bar-wrap {
+    margin-bottom: 24px;
+  }
+  .levels-bar {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  .level-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    min-width: 90px;
+    transition: 0.15s;
+    user-select: none;
+  }
+  .level-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .level-card.active {
+    border-color: var(--accent);
+    background: #2d2a22;
+    box-shadow: 0 0 12px rgba(245, 196, 67, 0.25);
+  }
+  .level-card img {
+    width: 60px;
+    height: 52px;
+    object-fit: contain;
+  }
+  .lvl-title { font-size: 12px; font-weight: 600; margin-top: 4px; }
+  .lvl-id { font-size: 10px; color: var(--dim); }
+
+  .grid-main {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 860px) {
+    .grid-main { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .card h2 { font-size: 18px; margin-bottom: 16px; color: #fff; align-self: flex-start; }
+  .canvas-stage {
+    width: 250px;
+    height: 235px;
+    background: #111215;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    background-image: 
+      linear-gradient(45deg, #18191e 25%, transparent 25%), 
+      linear-gradient(-45deg, #18191e 25%, transparent 25%), 
+      linear-gradient(45deg, transparent 75%, #18191e 75%), 
+      linear-gradient(-45deg, transparent 75%, #18191e 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  }
+  canvas {
+    max-width: 240px;
+    max-height: 230px;
+    image-rendering: pixelated;
+  }
+  .player-controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .controls-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    background: #2b2e35;
+    color: #fff;
+    border: 1px solid #3c404a;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover {
+    background: var(--blue);
+    border-color: var(--blue);
+  }
+  .btn.btn-accent {
+    background: var(--accent);
+    color: #141518;
+    border: none;
+    font-weight: 600;
+  }
+  .btn.btn-accent:hover {
+    background: #ffd466;
+  }
+  .btn.active-mode {
+    background: var(--blue);
+    border-color: var(--blue);
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  .stats-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #282a30;
+  }
+  .stats-table td:first-child { color: var(--dim); }
+  .stats-table td:last-child { font-weight: 600; text-align: right; }
+
+  .section {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .section h2 { font-size: 18px; margin-bottom: 16px; color: #fff; }
+  .frames-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+  }
+  .frame-thumb {
+    background: #111215;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    min-width: 68px;
+  }
+  .frame-thumb img {
+    width: 60px;
+    height: 52px;
+    object-fit: contain;
+  }
+  .frame-thumb span {
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 2px;
+  }
+  .dl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .dl-card {
+    background: #18191e;
+    border: 1px solid #2a2c33;
+    border-radius: 8px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .dl-card .title { font-weight: 600; font-size: 14px; }
+  .dl-card .desc { font-size: 12px; color: var(--dim); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>ðŸ ³ Грибная грядка — Все 21 уровней анимации</h1>
+      <div class="subtitle">Полная коллекция уровней (ID 874–894), покадровые раскадровки, анимированные GIF и спрайты</div>
+    </div>
+    <a class="btn btn-accent" style="font-size:15px; padding:10px 20px;" href="../gnomograd_mushroom_beds_all_levels.zip" download>Скачать весь архив .ZIP</a>
+  </header>
+
+  <div class="levels-bar-wrap">
+    <div style="font-size:13px; color:var(--dim); margin-bottom:8px;">Выберите уровень для просмотра (1 — 21):</div>
+    <div class="levels-bar">
+          <div class="level-card active" onclick="selectLevel(1)" id="card-lvl-1">
+      <img src="summary_static/level_01.png" alt="Уровень 1">
+      <div class="lvl-title">Уровень 1</div>
+      <div class="lvl-id">ID: 874</div>
+    </div>    <div class="level-card " onclick="selectLevel(2)" id="card-lvl-2">
+      <img src="summary_static/level_02.png" alt="Уровень 2">
+      <div class="lvl-title">Уровень 2</div>
+      <div class="lvl-id">ID: 875</div>
+    </div>    <div class="level-card " onclick="selectLevel(3)" id="card-lvl-3">
+      <img src="summary_static/level_03.png" alt="Уровень 3">
+      <div class="lvl-title">Уровень 3</div>
+      <div class="lvl-id">ID: 876</div>
+    </div>    <div class="level-card " onclick="selectLevel(4)" id="card-lvl-4">
+      <img src="summary_static/level_04.png" alt="Уровень 4">
+      <div class="lvl-title">Уровень 4</div>
+      <div class="lvl-id">ID: 877</div>
+    </div>    <div class="level-card " onclick="selectLevel(5)" id="card-lvl-5">
+      <img src="summary_static/level_05.png" alt="Уровень 5">
+      <div class="lvl-title">Уровень 5</div>
+      <div class="lvl-id">ID: 878</div>
+    </div>    <div class="level-card " onclick="selectLevel(6)" id="card-lvl-6">
+      <img src="summary_static/level_06.png" alt="Уровень 6">
+      <div class="lvl-title">Уровень 6</div>
+      <div class="lvl-id">ID: 879</div>
+    </div>    <div class="level-card " onclick="selectLevel(7)" id="card-lvl-7">
+      <img src="summary_static/level_07.png" alt="Уровень 7">
+      <div class="lvl-title">Уровень 7</div>
+      <div class="lvl-id">ID: 880</div>
+    </div>    <div class="level-card " onclick="selectLevel(8)" id="card-lvl-8">
+      <img src="summary_static/level_08.png" alt="Уровень 8">
+      <div class="lvl-title">Уровень 8</div>
+      <div class="lvl-id">ID: 881</div>
+    </div>    <div class="level-card " onclick="selectLevel(9)" id="card-lvl-9">
+      <img src="summary_static/level_09.png" alt="Уровень 9">
+      <div class="lvl-title">Уровень 9</div>
+      <div class="lvl-id">ID: 882</div>
+    </div>    <div class="level-card " onclick="selectLevel(10)" id="card-lvl-10">
+      <img src="summary_static/level_10.png" alt="Уровень 10">
+      <div class="lvl-title">Уровень 10</div>
+      <div class="lvl-id">ID: 883</div>
+    </div>    <div class="level-card " onclick="selectLevel(11)" id="card-lvl-11">
+      <img src="summary_static/level_11.png" alt="Уровень 11">
+      <div class="lvl-title">Уровень 11</div>
+      <div class="lvl-id">ID: 884</div>
+    </div>    <div class="level-card " onclick="selectLevel(12)" id="card-lvl-12">
+      <img src="summary_static/level_12.png" alt="Уровень 12">
+      <div class="lvl-title">Уровень 12</div>
+      <div class="lvl-id">ID: 885</div>
+    </div>    <div class="level-card " onclick="selectLevel(13)" id="card-lvl-13">
+      <img src="summary_static/level_13.png" alt="Уровень 13">
+      <div class="lvl-title">Уровень 13</div>
+      <div class="lvl-id">ID: 886</div>
+    </div>    <div class="level-card " onclick="selectLevel(14)" id="card-lvl-14">
+      <img src="summary_static/level_14.png" alt="Уровень 14">
+      <div class="lvl-title">Уровень 14</div>
+      <div class="lvl-id">ID: 887</div>
+    </div>    <div class="level-card " onclick="selectLevel(15)" id="card-lvl-15">
+      <img src="summary_static/level_15.png" alt="Уровень 15">
+      <div class="lvl-title">Уровень 15</div>
+      <div class="lvl-id">ID: 888</div>
+    </div>    <div class="level-card " onclick="selectLevel(16)" id="card-lvl-16">
+      <img src="summary_static/level_16.png" alt="Уровень 16">
+      <div class="lvl-title">Уровень 16</div>
+      <div class="lvl-id">ID: 889</div>
+    </div>    <div class="level-card " onclick="selectLevel(17)" id="card-lvl-17">
+      <img src="summary_static/level_17.png" alt="Уровень 17">
+      <div class="lvl-title">Уровень 17</div>
+      <div class="lvl-id">ID: 890</div>
+    </div>    <div class="level-card " onclick="selectLevel(18)" id="card-lvl-18">
+      <img src="summary_static/level_18.png" alt="Уровень 18">
+      <div class="lvl-title">Уровень 18</div>
+      <div class="lvl-id">ID: 891</div>
+    </div>    <div class="level-card " onclick="selectLevel(19)" id="card-lvl-19">
+      <img src="summary_static/level_19.png" alt="Уровень 19">
+      <div class="lvl-title">Уровень 19</div>
+      <div class="lvl-id">ID: 892</div>
+    </div>    <div class="level-card " onclick="selectLevel(20)" id="card-lvl-20">
+      <img src="summary_static/level_20.png" alt="Уровень 20">
+      <div class="lvl-title">Уровень 20</div>
+      <div class="lvl-id">ID: 893</div>
+    </div>    <div class="level-card " onclick="selectLevel(21)" id="card-lvl-21">
+      <img src="summary_static/level_21.png" alt="Уровень 21">
+      <div class="lvl-title">Уровень 21</div>
+      <div class="lvl-id">ID: 894</div>
+    </div>
+    </div>
+  </div>
+
+  <div class="grid-main">
+    <!-- Live Canvas Player -->
+    <div class="card">
+      <h2 id="playerHeading">Плеер: Уровень 1 (ID: 874)</h2>
+      <div class="canvas-stage">
+        <canvas id="animCanvas" width="239" height="204"></canvas>
+      </div>
+      <div class="player-controls">
+        <input type="range" id="frameSlider" min="1" max="40" value="1" oninput="onSlider(this.value)">
+        <div class="controls-row">
+          <button class="btn" onclick="prevFrame()">â ® Назад</button>
+          <button class="btn btn-accent" id="playBtn" onclick="togglePlay()">â ¸ Пауза</button>
+          <button class="btn" onclick="nextFrame()">Вперёд â ­</button>
+        </div>
+        <div class="controls-row">
+          <button class="btn active-mode" id="btnModeWork" onclick="setMode('work')">âš™ï¸  Только работа (Work)</button>
+          <button class="btn" id="btnModeFull" onclick="setMode('full')">â˜€ï¸  Полный цикл (Work + Wait)</button>
+        </div>
+        <div class="controls-row" style="font-size:13px; color:var(--dim);">
+          <span>Кадр: <strong id="curFrameText" style="color:#fff;">1</strong> / <span id="maxFrameText">40</span></span>
+          <span style="margin-left:14px;">Частота: <strong id="fpsText" style="color:#fff;">24 FPS</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Animated GIF & Stats -->
+    <div class="card">
+      <h2>Анимированный GIF и параметры уровня</h2>
+      <div class="canvas-stage">
+        <img id="gifPreview" src="levels/lvl_01/anim_work.gif" alt="GIF" style="max-width:240px; max-height:230px;">
+      </div>
+      <table class="stats-table" id="statsTable">
+        <!-- populated dynamically -->
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Файлы для скачивания выбранного уровня</h2>
+    <div class="dl-grid" id="downloadsGrid">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Покадровая раскадровка выбранного уровня</h2>
+    <div class="frames-scroll" id="framesContainer">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<script>
+  const levels = [
+    {
+        "level":  1,
+        "id":  874,
+        "w":  239,
+        "h":  204,
+        "cols":  8,
+        "frames":  80,
+        "fps":  24,
+        "waitFrame":  40,
+        "price":  300,
+        "builders":  3,
+        "people":  -2,
+        "strength":  176,
+        "workDelay":  655438,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_01/anim_work.gif",
+        "gifFull":  "levels/lvl_01/anim_full.gif",
+        "sprite":  "levels/lvl_01/spritesheet.png",
+        "staticImg":  "levels/lvl_01/house_static.png",
+        "framesDir":  "levels/lvl_01/frames"
+    },
+    {
+        "level":  2,
+        "id":  875,
+        "w":  239,
+        "h":  204,
+        "cols":  8,
+        "frames":  80,
+        "fps":  24,
+        "waitFrame":  40,
+        "price":  1200,
+        "builders":  7,
+        "people":  -2,
+        "strength":  368,
+        "workDelay":  677938,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_02/anim_work.gif",
+        "gifFull":  "levels/lvl_02/anim_full.gif",
+        "sprite":  "levels/lvl_02/spritesheet.png",
+        "staticImg":  "levels/lvl_02/house_static.png",
+        "framesDir":  "levels/lvl_02/frames"
+    },
+    {
+        "level":  3,
+        "id":  876,
+        "w":  239,
+        "h":  204,
+        "cols":  8,
+        "frames":  80,
+        "fps":  24,
+        "waitFrame":  40,
+        "price":  10800,
+        "builders":  12,
+        "people":  -4,
+        "strength":  1136,
+        "workDelay":  1057260,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_03/anim_work.gif",
+        "gifFull":  "levels/lvl_03/anim_full.gif",
+        "sprite":  "levels/lvl_03/spritesheet.png",
+        "staticImg":  "levels/lvl_03/house_static.png",
+        "framesDir":  "levels/lvl_03/frames"
+    },
+    {
+        "level":  4,
+        "id":  877,
+        "w":  239,
+        "h":  204,
+        "cols":  8,
+        "frames":  80,
+        "fps":  24,
+        "waitFrame":  40,
+        "price":  25600,
+        "builders":  17,
+        "people":  -4,
+        "strength":  1816,
+        "workDelay":  1470238,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_04/anim_work.gif",
+        "gifFull":  "levels/lvl_04/anim_full.gif",
+        "sprite":  "levels/lvl_04/spritesheet.png",
+        "staticImg":  "levels/lvl_04/house_static.png",
+        "framesDir":  "levels/lvl_04/frames"
+    },
+    {
+        "level":  5,
+        "id":  878,
+        "w":  239,
+        "h":  204,
+        "cols":  8,
+        "frames":  80,
+        "fps":  24,
+        "waitFrame":  40,
+        "price":  50000,
+        "builders":  23,
+        "people":  -5,
+        "strength":  2632,
+        "workDelay":  1921587,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_05/anim_work.gif",
+        "gifFull":  "levels/lvl_05/anim_full.gif",
+        "sprite":  "levels/lvl_05/spritesheet.png",
+        "staticImg":  "levels/lvl_05/house_static.png",
+        "framesDir":  "levels/lvl_05/frames"
+    },
+    {
+        "level":  6,
+        "id":  879,
+        "w":  240,
+        "h":  207,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  86400,
+        "builders":  30,
+        "people":  -7,
+        "strength":  3568,
+        "workDelay":  2414953,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_06/anim_work.gif",
+        "gifFull":  "levels/lvl_06/anim_full.gif",
+        "sprite":  "levels/lvl_06/spritesheet.png",
+        "staticImg":  "levels/lvl_06/house_static.png",
+        "framesDir":  "levels/lvl_06/frames"
+    },
+    {
+        "level":  7,
+        "id":  880,
+        "w":  240,
+        "h":  207,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  137200,
+        "builders":  37,
+        "people":  -9,
+        "strength":  4640,
+        "workDelay":  2954132,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_07/anim_work.gif",
+        "gifFull":  "levels/lvl_07/anim_full.gif",
+        "sprite":  "levels/lvl_07/spritesheet.png",
+        "staticImg":  "levels/lvl_07/house_static.png",
+        "framesDir":  "levels/lvl_07/frames"
+    },
+    {
+        "level":  8,
+        "id":  881,
+        "w":  240,
+        "h":  207,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  204800,
+        "builders":  45,
+        "people":  -11,
+        "strength":  5832,
+        "workDelay":  3539943,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_08/anim_work.gif",
+        "gifFull":  "levels/lvl_08/anim_full.gif",
+        "sprite":  "levels/lvl_08/spritesheet.png",
+        "staticImg":  "levels/lvl_08/house_static.png",
+        "framesDir":  "levels/lvl_08/frames"
+    },
+    {
+        "level":  9,
+        "id":  882,
+        "w":  240,
+        "h":  207,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  291600,
+        "builders":  54,
+        "people":  -14,
+        "strength":  7144,
+        "workDelay":  4174098,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_09/anim_work.gif",
+        "gifFull":  "levels/lvl_09/anim_full.gif",
+        "sprite":  "levels/lvl_09/spritesheet.png",
+        "staticImg":  "levels/lvl_09/house_static.png",
+        "framesDir":  "levels/lvl_09/frames"
+    },
+    {
+        "level":  10,
+        "id":  883,
+        "w":  240,
+        "h":  207,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  400000,
+        "builders":  63,
+        "people":  -18,
+        "strength":  8584,
+        "workDelay":  4860041,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_10/anim_work.gif",
+        "gifFull":  "levels/lvl_10/anim_full.gif",
+        "sprite":  "levels/lvl_10/spritesheet.png",
+        "staticImg":  "levels/lvl_10/house_static.png",
+        "framesDir":  "levels/lvl_10/frames"
+    },
+    {
+        "level":  11,
+        "id":  884,
+        "w":  238,
+        "h":  227,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  19,
+        "price":  532400,
+        "builders":  73,
+        "people":  -22,
+        "strength":  10152,
+        "workDelay":  5598124,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_11/anim_work.gif",
+        "gifFull":  "levels/lvl_11/anim_full.gif",
+        "sprite":  "levels/lvl_11/spritesheet.png",
+        "staticImg":  "levels/lvl_11/house_static.png",
+        "framesDir":  "levels/lvl_11/frames"
+    },
+    {
+        "level":  12,
+        "id":  885,
+        "w":  238,
+        "h":  227,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  19,
+        "price":  691200,
+        "builders":  84,
+        "people":  -24,
+        "strength":  11840,
+        "workDelay":  6389366,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_12/anim_work.gif",
+        "gifFull":  "levels/lvl_12/anim_full.gif",
+        "sprite":  "levels/lvl_12/spritesheet.png",
+        "staticImg":  "levels/lvl_12/house_static.png",
+        "framesDir":  "levels/lvl_12/frames"
+    },
+    {
+        "level":  13,
+        "id":  886,
+        "w":  238,
+        "h":  227,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  19,
+        "price":  878800,
+        "builders":  95,
+        "people":  -28,
+        "strength":  13648,
+        "workDelay":  7234590,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_13/anim_work.gif",
+        "gifFull":  "levels/lvl_13/anim_full.gif",
+        "sprite":  "levels/lvl_13/spritesheet.png",
+        "staticImg":  "levels/lvl_13/house_static.png",
+        "framesDir":  "levels/lvl_13/frames"
+    },
+    {
+        "level":  14,
+        "id":  887,
+        "w":  238,
+        "h":  227,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  19,
+        "price":  1097600,
+        "builders":  107,
+        "people":  -33,
+        "strength":  15584,
+        "workDelay":  8133265,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_14/anim_work.gif",
+        "gifFull":  "levels/lvl_14/anim_full.gif",
+        "sprite":  "levels/lvl_14/spritesheet.png",
+        "staticImg":  "levels/lvl_14/house_static.png",
+        "framesDir":  "levels/lvl_14/frames"
+    },
+    {
+        "level":  15,
+        "id":  888,
+        "w":  238,
+        "h":  227,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  19,
+        "price":  1350000,
+        "builders":  120,
+        "people":  -39,
+        "strength":  17640,
+        "workDelay":  9088316,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_15/anim_work.gif",
+        "gifFull":  "levels/lvl_15/anim_full.gif",
+        "sprite":  "levels/lvl_15/spritesheet.png",
+        "staticImg":  "levels/lvl_15/house_static.png",
+        "framesDir":  "levels/lvl_15/frames"
+    },
+    {
+        "level":  16,
+        "id":  889,
+        "w":  240,
+        "h":  230,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  1638400,
+        "builders":  133,
+        "people":  -41,
+        "strength":  19816,
+        "workDelay":  10097762,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_16/anim_work.gif",
+        "gifFull":  "levels/lvl_16/anim_full.gif",
+        "sprite":  "levels/lvl_16/spritesheet.png",
+        "staticImg":  "levels/lvl_16/house_static.png",
+        "framesDir":  "levels/lvl_16/frames"
+    },
+    {
+        "level":  17,
+        "id":  890,
+        "w":  240,
+        "h":  230,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  1965200,
+        "builders":  147,
+        "people":  -47,
+        "strength":  22112,
+        "workDelay":  11164483,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_17/anim_work.gif",
+        "gifFull":  "levels/lvl_17/anim_full.gif",
+        "sprite":  "levels/lvl_17/spritesheet.png",
+        "staticImg":  "levels/lvl_17/house_static.png",
+        "framesDir":  "levels/lvl_17/frames"
+    },
+    {
+        "level":  18,
+        "id":  891,
+        "w":  240,
+        "h":  230,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  2332800,
+        "builders":  162,
+        "people":  -54,
+        "strength":  24536,
+        "workDelay":  12286236,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_18/anim_work.gif",
+        "gifFull":  "levels/lvl_18/anim_full.gif",
+        "sprite":  "levels/lvl_18/spritesheet.png",
+        "staticImg":  "levels/lvl_18/house_static.png",
+        "framesDir":  "levels/lvl_18/frames"
+    },
+    {
+        "level":  19,
+        "id":  892,
+        "w":  240,
+        "h":  230,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  2743600,
+        "builders":  177,
+        "people":  -57,
+        "strength":  27080,
+        "workDelay":  13464553,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_19/anim_work.gif",
+        "gifFull":  "levels/lvl_19/anim_full.gif",
+        "sprite":  "levels/lvl_19/spritesheet.png",
+        "staticImg":  "levels/lvl_19/house_static.png",
+        "framesDir":  "levels/lvl_19/frames"
+    },
+    {
+        "level":  20,
+        "id":  893,
+        "w":  240,
+        "h":  230,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  3200000,
+        "builders":  193,
+        "people":  -64,
+        "strength":  29744,
+        "workDelay":  14701020,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_20/anim_work.gif",
+        "gifFull":  "levels/lvl_20/anim_full.gif",
+        "sprite":  "levels/lvl_20/spritesheet.png",
+        "staticImg":  "levels/lvl_20/house_static.png",
+        "framesDir":  "levels/lvl_20/frames"
+    },
+    {
+        "level":  21,
+        "id":  894,
+        "w":  238,
+        "h":  232,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "waitFrame":  20,
+        "price":  3704400,
+        "builders":  210,
+        "people":  -71,
+        "strength":  32536,
+        "workDelay":  15993123,
+        "outRes":  "{}",
+        "inRes":  "{}",
+        "gifWork":  "levels/lvl_21/anim_work.gif",
+        "gifFull":  "levels/lvl_21/anim_full.gif",
+        "sprite":  "levels/lvl_21/spritesheet.png",
+        "staticImg":  "levels/lvl_21/house_static.png",
+        "framesDir":  "levels/lvl_21/frames"
+    }
+];
+
+  let curLvlIdx = 0;
+  let curLvl = levels[0];
+  let animMode = 'work'; // 'work' or 'full'
+  let curFrame = 1;
+  let isPlaying = true;
+  let timer = null;
+
+  const canvas = document.getElementById('animCanvas');
+  const ctx = canvas.getContext('2d');
+  const spriteImg = new Image();
+
+  function selectLevel(lvlNum) {
+    document.querySelectorAll('.level-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('card-lvl-' + lvlNum).classList.add('active');
+
+    curLvlIdx = lvlNum - 1;
+    curLvl = levels[curLvlIdx];
+
+    canvas.width = curLvl.w;
+    canvas.height = curLvl.h;
+
+    document.getElementById('playerHeading').textContent = 'Плеер: Уровень ' + curLvl.level + ' (ID: ' + curLvl.id + ')';
+    document.getElementById('fpsText').textContent = curLvl.fps + ' FPS';
+
+    updateRange();
+    updateStats();
+    updateDownloads();
+    updateFrames();
+
+    spriteImg.src = curLvl.sprite;
+    document.getElementById('gifPreview').src = (animMode === 'work' ? curLvl.gifWork : curLvl.gifFull);
+  }
+
+  spriteImg.onload = () => {
+    drawFrame(1);
+    if (isPlaying) startLoop();
+  };
+
+  function getMaxFrame() {
+    return (animMode === 'work') ? curLvl.waitFrame : curLvl.frames;
+  }
+
+  function updateRange() {
+    const max = getMaxFrame();
+    const slider = document.getElementById('frameSlider');
+    slider.max = max;
+    document.getElementById('maxFrameText').textContent = max;
+    if (curFrame > max) curFrame = 1;
+  }
+
+  function setMode(mode) {
+    animMode = mode;
+    document.getElementById('btnModeWork').classList.toggle('active-mode', mode === 'work');
+    document.getElementById('btnModeFull').classList.toggle('active-mode', mode === 'full');
+    document.getElementById('gifPreview').src = (mode === 'work' ? curLvl.gifWork : curLvl.gifFull);
+    updateRange();
+    drawFrame(1);
+  }
+
+  function drawFrame(frameNum) {
+    curFrame = frameNum;
+    document.getElementById('frameSlider').value = frameNum;
+    document.getElementById('curFrameText').textContent = frameNum;
+
+    const idx = frameNum - 1;
+    const col = idx % curLvl.cols;
+    const row = Math.floor(idx / curLvl.cols);
+    const sx = col * curLvl.w;
+    const sy = row * curLvl.h;
+
+    ctx.clearRect(0, 0, curLvl.w, curLvl.h);
+    ctx.drawImage(spriteImg, sx, sy, curLvl.w, curLvl.h, 0, 0, curLvl.w, curLvl.h);
+  }
+
+  function startLoop() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => {
+      let next = curFrame + 1;
+      if (next > getMaxFrame()) next = 1;
+      drawFrame(next);
+    }, 1000 / curLvl.fps);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    const btn = document.getElementById('playBtn');
+    if (isPlaying) {
+      btn.textContent = 'â ¸ Пауза';
+      startLoop();
+    } else {
+      btn.textContent = 'â–¶ Старт';
+      clearInterval(timer);
+    }
+  }
+
+  function prevFrame() {
+    if (isPlaying) togglePlay();
+    let prev = curFrame - 1;
+    if (prev < 1) prev = getMaxFrame();
+    drawFrame(prev);
+  }
+
+  function nextFrame() {
+    if (isPlaying) togglePlay();
+    let next = curFrame + 1;
+    if (next > getMaxFrame()) next = 1;
+    drawFrame(next);
+  }
+
+  function onSlider(val) {
+    if (isPlaying) togglePlay();
+    drawFrame(parseInt(val));
+  }
+
+  function updateStats() {
+    const table = document.getElementById('statsTable');
+    table.innerHTML = 
+      <tr><td>Уровень грядки</td><td>Уровень  + curLvl.level +  (ID:  + curLvl.id + )</td></tr>
+      <tr><td>Стоимость постройки</td><td> + (curLvl.price ? curLvl.price.toLocaleString('ru-RU') + ' монет' : '—') + </td></tr>
+      <tr><td>Строители / Жители</td><td> + (curLvl.builders || '—') +  строителей /  + (curLvl.people || '—') +  жителей</td></tr>
+      <tr><td>Прочность (HP)</td><td> + curLvl.strength +  HP</td></tr>
+      <tr><td>Размер кадра</td><td> + curLvl.w +  ×  + curLvl.h +  px</td></tr>
+      <tr><td>Кадров работы / всего</td><td> + curLvl.waitFrame +  /  + curLvl.frames +  кадров ( + curLvl.fps +  FPS)</td></tr>
+    ;
+  }
+
+  function updateDownloads() {
+    const grid = document.getElementById('downloadsGrid');
+    const lvlStr = String(curLvl.level).padStart(2, '0');
+    grid.innerHTML = 
+      <div class="dl-card">
+        <div class="title">anim_work.gif</div>
+        <div class="desc">Анимированный GIF работы грядки (полив, грибы)</div>
+        <a class="btn" href=" + curLvl.gifWork + " download="mushroom_lvl_ + lvlStr + _work.gif">Скачать Work GIF</a>
+      </div>
+      <div class="dl-card">
+        <div class="title">anim_full.gif</div>
+        <div class="desc">Полный GIF (цикл работы + ожидания)</div>
+        <a class="btn" href=" + curLvl.gifFull + " download="mushroom_lvl_ + lvlStr + _full.gif">Скачать Full GIF</a>
+      </div>
+      <div class="dl-card">
+        <div class="title">spritesheet.png</div>
+        <div class="desc">Полный спрайтшит со всеми кадрами</div>
+        <a class="btn" href=" + curLvl.sprite + " download="mushroom_lvl_ + lvlStr + _spritesheet.png">Скачать Spritesheet</a>
+      </div>
+      <div class="dl-card">
+        <div class="title">house_static.png</div>
+        <div class="desc">Статичная иконка грядки из интерфейса</div>
+        <a class="btn" href=" + curLvl.staticImg + " download="mushroom_lvl_ + lvlStr + .png">Скачать иконку</a>
+      </div>
+    ;
+  }
+
+  function updateFrames() {
+    const cont = document.getElementById('framesContainer');
+    let html = '';
+    const lvlStr = String(curLvl.level).padStart(2, '0');
+    for (let i = 1; i <= curLvl.frames; i++) {
+      const fNum = String(i).padStart(2, '0');
+      const src = 'levels/lvl_' + lvlStr + '/frames/frame_' + fNum + '.png';
+      html += 
+        <div class="frame-thumb" onclick="drawFrame( + i + )">
+          <img src=" + src + " alt="Кадр  + i + ">
+          <span># + i + </span>
+        </div>
+      ;
+    }
+    cont.innerHTML = html;
+  }
+
+  // Initialize
+  selectLevel(1);
+</script>
+
+</body>
+</html>

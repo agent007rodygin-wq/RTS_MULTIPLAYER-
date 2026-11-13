@@ -1585,8 +1585,39 @@ const updateDocMetadataCache = new Map<string, {
   rawJson: Record<string, any> | null;
   ts: number;
 }>();
+const updateDocQueues = new Map<string, Promise<void>>();
+const USER_NON_NEGATIVE_COUNTERS = new Set<string>([
+  'gold',
+  'rubies',
+  'energy',
+  'glory',
+  'buildingsBuilt',
+  'treesChopped',
+  'monstersDestroyed',
+  'buildingsDestroyed',
+  'theftsCommitted',
+]);
 
 export async function updateDoc(
+  ref: DocRef,
+  data: AnyRecord
+): Promise<void> {
+  const pbId = sanitizePbId(ref.id);
+  const queueKey = `${ref.collectionName}:${pbId}`;
+  const prev = updateDocQueues.get(queueKey) ?? Promise.resolve();
+  const next = prev.catch(() => {}).then(() => updateDocInternal(ref, data));
+  const cleanup = next.finally(() => {
+    if (updateDocQueues.get(queueKey) === cleanup) {
+      updateDocQueues.delete(queueKey);
+    }
+  });
+  // Prevent duplicate unhandledrejection when `next` rejects and the caller only catches `next`.
+  cleanup.catch(() => {});
+  updateDocQueues.set(queueKey, cleanup);
+  return next;
+}
+
+async function updateDocInternal(
   ref: DocRef,
   data: AnyRecord
 ): Promise<void> {
@@ -1639,7 +1670,13 @@ export async function updateDoc(
     targetId,
     payload: summarizeWritePayloadForAudit(ref.collectionName, data),
   });
-  if (cachedMeta && (startedAt - cachedMeta.ts) < 25000) {
+  const hasIncrementOp = Object.values(data || {}).some(
+    (v: any) => Boolean(v && typeof v === 'object' && v.__sentinel === 'increment')
+  );
+  // Never reuse cached metadata for users or increment writes: server hooks
+  // (e.g. /api/basingse/tree-hit) mutate user gold/inventory outside client updateDoc.
+  const canUseMetadataCache = ref.collectionName !== 'users' && !hasIncrementOp;
+  if (canUseMetadataCache && cachedMeta && (startedAt - cachedMeta.ts) < 25000) {
     lookupSucceeded = true;
     recordResolved = true;
     targetId = cachedMeta.targetId;
@@ -1757,7 +1794,11 @@ export async function updateDoc(
         }
       } else {
         const currentVal = current[safeKey] ?? 0;
-        resolved[safeKey] = normalizeFiniteCounter(currentVal) + amount;
+        const nextVal = normalizeFiniteCounter(currentVal) + amount;
+        resolved[safeKey] =
+          ref.collectionName === 'users' && USER_NON_NEGATIVE_COUNTERS.has(safeKey)
+            ? normalizeFiniteCounter(nextVal)
+            : nextVal;
       }
     } else if (safeKey.includes('.')) {
       const parts = safeKey.split('.');
@@ -1891,12 +1932,16 @@ export async function updateDoc(
         });
       } catch { console.warn('[PBWriteVerify:AFTER]', { recordId: targetId, error: 'freshRead failed' }); }
     }
-    updateDocMetadataCache.set(cacheKey, {
-      targetId,
-      current: { ...current, ...resolved },
-      rawJson: currentRawDataJson ? { ...currentRawDataJson, ...(payload.data || {}) } : (payload.data || null),
-      ts: Date.now(),
-    });
+    if (ref.collectionName === 'users') {
+      updateDocMetadataCache.delete(cacheKey);
+    } else {
+      updateDocMetadataCache.set(cacheKey, {
+        targetId,
+        current: { ...current, ...resolved },
+        rawJson: currentRawDataJson ? { ...currentRawDataJson, ...(payload.data || {}) } : (payload.data || null),
+        ts: Date.now(),
+      });
+    }
     clearDeletedRecord(ref.collectionName, logicalId, pbId, String(targetId));
     logPbAudit('updateDoc-end', {
       collectionName: ref.collectionName,

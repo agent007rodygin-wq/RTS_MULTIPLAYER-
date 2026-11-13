@@ -176,10 +176,16 @@ export const RubyModal = React.memo(RubyModalComponent, (prev, next) => {
 export interface BuildingLimitModalProps {
     data: { currentLimit: number; nextLimit: number } | null;
     onClose: () => void;
-    onBuyBuildingPermit: () => void;
+    onBuyBuildingPermit: (permitCount: 1 | 5 | 10) => void;
     isBuyingBuildingPermit: boolean;
     playerRubies: number;
 }
+
+const PERMIT_PACK_OPTIONS: ReadonlyArray<{ count: 1 | 5 | 10; cost: number }> = [
+    { count: 1, cost: 1 },
+    { count: 5, cost: 5 },
+    { count: 10, cost: 10 },
+];
 
 const BuildingLimitModalComponent: React.FC<BuildingLimitModalProps> = ({
     data,
@@ -203,25 +209,56 @@ const BuildingLimitModalComponent: React.FC<BuildingLimitModalProps> = ({
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 12px 4px rgba(96,165,250,0.35)'; e.currentTarget.style.color = 'rgba(200,225,255,0.9)'; }}
                 />
                 <div className="relative z-[1] flex flex-col items-center justify-center text-center" style={{ width: '88%', height: '84%', padding: '8px 24px', boxSizing: 'border-box' }}>
-                    <div style={{ border: '2.5px solid #d4af37', borderRadius: '10px', boxShadow: '0 0 0 2px rgba(255,215,0,0.20), 0 6px 16px rgba(0,0,0,0.35)', overflow: 'hidden', width: '105px', minWidth: '105px', height: '135px', background: '#f6f0dc', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ border: '2.5px solid #d4af37', borderRadius: '10px', boxShadow: '0 0 0 2px rgba(255,215,0,0.20), 0 6px 16px rgba(0,0,0,0.35)', overflow: 'hidden', width: '92px', minWidth: '92px', height: '116px', background: '#f6f0dc', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <img src={permitGuideImageUrl} alt="Permit Guide" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center top', background: '#f6f0dc' }} />
                     </div>
-                    <h3 style={{ margin: 0, color: '#d7291f', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '22px', lineHeight: 1.1 }}>
+                    <h3 style={{ margin: 0, color: '#d7291f', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '21px', lineHeight: 1.1 }}>
                         Требуеться разрешение
                         <br />
                         на строительство здания
                     </h3>
-                    <p style={{ margin: '8px 0 12px', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '15px', lineHeight: 1.35, whiteSpace: 'pre-line' }}>
+                    <p style={{ margin: '6px 0 10px', color: '#e9edf5', fontFamily: 'Nunito, sans-serif', fontWeight: 700, fontSize: '14px', lineHeight: 1.3, whiteSpace: 'pre-line' }}>
                         {`Наш город не резиновый и мэр вынужден ограничить\nстроительство У вас сейчас есть разрешение на постройку только ${data.currentLimit} здания`}
                     </p>
-                    <button
-                        onClick={onBuyBuildingPermit}
-                        disabled={isBuyingBuildingPermit || playerRubies < 1}
-                        style={{ minWidth: '320px', borderRadius: '16px', border: '1px solid #2f6b12', background: 'linear-gradient(180deg, #8fd94e 0%, #4ea91d 45%, #2f7a10 100%)', color: '#ffffff', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: '19px', lineHeight: 1, padding: '11px 22px', boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.7), inset 0 -2px 0 rgba(28,73,8,0.45), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.34)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
-                    >
-                        <img src={rubyImageUrl} alt="Ruby" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
-                        <span>{`1 Купить разрешение на ${data.nextLimit} здания`}</span>
-                    </button>
+                    <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
+                        {PERMIT_PACK_OPTIONS.map(({ count, cost }) => {
+                            const disabled = isBuyingBuildingPermit || playerRubies < cost;
+                            const nextTotal = data.currentLimit + count;
+                            const label = count === 1
+                                ? `${cost} Купить разрешение на ${nextTotal} здания`
+                                : `${cost} Купить +${count} (до ${nextTotal})`;
+                            return (
+                                <button
+                                    key={count}
+                                    onClick={() => onBuyBuildingPermit(count)}
+                                    disabled={disabled}
+                                    style={{
+                                        flex: count === 1 ? '1 1 100%' : '1 1 calc(50% - 4px)',
+                                        minWidth: count === 1 ? '280px' : '160px',
+                                        borderRadius: '14px',
+                                        border: '1px solid #2f6b12',
+                                        background: 'linear-gradient(180deg, #8fd94e 0%, #4ea91d 45%, #2f7a10 100%)',
+                                        color: '#ffffff',
+                                        fontFamily: 'Nunito, sans-serif',
+                                        fontWeight: 900,
+                                        fontSize: count === 1 ? '17px' : '15px',
+                                        lineHeight: 1.1,
+                                        padding: count === 1 ? '10px 18px' : '9px 12px',
+                                        boxShadow: 'inset 0 1px 0 rgba(235,255,220,0.7), inset 0 -2px 0 rgba(28,73,8,0.45), 0 3px 0 #2d6912, 0 7px 12px rgba(0,0,0,0.34)',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        opacity: disabled ? 0.55 : 1,
+                                        cursor: disabled ? 'not-allowed' : 'pointer',
+                                    }}
+                                >
+                                    <img src={rubyImageUrl} alt="Ruby" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
+                                    <span>{label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>

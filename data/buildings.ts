@@ -1,6 +1,7 @@
 
 import { Building, BuildingType } from '../types';
 import { validateBuildingItemNames } from './validateBuildingItemNames';
+import { enhancedPumpkinBeds } from '../src/game/buildings/enhancedPumpkinBeds';
 
 export const buildings: Building[] = [
   {
@@ -974,7 +975,7 @@ export const buildings: Building[] = [
     buildable: true,
     constructionRequirements: {},
     stats: {
-      populationBonus: 5,
+      populationBonus: 10,
       constructionTimeSeconds: 30,
       durability: 300,
       gloryOnExplosion: 10
@@ -994,7 +995,7 @@ export const buildings: Building[] = [
     buildable: true,
     constructionRequirements: {},
     stats: {
-      populationBonus: 10,
+      populationBonus: 18,
       constructionTimeSeconds: 120,
       durability: 800,
       gloryOnExplosion: 50
@@ -1014,7 +1015,7 @@ export const buildings: Building[] = [
     buildable: false,
     constructionRequirements: {},
     stats: {
-      populationBonus: 15,
+      populationBonus: 20,
       constructionTimeSeconds: 300,
       durability: 1200,
       gloryOnExplosion: 100
@@ -1034,7 +1035,7 @@ export const buildings: Building[] = [
     buildable: false,
     constructionRequirements: {},
     stats: {
-      populationBonus: 20,
+      populationBonus: 22,
       constructionTimeSeconds: 600,
       durability: 1500,
       gloryOnExplosion: 150
@@ -1062,7 +1063,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 15,
+      populationBonus: 24,
       constructionTimeSeconds: 27783,
       accelerationCost: 35,
       durability: 5512,
@@ -1100,7 +1101,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 16,
+      populationBonus: 26,
       constructionTimeSeconds: 20577,
       accelerationCost: 30,
       durability: 4504,
@@ -1138,7 +1139,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 18,
+      populationBonus: 28,
       constructionTimeSeconds: 59049,
       accelerationCost: 51,
       durability: 9208,
@@ -1176,7 +1177,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 22,
+      populationBonus: 30,
       constructionTimeSeconds: 68000,
       accelerationCost: 58,
       durability: 11500,
@@ -1214,7 +1215,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 26,
+      populationBonus: 32,
       constructionTimeSeconds: 78000,
       accelerationCost: 65,
       durability: 14000,
@@ -1244,7 +1245,7 @@ export const buildings: Building[] = [
     buildable: true,
     constructionRequirements: {},
     stats: {
-      populationBonus: 30,
+      populationBonus: 36,
       constructionTimeSeconds: 1800,
       durability: 2500,
       gloryOnExplosion: 300
@@ -1264,7 +1265,7 @@ export const buildings: Building[] = [
     buildable: true,
     constructionRequirements: {},
     stats: {
-      populationBonus: 50,
+      populationBonus: 56,
       constructionTimeSeconds: 3600,
       durability: 4000,
       gloryOnExplosion: 500
@@ -5463,7 +5464,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Требует бензин и супер лилию для работы.',
-    imageUrl: '/buildings/Заводы/Сталеплавильный завод - Steel mill/560.webp',
+    imageUrl: '/buildings/static/steel_smelting/262.webp',
     upgradesTo: 475,
     upgradeCost: 1240000
   },
@@ -5513,7 +5514,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 2.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/560.webp',
+    imageUrl: '/buildings/static/steel_smelting/475.webp',
     upgradesTo: 476,
     upgradeCost: 1540000
   },
@@ -5563,7 +5564,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 3.',
-    imageUrl: '/buildings/factories/Золотоплавильный завод - Gold factory/476.webp',
+    imageUrl: '/buildings/static/steel_smelting/476.webp',
     upgradesTo: 477,
     upgradeCost: 1960000
   },
@@ -5614,7 +5615,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 4.',
-    imageUrl: '/buildings/factories/Золотоплавильный завод - Gold factory/477.webp',
+    imageUrl: '/buildings/static/steel_smelting/477.webp',
     upgradesTo: 478,
     upgradeCost: 2500000
   },
@@ -5665,7 +5666,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 5.',
-    imageUrl: '/buildings/factories/Золотоплавильный завод - Gold factory/478.webp',
+    imageUrl: '/buildings/static/steel_smelting/478.webp',
     upgradesTo: 479,
     upgradeCost: 3160000
   },
@@ -5716,7 +5717,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 6.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/561.webp',
+    imageUrl: '/buildings/static/steel_smelting/479.webp',
     upgradesTo: 480,
     upgradeCost: 3940000
   },
@@ -5767,7 +5768,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 7.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/570.webp',
+    imageUrl: '/buildings/static/steel_smelting/480.webp',
     upgradesTo: 481,
     upgradeCost: 4840000
   },
@@ -5818,7 +5819,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 8.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/575.webp',
+    imageUrl: '/buildings/static/steel_smelting/481.webp',
     upgradesTo: 482,
     upgradeCost: 5860000
   },
@@ -5869,7 +5870,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 9.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/576.webp',
+    imageUrl: '/buildings/static/steel_smelting/482.webp',
     upgradesTo: 483,
     upgradeCost: 7000000
   },
@@ -5920,7 +5921,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 10.',
-    imageUrl: '/buildings/factories/Золотоплавильный завод - Gold factory/483.webp',
+    imageUrl: '/buildings/static/steel_smelting/483.webp',
     upgradesTo: 484,
     upgradeCost: 8260000
   },
@@ -5971,7 +5972,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 11.',
-    imageUrl: '/buildings/factories/Золотоплавильный завод - Gold factory/484.webp',
+    imageUrl: '/buildings/static/steel_smelting/484.webp',
     upgradesTo: 485,
     upgradeCost: 9640000
   },
@@ -6022,7 +6023,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 12.',
-    imageUrl: '/buildings/factories/Золотоплавильный завод - Gold factory/485.webp',
+    imageUrl: '/buildings/static/steel_smelting/485.webp',
     upgradesTo: 486,
     upgradeCost: 11140000
   },
@@ -6073,7 +6074,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Производит сталь из руды. Уровень 13. Максимальный уровень.',
-    imageUrl: '/buildings/factories/Золотоплавильный завод - Gold factory/486.webp'
+    imageUrl: '/buildings/static/steel_smelting/486.webp'
   },
   {
     id: 266,
@@ -6121,7 +6122,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/560.webp',
+    imageUrl: '/buildings/static/gold_smelter/266.webp',
     upgradesTo: 557,
     upgradeCost: 1780000,
   },
@@ -6174,7 +6175,7 @@ export const buildings: Building[] = [
     upgradesTo: 558,
     upgradeCost: 2130000,
     description: 'Золотоплавильный завод 2 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/560.webp',
+    imageUrl: '/buildings/static/gold_smelter/557.webp',
   },
   {
     id: 558,
@@ -6225,7 +6226,7 @@ export const buildings: Building[] = [
     upgradesTo: 559,
     upgradeCost: 2620000,
     description: 'Золотоплавильный завод 3 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/560.webp',
+    imageUrl: '/buildings/static/gold_smelter/558.webp',
   },
   {
     id: 559,
@@ -6277,7 +6278,7 @@ export const buildings: Building[] = [
     upgradesTo: 560,
     upgradeCost: 3250000,
     description: 'Золотоплавильный завод 4 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/560.webp',
+    imageUrl: '/buildings/static/gold_smelter/559.webp',
   },
   {
     id: 560,
@@ -6329,7 +6330,7 @@ export const buildings: Building[] = [
     upgradesTo: 561,
     upgradeCost: 4020000,
     description: 'Золотоплавильный завод 5 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/560.webp',
+    imageUrl: '/buildings/static/gold_smelter/560.webp',
   },
   {
     id: 561,
@@ -6381,7 +6382,7 @@ export const buildings: Building[] = [
     upgradesTo: 562,
     upgradeCost: 4930000,
     description: 'Золотоплавильный завод 6 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/561.webp',
+    imageUrl: '/buildings/static/gold_smelter/561.webp',
   },
   {
     id: 562,
@@ -6433,7 +6434,7 @@ export const buildings: Building[] = [
         upgradesTo: 563,
     upgradeCost: 5980000,
     description: 'Золотоплавильный завод 7 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/561.webp',
+    imageUrl: '/buildings/static/gold_smelter/562.webp',
   },
   {
     id: 563,
@@ -6485,7 +6486,7 @@ export const buildings: Building[] = [
     upgradesTo: 564,
     upgradeCost: 7170000,
     description: 'Золотоплавильный завод 8 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/561.webp',
+    imageUrl: '/buildings/static/gold_smelter/563.webp',
   },
   {
     id: 564,
@@ -6537,7 +6538,7 @@ export const buildings: Building[] = [
     upgradesTo: 565,
     upgradeCost: 8500000,
     description: 'Золотоплавильный завод 9 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/561.webp',
+    imageUrl: '/buildings/static/gold_smelter/564.webp',
   },
   {
     id: 565,
@@ -6589,7 +6590,7 @@ export const buildings: Building[] = [
     upgradesTo: 566,
     upgradeCost: 9970000,
     description: 'Золотоплавильный завод 10 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/561.webp',
+    imageUrl: '/buildings/static/gold_smelter/565.webp',
   },
   {
     id: 566,
@@ -6641,7 +6642,7 @@ export const buildings: Building[] = [
     upgradesTo: 567,
     upgradeCost: 11580000,
     description: 'Золотоплавильный завод 11 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/570.webp',
+    imageUrl: '/buildings/static/gold_smelter/566.webp',
   },
   {
     id: 567,
@@ -6693,7 +6694,7 @@ export const buildings: Building[] = [
     upgradesTo: 568,
     upgradeCost: 13330000,
     description: 'Золотоплавильный завод 12 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/570.webp',
+    imageUrl: '/buildings/static/gold_smelter/567.webp',
   },
   {
     id: 568,
@@ -6745,7 +6746,7 @@ export const buildings: Building[] = [
     upgradesTo: 569,
     upgradeCost: 15220000,
     description: 'Золотоплавильный завод 13 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/570.webp',
+    imageUrl: '/buildings/static/gold_smelter/568.webp',
   },
   {
     id: 569,
@@ -6797,7 +6798,7 @@ export const buildings: Building[] = [
     upgradesTo: 570,
     upgradeCost: 17250000,
     description: 'Золотоплавильный завод 14 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/570.webp',
+    imageUrl: '/buildings/static/gold_smelter/569.webp',
   },
   {
     id: 570,
@@ -6849,7 +6850,7 @@ export const buildings: Building[] = [
     upgradesTo: 571,
     upgradeCost: 19420000,
     description: 'Золотоплавильный завод 15 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/570.webp',
+    imageUrl: '/buildings/static/gold_smelter/570.webp',
   },
   {
     id: 571,
@@ -6901,7 +6902,7 @@ export const buildings: Building[] = [
     upgradesTo: 572,
     upgradeCost: 21730000,
     description: 'Золотоплавильный завод 16 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/575.webp',
+    imageUrl: '/buildings/static/gold_smelter/571.webp',
   },
   {
     id: 572,
@@ -6953,7 +6954,7 @@ export const buildings: Building[] = [
     upgradesTo: 573,
     upgradeCost: 24180000,
     description: 'Золотоплавильный завод 17 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/575.webp',
+    imageUrl: '/buildings/static/gold_smelter/572.webp',
   },
   {
     id: 573,
@@ -7005,7 +7006,7 @@ export const buildings: Building[] = [
     upgradesTo: 574,
     upgradeCost: 26770000,
     description: 'Золотоплавильный завод 18 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/575.webp',
+    imageUrl: '/buildings/static/gold_smelter/573.webp',
   },
   {
     id: 574,
@@ -7057,7 +7058,7 @@ export const buildings: Building[] = [
     upgradesTo: 575,
     upgradeCost: 29500000,
     description: 'Золотоплавильный завод 19 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/575.webp',
+    imageUrl: '/buildings/static/gold_smelter/574.webp',
   },
   {
     id: 575,
@@ -7109,7 +7110,7 @@ export const buildings: Building[] = [
     upgradesTo: 576,
     upgradeCost: 32370000,
     description: 'Золотоплавильный завод 20 уровня. Переплавляет самородки в чистое золото.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/575.webp',
+    imageUrl: '/buildings/static/gold_smelter/575.webp',
   },
   {
     id: 576,
@@ -7159,7 +7160,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Золотоплавильный завод 21 уровня. Максимальный уровень.',
-    imageUrl: '/buildings/factories/Сталеплавильный завод - Steel mill/576.webp',
+    imageUrl: '/buildings/static/gold_smelter/576.webp',
   },
   {
     id: 273,
@@ -14715,7 +14716,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 7,
+      "populationBonus": 11,
       constructionTimeSeconds: 1536,
       accelerationCost: 8,
       durability: 768,
@@ -14776,7 +14777,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 8,
+      "populationBonus": 12,
       constructionTimeSeconds: 2187,
       accelerationCost: 10,
       durability: 1048,
@@ -14837,7 +14838,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 9,
+      "populationBonus": 13,
       constructionTimeSeconds: 3000,
       accelerationCost: 12,
       durability: 1104,
@@ -14898,7 +14899,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 10,
+      "populationBonus": 14,
       constructionTimeSeconds: 5184,
       accelerationCost: 15,
       durability: 1680,
@@ -14964,7 +14965,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 11,
+      "populationBonus": 15,
       constructionTimeSeconds: 3993,
       accelerationCost: 13,
       durability: 1592,
@@ -15030,7 +15031,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 12,
+      "populationBonus": 16,
       constructionTimeSeconds: 5200,
       accelerationCost: 16,
       durability: 1950,
@@ -15096,7 +15097,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 19,
+      "populationBonus": 39,
       constructionTimeSeconds: 46875,
       accelerationCost: 46,
       durability: 8424,
@@ -15162,7 +15163,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 20,
+      "populationBonus": 42,
       constructionTimeSeconds: 59049,
       accelerationCost: 51,
       durability: 9552,
@@ -15228,7 +15229,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 21,
+      "populationBonus": 45,
       constructionTimeSeconds: 65856,
       accelerationCost: 54,
       durability: 10072,
@@ -15294,7 +15295,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 23,
+      populationBonus: 48,
       constructionTimeSeconds: 72000,
       accelerationCost: 60,
       durability: 11500,
@@ -15360,7 +15361,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 25,
+      populationBonus: 51,
       constructionTimeSeconds: 80000,
       accelerationCost: 66,
       durability: 13000,
@@ -15426,7 +15427,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 22,
+      "populationBonus": 62,
       constructionTimeSeconds: 152679,
       accelerationCost: 82,
       durability: 17960,
@@ -15492,7 +15493,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 24,
+      "populationBonus": 68,
       constructionTimeSeconds: 107811,
       accelerationCost: 69,
       durability: 14592,
@@ -15558,7 +15559,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 25,
+      "populationBonus": 74,
       constructionTimeSeconds: 238521,
       accelerationCost: 103,
       durability: 24472,
@@ -15624,7 +15625,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 26,
+      "populationBonus": 80,
       constructionTimeSeconds: 139968,
       accelerationCost: 79,
       durability: 17144,
@@ -15690,7 +15691,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 28,
+      populationBonus: 86,
       constructionTimeSeconds: 155000,
       accelerationCost: 88,
       durability: 19500,
@@ -15756,7 +15757,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      populationBonus: 30,
+      populationBonus: 92,
       constructionTimeSeconds: 175000,
       accelerationCost: 96,
       durability: 22000,
@@ -15822,7 +15823,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 28,
+      "populationBonus": 110,
       constructionTimeSeconds: 222264,
       accelerationCost: 99,
       durability: 23400,
@@ -15888,7 +15889,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 29,
+      "populationBonus": 120,
       constructionTimeSeconds: 238521,
       accelerationCost: 103,
       durability: 24248,
@@ -15954,7 +15955,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 30,
+      "populationBonus": 130,
       constructionTimeSeconds: 499125,
       accelerationCost: 149,
       durability: 40000,
@@ -16020,7 +16021,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 31,
+      "populationBonus": 140,
       constructionTimeSeconds: 526848,
       accelerationCost: 153,
       durability: 42000,
@@ -16086,7 +16087,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 32,
+      "populationBonus": 150,
       constructionTimeSeconds: 555579,
       accelerationCost: 157,
       durability: 43992,
@@ -16152,7 +16153,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 33,
+      "populationBonus": 160,
       constructionTimeSeconds: 616137,
       accelerationCost: 165,
       durability: 45976,
@@ -16218,7 +16219,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 34,
+      "populationBonus": 170,
       constructionTimeSeconds: 648000,
       accelerationCost: 170,
       durability: 47960,
@@ -16284,7 +16285,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 35,
+      "populationBonus": 180,
       constructionTimeSeconds: 680943,
       accelerationCost: 174,
       durability: 49328,
@@ -16350,7 +16351,7 @@ export const buildings: Building[] = [
       ]
     },
     stats: {
-      "populationBonus": 37,
+      "populationBonus": 200,
       constructionTimeSeconds: 720000,
       accelerationCost: 185,
       durability: 53000,
@@ -16383,8 +16384,74 @@ export const buildings: Building[] = [
       ]
     },
     imageUrl: '/buildings/residential/98008.webp',
+    upgradesTo: 98014,
+    upgradeCost: 10000000,
     type: BuildingType.Residential,
     description: 'Дворец 10'
+  },
+  {
+    id: 98014,
+    name: 'Дворец 11',
+    englishName: 'Palace 11',
+    category: 'Жилые',
+    price: 10000000,
+    buildable: false,
+    constructionRequirements: {
+      population: 70,
+      resources: [
+        {
+          id: 10026,
+          name: 'Золото',
+          amount: 10
+        },
+        {
+          id: 10023,
+          name: 'Сталь',
+          amount: 24
+        },
+        {
+          id: 10030,
+          name: 'Цветок подсолнуха',
+          amount: 6
+        }
+      ]
+    },
+    stats: {
+      "populationBonus": 225,
+      constructionTimeSeconds: 760000,
+      accelerationCost: 195,
+      durability: 57000,
+      gloryOnExplosion: 500000
+    },
+    drops: {
+      frequent: [
+        {
+          id: 10044,
+          name: 'Самородок',
+          amount: 280
+        },
+        {
+          id: 10033,
+          name: 'Черепки',
+          amount: 35
+        },
+        {
+          id: 10040,
+          name: 'Стальной лист',
+          amount: 100
+        }
+      ],
+      rare: [
+        {
+          id: 10036,
+          name: 'Изумрудная руда',
+          amount: 1200
+        }
+      ]
+    },
+    imageUrl: '/buildings/residential/98014.webp',
+    type: BuildingType.Residential,
+    description: 'Дворец 11'
   },
   {
     id: 241,
@@ -35758,7 +35825,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка. Приносит доход и иногда производит супер гриб.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/878.webp',
+    imageUrl: '/buildings/static/mushroom_bed/874.webp',
     upgradesTo: 875,
     upgradeCost: 1200,
   },
@@ -35800,7 +35867,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 2 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/878.webp',
+    imageUrl: '/buildings/static/mushroom_bed/875.webp',
     upgradesTo: 876,
     upgradeCost: 10800,
   },
@@ -35842,7 +35909,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 3 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/878.webp',
+    imageUrl: '/buildings/static/mushroom_bed/876.webp',
     upgradesTo: 877,
     upgradeCost: 25600,
   },
@@ -35883,7 +35950,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 4 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/878.webp',
+    imageUrl: '/buildings/static/mushroom_bed/877.webp',
     upgradesTo: 878,
     upgradeCost: 50000,
   },
@@ -35925,7 +35992,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 5 уровня.',
-    imageUrl: '/buildings/garden_beds/mushroom/enhanced_mushroom_bed/878.webp',
+    imageUrl: '/buildings/static/mushroom_bed/878.webp',
     upgradesTo: 879,
     upgradeCost: 86400,
   },
@@ -35967,7 +36034,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 6 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/883.webp',
+    imageUrl: '/buildings/static/mushroom_bed/879.webp',
     upgradesTo: 880,
     upgradeCost: 137200,
   },
@@ -36009,7 +36076,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 7 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/883.webp',
+    imageUrl: '/buildings/static/mushroom_bed/880.webp',
     upgradesTo: 881,
     upgradeCost: 204800,
   },
@@ -36051,7 +36118,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 8 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/883.webp',
+    imageUrl: '/buildings/static/mushroom_bed/881.webp',
     upgradesTo: 882,
     upgradeCost: 291600,
   },
@@ -36094,7 +36161,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 9 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/883.webp',
+    imageUrl: '/buildings/static/mushroom_bed/882.webp',
     upgradesTo: 883,
     upgradeCost: 400000,
   },
@@ -36137,7 +36204,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 10 уровня.',
-    imageUrl: '/buildings/garden_beds/mushroom/enhanced_mushroom_bed/883.webp',
+    imageUrl: '/buildings/static/mushroom_bed/883.webp',
     upgradesTo: 884,
     upgradeCost: 532400,
   },
@@ -36180,7 +36247,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 11 уровня.',
-    imageUrl: '/buildings/garden_beds/mushroom/enhanced_mushroom_bed/884.webp',
+    imageUrl: '/buildings/static/mushroom_bed/884.webp',
     upgradesTo: 885,
     upgradeCost: 691200,
   },
@@ -36224,7 +36291,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 12 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/884.webp',
+    imageUrl: '/buildings/static/mushroom_bed/885.webp',
     upgradesTo: 886,
     upgradeCost: 878800,
   },
@@ -36268,7 +36335,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 13 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/884.webp',
+    imageUrl: '/buildings/static/mushroom_bed/886.webp',
     upgradesTo: 887,
     upgradeCost: 1097600,
   },
@@ -36311,7 +36378,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 14 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/884.webp',
+    imageUrl: '/buildings/static/mushroom_bed/887.webp',
     upgradesTo: 888,
     upgradeCost: 1350000,
   },
@@ -36355,7 +36422,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 15 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/884.webp',
+    imageUrl: '/buildings/static/mushroom_bed/888.webp',
     upgradesTo: 889,
     upgradeCost: 1638400,
   },
@@ -36399,7 +36466,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 16 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/894.webp',
+    imageUrl: '/buildings/static/mushroom_bed/889.webp',
     upgradesTo: 890,
     upgradeCost: 1965200,
   },
@@ -36443,7 +36510,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 17 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/894.webp',
+    imageUrl: '/buildings/static/mushroom_bed/890.webp',
     upgradesTo: 891,
     upgradeCost: 2332800,
   },
@@ -36487,7 +36554,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 18 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/894.webp',
+    imageUrl: '/buildings/static/mushroom_bed/891.webp',
     upgradesTo: 892,
     upgradeCost: 2743600,
   },
@@ -36531,7 +36598,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 19 уровня.',
-    imageUrl: '/buildings/Грядки/Грибная грядка  - Mushroom beds/894.webp',
+    imageUrl: '/buildings/static/mushroom_bed/892.webp',
     upgradesTo: 893,
     upgradeCost: 3200000,
   },
@@ -36575,7 +36642,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Улучшеная грибная грядка 20 уровня.',
-    imageUrl: '/buildings/garden_beds/mushroom/enhanced_mushroom_bed/893.webp',
+    imageUrl: '/buildings/static/mushroom_bed/893.webp',
     upgradesTo: 894,
     upgradeCost: 3704400,
   },
@@ -36619,7 +36686,7 @@ export const buildings: Building[] = [
       ]
     },
     description: 'Максимальный уровень улучшеной грибной грядки. Невероятная мощь!',
-    imageUrl: '/buildings/garden_beds/mushroom/enhanced_mushroom_bed/894.webp',
+    imageUrl: '/buildings/static/mushroom_bed/894.webp',
   },
   {
     id: 7980000,
@@ -38296,6 +38363,8 @@ export const buildings: Building[] = [
     imageUrl: '/buildings/Монстры/Большой Айболит/70010.webp'
   }
 ];
+
+buildings.push(...enhancedPumpkinBeds);
 
 if (import.meta.env.DEV) {
   validateBuildingItemNames(buildings);

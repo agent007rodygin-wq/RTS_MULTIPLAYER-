@@ -160,7 +160,10 @@ export interface SelectedBuildingModalProps {
     handleSell: () => void;
     handleStealProduction: () => void;
     handleExplode: (option: any, quantity: number, timeMultiplier: number, useSuper: boolean, useRegular: boolean) => void;
+    handleDefuse?: () => void;
+    currentUserId?: string;
     handleApplyProtection: (cost: number, duration: number) => void;
+    handleRemoveProtection?: () => void;
     onOpenMarket: (type: 'general' | 'military') => void;
     onSelectPlayer: (playerId: string) => void;
     handleUseBoneMeal?: (building?: PlacedBuilding) => void;
@@ -222,7 +225,10 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     handleSell,
     handleStealProduction,
     handleExplode,
+    handleDefuse,
+    currentUserId,
     handleApplyProtection,
+    handleRemoveProtection,
     onOpenMarket,
     onSelectPlayer,
     handleUseBoneMeal,
@@ -327,6 +333,8 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
     const isTrebuchet = Number(info.id) === TREBUCHET_ID;
     const isMortar = Number(info.id) === MORTAR_ID;
     const now = Date.now();
+    const isProtected = (building.shieldHp || 0) > 0 || (Boolean(building.protectionEndTime) && Number(building.protectionEndTime) > now);
+    const isInitiator = Boolean(currentUserId && building.initiatorId && String(building.initiatorId) === String(currentUserId));
     const isTrebuchetMoving = Boolean(building.trebuchetMoveUntil && now < building.trebuchetMoveUntil);
     const trebuchetMovingSecondsLeft = isTrebuchetMoving
         ? Math.max(0.1, ((building.trebuchetMoveUntil! - now) / 1000)).toFixed(1)
@@ -385,6 +393,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                 handleMoveClick={handleMoveClick}
                 handleSell={handleSell}
                 handleExplode={handleExplode}
+                handleDefuse={handleDefuse}
                 handleApplyProtection={handleApplyProtection}
                 handleUpgrade={handleUpgrade}
                 onOpenExplosionMenu={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
@@ -419,6 +428,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                 handleSell={handleSell}
                 handleUpgrade={handleUpgrade}
                 handleSpeedUp={handleSpeedUp}
+                handleDefuse={handleDefuse}
                 onOpenExplosionMenu={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
                 onOpenProtectionMenu={() => setShowProtectionMenu(true)}
                 onOpenTownHallOrders={onOpenTownHallOrders}
@@ -453,7 +463,7 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             <div className="bg-gradient-to-br from-red-950/80 via-rose-950/60 to-black p-3.5 rounded-xl border border-red-500/50 mb-4 shadow-[0_0_20px_rgba(239,68,68,0.3)]">
                                 <div className="flex items-center justify-between mb-1.5">
                                     <h4 className="text-red-300 font-extrabold text-sm flex items-center gap-1.5 animate-pulse">
-                                        <span>💣</span> Здание взрывается / атаковано!
+                                        <span>💣</span> Здание заминировано / атаковано!
                                     </h4>
                                     {building.destructionEndTime && (
                                         <span className="text-yellow-300 font-mono text-xs font-bold px-2 py-0.5 rounded bg-black/50 border border-yellow-500/30">
@@ -461,13 +471,31 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-xs text-gray-300">
+                                <p className="text-xs text-gray-300 mb-2.5">
                                     Кто атакует: <span className="font-bold text-yellow-300">
                                         {building.initiatorId ? (
-                                            allUsers[building.initiatorId]?.name || "Игрок"
+                                            allUsers[building.initiatorId]?.name || (isInitiator ? "Вы" : "Игрок")
                                         ) : (building.ownerId === "monster" || building.ownerId === "-1" ? "Игроки" : "Монстры")}
                                     </span>
                                 </p>
+                                {handleDefuse && (
+                                    <button
+                                        onClick={handleDefuse}
+                                        disabled={!isInitiator && playerRubies < 1}
+                                        className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 active:from-emerald-700 active:to-teal-700 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-black py-2.5 px-3 rounded-xl text-xs shadow-md border border-emerald-400/50 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                                    >
+                                        <span>✂️ Разминировать постройку</span>
+                                        {isInitiator ? (
+                                            <span className="text-[10px] bg-emerald-950/90 text-emerald-300 font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">
+                                                Бесплатно (вы сапёр)
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] bg-emerald-950/90 text-pink-300 font-bold px-2 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1">
+                                                1 <img src={rubyImageUrl} className="w-3.5 h-3.5 object-contain inline" alt="ruby" />
+                                            </span>
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         )}
                         {/* Casino Under Construction Banner */}
@@ -1383,6 +1411,11 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                 <span>⚡ Улучшить ({info.upgradeCost} 💰)</span>
                             </button>
                         )}
+                        {!info.upgradesTo && Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && isMine && buildingData.some(b => Number(b.upgradesTo) === Number(info.id)) && (
+                            <div className="w-full mt-4 bg-amber-950/40 text-amber-300 font-extrabold py-2 px-4 rounded-xl border border-amber-500/30 text-xs flex items-center justify-center gap-1.5">
+                                <span>🏆 Максимальный уровень</span>
+                            </div>
+                        )}
 
                         {/* Monster Academy - Enter Button */}
                         {isMonsterAcademyBuilding(info.id) && isMine && (
@@ -1453,10 +1486,11 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     {isMine && Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
                                         <button
                                             onClick={() => setShowProtectionMenu(true)}
-                                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border border-blue-400/30 transition-all"
+                                            className={`${isProtected ? 'bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 border-cyan-400/50 shadow-cyan-950/40 ring-1 ring-cyan-400/30' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 border-blue-400/30'} text-white font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md border transition-all`}
+                                            title={isProtected ? 'Защита активна — нажмите для управления или снятия' : 'Защитить здание щитом'}
                                         >
-                                            <ShieldIcon className="w-4 h-4 mb-1" />
-                                            <span>Защитить</span>
+                                            <ShieldIcon className={`w-4 h-4 mb-1 ${isProtected ? 'text-cyan-200' : ''}`} />
+                                            <span>{isProtected ? 'Защита 🛡️' : 'Защитить'}</span>
                                         </button>
                                     )}
 
@@ -1486,13 +1520,27 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
 
                             {Number(building.buildingId) !== MOUNTAIN_ID && Number(building.buildingId) !== RIVER_ID && (
                                 building.isDestroying ? (
-                                    <button
-                                        disabled
-                                        className={`bg-gray-800/80 text-gray-400 font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 border border-red-500/30 cursor-not-allowed opacity-75 ${!isMine ? 'col-span-3' : ''}`}
-                                        title="Здание уже взрывается, повторный взрыв невозможен"
-                                    >
-                                        <span className="text-red-400 font-bold">💣 Взрывается...</span>
-                                    </button>
+                                    handleDefuse ? (
+                                        <button
+                                            onClick={handleDefuse}
+                                            disabled={!isInitiator && playerRubies < 1}
+                                            className={`bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 disabled:from-gray-800 disabled:to-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-1.5 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 shadow-md shadow-emerald-950/40 border border-emerald-400/40 transition-all active:scale-95 ${!isMine ? 'col-span-3' : ''}`}
+                                            title={isInitiator ? 'Вы заминировали это здание. Нажмите, чтобы разминировать бесплатно.' : 'Разминировать здание за 1 рубин.'}
+                                        >
+                                            <span className="font-extrabold flex items-center gap-1 text-[11px]">✂️ Разминировать</span>
+                                            <span className="text-[10px] text-emerald-200 flex items-center gap-0.5">
+                                                {isInitiator ? 'Бесплатно' : <>1 <img src={rubyImageUrl} className="w-2.5 h-2.5 object-contain inline" alt="ruby" /></>}
+                                            </span>
+                                        </button>
+                                    ) : (
+                                        <button
+                                            disabled
+                                            className={`bg-gray-800/80 text-gray-400 font-bold py-2 px-2 rounded-xl text-xs flex flex-col items-center justify-center h-12 border border-red-500/30 cursor-not-allowed opacity-75 ${!isMine ? 'col-span-3' : ''}`}
+                                            title="Здание уже взрывается, повторный взрыв невозможен"
+                                        >
+                                            <span className="text-red-400 font-bold">💣 Взрывается...</span>
+                                        </button>
+                                    )
                                 ) : (
                                     <button
                                         onClick={() => { setShowExplosionMenu(true); setSelectedExplosionOption(null); setExplosionQuantity(1); }}
@@ -1681,10 +1729,61 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                             <span>← Назад</span>
                         </button>
                         <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-200 mb-4 text-center">
-                            🛡️ Защитить здание
+                            {isProtected ? '🛡️ Управление защитой' : '🛡️ Защитить здание'}
                         </h3>
 
+                        {isProtected && (
+                            <div className="mb-4 p-3.5 bg-gradient-to-b from-sky-950/80 to-blue-950/80 border border-cyan-400/50 rounded-xl flex flex-col gap-2.5 shadow-lg shadow-cyan-950/40">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-cyan-300 font-black text-sm flex items-center gap-1.5">
+                                        🛡️ Защита активна
+                                    </span>
+                                    {building.protectionEndTime && building.protectionEndTime > Date.now() && (
+                                        <span className="text-xs font-bold text-cyan-200 bg-cyan-950 px-2 py-0.5 rounded-md border border-cyan-500/40">
+                                            {(() => {
+                                                const diff = Math.max(0, building.protectionEndTime - Date.now());
+                                                const totalSec = Math.floor(diff / 1000);
+                                                const hours = Math.floor(totalSec / 3600);
+                                                const mins = Math.floor((totalSec % 3600) / 60);
+                                                const secs = totalSec % 60;
+                                                if (hours > 24) {
+                                                    const days = Math.floor(hours / 24);
+                                                    return `Осталось: ${days} дн. ${hours % 24} ч.`;
+                                                }
+                                                if (hours > 0) {
+                                                    return `Осталось: ${hours} ч. ${mins} мин.`;
+                                                }
+                                                return `Осталось: ${mins} мин. ${secs} с.`;
+                                            })()}
+                                        </span>
+                                    )}
+                                </div>
+                                {building.shieldMaxHp !== undefined && building.shieldMaxHp > 0 && (
+                                    <div className="text-xs text-gray-300 flex items-center justify-between">
+                                        <span>Броня щита:</span>
+                                        <span className="font-extrabold text-cyan-300">
+                                            {building.shieldHp || 0} / {building.shieldMaxHp}
+                                        </span>
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm('Снять защиту со здания? Щит перестанет защищать постройку от врагов и урона.')) {
+                                            handleRemoveProtection?.();
+                                            setShowProtectionMenu(false);
+                                        }
+                                    }}
+                                    className="w-full mt-1 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-black py-2.5 px-3 rounded-xl text-xs shadow-md border border-red-400/50 transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                                >
+                                    <span>❌ Снять защиту</span>
+                                </button>
+                            </div>
+                        )}
+
                         <div className="flex flex-col space-y-3">
+                            <div className="text-xs font-semibold text-purple-200/90 mb-0.5">
+                                {isProtected ? 'Продлить или сменить защиту:' : 'Выберите длительность защиты:'}
+                            </div>
                             {PROTECTION_OPTIONS.map((option, index) => (
                                 <button
                                     key={index}
@@ -1720,9 +1819,11 @@ const arePropsEqual = (prevProps: SelectedBuildingModalProps, nextProps: Selecte
         prevB.hp !== nextB.hp ||
         prevB.shieldHp !== nextB.shieldHp ||
         prevB.shieldMaxHp !== nextB.shieldMaxHp ||
+        prevB.protectionEndTime !== nextB.protectionEndTime ||
         prevB.workState !== nextB.workState ||
         prevB.isConstructing !== nextB.isConstructing ||
         prevB.isDestroying !== nextB.isDestroying ||
+        prevB.initiatorId !== nextB.initiatorId ||
         prevB.isActive !== nextB.isActive ||
         prevB.bank !== nextB.bank ||
         prevB.taxRate !== nextB.taxRate ||
@@ -1743,6 +1844,7 @@ const arePropsEqual = (prevProps: SelectedBuildingModalProps, nextProps: Selecte
         prevProps.inventory !== nextProps.inventory ||
         prevProps.allUsers !== nextProps.allUsers ||
         prevProps.placedBuildings !== nextProps.placedBuildings ||
+        prevProps.currentUserId !== nextProps.currentUserId ||
         prevProps.townHallAvailableOrdersCount !== nextProps.townHallAvailableOrdersCount
     ) {
         return false;

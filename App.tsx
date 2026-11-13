@@ -155,6 +155,18 @@ import { TabletMenuModal } from './src/components/game/TabletMenuModal';
 import { DailyRewardModal } from './src/components/game/DailyRewardModal';
 import { EnergyModal, RubyModal, BuildingLimitModal } from './src/components/game/SystemModals';
 import { ChatPanel } from './src/components/game/ChatPanel';
+import { KOLOBOK_EMOJIS } from './src/game/chat/chatEmojis';
+import {
+    GOLD_SMELTER_ANIMS,
+    STEEL_SMELTING_ANIMS,
+    MUSHROOM_BED_ANIMS,
+    PUMPKIN_BED_ANIMS,
+    PUMPKIN_BED_ID_SET,
+    BUILD_CLOUD_ANIMATION_FRAMES,
+    BUILD_CLOUD_FPS,
+    COIN_ANIMATION_FRAMES,
+    COIN_ANIMATION_FPS,
+} from './src/game/buildings/enhancedBuildingAnimations';
 import { compressImageFile } from './src/game/utils/imageCompress';
 import {
     LogIn,
@@ -638,33 +650,7 @@ const MOCK_USER_LEVELS: Record<string, number> = {
     'GeneralZod': 25
 };
 
-// Kolobok / Classic style emojis
-const KOLOBOK_EMOJIS = [
-    { code: ':)', url: '/Chat/smile.gif' },
-    { code: ':(', url: '/Chat/sad.gif' },
-    { code: ';)', url: '/Chat/wink.gif' },
-    { code: ':D', url: '/Chat/biggrin.gif' },
-    { code: ':P', url: '/Chat/beee.gif' },
-    { code: ':cool:', url: '/Chat/dirol.gif' },
-    { code: ':crazy:', url: '/Chat/crazy.gif' },
-    { code: ':mad:', url: '/Chat/aggressive.gif' },
-    { code: ':blush:', url: '/Chat/blush.gif' },
-    { code: ':rofl:', url: '/Chat/rofl.gif' },
-    { code: ':ok:', url: '/Chat/ok.gif' },
-    { code: ':hi:', url: '/Chat/hello.gif' },
-    { code: ':cray:', url: '/Chat/cray.gif' },
-    { code: ':shok:', url: '/Chat/shok.gif' },
-    { code: ':dash:', url: '/Chat/dash.gif' },
-    { code: ':drinks:', url: '/Chat/drinks.gif' },
-    { code: ':dance:', url: '/Chat/dance.gif' },
-    { code: ':clapping:', url: '/Chat/clapping.gif' },
-    { code: ':dntknw:', url: '/Chat/dntknw.gif' },
-    { code: ':popcorn:', url: '/Chat/popcorn.gif' },
-    { code: ':pardon:', url: '/Chat/pardon.gif' },
-    { code: ':yahoo:', url: '/Chat/yahoo.gif' },
-    { code: ':smoke:', url: '/Chat/smoke.gif' },
-    { code: ':kiss:', url: '/Chat/kiss.gif' }
-];
+// KOLOBOK_EMOJIS imported from ./src/game/chat/chatEmojis
 
 
 type BuildMenuTab = 'Грядки' | 'Жилье' | 'Бизнес' | 'Буквы' | 'Декор' | 'Дороги и стены' | 'Заводы' | 'Монстры' | 'Клан' | 'Подарки' | 'Защита' | 'Статуи' | 'Спецальное' | 'Античность';
@@ -876,6 +862,18 @@ const processOfflineTimers = (
                 }
                 if (updatedBuilding.maxHp !== building.maxHp) {
                     updateData.maxHp = updatedBuilding.maxHp;
+                }
+                if (updatedBuilding.shieldHp !== building.shieldHp) {
+                    updateData.shieldHp = updatedBuilding.shieldHp !== undefined ? updatedBuilding.shieldHp : deleteField();
+                }
+                if (updatedBuilding.shieldMaxHp !== building.shieldMaxHp) {
+                    updateData.shieldMaxHp = updatedBuilding.shieldMaxHp !== undefined ? updatedBuilding.shieldMaxHp : deleteField();
+                }
+                if (updatedBuilding.protectionEndTime !== building.protectionEndTime) {
+                    updateData.protectionEndTime = updatedBuilding.protectionEndTime !== undefined ? updatedBuilding.protectionEndTime : deleteField();
+                }
+                if (building.initiatorId && !updatedBuilding.initiatorId) {
+                    updateData.initiatorId = deleteField();
                 }
                 
                 updates.push({ id: bId, data: updateData });
@@ -1788,33 +1786,9 @@ const MILITARY_FACTORY_IDS = [60332, 604, 605];
 const militaryFactoryAnimationFrames: string[] = Array.from({ length: 62 }, (_, i) => `/animation/military_factory/${i + 1}.webp`);
 const MILITARY_FACTORY_ID_SET = new Set(MILITARY_FACTORY_IDS);
 
-// Mushroom Bed (Р вЂњРЎР‚Р С‘Р В±Р Р…Р В°РЎРЏ Р С–РЎР‚РЎРЏР Т‘Р С”Р В°) animation frames (working + idle states)
-// Levels 1-5: IDs 874-878 > folder "774"
-// Levels 6-10: IDs 879-883 > folder "779"
-// Levels 11-15: IDs 884-888 > folder "784"
-// Levels 16-20: IDs 889-893 > folder "789"
-// Level 21: ID 894 > folder "794"
-const MUSHROOM_BED_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number }> = {};
-const MB_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number }> = [
-  { ids: [874, 875, 876, 877, 878], folder: '774', workingFrames: 40, idleFrames: 40 },
-  { ids: [879, 880, 881, 882, 883], folder: '779', workingFrames: 40, idleFrames: 40 },
-    { ids: [884, 885, 886, 887, 888], folder: '784', workingFrames: 39, idleFrames: 40 },
-  { ids: [889, 890, 891, 892, 893], folder: '789', workingFrames: 40, idleFrames: 40 },
-  { ids: [894], folder: '794', workingFrames: 40, idleFrames: 40 },
-];
-for (const group of MB_GROUP_DEFS) {
-  for (const id of group.ids) {
-    MUSHROOM_BED_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames };
-  }
-}
-const MUSHROOM_BED_ALL_IDS = Object.keys(MUSHROOM_BED_ID_TO_GROUP).map(Number);
+// Mushroom Bed & Enhanced Pumpkin Bed animation frames (backed by enhancedBuildingAnimations.ts)
+const MUSHROOM_BED_ALL_IDS = Object.keys(MUSHROOM_BED_ANIMS).map(Number);
 const MUSHROOM_BED_ID_SET = new Set(MUSHROOM_BED_ALL_IDS);
-const mushroomBedWorkingFrames: Record<string, string[]> = {};
-const mushroomBedIdleFrames: Record<string, string[]> = {};
-for (const group of MB_GROUP_DEFS) {
-  mushroomBedWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/mushroom_bed/${group.folder}/working/${i + 1}.webp`);
-  mushroomBedIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/mushroom_bed/${group.folder}/idle/${i + 1}.webp`);
-}
 
 // Mine (Р РЃР В°РЎвЂ¦РЎвЂљР В°) animation frames (working + idle states)
 // Levels 1-10: IDs 668-677 > folder "668" (82 working + 37 idle)
@@ -1870,37 +1844,9 @@ for (const group of EF_GROUP_DEFS) {
   emeraldFactoryIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/emerald_factory/${group.folder}/idle/${i + 1}.webp`);
 }
 
-// Gold Smelter (Р вЂ”Р С•Р В»Р С•РЎвЂљР С•Р С—Р В»Р В°Р Р†Р С‘Р В»РЎРЉР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames
-// Level 1: ID 266 > folder "266" (80 working frames only, no idle - shows static image when idle)
-// Levels 2-5: IDs 557-560 > folder "557" (35 working + 40 idle)
-// Levels 6-10: IDs 561-565 > folder "561" (35 working + 40 idle)
-// Levels 11-15: IDs 566-570 > folder "566" (35 working + 40 idle)
-// Levels 16-20: IDs 571-575 > folder "571" (35 working + 40 idle)
-// Level 21: ID 576 > folder "576" (35 working + 40 idle)
-const GOLD_SMELTER_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number }> = {};
-const GS_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number }> = [
-  { ids: [266], folder: '266', workingFrames: 80, idleFrames: 0 },
-  { ids: [557, 558, 559, 560], folder: '557', workingFrames: 35, idleFrames: 40 },
-  { ids: [561, 562, 563, 564, 565], folder: '561', workingFrames: 35, idleFrames: 40 },
-  { ids: [566, 567, 568, 569, 570], folder: '566', workingFrames: 35, idleFrames: 40 },
-  { ids: [571, 572, 573, 574, 575], folder: '571', workingFrames: 35, idleFrames: 40 },
-  { ids: [576], folder: '576', workingFrames: 35, idleFrames: 40 },
-];
-for (const group of GS_GROUP_DEFS) {
-  for (const id of group.ids) {
-    GOLD_SMELTER_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames };
-  }
-}
-const GOLD_SMELTER_ALL_IDS = Object.keys(GOLD_SMELTER_ID_TO_GROUP).map(Number);
+// Gold Smelter animation frames (backed by enhancedBuildingAnimations.ts; lvl_01 remapped to 576)
+const GOLD_SMELTER_ALL_IDS = Object.keys(GOLD_SMELTER_ANIMS).map(Number);
 const GOLD_SMELTER_ID_SET = new Set(GOLD_SMELTER_ALL_IDS);
-const goldSmelterWorkingFrames: Record<string, string[]> = {};
-const goldSmelterIdleFrames: Record<string, string[]> = {};
-for (const group of GS_GROUP_DEFS) {
-  goldSmelterWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/gold_smelter/${group.folder}/working/${i + 1}.webp`);
-  if (group.idleFrames > 0) {
-    goldSmelterIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/gold_smelter/${group.folder}/idle/${i + 1}.webp`);
-  }
-}
 
 // Steel Rolling Mill (Р РЋРЎвЂљР В°Р В»Р ВµР С—РЎР‚Р С•Р С”Р В°РЎвЂљР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
 // Levels 1-5: IDs 853-857 > folder "853" (80 working + 39 idle)
@@ -1930,17 +1876,9 @@ for (const group of SRM_GROUP_DEFS) {
   steelRollingMillIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/steel_rolling_mill/${group.folder}/idle/${i + 1}.webp`);
 }
 
-// Steel Smelting Factory (Р РЋРЎвЂљР В°Р В»Р ВµР С—Р В»Р В°Р Р†Р С‘Р В»РЎРЉР Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
-// Each level has its own folder: IDs 262, 475-486 (13 levels)
-// All levels: 36 working frames + 40 idle frames
-const STEEL_SMELTING_IDS = [262, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486];
+// Steel Smelting Factory animation frames (backed by enhancedBuildingAnimations.ts)
+const STEEL_SMELTING_IDS = Object.keys(STEEL_SMELTING_ANIMS).map(Number);
 const STEEL_SMELTING_ID_SET = new Set(STEEL_SMELTING_IDS);
-const steelSmeltingWorkingFrames: Record<number, string[]> = {};
-const steelSmeltingIdleFrames: Record<number, string[]> = {};
-for (const id of STEEL_SMELTING_IDS) {
-  steelSmeltingWorkingFrames[id] = Array.from({ length: 36 }, (_, i) => `/animation/steel_smelting/${id}/working/${i + 1}.webp`);
-  steelSmeltingIdleFrames[id] = Array.from({ length: 40 }, (_, i) => `/animation/steel_smelting/${id}/idle/${i + 1}.webp`);
-}
 
 // Stone Crusher (Р С™Р В°Р СР Р…Р ВµР Т‘РЎР‚Р С•Р В±Р С‘Р В»Р С”Р В°) animation frames (working + idle states)
 // Building IDs: 6200, 4091, 410-412, 455-467
@@ -2125,8 +2063,13 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
     if (MILITARY_FACTORY_ID_SET.has(building.buildingId) && isWorking) return militaryFactoryAnimationFrames;
 
     if (MUSHROOM_BED_ID_SET.has(building.buildingId)) {
-        const group = MUSHROOM_BED_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? mushroomBedWorkingFrames[group.folder] : (mushroomBedIdleFrames[group.folder]?.[0] ? [mushroomBedIdleFrames[group.folder][0]] : []);
+        const spec = MUSHROOM_BED_ANIMS[building.buildingId];
+        if (spec) return isWorking ? spec.working : spec.idle;
+    }
+
+    if (PUMPKIN_BED_ID_SET.has(building.buildingId)) {
+        const spec = PUMPKIN_BED_ANIMS[building.buildingId];
+        if (spec) return isWorking ? spec.working : spec.idle;
     }
 
     if (MINE_ID_SET.has(building.buildingId)) {
@@ -2140,11 +2083,8 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
     }
 
     if (GOLD_SMELTER_ID_SET.has(building.buildingId)) {
-        const group = GOLD_SMELTER_ID_TO_GROUP[building.buildingId];
-        if (group) {
-            if (isWorking) return goldSmelterWorkingFrames[group.folder] || [];
-            if (group.idleFrames > 0 && goldSmelterIdleFrames[group.folder]?.[0]) return [goldSmelterIdleFrames[group.folder][0]];
-        }
+        const spec = GOLD_SMELTER_ANIMS[building.buildingId];
+        if (spec) return isWorking ? spec.working : spec.idle;
     }
 
     if (STEEL_ROLLING_MILL_ID_SET.has(building.buildingId)) {
@@ -2153,7 +2093,8 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
     }
 
     if (STEEL_SMELTING_ID_SET.has(building.buildingId)) {
-        return isWorking ? (steelSmeltingWorkingFrames[building.buildingId] || []) : (steelSmeltingIdleFrames[building.buildingId]?.[0] ? [steelSmeltingIdleFrames[building.buildingId][0]] : []);
+        const spec = STEEL_SMELTING_ANIMS[building.buildingId];
+        if (spec) return isWorking ? spec.working : spec.idle;
     }
 
     if (STONE_CRUSHER_ID_SET.has(building.buildingId)) {
@@ -2288,8 +2229,25 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
     }
 };
 
-// Function to draw animated coin
-const drawAnimatedCoin = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number) => {
+// Function to draw animated coin (uses 18-frame PNG animation with canvas fallback)
+const drawAnimatedCoin = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    time: number,
+    imageCache?: Record<string, HTMLImageElement | HTMLCanvasElement>
+) => {
+    if (imageCache && COIN_ANIMATION_FRAMES.length > 0) {
+        const frameDuration = 1000 / COIN_ANIMATION_FPS;
+        const totalDuration = COIN_ANIMATION_FRAMES.length * frameDuration;
+        const frameIndex = Math.floor((time % totalDuration) / frameDuration) % COIN_ANIMATION_FRAMES.length;
+        const coinImg = getOrLoadCachedSprite(COIN_ANIMATION_FRAMES[frameIndex], imageCache);
+        if (coinImg && (!(coinImg instanceof HTMLImageElement) || (coinImg.complete && coinImg.naturalWidth > 0))) {
+            ctx.drawImage(coinImg, x - size / 2, y - size / 2, size, size);
+            return;
+        }
+    }
     const rotation = (time / 500) % (Math.PI * 2); // Full rotation in 500ms
     const scaleX = Math.cos(rotation); // Simulate 3D rotation
     const stretch = 0.3; // How thin the coin gets at edges
@@ -5045,6 +5003,8 @@ const App: React.FC = () => {
     const playerEnergyRef = useRef(playerEnergy);
     useEffect(() => { playerEnergyRef.current = playerEnergy; }, [playerEnergy]);
     const deletingDroppedItemsRef = useRef<Map<string, number>>(new Map());
+    const treeHitQueueRef = useRef<Map<string, Promise<void>>>(new Map());
+    const recentlyDepletedTreesRef = useRef<Map<string, number>>(new Map());
     const emptyTileCooldownUntilRef = useRef<number>(0);
     const isDroppedItemDeleting = useCallback((id: string): boolean => {
         const deleteTime = deletingDroppedItemsRef.current.get(id);
@@ -5996,9 +5956,21 @@ const App: React.FC = () => {
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (requestId !== activeZoneResourcesRequestRef.current) return;
             clearZoneSyncRetry(retryKey);
+            const nowMs = Date.now();
             const resourcesData: MapResource[] = [];
             snapshot.forEach((doc) => {
-                resourcesData.push(doc.data() as MapResource);
+                const res = doc.data() as MapResource;
+                if (res.type === 'tree') {
+                    const key = `${res.x}_${res.y}`;
+                    const depletedAt = recentlyDepletedTreesRef.current.get(key);
+                    if (depletedAt) {
+                        if (nowMs - depletedAt < 5000) {
+                            return;
+                        }
+                        recentlyDepletedTreesRef.current.delete(key);
+                    }
+                }
+                resourcesData.push(res);
             });
             setMapResources(resourcesData);
 
@@ -6143,7 +6115,9 @@ const App: React.FC = () => {
         // Enhanced Lily Pond
         577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 587, 588, 589, 590, 591, 592, 593, 594, 595, 596, 597, // Р Р€Р В»РЎС“РЎвЂЎРЎв‚¬Р ВµР Р…РЎвЂ№Р в„– Р С—РЎР‚РЎС“Р Т‘ РЎРѓ Р вЂєР С‘Р В»Р С‘РЎРЏР СР С‘ 1-21
         // Enhanced Mushroom Bed
-        874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894, // Р Р€Р В»РЎС“РЎвЂЎРЎв‚¬Р ВµР Р…Р В°РЎРЏ Р вЂњРЎР‚Р С‘Р В±Р Р…Р В°РЎРЏ Р вЂњРЎР‚РЎРЏР Т‘Р С”Р В° 1-21
+        874, 875, 876, 877, 878, 879, 880, 881, 882, 883, 884, 885, 886, 887, 888, 889, 890, 891, 892, 893, 894,
+        // Enhanced Pumpkin Bed
+        911, 912, 913, 914, 915, 916, 917, 918, 919, 920, 921, 922, 923, 924, 925, 926, 927, 928, 929, 930, 931, // Р Р€Р В»РЎС“РЎвЂЎРЎв‚¬Р ВµР Р…Р В°РЎРЏ Р вЂњРЎР‚Р С‘Р В±Р Р…Р В°РЎРЏ Р вЂњРЎР‚РЎРЏР Т‘Р С”Р В° 1-21
         // Add other garden bed IDs here if needed
     ];
 
@@ -7035,7 +7009,31 @@ const App: React.FC = () => {
                     if (!isGroundTileId(b.buildingId)) break;
                 }
             }
-            const resourceIndex = mapResources.findIndex(r => r.x === gridX && r.y === gridY);
+            let resourceIndex = mapResources.findIndex(r => r.x === gridX && r.y === gridY);
+            if (!buildingAtTile && resourceIndex === -1) {
+                const adjClickX = clientX - cameraOffsetRef.current.x;
+                const adjClickY = clientY - cameraOffsetRef.current.y;
+                const candidateOffsets = [
+                    [1, 1],
+                    [1, 0],
+                    [0, 1],
+                ];
+                for (const [dx, dy] of candidateOffsets) {
+                    const cx = isWorldWrapped ? wrapCoord(gridX + dx, WORLD_WIDTH_TILES) : gridX + dx;
+                    const cy = isWorldWrapped ? wrapCoord(gridY + dy, WORLD_HEIGHT_TILES) : gridY + dy;
+                    const idx = mapResources.findIndex(r => r.type === 'tree' && r.x === cx && r.y === cy);
+                    if (idx !== -1) {
+                        const { screenX: treeSX, screenY: treeSY } = worldToScreen(cx, cy, zoom);
+                        const halfW = TILE_WIDTH * zoom * 0.36;
+                        const topReach = TILE_HEIGHT * zoom * 0.9;
+                        const bottomReach = TILE_HEIGHT * zoom * 0.25;
+                        if (Math.abs(adjClickX - treeSX) <= halfW && adjClickY >= treeSY - topReach && adjClickY <= treeSY + bottomReach) {
+                            resourceIndex = idx;
+                            break;
+                        }
+                    }
+                }
+            }
 
             if (buildingAtTile) {
                 if (buildingAtTile.isDestroying) {
@@ -7117,131 +7115,164 @@ const App: React.FC = () => {
                 }
 
                 if (resource.type === 'tree') {
-                    if (playerEnergy < TREE_SERVER_HIT_ENERGY_COST) {
+                    if (playerEnergyRef.current < TREE_SERVER_HIT_ENERGY_COST) {
                         openEnergyWarningModal(TREE_SERVER_HIT_ENERGY_COST);
                         return;
                     }
 
                     const resourceId = `${resource.x}_${resource.y}`;
 
-                    try {
-                        const hitResult = await requestTreeHit(resourceId);
-                        if (!hitResult.applied) {
+                    const runQueuedTreeHit = async () => {
+                        const depletedAt = recentlyDepletedTreesRef.current.get(resourceId);
+                        if (depletedAt && Date.now() - depletedAt < 5000) {
                             return;
                         }
 
-                        emptyTileCooldownUntilRef.current = Date.now() + 3000;
-
-                        triggerGatherJuice({
-                            worldX: resource.x,
-                            worldY: resource.y,
-                            gold: Math.max(0, hitResult.rewardGold || 0),
-                            resources: { wood: hitResult.rewardWood || 1 },
-                        });
-
-                        if (typeof hitResult.playerEnergy === 'number') {
-                            setPlayerEnergy(Math.max(0, hitResult.playerEnergy));
+                        if (playerEnergyRef.current < TREE_SERVER_HIT_ENERGY_COST) {
+                            openEnergyWarningModal(TREE_SERVER_HIT_ENERGY_COST);
+                            return;
                         }
 
-                        if (typeof hitResult.playerGold === 'number') {
-                            setPlayerGold(Math.max(0, hitResult.playerGold));
-                        }
-
-                        const nextGlory = typeof hitResult.playerGlory === 'number'
-                            ? Math.max(0, hitResult.playerGlory)
-                            : playerGloryRef.current;
-                        playerGloryRef.current = nextGlory;
-                        setPlayerGlory(nextGlory);
-
-                        if (hitResult.inventory) {
-                            setInventory(sanitizeInventoryCounts(hitResult.inventory));
-                        }
-
-                        const nextTreesChopped =
-                            typeof hitResult.playerTreesChopped === 'number'
-                                ? Math.max(0, hitResult.playerTreesChopped)
-                                : Math.max(
-                                    0,
-                                    (playerLeaderboardStatsRef.current.treesChopped || 0) +
-                                    (hitResult.treesChoppedIncrement || 0)
-                                );
-
-                        const nextStats = {
-                            ...playerLeaderboardStatsRef.current,
-                            treesChopped: nextTreesChopped,
-                        };
-                        setPlayerLeaderboardStats(nextStats);
-
-                        if (user) {
-                            setAllUsers(prev => ({
-                                ...prev,
-                                [user.uid]: {
-                                    ...prev[user.uid],
-                                    glory: nextGlory,
-                                    treesChopped: nextTreesChopped,
-                                }
-                            }));
-                        }
-
-                        const isTreeFelled = Boolean(hitResult.depleted || (typeof hitResult.currentHp === 'number' && hitResult.currentHp <= 0));
-                        if (isTreeFelled) {
-                            setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
-                            if (lumberjackBuffUntil > Date.now()) {
-                                updatePlayerResources(0, 0, { [WOOD_ITEM_ID]: 1 });
-                                addHistoryLog('🪓 Бонус Эликсира дровосека: +1 дополнительное дерево за срубленный ствол!', 'economy');
-                                setPermitPurchaseToast('+1 бонусное дерево 🪓');
-                                if (permitPurchaseToastTimerRef.current !== null) {
-                                    window.clearTimeout(permitPurchaseToastTimerRef.current);
-                                }
-                                permitPurchaseToastTimerRef.current = window.setTimeout(() => {
-                                    setPermitPurchaseToast(null);
-                                    permitPurchaseToastTimerRef.current = null;
-                                }, 2000);
+                        try {
+                            const hitResult = await requestTreeHit(resourceId);
+                            if (!hitResult.applied) {
+                                return;
                             }
-                        } else if (typeof hitResult.currentHp === 'number') {
-                            setMapResources(prev => prev.map(r => r.x === resource.x && r.y === resource.y ? { ...r, hp: hitResult.currentHp } : r));
+
+                            emptyTileCooldownUntilRef.current = Date.now() + 3000;
+
+                            triggerGatherJuice({
+                                worldX: resource.x,
+                                worldY: resource.y,
+                                gold: Math.max(0, hitResult.rewardGold || 0),
+                                resources: { wood: hitResult.rewardWood || 1 },
+                            });
+
+                            if (typeof hitResult.playerEnergy === 'number') {
+                                const nextEnergy = Math.max(0, hitResult.playerEnergy);
+                                playerEnergyRef.current = nextEnergy;
+                                setPlayerEnergy(nextEnergy);
+                            }
+
+                            if (typeof hitResult.playerGold === 'number') {
+                                const nextGold = Math.max(0, hitResult.playerGold);
+                                playerGoldRef.current = nextGold;
+                                setPlayerGold(nextGold);
+                            }
+
+                            const nextGlory = typeof hitResult.playerGlory === 'number'
+                                ? Math.max(0, hitResult.playerGlory)
+                                : playerGloryRef.current;
+                            playerGloryRef.current = nextGlory;
+                            setPlayerGlory(nextGlory);
+
+                            if (hitResult.inventory) {
+                                setInventory(sanitizeInventoryCounts(hitResult.inventory));
+                            }
+
+                            const nextTreesChopped =
+                                typeof hitResult.playerTreesChopped === 'number'
+                                    ? Math.max(0, hitResult.playerTreesChopped)
+                                    : Math.max(
+                                        0,
+                                        (playerLeaderboardStatsRef.current.treesChopped || 0) +
+                                        (hitResult.treesChoppedIncrement || 0)
+                                    );
+
+                            const nextStats = {
+                                ...playerLeaderboardStatsRef.current,
+                                treesChopped: nextTreesChopped,
+                            };
+                            playerLeaderboardStatsRef.current = nextStats;
+                            setPlayerLeaderboardStats(nextStats);
+
+                            if (user) {
+                                setAllUsers(prev => ({
+                                    ...prev,
+                                    [user.uid]: {
+                                        ...prev[user.uid],
+                                        glory: nextGlory,
+                                        treesChopped: nextTreesChopped,
+                                    }
+                                }));
+                            }
+
+                            const isTreeFelled = Boolean(hitResult.depleted || (typeof hitResult.currentHp === 'number' && hitResult.currentHp <= 0));
+                            if (isTreeFelled) {
+                                recentlyDepletedTreesRef.current.set(resourceId, Date.now());
+                                setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
+                                if (lumberjackBuffUntil > Date.now()) {
+                                    updatePlayerResources(0, 0, { [WOOD_ITEM_ID]: 1 });
+                                    addHistoryLog('🪓 Бонус Эликсира дровосека: +1 дополнительное дерево за срубленный ствол!', 'economy');
+                                    setPermitPurchaseToast('+1 бонусное дерево 🪓');
+                                    if (permitPurchaseToastTimerRef.current !== null) {
+                                        window.clearTimeout(permitPurchaseToastTimerRef.current);
+                                    }
+                                    permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                                        setPermitPurchaseToast(null);
+                                        permitPurchaseToastTimerRef.current = null;
+                                    }, 2000);
+                                }
+                            } else if (typeof hitResult.currentHp === 'number') {
+                                setMapResources(prev => prev.map(r => r.x === resource.x && r.y === resource.y ? { ...r, hp: hitResult.currentHp } : r));
+                            }
+
+                            addHistoryLog(
+                                `Рубка дерева. Получено: дерево (+${hitResult.rewardWood || 1}) и ${Math.max(0, hitResult.rewardGold || 0)} монет.`,
+                                'economy'
+                            );
+                        } catch (error) {
+                            const status = typeof (error as { status?: unknown })?.status === 'number'
+                                ? Number((error as { status?: number }).status)
+                                : null;
+                            const details = (error as { details?: any })?.details || {};
+                            const errorCode = String(details?.error || details?.code || '');
+                            const requiredEnergy = Number(details?.requiredEnergy);
+                            const currentEnergy = Number(details?.currentEnergy);
+
+                            if (typeof details?.playerEnergy === 'number') {
+                                const nextEnergy = Math.max(0, details.playerEnergy);
+                                playerEnergyRef.current = nextEnergy;
+                                setPlayerEnergy(nextEnergy);
+                            } else if (Number.isFinite(currentEnergy)) {
+                                const nextEnergy = Math.max(0, currentEnergy);
+                                playerEnergyRef.current = nextEnergy;
+                                setPlayerEnergy(nextEnergy);
+                            }
+
+                            if (status === 401) {
+                                alert('Нужно заново войти в аккаунт, чтобы рубить деревья.');
+                                return;
+                            }
+
+                            if (errorCode === 'NOT_ENOUGH_ENERGY') {
+                                openEnergyWarningModal(Number.isFinite(requiredEnergy) ? requiredEnergy : TREE_SERVER_HIT_ENERGY_COST);
+                                return;
+                            }
+
+                            if (errorCode === 'TREE_NOT_FOUND' || errorCode === 'TREE_NOT_ALIVE') {
+                                console.warn('[TreeHit][client] Tree already changed on server:', { resourceId, status, details });
+                                recentlyDepletedTreesRef.current.set(resourceId, Date.now());
+                                setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
+                                return;
+                            }
+
+                            console.error('[TreeHit][client] Request failed:', { resourceId, status, details, error });
                         }
+                    };
 
-                        addHistoryLog(
-                            `Рубка дерева. Получено: дерево (+${hitResult.rewardWood || 1}) и ${Math.max(0, hitResult.rewardGold || 0)} монет.`,
-                            'economy'
-                        );
-
-                        return;
-                    } catch (error) {
-                        const status = typeof (error as { status?: unknown })?.status === 'number'
-                            ? Number((error as { status?: number }).status)
-                            : null;
-                        const details = (error as { details?: any })?.details || {};
-                        const errorCode = String(details?.error || details?.code || '');
-                        const requiredEnergy = Number(details?.requiredEnergy);
-                        const currentEnergy = Number(details?.currentEnergy);
-
-                        if (typeof details?.playerEnergy === 'number') {
-                            setPlayerEnergy(Math.max(0, details.playerEnergy));
-                        } else if (Number.isFinite(currentEnergy)) {
-                            setPlayerEnergy(Math.max(0, currentEnergy));
-                        }
-
-                        if (status === 401) {
-                            alert('Нужно заново войти в аккаунт, чтобы рубить деревья.');
-                            return;
-                        }
-
-                        if (errorCode === 'NOT_ENOUGH_ENERGY') {
-                            openEnergyWarningModal(Number.isFinite(requiredEnergy) ? requiredEnergy : TREE_SERVER_HIT_ENERGY_COST);
-                            return;
-                        }
-
-                        if (errorCode === 'TREE_NOT_FOUND' || errorCode === 'TREE_NOT_ALIVE') {
-                            console.warn('[TreeHit][client] Tree already changed on server:', { resourceId, status, details });
-                            setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
-                            return;
-                        }
-
-                        console.error('[TreeHit][client] Request failed:', { resourceId, status, details, error });
-                        return;
-                    }
+                    const prevQueue = treeHitQueueRef.current.get(resourceId) || Promise.resolve();
+                    const nextQueue = prevQueue
+                        .catch(() => {})
+                        .then(runQueuedTreeHit)
+                        .finally(() => {
+                            if (treeHitQueueRef.current.get(resourceId) === nextQueue) {
+                                treeHitQueueRef.current.delete(resourceId);
+                            }
+                        });
+                    treeHitQueueRef.current.set(resourceId, nextQueue);
+                    await nextQueue;
+                    return;
                 }
 
                 if (playerEnergy < ENERGY_COST_PER_CHOP) {
@@ -8495,7 +8526,7 @@ const App: React.FC = () => {
         let actualGoldDelta = goldDelta;
         if (goldDelta > 0) {
             // Never convert a reward into a negative debit if the cap is stale.
-            actualGoldDelta = Math.max(0, Math.min(goldDelta, goldCapacity - playerGold));
+            actualGoldDelta = Math.max(0, Math.min(goldDelta, goldCapacity - playerGoldRef.current));
         }
 
         if (actualGoldDelta !== 0) {
@@ -8954,7 +8985,9 @@ const App: React.FC = () => {
                     rubiesValue = 10;
                     updateDoc(userDocRef, { rubies: 10 }).catch(() => {});
                 }
-                setPlayerGold(goldValue < 0 ? 0 : goldValue);
+                const resolvedGold = goldValue < 0 ? 0 : goldValue;
+                playerGoldRef.current = resolvedGold;
+                setPlayerGold(resolvedGold);
                 setPlayerRubies(rubiesValue < 0 ? 0 : rubiesValue);
                 const serverReputation = Math.max(0, Math.min(MAX_REPUTATION, Number(data.reputation ?? data.data?.reputation) || 0));
                 setPlayerReputation(prev => {
@@ -9425,7 +9458,9 @@ const App: React.FC = () => {
         streakDays: number;
         reward: any;
     }) => {
-        setPlayerGold(result.gold);
+        const nextGold = Math.max(0, Number(result.gold) || 0);
+        playerGoldRef.current = nextGold;
+        setPlayerGold(nextGold);
         setPlayerRubies(result.rubies);
         setInventory(sanitizeInventoryCounts(result.inventory));
         setStreakDays(result.streakDays);
@@ -9513,6 +9548,7 @@ const App: React.FC = () => {
             const now = Date.now();
             const users = allUsersRef.current;
             Object.entries(users).forEach(([uid, userData]: [string, any]) => {
+                if (uid !== user.uid) return;
                 if (userData?.activeCurse && userData.activeCurse.endTime && now >= userData.activeCurse.endTime) {
                     console.log(`[CurseCleanup] Clearing expired curse for user ${uid} (ended ${Math.round((now - userData.activeCurse.endTime) / 1000)}s ago)`);
                     updateDoc(doc(db, 'users', uid), { activeCurse: null })
@@ -9622,7 +9658,7 @@ const App: React.FC = () => {
         // Limit to last 50 messages to avoid heavy initial load
         const q = query(chatCol, orderBy('timestamp', 'desc'), limit(50));
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const applyChatSnapshot = (snapshot: { forEach: (cb: (doc: { data: () => unknown }) => void) => void }) => {
             const messages: ChatMessage[] = [];
             snapshot.forEach((doc) => {
                 messages.push(doc.data() as ChatMessage);
@@ -9637,7 +9673,7 @@ const App: React.FC = () => {
                 const deduped = new Map<string, ChatMessage>();
 
                 [...firestoreMsgs, ...localOnlyMsgs].forEach((msg) => {
-                    const key = `${String(msg.id)}|${msg.tab}|${msg.timestamp}|${msg.sender}|${msg.text}`;
+                    const key = `${msg.tab}|${msg.timestamp}|${msg.sender}|${msg.text}`;
                     if (!deduped.has(key)) {
                         deduped.set(key, msg);
                     }
@@ -9645,9 +9681,29 @@ const App: React.FC = () => {
 
                 return Array.from(deduped.values());
             });
-        }, (error) => handleFirestoreError(error, OperationType.GET, 'chat_messages'));
+        };
 
-        return () => unsubscribe();
+        const unsubscribe = onSnapshot(
+            q,
+            applyChatSnapshot,
+            (error) => handleFirestoreError(error, OperationType.GET, 'chat_messages')
+        );
+
+        // Fallback polling for proxied/tunnel connections (e.g. Tunnelmole/Cloudflare)
+        // where SSE /api/realtime streams may be buffered by the proxy.
+        const pollInterval = setInterval(() => {
+            if (typeof document !== 'undefined' && document.hidden) return;
+            getDocs(q)
+                .then((snap) => {
+                    if (snap) applyChatSnapshot(snap);
+                })
+                .catch(() => {});
+        }, 2500);
+
+        return () => {
+            unsubscribe();
+            clearInterval(pollInterval);
+        };
     }, [isAuthReady, user, loadPhase]);
 
     useEffect(() => {
@@ -12401,17 +12457,31 @@ const App: React.FC = () => {
             where('participants', 'array-contains', user.uid)
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const applyPrivateSnapshot = (snapshot: { forEach: (cb: (doc: { data: () => unknown }) => void) => void }) => {
             const msgs: PrivateMessage[] = [];
             snapshot.forEach(doc => {
                 msgs.push(doc.data() as PrivateMessage);
             });
             setPrivateMessages(msgs.sort((a, b) => a.timestamp - b.timestamp));
-        }, (error) => {
+        };
+
+        const unsubscribe = onSnapshot(q, applyPrivateSnapshot, (error) => {
             handleGameLoopError(error, OperationType.LIST, 'private_messages');
         });
 
-        return () => unsubscribe();
+        const pollInterval = setInterval(() => {
+            if (typeof document !== 'undefined' && document.hidden) return;
+            getDocs(q)
+                .then((snap) => {
+                    if (snap) applyPrivateSnapshot(snap);
+                })
+                .catch(() => {});
+        }, 4000);
+
+        return () => {
+            unsubscribe();
+            clearInterval(pollInterval);
+        };
     }, [isAuthReady, user]);
 
     // Handle redundant Town Halls cleanup
@@ -12606,7 +12676,10 @@ const App: React.FC = () => {
         // Lazy loading: multi-frame building animations (smoke, windmills, flags, monsters) only load AFTER entering the game
         if (!isLoadingScreen) {
             const nearbyAnimationUrls = nearbyBuildings.flatMap(getPriorityAnimationUrlsForBuilding);
-            enqueueImagePreload(nearbyAnimationUrls, { batchSize: 6, delayMs: 1000 });
+            enqueueImagePreload(
+                [...COIN_ANIMATION_FRAMES, ...BUILD_CLOUD_ANIMATION_FRAMES, ...nearbyAnimationUrls],
+                { batchSize: 6, delayMs: 1000 }
+            );
         }
     }, [currentZones, mapResources, placedBuildings, droppedItems, enqueueImagePreload, loadPhase, isLoadingScreen]);
 
@@ -13525,19 +13598,29 @@ const App: React.FC = () => {
                         const frameUrl = militaryFactoryAnimationFrames[frameIndex];
                         img = images[frameUrl];
                     } else if (MUSHROOM_BED_ID_SET.has(entity.buildingId)) {
-                        const groupInfo = MUSHROOM_BED_ID_TO_GROUP[entity.buildingId];
-                        if (groupInfo) {
-                            if (isWorking) {
-                                const frames = mushroomBedWorkingFrames[groupInfo.folder];
-                                if (frames && frames.length > 0) {
-                                    const now = Date.now();
-                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                    img = images[frames[frameIndex]];
-                                }
-                            } else {
-                                const frames = mushroomBedIdleFrames[groupInfo.folder];
-                                if (frames && frames[0]) img = images[frames[0]];
+                        const spec = MUSHROOM_BED_ANIMS[entity.buildingId];
+                        if (spec) {
+                            const frames = isWorking ? spec.working : spec.idle;
+                            if (frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / spec.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames[0]) {
+                                img = images[frames[0]];
+                            }
+                        }
+                    } else if (PUMPKIN_BED_ID_SET.has(entity.buildingId)) {
+                        const spec = PUMPKIN_BED_ANIMS[entity.buildingId];
+                        if (spec) {
+                            const frames = isWorking ? spec.working : spec.idle;
+                            if (frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / spec.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames[0]) {
+                                img = images[frames[0]];
                             }
                         }
                     } else if (MINE_ID_SET.has(entity.buildingId)) {
@@ -13573,19 +13656,16 @@ const App: React.FC = () => {
                             }
                         }
                     } else if (GOLD_SMELTER_ID_SET.has(entity.buildingId)) {
-                        const groupInfo = GOLD_SMELTER_ID_TO_GROUP[entity.buildingId];
-                        if (groupInfo) {
-                            if (isWorking) {
-                                const frames = goldSmelterWorkingFrames[groupInfo.folder];
-                                if (frames && frames.length > 0) {
-                                    const now = Date.now();
-                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                    img = images[frames[frameIndex]];
-                                }
-                            } else if (groupInfo.idleFrames > 0) {
-                                const frames = goldSmelterIdleFrames[groupInfo.folder];
-                                if (frames && frames[0]) img = images[frames[0]];
+                        const spec = GOLD_SMELTER_ANIMS[entity.buildingId];
+                        if (spec) {
+                            const frames = isWorking ? spec.working : spec.idle;
+                            if (frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / spec.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames[0]) {
+                                img = images[frames[0]];
                             }
                         }
                     } else if (STEEL_ROLLING_MILL_ID_SET.has(entity.buildingId)) {
@@ -13605,17 +13685,17 @@ const App: React.FC = () => {
                             }
                         }
                     } else if (STEEL_SMELTING_ID_SET.has(entity.buildingId)) {
-                        if (isWorking) {
-                            const frames = steelSmeltingWorkingFrames[entity.buildingId];
-                            if (frames && frames.length > 0) {
+                        const spec = STEEL_SMELTING_ANIMS[entity.buildingId];
+                        if (spec) {
+                            const frames = isWorking ? spec.working : spec.idle;
+                            if (frames.length > 1) {
                                 const now = Date.now();
-                                const animationDuration = frames.length * (1000 / 30); // 30 FPS
+                                const animationDuration = frames.length * (1000 / spec.fps);
                                 const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
                                 img = images[frames[frameIndex]];
+                            } else if (frames[0]) {
+                                img = images[frames[0]];
                             }
-                        } else {
-                            const frames = steelSmeltingIdleFrames[entity.buildingId];
-                            if (frames && frames[0]) img = images[frames[0]];
                         }
                     } else if (STONE_CRUSHER_ID_SET.has(entity.buildingId)) {
                         const folder = STONE_CRUSHER_ID_TO_FOLDER[entity.buildingId];
@@ -15046,7 +15126,7 @@ const App: React.FC = () => {
                         const coinSize = 40 * zoom;
                         const coinX = screenX;
                         const coinY = bushY - 8 * zoom;
-                        drawAnimatedCoin(context, coinX, coinY, coinSize, now);
+                        drawAnimatedCoin(context, coinX, coinY, coinSize, now, loadedImageElementsRef.current);
                     }
                     
                     // Animated golden border on hover for buildings
@@ -15222,9 +15302,21 @@ const App: React.FC = () => {
 
                 } else if (entity.isConstructing && (entity.constructionEndTime || 0) > now) {
                     const timeRemaining = Math.max(0, entity.constructionEndTime - now);
-                    const spinnerSize = 38 * zoom;
                     const centerX = screenX;
                     const centerY = drawY + imageScaledHeight / 2;
+
+                    // Animated construction cloud covering building during construction
+                    const cloudFrameDuration = 1000 / BUILD_CLOUD_FPS;
+                    const cloudLoopDuration = BUILD_CLOUD_ANIMATION_FRAMES.length * cloudFrameDuration;
+                    const cloudFrameIdx = Math.floor((now % cloudLoopDuration) / cloudFrameDuration) % BUILD_CLOUD_ANIMATION_FRAMES.length;
+                    const cloudImg = getOrLoadCachedSprite(BUILD_CLOUD_ANIMATION_FRAMES[cloudFrameIdx], loadedImageElementsRef.current);
+                    if (cloudImg && (!(cloudImg instanceof HTMLImageElement) || (cloudImg.complete && cloudImg.naturalWidth > 0))) {
+                        const cloudWidth = Math.max(imageScaledWidth * 1.15, 160 * zoom);
+                        const cloudHeight = cloudWidth * (198 / 296);
+                        context.drawImage(cloudImg, centerX - cloudWidth / 2, centerY - cloudHeight / 2, cloudWidth, cloudHeight);
+                    }
+
+                    const spinnerSize = 38 * zoom;
 
                     // Draw rotating blue-cyan spinner
                     drawLoadingSpinner(context, centerX, centerY, spinnerSize, Date.now());
@@ -15319,7 +15411,7 @@ const App: React.FC = () => {
                             const iconSize = 38 * zoom;
                             const iconX = screenX;
                             const iconY = drawY - iconSize / 2 + (10 * zoom);
-                            drawAnimatedCoin(context, iconX, iconY, iconSize, Date.now());
+                            drawAnimatedCoin(context, iconX, iconY, iconSize, Date.now(), loadedImageElementsRef.current);
                         }
                     }
                 } else if (!entity.workState || entity.workState === 'idle') {
@@ -21891,6 +21983,67 @@ const App: React.FC = () => {
         setSelectedBuilding(null);
     };
 
+    const handleRemoveProtection = () => {
+        if (!selectedBuilding) return;
+        if (!isMyBuilding(selectedBuilding.building)) {
+            alert("Снимать защиту можно только со своих построек.");
+            return;
+        }
+
+        const buildingDocId = String(selectedBuilding.building.id);
+        lastInteractionRef.current.set(buildingDocId, Date.now());
+
+        setPlacedBuildings(prev => prev.map(b =>
+            String(b.id) === buildingDocId
+                ? {
+                    ...b,
+                    shieldHp: undefined,
+                    shieldMaxHp: undefined,
+                    protectionEndTime: undefined
+                }
+                : b
+        ));
+
+        if (serverMyBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverMyBuildingsRef.current.get(buildingDocId)!;
+            serverMyBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                shieldHp: undefined,
+                shieldMaxHp: undefined,
+                protectionEndTime: undefined
+            });
+        }
+        if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverZoneBuildingsRef.current.get(buildingDocId)!;
+            serverZoneBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                shieldHp: undefined,
+                shieldMaxHp: undefined,
+                protectionEndTime: undefined
+            });
+        }
+        if (serverClanBuildingsRef.current.has(buildingDocId)) {
+            const existing = serverClanBuildingsRef.current.get(buildingDocId)!;
+            serverClanBuildingsRef.current.set(buildingDocId, {
+                ...existing,
+                shieldHp: undefined,
+                shieldMaxHp: undefined,
+                protectionEndTime: undefined
+            });
+        }
+
+        if (isAuthReady && user) {
+            updateDoc(doc(db, 'buildings', buildingDocId), {
+                shieldHp: deleteField(),
+                shieldMaxHp: deleteField(),
+                protectionEndTime: deleteField()
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+        }
+
+        addHistoryLog(`Снята защита со здания "${selectedBuilding.info.name}".`, 'social');
+        setSelectedBuilding(null);
+    };
+
     const handleExplode = (
         destructionOption: DestructionInfo,
         quantity: number,
@@ -21974,13 +22127,10 @@ const App: React.FC = () => {
             updateDoc(doc(db, 'users', user.uid), userUpdates).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
         }
 
-        addHistoryLog(`Взорвано здание "${selectedBuilding.info.name}" в [${selectedBuilding.building.x}, ${selectedBuilding.building.y}] оружием "${destructionOption.weaponName}" x${quantity}. Расход: ${totalGold} золота, ${totalEnergy} энергии.`, 'destroy');
+        addHistoryLog(`Заминировано здание "${selectedBuilding.info.name}" в [${selectedBuilding.building.x}, ${selectedBuilding.building.y}] оружием "${destructionOption.weaponName}" x${quantity}. Расход: ${totalGold} золота, ${totalEnergy} энергии.`, 'destroy');
 
         const totalDamage = (destructionOption.damage || 0) * quantity;
         const totalTime = destructionOption.timeSeconds * quantity * timeMultiplier;
-        const currentShieldHp = Math.max(0, selectedBuilding.building.shieldHp || 0);
-        const shieldDamage = Math.min(totalDamage, currentShieldHp);
-        const damageToBuilding = totalDamage - shieldDamage;
         const buildingDocId = String(selectedBuilding.building.id);
 
         if (isAuthReady && user) {
@@ -21999,8 +22149,7 @@ const App: React.FC = () => {
                     ? selectedBuilding.building.destructionStartedAt
                     : now;
             const nextDurationMs = Math.max(1000, nextEnd - nextStartedAt);
-            const nextPendingDamage = (selectedBuilding.building.pendingDamage || 0) + damageToBuilding;
-            const nextShieldHp = Math.max(0, currentShieldHp - shieldDamage);
+            const nextPendingDamage = (selectedBuilding.building.pendingDamage || 0) + totalDamage;
 
             // Mark interaction to prevent onSnapshot from overwriting the explosion state
             lastInteractionRef.current.set(buildingDocId, now);
@@ -22008,23 +22157,16 @@ const App: React.FC = () => {
             const updateData: any = {
                 hp: currentHp,
                 maxHp: maxHp,
-                isDestroying: damageToBuilding > 0,
-                destructionStartedAt: damageToBuilding > 0 ? nextStartedAt : deleteField(),
-                destructionEndTime: damageToBuilding > 0 ? nextEnd : deleteField(),
-                destructionExpiresAt: damageToBuilding > 0 ? nextEnd : deleteField(),
-                destructionDurationMs: damageToBuilding > 0 ? nextDurationMs : deleteField(),
-                destructionMaxLifetimeMs: damageToBuilding > 0 ? Math.max(nextDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS) : deleteField(),
-                destructionStatus: damageToBuilding > 0 ? 'active' : 'finished',
+                isDestroying: true,
+                destructionStartedAt: nextStartedAt,
+                destructionEndTime: nextEnd,
+                destructionExpiresAt: nextEnd,
+                destructionDurationMs: nextDurationMs,
+                destructionMaxLifetimeMs: Math.max(nextDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                destructionStatus: 'active',
                 pendingDamage: nextPendingDamage,
                 initiatorId: user.uid
             };
-            if (currentShieldHp > 0) {
-                updateData.shieldHp = nextShieldHp;
-                if (nextShieldHp <= 0) {
-                    updateData.shieldMaxHp = deleteField();
-                    updateData.protectionEndTime = deleteField();
-                }
-            }
 
             updateDoc(doc(db, 'buildings', buildingDocId), updateData).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
 
@@ -22040,23 +22182,20 @@ const App: React.FC = () => {
                     localDestructionExpiry > localNow
                         ? b.destructionStartedAt
                         : localNow;
-                const localExpiresAt = damageToBuilding > 0 ? (localBaseEnd + totalTime * 1000) : undefined;
-                const localDurationMs = localExpiresAt ? Math.max(1000, localExpiresAt - localStartedAt) : undefined;
+                const localExpiresAt = localBaseEnd + totalTime * 1000;
+                const localDurationMs = Math.max(1000, localExpiresAt - localStartedAt);
                 const updatedBuildingObject: PlacedBuilding = {
                     ...b,
                     hp: b.hp ?? currentHp,
                     maxHp: b.maxHp ?? maxHp,
-                    shieldHp: currentShieldHp > 0 ? Math.max(0, currentShieldHp - shieldDamage) : b.shieldHp,
-                    shieldMaxHp: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.shieldMaxHp,
-                    protectionEndTime: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.protectionEndTime,
-                    isDestroying: damageToBuilding > 0,
-                    destructionStartedAt: damageToBuilding > 0 ? localStartedAt : undefined,
+                    isDestroying: true,
+                    destructionStartedAt: localStartedAt,
                     destructionEndTime: localExpiresAt,
                     destructionExpiresAt: localExpiresAt,
                     destructionDurationMs: localDurationMs,
-                    destructionMaxLifetimeMs: localDurationMs ? Math.max(localDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS) : undefined,
-                    destructionStatus: damageToBuilding > 0 ? 'active' : 'finished',
-                    pendingDamage: (b.pendingDamage || 0) + damageToBuilding,
+                    destructionMaxLifetimeMs: Math.max(localDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                    destructionStatus: 'active',
+                    pendingDamage: (b.pendingDamage || 0) + totalDamage,
                     initiatorId: user.uid
                 };
                 if (b.ownerId !== user.uid) {
@@ -22078,24 +22217,22 @@ const App: React.FC = () => {
                             localDestructionExpiry > localNow
                                 ? b.destructionStartedAt
                                 : localNow;
-                        const localExpiresAt = damageToBuilding > 0 ? (localNow + totalTime * 1000) : undefined;
-                        const localDurationMs = localExpiresAt ? Math.max(1000, localExpiresAt - localStartedAt) : undefined;
+                        const localExpiresAt = localNow + totalTime * 1000;
+                        const localDurationMs = Math.max(1000, localExpiresAt - localStartedAt);
 
                         return {
                             ...b,
                             hp: currentHp,
                             maxHp: maxHp,
-                            shieldHp: currentShieldHp > 0 ? Math.max(0, currentShieldHp - shieldDamage) : b.shieldHp,
-                            shieldMaxHp: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.shieldMaxHp,
-                            protectionEndTime: (currentShieldHp > 0 && (currentShieldHp - shieldDamage) <= 0) ? undefined : b.protectionEndTime,
-                            isDestroying: damageToBuilding > 0,
-                            destructionStartedAt: damageToBuilding > 0 ? localStartedAt : undefined,
+                            isDestroying: true,
+                            destructionStartedAt: localStartedAt,
                             destructionEndTime: localExpiresAt,
                             destructionExpiresAt: localExpiresAt,
                             destructionDurationMs: localDurationMs,
-                            destructionMaxLifetimeMs: localDurationMs ? Math.max(localDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS) : undefined,
-                            destructionStatus: damageToBuilding > 0 ? 'active' : 'finished',
-                            pendingDamage: damageToBuilding
+                            destructionMaxLifetimeMs: Math.max(localDurationMs, BUILDING_TEMP_EFFECT_MAX_LIFETIME_MS),
+                            destructionStatus: 'active',
+                            pendingDamage: (b.pendingDamage || 0) + totalDamage,
+                            initiatorId: 'local'
                         };
                     }
                     return b;
@@ -22104,6 +22241,101 @@ const App: React.FC = () => {
         }
 
         setSelectedBuilding(null);
+    };
+
+    const DEFUSE_RUBY_COST = 1;
+
+    const handleDefuse = (buildingToDefuse?: PlacedBuilding) => {
+        const target = buildingToDefuse || selectedBuilding?.building;
+        if (!target) return;
+        if (!target.isDestroying) {
+            alert('Здание не заминировано.');
+            return;
+        }
+
+        const isInitiator = Boolean(user && target.initiatorId && String(target.initiatorId) === String(user.uid));
+        const bInfo = buildingData.find(b => b.id === target.buildingId);
+        const buildingName = selectedBuilding?.info?.name || bInfo?.name || 'здание';
+
+        if (!isInitiator) {
+            if (playerRubies < DEFUSE_RUBY_COST) {
+                alert(`Недостаточно рубинов для разминирования! Нужно ${DEFUSE_RUBY_COST} 💎.`);
+                return;
+            }
+            if (!window.confirm(`Разминировать "${buildingName}" за ${DEFUSE_RUBY_COST} 💎? Взрыв будет отменён, постройка спасена.`)) {
+                return;
+            }
+            setPlayerRubies(prev => Math.max(0, prev - DEFUSE_RUBY_COST));
+            if (isAuthReady && user) {
+                updateDoc(doc(db, 'users', user.uid), {
+                    rubies: increment(-DEFUSE_RUBY_COST)
+                }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `users/${user.uid}`));
+            }
+        } else {
+            if (!window.confirm(`Обезвредить установленную взрывчатку и отменить взрыв здания "${buildingName}"?`)) {
+                return;
+            }
+        }
+
+        const buildingDocId = String(target.id);
+        const now = Date.now();
+        lastInteractionRef.current.set(buildingDocId, now);
+
+        if (isAuthReady && user) {
+            updateDoc(doc(db, 'buildings', buildingDocId), {
+                isDestroying: false,
+                destructionStartedAt: deleteField(),
+                destructionEndTime: deleteField(),
+                destructionExpiresAt: deleteField(),
+                destructionDurationMs: deleteField(),
+                destructionMaxLifetimeMs: deleteField(),
+                destructionStatus: 'finished',
+                pendingDamage: 0,
+                initiatorId: deleteField()
+            }).catch(e => handleFirestoreError(e, OperationType.UPDATE, `buildings/${buildingDocId}`));
+        }
+
+        const clearDestruction = (b: PlacedBuilding): PlacedBuilding => ({
+            ...b,
+            isDestroying: false,
+            destructionStartedAt: undefined,
+            destructionEndTime: undefined,
+            destructionExpiresAt: undefined,
+            destructionDurationMs: undefined,
+            destructionMaxLifetimeMs: undefined,
+            destructionStatus: 'finished',
+            pendingDamage: 0,
+            initiatorId: undefined
+        });
+
+        setPlacedBuildings(prev => prev.map(b => String(b.id) === buildingDocId ? clearDestruction(b) : b));
+
+        if (serverInitiatedBuildingsRef.current.has(buildingDocId)) {
+            serverInitiatedBuildingsRef.current.delete(buildingDocId);
+        }
+        if (serverMyBuildingsRef.current.has(buildingDocId)) {
+            serverMyBuildingsRef.current.set(buildingDocId, clearDestruction(serverMyBuildingsRef.current.get(buildingDocId)!));
+        }
+        if (serverZoneBuildingsRef.current.has(buildingDocId)) {
+            serverZoneBuildingsRef.current.set(buildingDocId, clearDestruction(serverZoneBuildingsRef.current.get(buildingDocId)!));
+        }
+        if (serverClanBuildingsRef.current.has(buildingDocId)) {
+            serverClanBuildingsRef.current.set(buildingDocId, clearDestruction(serverClanBuildingsRef.current.get(buildingDocId)!));
+        }
+
+        addHistoryLog(
+            isInitiator
+                ? `Здание "${buildingName}" успешно разминировано сапёром.`
+                : `Здание "${buildingName}" разминировано за ${DEFUSE_RUBY_COST} 💎. Взрыв отменён!`,
+            'destroy'
+        );
+
+        if (selectedBuilding && String(selectedBuilding.building.id) === buildingDocId) {
+            setSelectedBuilding({
+                ...selectedBuilding,
+                building: clearDestruction(selectedBuilding.building)
+            });
+        }
     };
 
     const handleSpeedUp = () => {
@@ -23348,6 +23580,15 @@ const App: React.FC = () => {
 
 
 
+    const appendOptimisticChatMessage = (msg: ChatMessage) => {
+        setChatHistory(prev => {
+            const key = `${msg.tab}|${msg.timestamp}|${msg.sender}|${msg.text}`;
+            const exists = prev.some(m => `${m.tab}|${m.timestamp}|${m.sender}|${m.text}` === key);
+            if (exists) return prev;
+            return [...prev, { ...msg, localOnly: true }];
+        });
+    };
+
     const handleSendMessage = (type: 'normal' | 'shout' = 'normal') => {
         if (isBanned() && activeChatTab !== 'banya' && activeChatTab !== 'clan') {
             alert('Вы забанены и можете писать только в бане или клане!');
@@ -23373,28 +23614,30 @@ const App: React.FC = () => {
             return;
         }
 
+        const now = Date.now();
         let messageText = chatInput;
         const myCurse = playerActiveCurse;
-        if (myCurse && Date.now() < myCurse.endTime) {
+        if (myCurse && now < myCurse.endTime) {
             messageText = `${myCurse.prefix} ${messageText}`;
         }
-        const senderName = myCurse && Date.now() < myCurse.endTime
+        const senderName = myCurse && now < myCurse.endTime
             ? `${myCurse.prefix} ${playerName}`
             : playerName;
 
         const newMessage: ChatMessage = {
-            id: Date.now(),
+            id: now,
             sender: senderName,
             senderId: user?.uid,
             text: messageText,
             type: type,
-            timestamp: Date.now(),
+            timestamp: now,
             tab: activeChatTab,
             clanId: activeChatTab === 'clan' ? (playerClanId || null) : null,
             title: selectedTitle || null
         };
 
-        const msgId = `${Date.now()}-${playerName}`;
+        appendOptimisticChatMessage(newMessage);
+        const msgId = `${now}-${playerName}`;
         const msgDocRef = doc(db, 'chat_messages', msgId);
         setDoc(msgDocRef, newMessage).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
 
@@ -23422,28 +23665,30 @@ const App: React.FC = () => {
         setPlayerEnergy(prev => prev - SHOUT_COST_ENERGY);
         addHistoryLog(`Использован крик. Расход: ${SHOUT_COST_GOLD} монет, ${SHOUT_COST_ENERGY} энергии.`, 'social');
 
+        const now = Date.now();
         let messageText = chatInput;
         const myCurse = playerActiveCurse;
-        if (myCurse && Date.now() < myCurse.endTime) {
+        if (myCurse && now < myCurse.endTime) {
             messageText = `${myCurse.prefix} ${messageText}`;
         }
-        const senderName = myCurse && Date.now() < myCurse.endTime
+        const senderName = myCurse && now < myCurse.endTime
             ? `${myCurse.prefix} ${playerName}`
             : playerName;
 
         const newMessage: ChatMessage = {
-            id: Date.now(),
+            id: now,
             sender: senderName,
             senderId: user?.uid,
             text: messageText,
             type: 'shout',
-            timestamp: Date.now(),
+            timestamp: now,
             tab: 'all',
             clanId: null,
             title: selectedTitle || null
         };
 
-        const msgId = `${Date.now()}-${playerName}-shout`;
+        appendOptimisticChatMessage(newMessage);
+        const msgId = `${now}-${playerName}-shout`;
         const msgDocRef = doc(db, 'chat_messages', msgId);
         setDoc(msgDocRef, newMessage).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
 
@@ -23537,19 +23782,20 @@ const App: React.FC = () => {
         const { x, y } = screenToWorld(window.innerWidth / 2, window.innerHeight / 2, zoom);
 
         const newMessage: ChatMessage = {
-            id: Date.now(),
+            id: now,
             sender: playerName,
             senderId: user?.uid,
             text: 'Посмотрите сюда',
             type: 'normal',
-            timestamp: Date.now(),
+            timestamp: now,
             tab: activeChatTab,
             teleportCoordinates: { x: Math.floor(x), y: Math.floor(y) },
             clanId: activeChatTab === 'clan' ? (playerClanId || null) : null,
             title: selectedTitle || null
         };
 
-        const msgId = `${Date.now()}-${playerName}-loc`;
+        appendOptimisticChatMessage(newMessage);
+        const msgId = `${now}-${playerName}-loc`;
         const msgDocRef = doc(db, 'chat_messages', msgId);
         setDoc(msgDocRef, newMessage).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
     };
@@ -23569,7 +23815,7 @@ const App: React.FC = () => {
         return parts.map((part, index) => {
             const emoji = KOLOBOK_EMOJIS.find(e => e.code === part);
             if (emoji) {
-                return <img key={index} src={emoji.url} alt={emoji.code} className="inline-block w-6 h-6 align-middle mx-0.5 object-contain" title={emoji.code} />;
+                return <img key={index} src={emoji.url} alt={emoji.code} className={`inline-block align-middle mx-0.5 object-contain ${emoji.isSticker ? 'w-9 h-9' : 'w-6 h-6'}`} title={emoji.code} />;
             }
             return <span key={index}>{part}</span>;
         });
@@ -25151,8 +25397,9 @@ const App: React.FC = () => {
         };
     }, [user, logStartupStep]);
 
-    const handleBuyBuildingPermit = async (incomingTraceId?: string) => {
-        const permitPriceRubies = 1;
+    const handleBuyBuildingPermit = async (permitCount: 1 | 5 | 10 = 1, incomingTraceId?: string) => {
+        const normalizedCount: 1 | 5 | 10 = (permitCount === 5 || permitCount === 10) ? permitCount : 1;
+        const permitPriceRubies = normalizedCount;
         const traceId = incomingTraceId || `permit-${Date.now()}`;
 
         if (isBuyingBuildingPermit) return;
@@ -25166,6 +25413,7 @@ const App: React.FC = () => {
             recordRuntimeTraceStage('permit', traceId, 'handleBuyBuildingPermit entered', {
                 rubies: playerRubies,
                 extraBuildingPermits,
+                permitCount: normalizedCount,
             });
         }
         setIsBuyingBuildingPermit(true);
@@ -25226,7 +25474,7 @@ const App: React.FC = () => {
                     if (currentRubies < permitPriceRubies) throw new Error('Insufficient rubies');
 
                     const nextRubies = currentRubies - permitPriceRubies;
-                    const nextExtraPermits = currentExtraPermits + 1;
+                    const nextExtraPermits = currentExtraPermits + normalizedCount;
                     if (RUNTIME_AUDIT_ENABLED) {
                         recordRuntimeTraceStage('permit', traceId, 'updateDoc start', {
                             collection: 'users',
@@ -25259,7 +25507,7 @@ const App: React.FC = () => {
                 }
                 playerRubiesRef.current = Math.max(0, purchaseResult.rubies);
                 extraBuildingPermitsRef.current = Math.max(
-                    confirmedPermitsBeforePurchase + 1,
+                    confirmedPermitsBeforePurchase + normalizedCount,
                     Math.max(0, purchaseResult.extraBuildingPermits)
                 );
                 if (RUNTIME_AUDIT_ENABLED) {
@@ -25280,7 +25528,7 @@ const App: React.FC = () => {
                 }
             } else {
                 playerRubiesRef.current = Math.max(0, playerRubiesRef.current - permitPriceRubies);
-                extraBuildingPermitsRef.current = Math.max(0, extraBuildingPermitsRef.current + 1);
+                extraBuildingPermitsRef.current = Math.max(0, extraBuildingPermitsRef.current + normalizedCount);
                 if (RUNTIME_AUDIT_ENABLED) {
                     recordRuntimeTraceStage('permit', traceId, 'local state update', {
                         rubiesAfter: playerRubiesRef.current,
@@ -25289,7 +25537,7 @@ const App: React.FC = () => {
                     });
                 }
                 setPlayerRubies(prev => Math.max(0, prev - permitPriceRubies));
-                setExtraBuildingPermits(prev => prev + 1);
+                setExtraBuildingPermits(prev => prev + normalizedCount);
             }
 
             if (RUNTIME_AUDIT_ENABLED) {
@@ -25298,7 +25546,11 @@ const App: React.FC = () => {
                 });
             }
             setBuildingLimitModalData(null);
-            setPermitPurchaseToast('-1 рубин, +1 место для строительства');
+            setPermitPurchaseToast(
+                normalizedCount === 1
+                    ? '-1 рубин, +1 место для строительства'
+                    : `-${permitPriceRubies} рубинов, +${normalizedCount} мест для строительства`
+            );
             if (permitPurchaseToastTimerRef.current !== null) {
                 window.clearTimeout(permitPurchaseToastTimerRef.current);
             }
@@ -25306,7 +25558,12 @@ const App: React.FC = () => {
                 setPermitPurchaseToast(null);
                 permitPurchaseToastTimerRef.current = null;
             }, 1800);
-            addHistoryLog('Куплено дополнительное разрешение на строительство за 1 рубин.', 'economy');
+            addHistoryLog(
+                normalizedCount === 1
+                    ? 'Куплено дополнительное разрешение на строительство за 1 рубин.'
+                    : `Куплено ${normalizedCount} доп. разрешений на строительство за ${permitPriceRubies} рубинов.`,
+                'economy'
+            );
 
             // Resume pending construction intent if one exists.
             const intent = pendingConstructionIntentRef.current;
@@ -25775,7 +26032,10 @@ const App: React.FC = () => {
                 handleSell={handleSell}
                 handleStealProduction={handleStealProduction}
                 handleExplode={handleExplode}
+                handleDefuse={() => handleDefuse()}
+                currentUserId={user?.uid}
                 handleApplyProtection={handleApplyProtection}
+                handleRemoveProtection={handleRemoveProtection}
                 onOpenMarket={(type) => { setMarketType(type); setShowMarketModal(true); }}
                 onSelectPlayer={handleSelectPlayer}
                 onOpenClanStockExchange={() => setShowClanStockExchangeModal(true)}
@@ -26734,12 +26994,13 @@ const App: React.FC = () => {
             <BuildingLimitModal
                 data={buildingLimitModalData}
                 onClose={closeBuildingLimitModal}
-                onBuyBuildingPermit={() => {
+                onBuyBuildingPermit={(permitCount) => {
                     const traceId = `permit-${Date.now()}-${user?.uid || "guest"}`;
                     recordRuntimeTraceStage("permit", traceId, "click", {
                         userId: user?.uid || null,
+                        permitCount,
                     });
-                    void handleBuyBuildingPermit(traceId);
+                    void handleBuyBuildingPermit(permitCount, traceId);
                 }}
                 isBuyingBuildingPermit={isBuyingBuildingPermit}
                 playerRubies={playerRubies}

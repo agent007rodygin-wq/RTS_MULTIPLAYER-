@@ -1,0 +1,1199 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Золотоплавильный завод — Анимация всех 21 уровней (Гномоград)</title>
+<style>
+  :root {
+    --bg: #141518;
+    --card-bg: #1f2126;
+    --card-border: #2e3138;
+    --text: #e6e6e6;
+    --dim: #90949f;
+    --accent: #f5b300;
+    --accent-glow: rgba(245, 179, 0, 0.35);
+    --blue: #5865f2;
+    --green: #43b581;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px;
+    line-height: 1.5;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  header {
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  h1 { font-size: 24px; color: var(--accent); display: flex; align-items: center; gap: 10px; }
+  .subtitle { font-size: 14px; color: var(--dim); margin-top: 4px; }
+  .levels-bar-wrap {
+    margin-bottom: 24px;
+  }
+  .levels-bar {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  .level-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    min-width: 90px;
+    transition: 0.15s;
+    user-select: none;
+  }
+  .level-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .level-card.active {
+    border-color: var(--accent);
+    background: #2b2718;
+    box-shadow: 0 0 14px var(--accent-glow);
+  }
+  .level-card img {
+    width: 60px;
+    height: 52px;
+    object-fit: contain;
+  }
+  .lvl-title { font-size: 12px; font-weight: 600; margin-top: 4px; }
+  .lvl-id { font-size: 10px; color: var(--dim); }
+
+  .grid-main {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 860px) {
+    .grid-main { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .card h2 { font-size: 18px; margin-bottom: 16px; color: #fff; align-self: flex-start; }
+  .canvas-stage {
+    width: 280px;
+    height: 300px;
+    background: #111215;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    background-image: 
+      linear-gradient(45deg, #18191e 25%, transparent 25%), 
+      linear-gradient(-45deg, #18191e 25%, transparent 25%), 
+      linear-gradient(45deg, transparent 75%, #18191e 75%), 
+      linear-gradient(-45deg, transparent 75%, #18191e 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  }
+  canvas {
+    max-width: 270px;
+    max-height: 290px;
+    image-rendering: pixelated;
+  }
+  .player-controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .controls-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    background: #2b2e35;
+    color: #fff;
+    border: 1px solid #3c404a;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #141518;
+  }
+  .btn.btn-accent {
+    background: var(--accent);
+    color: #141518;
+    border: none;
+    font-weight: 600;
+  }
+  .btn.btn-accent:hover {
+    background: #ffc933;
+  }
+  .btn.active-mode {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #141518;
+    font-weight: 600;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+  .stats-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #282a30;
+  }
+  .stats-table td:first-child { color: var(--dim); }
+  .stats-table td:last-child { font-weight: 600; text-align: right; }
+
+  .section {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .section h2 { font-size: 18px; margin-bottom: 16px; color: #fff; }
+  .frames-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px 0 16px;
+  }
+  .frame-thumb {
+    flex: 0 0 76px;
+    background: #111215;
+    border: 1px solid #282a30;
+    border-radius: 6px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.15s;
+  }
+  .frame-thumb:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .frame-thumb img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+  }
+  .frame-thumb span {
+    font-size: 10px;
+    color: var(--dim);
+    margin-top: 4px;
+  }
+
+  .dl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .dl-card {
+    background: #17181c;
+    border: 1px solid #282a30;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .dl-card .title { font-weight: 600; font-size: 14px; color: #fff; }
+  .dl-card .desc { font-size: 12px; color: var(--dim); line-height: 1.4; }
+
+  .gif-preview-box {
+    width: 280px;
+    height: 300px;
+    background: #111215;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    background-image: 
+      linear-gradient(45deg, #18191e 25%, transparent 25%), 
+      linear-gradient(-45deg, #18191e 25%, transparent 25%), 
+      linear-gradient(45deg, transparent 75%, #18191e 75%), 
+      linear-gradient(-45deg, transparent 75%, #18191e 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  }
+  .gif-preview-box img {
+    max-width: 270px;
+    max-height: 290px;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>âš’ï¸ Золотоплавильный завод — Все 21 уровень</h1>
+      <div class="subtitle">Интерактивная галерея анимаций, покадровая раскадровка и спрайтшиты из игры Гномоград</div>
+    </div>
+    <div>
+      <a class="btn btn-accent" href="../gnomograd_gold_factory_all_levels.zip" download>â¬‡ï¸ Скачать весь архив (ZIP)</a>
+    </div>
+  </header>
+
+  <div class="levels-bar-wrap">
+    <div class="levels-bar">
+          <div class="level-card active" onclick="selectLevel(1)" id="card-lvl-1">
+      <img src="summary_static/level_01.png" alt="Уровень 1">
+      <div class="lvl-title">Уровень 1</div>
+      <div class="lvl-id">ID: 266</div>
+    </div>    <div class="level-card " onclick="selectLevel(2)" id="card-lvl-2">
+      <img src="summary_static/level_02.png" alt="Уровень 2">
+      <div class="lvl-title">Уровень 2</div>
+      <div class="lvl-id">ID: 557</div>
+    </div>    <div class="level-card " onclick="selectLevel(3)" id="card-lvl-3">
+      <img src="summary_static/level_03.png" alt="Уровень 3">
+      <div class="lvl-title">Уровень 3</div>
+      <div class="lvl-id">ID: 558</div>
+    </div>    <div class="level-card " onclick="selectLevel(4)" id="card-lvl-4">
+      <img src="summary_static/level_04.png" alt="Уровень 4">
+      <div class="lvl-title">Уровень 4</div>
+      <div class="lvl-id">ID: 559</div>
+    </div>    <div class="level-card " onclick="selectLevel(5)" id="card-lvl-5">
+      <img src="summary_static/level_05.png" alt="Уровень 5">
+      <div class="lvl-title">Уровень 5</div>
+      <div class="lvl-id">ID: 560</div>
+    </div>    <div class="level-card " onclick="selectLevel(6)" id="card-lvl-6">
+      <img src="summary_static/level_06.png" alt="Уровень 6">
+      <div class="lvl-title">Уровень 6</div>
+      <div class="lvl-id">ID: 561</div>
+    </div>    <div class="level-card " onclick="selectLevel(7)" id="card-lvl-7">
+      <img src="summary_static/level_07.png" alt="Уровень 7">
+      <div class="lvl-title">Уровень 7</div>
+      <div class="lvl-id">ID: 562</div>
+    </div>    <div class="level-card " onclick="selectLevel(8)" id="card-lvl-8">
+      <img src="summary_static/level_08.png" alt="Уровень 8">
+      <div class="lvl-title">Уровень 8</div>
+      <div class="lvl-id">ID: 563</div>
+    </div>    <div class="level-card " onclick="selectLevel(9)" id="card-lvl-9">
+      <img src="summary_static/level_09.png" alt="Уровень 9">
+      <div class="lvl-title">Уровень 9</div>
+      <div class="lvl-id">ID: 564</div>
+    </div>    <div class="level-card " onclick="selectLevel(10)" id="card-lvl-10">
+      <img src="summary_static/level_10.png" alt="Уровень 10">
+      <div class="lvl-title">Уровень 10</div>
+      <div class="lvl-id">ID: 565</div>
+    </div>    <div class="level-card " onclick="selectLevel(11)" id="card-lvl-11">
+      <img src="summary_static/level_11.png" alt="Уровень 11">
+      <div class="lvl-title">Уровень 11</div>
+      <div class="lvl-id">ID: 566</div>
+    </div>    <div class="level-card " onclick="selectLevel(12)" id="card-lvl-12">
+      <img src="summary_static/level_12.png" alt="Уровень 12">
+      <div class="lvl-title">Уровень 12</div>
+      <div class="lvl-id">ID: 567</div>
+    </div>    <div class="level-card " onclick="selectLevel(13)" id="card-lvl-13">
+      <img src="summary_static/level_13.png" alt="Уровень 13">
+      <div class="lvl-title">Уровень 13</div>
+      <div class="lvl-id">ID: 568</div>
+    </div>    <div class="level-card " onclick="selectLevel(14)" id="card-lvl-14">
+      <img src="summary_static/level_14.png" alt="Уровень 14">
+      <div class="lvl-title">Уровень 14</div>
+      <div class="lvl-id">ID: 569</div>
+    </div>    <div class="level-card " onclick="selectLevel(15)" id="card-lvl-15">
+      <img src="summary_static/level_15.png" alt="Уровень 15">
+      <div class="lvl-title">Уровень 15</div>
+      <div class="lvl-id">ID: 570</div>
+    </div>    <div class="level-card " onclick="selectLevel(16)" id="card-lvl-16">
+      <img src="summary_static/level_16.png" alt="Уровень 16">
+      <div class="lvl-title">Уровень 16</div>
+      <div class="lvl-id">ID: 571</div>
+    </div>    <div class="level-card " onclick="selectLevel(17)" id="card-lvl-17">
+      <img src="summary_static/level_17.png" alt="Уровень 17">
+      <div class="lvl-title">Уровень 17</div>
+      <div class="lvl-id">ID: 572</div>
+    </div>    <div class="level-card " onclick="selectLevel(18)" id="card-lvl-18">
+      <img src="summary_static/level_18.png" alt="Уровень 18">
+      <div class="lvl-title">Уровень 18</div>
+      <div class="lvl-id">ID: 573</div>
+    </div>    <div class="level-card " onclick="selectLevel(19)" id="card-lvl-19">
+      <img src="summary_static/level_19.png" alt="Уровень 19">
+      <div class="lvl-title">Уровень 19</div>
+      <div class="lvl-id">ID: 574</div>
+    </div>    <div class="level-card " onclick="selectLevel(20)" id="card-lvl-20">
+      <img src="summary_static/level_20.png" alt="Уровень 20">
+      <div class="lvl-title">Уровень 20</div>
+      <div class="lvl-id">ID: 575</div>
+    </div>    <div class="level-card " onclick="selectLevel(21)" id="card-lvl-21">
+      <img src="summary_static/level_21.png" alt="Уровень 21">
+      <div class="lvl-title">Уровень 21</div>
+      <div class="lvl-id">ID: 576</div>
+    </div>
+    </div>
+  </div>
+
+  <div class="grid-main">
+    <!-- Left: Canvas Player -->
+    <div class="card">
+      <h2 id="playerHeading">Плеер: Уровень 1 (ID: 266)</h2>
+      <div class="canvas-stage">
+        <canvas id="animCanvas"></canvas>
+      </div>
+
+      <div class="player-controls">
+        <div class="controls-row">
+          <button class="btn active-mode" id="btnModeWork" onclick="setMode('work')">âš’ï¸ Работа (плавка)</button>
+          <button class="btn" id="btnModeWait" onclick="setMode('wait')">â ³ Ожидание</button>
+          <button class="btn" id="btnModeFull" onclick="setMode('full')">â†º Полный цикл</button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="range" id="frameSlider" min="1" max="40" value="1" oninput="onSlider(this.value)">
+          <span style="font-size: 12px; min-width: 60px; text-align: right; color: var(--dim);" id="frameCounter">
+            <span id="curFrameText" style="color: #fff; font-weight: 600;">1</span> / <span id="maxFrameText">40</span>
+          </span>
+        </div>
+
+        <div class="controls-row">
+          <button class="btn" onclick="prevFrame()">â ® Назад</button>
+          <button class="btn btn-accent" id="playBtn" onclick="togglePlay()">â ¸ Пауза</button>
+          <button class="btn" onclick="nextFrame()">Вперёд â ®</button>
+          <span style="font-size: 12px; color: var(--dim); margin-left: 10px;" id="fpsText">12 FPS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: GIF Preview & Building Stats -->
+    <div class="card">
+      <h2>Готовый GIF & Характеристики</h2>
+      <div class="gif-preview-box">
+        <img id="gifPreview" src="levels/lvl_01/anim_work.gif" alt="GIF Preview">
+      </div>
+      <table class="stats-table" id="statsTable">
+        <!-- populated dynamically -->
+      </table>
+    </div>
+  </div>
+
+  <!-- Downloads Section -->
+  <div class="section">
+    <h2>Файлы для скачивания выбранного уровня</h2>
+    <div class="dl-grid" id="downloadsGrid">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+
+  <!-- Frame Slices -->
+  <div class="section">
+    <h2>Покадровая раскадровка выбранного уровня</h2>
+    <div class="frames-scroll" id="framesContainer">
+      <!-- populated dynamically -->
+    </div>
+  </div>
+</div>
+
+<script>
+  const levels = [
+    {
+        "level":  1,
+        "id":  266,
+        "w":  256,
+        "h":  283,
+        "cols":  8,
+        "frames":  40,
+        "fps":  12,
+        "workStart":  0,
+        "workEnd":  40,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  1570000,
+        "builders":  3,
+        "people":  -14,
+        "strength":  12824,
+        "workDelay":  2881666,
+        "outRes":  "{\"gold\":1}",
+        "inRes":  "{\"gasoline\":5,\"rudagold\":2,\"superlily\":1}",
+        "gifWork":  "levels/lvl_01/anim_work.gif",
+        "gifWait":  "levels/lvl_01/anim_wait.gif",
+        "gifFull":  "levels/lvl_01/anim_full.gif",
+        "sprite":  "levels/lvl_01/spritesheet.png",
+        "staticImg":  "levels/lvl_01/house_static.png",
+        "framesDir":  "levels/lvl_01/frames"
+    },
+    {
+        "level":  2,
+        "id":  557,
+        "w":  215,
+        "h":  196,
+        "cols":  9,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  1780000,
+        "builders":  7,
+        "people":  -15,
+        "strength":  14168,
+        "workDelay":  2377225,
+        "outRes":  "{\"gold\":1}",
+        "inRes":  "{\"gasoline\":7,\"rudagold\":2,\"superlily\":2}",
+        "gifWork":  "levels/lvl_02/anim_work.gif",
+        "gifWait":  "levels/lvl_02/anim_wait.gif",
+        "gifFull":  "levels/lvl_02/anim_full.gif",
+        "sprite":  "levels/lvl_02/spritesheet.png",
+        "staticImg":  "levels/lvl_02/house_static.png",
+        "framesDir":  "levels/lvl_02/frames"
+    },
+    {
+        "level":  3,
+        "id":  558,
+        "w":  215,
+        "h":  196,
+        "cols":  9,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  2130000,
+        "builders":  12,
+        "people":  -17,
+        "strength":  17112,
+        "workDelay":  7086211,
+        "outRes":  "{\"gold\":2}",
+        "inRes":  "{\"gasoline\":9,\"rudagold\":3,\"superlily\":4}",
+        "gifWork":  "levels/lvl_03/anim_work.gif",
+        "gifWait":  "levels/lvl_03/anim_wait.gif",
+        "gifFull":  "levels/lvl_03/anim_full.gif",
+        "sprite":  "levels/lvl_03/spritesheet.png",
+        "staticImg":  "levels/lvl_03/house_static.png",
+        "framesDir":  "levels/lvl_03/frames"
+    },
+    {
+        "level":  4,
+        "id":  559,
+        "w":  215,
+        "h":  196,
+        "cols":  9,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  2620000,
+        "builders":  17,
+        "people":  -17,
+        "strength":  18528,
+        "workDelay":  3409998,
+        "outRes":  "{\"gold\":2}",
+        "inRes":  "{\"gasoline\":13,\"rudagold\":4,\"superlily\":6}",
+        "gifWork":  "levels/lvl_04/anim_work.gif",
+        "gifWait":  "levels/lvl_04/anim_wait.gif",
+        "gifFull":  "levels/lvl_04/anim_full.gif",
+        "sprite":  "levels/lvl_04/spritesheet.png",
+        "staticImg":  "levels/lvl_04/house_static.png",
+        "framesDir":  "levels/lvl_04/frames"
+    },
+    {
+        "level":  5,
+        "id":  560,
+        "w":  215,
+        "h":  196,
+        "cols":  9,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  3250000,
+        "builders":  23,
+        "people":  -18,
+        "strength":  21400,
+        "workDelay":  5288141,
+        "outRes":  "{\"gold\":3}",
+        "inRes":  "{\"gasoline\":17,\"rudagold\":6,\"superlily\":9}",
+        "gifWork":  "levels/lvl_05/anim_work.gif",
+        "gifWait":  "levels/lvl_05/anim_wait.gif",
+        "gifFull":  "levels/lvl_05/anim_full.gif",
+        "sprite":  "levels/lvl_05/spritesheet.png",
+        "staticImg":  "levels/lvl_05/house_static.png",
+        "framesDir":  "levels/lvl_05/frames"
+    },
+    {
+        "level":  6,
+        "id":  561,
+        "w":  230,
+        "h":  195,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  4020000,
+        "builders":  30,
+        "people":  -24,
+        "strength":  26152,
+        "workDelay":  19895406,
+        "outRes":  "{\"gold\":5}",
+        "inRes":  "{\"gasoline\":23,\"rudagold\":8,\"superlily\":13}",
+        "gifWork":  "levels/lvl_06/anim_work.gif",
+        "gifWait":  "levels/lvl_06/anim_wait.gif",
+        "gifFull":  "levels/lvl_06/anim_full.gif",
+        "sprite":  "levels/lvl_06/spritesheet.png",
+        "staticImg":  "levels/lvl_06/house_static.png",
+        "framesDir":  "levels/lvl_06/frames"
+    },
+    {
+        "level":  7,
+        "id":  562,
+        "w":  230,
+        "h":  195,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  4930000,
+        "builders":  37,
+        "people":  -30,
+        "strength":  29496,
+        "workDelay":  23315406,
+        "outRes":  "{\"gold\":6}",
+        "inRes":  "{\"gasoline\":29,\"rudagold\":10,\"superlily\":17}",
+        "gifWork":  "levels/lvl_07/anim_work.gif",
+        "gifWait":  "levels/lvl_07/anim_wait.gif",
+        "gifFull":  "levels/lvl_07/anim_full.gif",
+        "sprite":  "levels/lvl_07/spritesheet.png",
+        "staticImg":  "levels/lvl_07/house_static.png",
+        "framesDir":  "levels/lvl_07/frames"
+    },
+    {
+        "level":  8,
+        "id":  563,
+        "w":  230,
+        "h":  195,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  5980000,
+        "builders":  45,
+        "people":  -36,
+        "strength":  34424,
+        "workDelay":  36378181,
+        "outRes":  "{\"gold\":8}",
+        "inRes":  "{\"gasoline\":37,\"rudagold\":12,\"superlily\":22}",
+        "gifWork":  "levels/lvl_08/anim_work.gif",
+        "gifWait":  "levels/lvl_08/anim_wait.gif",
+        "gifFull":  "levels/lvl_08/anim_full.gif",
+        "sprite":  "levels/lvl_08/spritesheet.png",
+        "staticImg":  "levels/lvl_08/house_static.png",
+        "framesDir":  "levels/lvl_08/frames"
+    },
+    {
+        "level":  9,
+        "id":  564,
+        "w":  230,
+        "h":  195,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  7170000,
+        "builders":  54,
+        "people":  -45,
+        "strength":  38840,
+        "workDelay":  45650498,
+        "outRes":  "{\"gold\":10}",
+        "inRes":  "{\"gasoline\":45,\"rudagold\":15,\"superlily\":28}",
+        "gifWork":  "levels/lvl_09/anim_work.gif",
+        "gifWait":  "levels/lvl_09/anim_wait.gif",
+        "gifFull":  "levels/lvl_09/anim_full.gif",
+        "sprite":  "levels/lvl_09/spritesheet.png",
+        "staticImg":  "levels/lvl_09/house_static.png",
+        "framesDir":  "levels/lvl_09/frames"
+    },
+    {
+        "level":  10,
+        "id":  565,
+        "w":  230,
+        "h":  195,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  8500000,
+        "builders":  63,
+        "people":  -52,
+        "strength":  43424,
+        "workDelay":  55454485,
+        "outRes":  "{\"gold\":12}",
+        "inRes":  "{\"gasoline\":55,\"rudagold\":18,\"superlily\":34}",
+        "gifWork":  "levels/lvl_10/anim_work.gif",
+        "gifWait":  "levels/lvl_10/anim_wait.gif",
+        "gifFull":  "levels/lvl_10/anim_full.gif",
+        "sprite":  "levels/lvl_10/spritesheet.png",
+        "staticImg":  "levels/lvl_10/house_static.png",
+        "framesDir":  "levels/lvl_10/frames"
+    },
+    {
+        "level":  11,
+        "id":  566,
+        "w":  232,
+        "h":  200,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  9970000,
+        "builders":  73,
+        "people":  -59,
+        "strength":  47640,
+        "workDelay":  61484653,
+        "outRes":  "{\"gold\":14}",
+        "inRes":  "{\"gasoline\":65,\"rudagold\":22,\"superlily\":41}",
+        "gifWork":  "levels/lvl_11/anim_work.gif",
+        "gifWait":  "levels/lvl_11/anim_wait.gif",
+        "gifFull":  "levels/lvl_11/anim_full.gif",
+        "sprite":  "levels/lvl_11/spritesheet.png",
+        "staticImg":  "levels/lvl_11/house_static.png",
+        "framesDir":  "levels/lvl_11/frames"
+    },
+    {
+        "level":  12,
+        "id":  567,
+        "w":  232,
+        "h":  200,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  11580000,
+        "builders":  84,
+        "people":  -69,
+        "strength":  53080,
+        "workDelay":  77041619,
+        "outRes":  "{\"gold\":17}",
+        "inRes":  "{\"gasoline\":77,\"rudagold\":26,\"superlily\":49}",
+        "gifWork":  "levels/lvl_12/anim_work.gif",
+        "gifWait":  "levels/lvl_12/anim_wait.gif",
+        "gifFull":  "levels/lvl_12/anim_full.gif",
+        "sprite":  "levels/lvl_12/spritesheet.png",
+        "staticImg":  "levels/lvl_12/house_static.png",
+        "framesDir":  "levels/lvl_12/frames"
+    },
+    {
+        "level":  13,
+        "id":  568,
+        "w":  232,
+        "h":  200,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  13330000,
+        "builders":  95,
+        "people":  -78,
+        "strength":  57616,
+        "workDelay":  83661663,
+        "outRes":  "{\"gold\":19}",
+        "inRes":  "{\"gasoline\":89,\"rudagold\":30,\"superlily\":57}",
+        "gifWork":  "levels/lvl_13/anim_work.gif",
+        "gifWait":  "levels/lvl_13/anim_wait.gif",
+        "gifFull":  "levels/lvl_13/anim_full.gif",
+        "sprite":  "levels/lvl_13/spritesheet.png",
+        "staticImg":  "levels/lvl_13/house_static.png",
+        "framesDir":  "levels/lvl_13/frames"
+    },
+    {
+        "level":  14,
+        "id":  569,
+        "w":  232,
+        "h":  200,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  15220000,
+        "builders":  107,
+        "people":  -86,
+        "strength":  63264,
+        "workDelay":  100076315,
+        "outRes":  "{\"gold\":22}",
+        "inRes":  "{\"gasoline\":103,\"rudagold\":34,\"superlily\":66}",
+        "gifWork":  "levels/lvl_14/anim_work.gif",
+        "gifWait":  "levels/lvl_14/anim_wait.gif",
+        "gifFull":  "levels/lvl_14/anim_full.gif",
+        "sprite":  "levels/lvl_14/spritesheet.png",
+        "staticImg":  "levels/lvl_14/house_static.png",
+        "framesDir":  "levels/lvl_14/frames"
+    },
+    {
+        "level":  15,
+        "id":  570,
+        "w":  232,
+        "h":  200,
+        "cols":  8,
+        "frames":  75,
+        "fps":  24,
+        "workStart":  40,
+        "workEnd":  75,
+        "waitStart":  0,
+        "waitEnd":  40,
+        "price":  17250000,
+        "builders":  120,
+        "people":  -99,
+        "strength":  69496,
+        "workDelay":  121883879,
+        "outRes":  "{\"gold\":26}",
+        "inRes":  "{\"gasoline\":117,\"rudagold\":39,\"superlily\":76}",
+        "gifWork":  "levels/lvl_15/anim_work.gif",
+        "gifWait":  "levels/lvl_15/anim_wait.gif",
+        "gifFull":  "levels/lvl_15/anim_full.gif",
+        "sprite":  "levels/lvl_15/spritesheet.png",
+        "staticImg":  "levels/lvl_15/house_static.png",
+        "framesDir":  "levels/lvl_15/frames"
+    },
+    {
+        "level":  16,
+        "id":  571,
+        "w":  237,
+        "h":  247,
+        "cols":  8,
+        "frames":  38,
+        "fps":  12,
+        "workStart":  20,
+        "workEnd":  38,
+        "waitStart":  0,
+        "waitEnd":  20,
+        "price":  19420000,
+        "builders":  133,
+        "people":  -108,
+        "strength":  74912,
+        "workDelay":  134958922,
+        "outRes":  "{\"gold\":29}",
+        "inRes":  "{\"gasoline\":133,\"rudagold\":44,\"superlily\":86}",
+        "gifWork":  "levels/lvl_16/anim_work.gif",
+        "gifWait":  "levels/lvl_16/anim_wait.gif",
+        "gifFull":  "levels/lvl_16/anim_full.gif",
+        "sprite":  "levels/lvl_16/spritesheet.png",
+        "staticImg":  "levels/lvl_16/house_static.png",
+        "framesDir":  "levels/lvl_16/frames"
+    },
+    {
+        "level":  17,
+        "id":  572,
+        "w":  237,
+        "h":  247,
+        "cols":  8,
+        "frames":  38,
+        "fps":  12,
+        "workStart":  20,
+        "workEnd":  38,
+        "waitStart":  0,
+        "waitEnd":  20,
+        "price":  21730000,
+        "builders":  147,
+        "people":  -119,
+        "strength":  80920,
+        "workDelay":  153485973,
+        "outRes":  "{\"gold\":33}",
+        "inRes":  "{\"gasoline\":149,\"rudagold\":50,\"superlily\":97}",
+        "gifWork":  "levels/lvl_17/anim_work.gif",
+        "gifWait":  "levels/lvl_17/anim_wait.gif",
+        "gifFull":  "levels/lvl_17/anim_full.gif",
+        "sprite":  "levels/lvl_17/spritesheet.png",
+        "staticImg":  "levels/lvl_17/house_static.png",
+        "framesDir":  "levels/lvl_17/frames"
+    },
+    {
+        "level":  18,
+        "id":  573,
+        "w":  237,
+        "h":  247,
+        "cols":  8,
+        "frames":  38,
+        "fps":  12,
+        "workStart":  20,
+        "workEnd":  38,
+        "waitStart":  0,
+        "waitEnd":  20,
+        "price":  24180000,
+        "builders":  162,
+        "people":  -133,
+        "strength":  87000,
+        "workDelay":  172264503,
+        "outRes":  "{\"gold\":37}",
+        "inRes":  "{\"gasoline\":167,\"rudagold\":56,\"superlily\":109}",
+        "gifWork":  "levels/lvl_18/anim_work.gif",
+        "gifWait":  "levels/lvl_18/anim_wait.gif",
+        "gifFull":  "levels/lvl_18/anim_full.gif",
+        "sprite":  "levels/lvl_18/spritesheet.png",
+        "staticImg":  "levels/lvl_18/house_static.png",
+        "framesDir":  "levels/lvl_18/frames"
+    },
+    {
+        "level":  19,
+        "id":  574,
+        "w":  237,
+        "h":  247,
+        "cols":  8,
+        "frames":  38,
+        "fps":  12,
+        "workStart":  20,
+        "workEnd":  38,
+        "waitStart":  0,
+        "waitEnd":  20,
+        "price":  26770000,
+        "builders":  177,
+        "people":  -144,
+        "strength":  93184,
+        "workDelay":  191574278,
+        "outRes":  "{\"gold\":41}",
+        "inRes":  "{\"gasoline\":185,\"rudagold\":62,\"superlily\":121}",
+        "gifWork":  "levels/lvl_19/anim_work.gif",
+        "gifWait":  "levels/lvl_19/anim_wait.gif",
+        "gifFull":  "levels/lvl_19/anim_full.gif",
+        "sprite":  "levels/lvl_19/spritesheet.png",
+        "staticImg":  "levels/lvl_19/house_static.png",
+        "framesDir":  "levels/lvl_19/frames"
+    },
+    {
+        "level":  20,
+        "id":  575,
+        "w":  237,
+        "h":  247,
+        "cols":  8,
+        "frames":  38,
+        "fps":  12,
+        "workStart":  20,
+        "workEnd":  38,
+        "waitStart":  0,
+        "waitEnd":  20,
+        "price":  29500000,
+        "builders":  193,
+        "people":  -156,
+        "strength":  99448,
+        "workDelay":  211135343,
+        "outRes":  "{\"gold\":45}",
+        "inRes":  "{\"gasoline\":205,\"rudagold\":68,\"superlily\":134}",
+        "gifWork":  "levels/lvl_20/anim_work.gif",
+        "gifWait":  "levels/lvl_20/anim_wait.gif",
+        "gifFull":  "levels/lvl_20/anim_full.gif",
+        "sprite":  "levels/lvl_20/spritesheet.png",
+        "staticImg":  "levels/lvl_20/house_static.png",
+        "framesDir":  "levels/lvl_20/frames"
+    },
+    {
+        "level":  21,
+        "id":  576,
+        "w":  246,
+        "h":  276,
+        "cols":  8,
+        "frames":  38,
+        "fps":  12,
+        "workStart":  20,
+        "workEnd":  38,
+        "waitStart":  0,
+        "waitEnd":  20,
+        "price":  32370000,
+        "builders":  210,
+        "people":  -168,
+        "strength":  106208,
+        "workDelay":  236164688,
+        "outRes":  "{\"gold\":50}",
+        "inRes":  "{\"gasoline\":225,\"rudagold\":75,\"superlily\":148}",
+        "gifWork":  "levels/lvl_21/anim_work.gif",
+        "gifWait":  "levels/lvl_21/anim_wait.gif",
+        "gifFull":  "levels/lvl_21/anim_full.gif",
+        "sprite":  "levels/lvl_21/spritesheet.png",
+        "staticImg":  "levels/lvl_21/house_static.png",
+        "framesDir":  "levels/lvl_21/frames"
+    }
+];
+
+  let curLvlIdx = 0;
+  let curLvl = levels[0];
+  let animMode = 'work'; // 'work', 'wait', or 'full'
+  let curFrame = 1;
+  let isPlaying = true;
+  let timer = null;
+
+  const canvas = document.getElementById('animCanvas');
+  const ctx = canvas.getContext('2d');
+  const spriteImg = new Image();
+
+  function selectLevel(lvlNum) {
+    document.querySelectorAll('.level-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('card-lvl-' + lvlNum).classList.add('active');
+
+    curLvlIdx = lvlNum - 1;
+    curLvl = levels[curLvlIdx];
+
+    canvas.width = curLvl.w;
+    canvas.height = curLvl.h;
+
+    document.getElementById('playerHeading').textContent = 'Плеер: Уровень ' + curLvl.level + ' (ID: ' + curLvl.id + ')';
+    document.getElementById('fpsText').textContent = curLvl.fps + ' FPS';
+
+    updateModeButtons();
+    updateRange();
+    updateStats();
+    updateDownloads();
+    updateFrames();
+
+    spriteImg.src = curLvl.sprite;
+    updateGifPreview();
+  }
+
+  spriteImg.onload = () => {
+    drawFrame(getMinFrame());
+    if (isPlaying) startLoop();
+  };
+
+  function getMinFrame() {
+    if (animMode === 'work') return curLvl.workStart + 1;
+    if (animMode === 'wait') return curLvl.waitStart + 1;
+    return 1;
+  }
+
+  function getMaxFrame() {
+    if (animMode === 'work') return curLvl.workEnd;
+    if (animMode === 'wait') return curLvl.waitEnd;
+    return curLvl.frames;
+  }
+
+  function updateRange() {
+    const min = getMinFrame();
+    const max = getMaxFrame();
+    const slider = document.getElementById('frameSlider');
+    slider.min = min;
+    slider.max = max;
+    document.getElementById('maxFrameText').textContent = max;
+    if (curFrame < min || curFrame > max) curFrame = min;
+    slider.value = curFrame;
+  }
+
+  function updateModeButtons() {
+    document.getElementById('btnModeWork').classList.toggle('active-mode', animMode === 'work');
+    document.getElementById('btnModeWait').classList.toggle('active-mode', animMode === 'wait');
+    document.getElementById('btnModeFull').classList.toggle('active-mode', animMode === 'full');
+  }
+
+  function updateGifPreview() {
+    let src = curLvl.gifWork;
+    if (animMode === 'wait') src = curLvl.gifWait;
+    if (animMode === 'full') src = curLvl.gifFull;
+    document.getElementById('gifPreview').src = src;
+  }
+
+  function setMode(mode) {
+    animMode = mode;
+    updateModeButtons();
+    updateGifPreview();
+    updateRange();
+    drawFrame(getMinFrame());
+  }
+
+  function drawFrame(frameNum) {
+    curFrame = frameNum;
+    document.getElementById('frameSlider').value = frameNum;
+    document.getElementById('curFrameText').textContent = frameNum;
+
+    const idx = frameNum - 1;
+    const col = idx % curLvl.cols;
+    const row = Math.floor(idx / curLvl.cols);
+    const sx = col * curLvl.w;
+    const sy = row * curLvl.h;
+
+    ctx.clearRect(0, 0, curLvl.w, curLvl.h);
+    ctx.drawImage(spriteImg, sx, sy, curLvl.w, curLvl.h, 0, 0, curLvl.w, curLvl.h);
+  }
+
+  function startLoop() {
+    if (timer) clearInterval(timer);
+    timer = setInterval(() => {
+      let next = curFrame + 1;
+      const max = getMaxFrame();
+      const min = getMinFrame();
+      if (next > max) next = min;
+      drawFrame(next);
+    }, 1000 / curLvl.fps);
+  }
+
+  function togglePlay() {
+    isPlaying = !isPlaying;
+    const btn = document.getElementById('playBtn');
+    if (isPlaying) {
+      btn.textContent = 'â ¸ Пауза';
+      startLoop();
+    } else {
+      btn.textContent = 'â–¶ Старт';
+      clearInterval(timer);
+    }
+  }
+
+  function prevFrame() {
+    if (isPlaying) togglePlay();
+    let prev = curFrame - 1;
+    const min = getMinFrame();
+    const max = getMaxFrame();
+    if (prev < min) prev = max;
+    drawFrame(prev);
+  }
+
+  function nextFrame() {
+    if (isPlaying) togglePlay();
+    let next = curFrame + 1;
+    const min = getMinFrame();
+    const max = getMaxFrame();
+    if (next > max) next = min;
+    drawFrame(next);
+  }
+
+  function onSlider(val) {
+    if (isPlaying) togglePlay();
+    drawFrame(parseInt(val));
+  }
+
+  function updateStats() {
+    const table = document.getElementById('statsTable');
+    table.innerHTML = 
+      <tr><td>Уровень завода</td><td>Уровень  + curLvl.level +  (ID:  + curLvl.id + )</td></tr>
+      <tr><td>Стоимость постройки</td><td> + (curLvl.price ? curLvl.price.toLocaleString('ru-RU') + ' монет' : '—') + </td></tr>
+      <tr><td>Строители / Жители</td><td> + (curLvl.builders || '—') +  строителей /  + (curLvl.people || '—') +  жителей</td></tr>
+      <tr><td>Прочность (HP)</td><td> + (curLvl.strength ? curLvl.strength.toLocaleString('ru-RU') + ' HP' : '—') + </td></tr>
+      <tr><td>Размер кадра</td><td> + curLvl.w +  ×  + curLvl.h +  px</td></tr>
+      <tr><td>Кадров работы / ожидания</td><td> + (curLvl.workEnd - curLvl.workStart) +  раб. /  + (curLvl.waitEnd - curLvl.waitStart) +  ожид. (Всего:  + curLvl.frames + )</td></tr>
+      <tr><td>Частота кадров (FPS)</td><td> + curLvl.fps +  FPS</td></tr>
+    ;
+  }
+
+  function updateDownloads() {
+    const grid = document.getElementById('downloadsGrid');
+    const lvlStr = String(curLvl.level).padStart(2, '0');
+    grid.innerHTML = 
+      <div class="dl-card">
+        <div class="title">anim_work.gif</div>
+        <div class="desc">Анимированный GIF работы завода (плавка золота, огонь, чан)</div>
+        <a class="btn" href=" + curLvl.gifWork + " download="gold_mill_lvl_ + lvlStr + _work.gif">Скачать Work GIF</a>
+      </div>
+      <div class="dl-card">
+        <div class="title">anim_wait.gif</div>
+        <div class="desc">Анимированный GIF режима ожидания</div>
+        <a class="btn" href=" + curLvl.gifWait + " download="gold_mill_lvl_ + lvlStr + _wait.gif">Скачать Wait GIF</a>
+      </div>
+      <div class="dl-card">
+        <div class="title">anim_full.gif</div>
+        <div class="desc">Полный GIF со всеми кадрами цикла</div>
+        <a class="btn" href=" + curLvl.gifFull + " download="gold_mill_lvl_ + lvlStr + _full.gif">Скачать Full GIF</a>
+      </div>
+      <div class="dl-card">
+        <div class="title">spritesheet.png</div>
+        <div class="desc">Полный спрайтшит со всеми кадрами (сетка  + curLvl.cols +  колонок)</div>
+        <a class="btn" href=" + curLvl.sprite + " download="gold_mill_lvl_ + lvlStr + _spritesheet.png">Скачать Spritesheet</a>
+      </div>
+      <div class="dl-card">
+        <div class="title">house_static.png</div>
+        <div class="desc">Статичная иконка завода из магазина и карты</div>
+        <a class="btn" href=" + curLvl.staticImg + " download="gold_mill_lvl_ + lvlStr + .png">Скачать иконку</a>
+      </div>
+    ;
+  }
+
+  function updateFrames() {
+    const cont = document.getElementById('framesContainer');
+    let html = '';
+    const lvlStr = String(curLvl.level).padStart(2, '0');
+    for (let i = 1; i <= curLvl.frames; i++) {
+      const fNum = String(i).padStart(2, '0');
+      const src = 'levels/lvl_' + lvlStr + '/frames/frame_' + fNum + '.png';
+      html += 
+        <div class="frame-thumb" onclick="drawFrame( + i + )">
+          <img src=" + src + " alt="Кадр  + i + ">
+          <span># + i + </span>
+        </div>
+      ;
+    }
+    cont.innerHTML = html;
+  }
+
+  // Initialize
+  selectLevel(1);
+</script>
+
+</body>
+</html>

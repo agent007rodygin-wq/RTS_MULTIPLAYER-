@@ -2,7 +2,17 @@ import fs from 'fs';
 import path from 'path';
 
 const DESKTOP_PATH = '/home/uro/Рабочий стол/ССЫЛКА_ДЛЯ_ДРУЗЕЙ.txt';
-const CF_URL = 'https://ranges-tours-increases-radios.trycloudflare.com';
+const CF_URL_FILE = '/tmp/basingse_public_url.txt';
+
+function readLiveCloudflareUrl() {
+  try {
+    if (fs.existsSync(CF_URL_FILE)) {
+      const val = fs.readFileSync(CF_URL_FILE, 'utf8').trim();
+      if (val.startsWith('https://')) return val;
+    }
+  } catch {}
+  return '';
+}
 
 async function main() {
   console.log('[Tunnelmole] Запуск туннеля для порта 3000...');
@@ -12,15 +22,17 @@ async function main() {
 
   console.log(`[Tunnelmole] Готово! Публичный URL: ${url}`);
 
+  const cfUrl = readLiveCloudflareUrl();
+  const cfBlock = cfUrl
+    ? `\n2. 🌍 ОСНОВНАЯ ССЫЛКА (Cloudflare):\n👉 ${cfUrl}\n`
+    : '';
+
   const content = `🎮 ССЫЛКИ ДЛЯ ВХОДА В BASINGSE MMORPG
 
-1. 🇺🇦 ДЛЯ УКРАИНЫ И БЕЗ БЛОКИРОВОК (Без VPN и без паролей):
+1. 🇺🇦🇷🇺 ДЛЯ УКРАИНЫ / РОССИИ И БЕЗ БЛОКИРОВОК (Без VPN и без паролей):
 👉 ${url}
 (Открывается напрямую на смартфонах и ПК без блокировок провайдеров и без ожидания!)
-
-2. 🌍 ОСНОВНАЯ ССЫЛКА (Cloudflare):
-👉 ${CF_URL}
-
+${cfBlock}
 ⚡ Оба адреса ведут в один и тот же игровой мир на твоем сервере!
 `;
 

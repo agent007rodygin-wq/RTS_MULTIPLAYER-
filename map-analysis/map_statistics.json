@@ -1,0 +1,389 @@
+{
+  "world": {
+    "width": 1000,
+    "height": 1000,
+    "total_cells": 1000000,
+    "zone_size": 200,
+    "sectors_x": 5,
+    "sectors_y": 5,
+    "total_sectors": 25,
+    "scan_duration_sec": 0.0273,
+    "data_source": "SQLite data.db (PocketBase physical database, read-only)",
+    "generator_seed": 869645,
+    "terrain_repair_version": 1
+  },
+  "cell_counts": {
+    "occupied_total": 35199,
+    "occupied_percentage": 3.5199,
+    "empty_total": 964801,
+    "empty_percentage": 96.4801,
+    "overlapping_cells": 0,
+    "out_of_bounds_cells": 0
+  },
+  "trees": {
+    "total_count": 25000,
+    "coverage_percentage": 2.5,
+    "mean_density_trees_per_cell": 0.025,
+    "trees_with_full_hp": 24998,
+    "trees_damaged": 2,
+    "hp_distribution": {
+      "3": 24998,
+      "1": 2
+    },
+    "pending_respawns_in_queue": 0,
+    "historical_tree_chop_events": 2498,
+    "forest_clusters_8_connectivity": 21173,
+    "forest_clusters_4_connectivity": 23010,
+    "largest_forest_trees": 6,
+    "smallest_forest_trees": 1,
+    "average_forest_trees": 1.18,
+    "median_forest_trees": 1,
+    "nearest_cluster_min_distance": 1.82,
+    "nearest_cluster_max_distance": 9.61,
+    "nearest_cluster_avg_distance": 4.14,
+    "shape_classification": {
+      "Небольшой островок (Small Island)": 571,
+      "Разрозненная группа (Scattered)": 20602
+    },
+    "theoretical_gnomograd_mask_1s": 520800,
+    "trees_matching_gnomograd_mask": 24925
+  },
+  "mountains": {
+    "total_tiles": 3125,
+    "coverage_percentage": 0.3125,
+    "clusters_count": 389,
+    "largest_range_tiles": 22,
+    "smallest_cluster_tiles": 1,
+    "autotile_mask_distribution": {
+      "0": 413,
+      "1": 262,
+      "2": 291,
+      "3": 233,
+      "4": 263,
+      "5": 85,
+      "6": 225,
+      "7": 95,
+      "8": 298,
+      "9": 214,
+      "10": 88,
+      "11": 126,
+      "12": 229,
+      "13": 103,
+      "14": 118,
+      "15": 82
+    }
+  },
+  "rivers": {
+    "total_tiles": 3124,
+    "coverage_percentage": 0.3124,
+    "systems_count": 1745,
+    "longest_river_tiles": 10,
+    "shortest_river_tiles": 1,
+    "channel_width_tiles": 1,
+    "autotile_mask_distribution": {
+      "0": 1576,
+      "1": 337,
+      "2": 295,
+      "3": 29,
+      "4": 318,
+      "5": 65,
+      "6": 51,
+      "7": 3,
+      "8": 295,
+      "9": 42,
+      "10": 60,
+      "11": 5,
+      "12": 37,
+      "13": 4,
+      "14": 7,
+      "15": 0
+    }
+  },
+  "other_natural_resources": {
+    "oil_derricks": 250,
+    "quarries": 200,
+    "chests_remaining": 353,
+    "chests_opened_by_players": 22
+  },
+  "entities": {
+    "wild_monsters": 3124,
+    "player_buildings": 23
+  },
+  "sectors": {
+    "0_0": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 14,
+      "player_buildings": 9,
+      "empty": 38584
+    },
+    "0_1": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "0_2": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "0_3": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "0_4": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "1_0": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "1_1": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 12,
+      "player_buildings": 0,
+      "empty": 38595
+    },
+    "1_2": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 12,
+      "player_buildings": 0,
+      "empty": 38595
+    },
+    "1_3": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "1_4": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "2_0": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "2_1": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "2_2": {
+      "trees": 1000,
+      "rivers": 124,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 9,
+      "player_buildings": 12,
+      "empty": 38587
+    },
+    "2_3": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 124,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38593
+    },
+    "2_4": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "3_0": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "3_1": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "3_2": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "3_3": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 9,
+      "player_buildings": 2,
+      "empty": 38596
+    },
+    "3_4": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "4_0": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "4_1": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "4_2": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "4_3": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 15,
+      "player_buildings": 0,
+      "empty": 38592
+    },
+    "4_4": {
+      "trees": 1000,
+      "rivers": 125,
+      "mountains": 125,
+      "monsters": 125,
+      "oil": 10,
+      "quarry": 8,
+      "chest": 12,
+      "player_buildings": 0,
+      "empty": 38595
+    }
+  }
+}

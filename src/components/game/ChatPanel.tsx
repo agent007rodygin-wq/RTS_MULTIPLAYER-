@@ -48,7 +48,7 @@ export interface ChatPanelProps {
     allUsers: Record<string, any>;
     showEmojiPicker: boolean;
     setShowEmojiPicker: (show: boolean) => void;
-    KOLOBOK_EMOJIS: { code: string; url: string }[];
+    KOLOBOK_EMOJIS: { code: string; url: string; isSticker?: boolean }[];
     handleEmojiClick: (code: string) => void;
     chatInput: string;
     setChatInput: (input: string) => void;
@@ -234,15 +234,20 @@ export const ChatPanel: React.FC<ChatPanelProps> = React.memo(({
 
                             <div className="p-2 bg-black/40 border-t border-white/10 flex gap-2 shrink-0 relative chat-input-area">
                                 {showEmojiPicker && (
-                                    <div className="absolute bottom-full left-0 mb-2 ml-2 bg-black/90 backdrop-blur-md border border-purple-500/30 rounded-xl p-2.5 shadow-2xl grid grid-cols-6 gap-2 w-72 max-h-64 overflow-y-auto z-50">
+                                    <div className="absolute bottom-full left-0 mb-2 ml-2 bg-black/90 backdrop-blur-md border border-purple-500/30 rounded-xl p-2.5 shadow-2xl grid grid-cols-6 gap-1.5 w-80 max-h-72 overflow-y-auto z-50">
                                         {KOLOBOK_EMOJIS.map((emoji, idx) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => handleEmojiClick(emoji.code)}
-                                                className="hover:bg-purple-500/20 active:scale-90 p-1.5 rounded-lg flex items-center justify-center transition-all"
+                                                className="hover:bg-purple-500/20 active:scale-90 p-1 rounded-lg flex items-center justify-center transition-all"
                                                 title={emoji.code}
                                             >
-                                                <img src={emoji.url} alt={emoji.code} className="w-6 h-6 object-contain" />
+                                                <img
+                                                    src={emoji.url}
+                                                    alt={emoji.code}
+                                                    loading="lazy"
+                                                    className={`${emoji.isSticker ? 'w-8 h-8' : 'w-6 h-6'} object-contain`}
+                                                />
                                             </button>
                                         ))}
                                     </div>

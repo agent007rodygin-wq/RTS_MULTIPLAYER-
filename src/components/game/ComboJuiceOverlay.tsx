@@ -71,6 +71,7 @@ export const ComboJuiceOverlay: React.FC<ComboJuiceOverlayProps> = ({
 
             // If nothing is animating, sleep until next trigger to save 100% idle CPU
             if (!hasParticles && !hasFloating && !isComboActiveNow && !levelUpCelebration) {
+                setNow(currentNow);
                 const canvas = confettiCanvasRef.current;
                 if (canvas && typeof window !== 'undefined') {
                     const ctx = canvas.getContext('2d');

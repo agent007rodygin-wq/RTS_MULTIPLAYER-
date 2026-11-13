@@ -26,6 +26,7 @@ export interface TownHallModalProps {
     handleUpgrade?: () => void;
     handleSpeedUp?: () => void;
     onOpenExplosionMenu?: () => void;
+    handleDefuse?: () => void;
     onOpenProtectionMenu?: () => void;
     onOpenTownHallOrders?: () => void;
     townHallAvailableOrdersCount?: number;
@@ -50,6 +51,7 @@ export const TownHallModal: React.FC<TownHallModalProps> = ({
     handleSpeedUp,
     rubyImageUrl = '/Gui/GUI_TOWNHALL/ruby_icon.png',
     onOpenExplosionMenu,
+    handleDefuse,
     onOpenProtectionMenu,
     onOpenTownHallOrders,
     townHallAvailableOrdersCount = 0,
@@ -469,18 +471,18 @@ export const TownHallModal: React.FC<TownHallModalProps> = ({
                 {/* 7.2. EXPLODE: (505, 1073, 445, 95) */}
                 <button
                     id="explode_button"
-                    onClick={building.isDestroying ? undefined : onOpenExplosionMenu}
-                    disabled={building.isDestroying}
+                    onClick={building.isDestroying ? handleDefuse : onOpenExplosionMenu}
+                    disabled={building.isDestroying && !handleDefuse}
                     style={{ left: 505, top: 1073, width: 445, height: 95 }}
-                    className={`absolute z-20 flex items-center transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] hover:brightness-110 focus:outline-none ${building.isDestroying ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                    title={building.isDestroying ? "Здание уже взрывается" : "Взорвать здание динамитом или бомбами"}
+                    className={`absolute z-20 flex items-center transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] hover:brightness-110 focus:outline-none ${(building.isDestroying && !handleDefuse) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    title={building.isDestroying ? "Здание заминировано — нажать для разминирования" : "Взорвать здание динамитом или бомбами"}
                 >
                     <div style={{ marginLeft: 105, width: 285 }} className="flex items-center justify-center text-center">
                         <span
                             style={{ fontFamily: "'Nunito', sans-serif" }}
-                            className="text-[36px] font-extrabold text-white tracking-wide leading-none drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"
+                            className="text-[32px] font-extrabold text-white tracking-wide leading-none drop-shadow-[0_2px_3px_rgba(0,0,0,0.85)]"
                         >
-                            Взорвать
+                            {building.isDestroying ? "Разминировать" : "Взорвать"}
                         </span>
                     </div>
                 </button>
