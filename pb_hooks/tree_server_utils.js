@@ -10,6 +10,32 @@ var WOOD_ITEM_ID = "10001";
 var ZONE_SIZE = 200;
 var TREE_DEBUG_PREFIX = "[TreeHit Debug]";
 
+var forestMask = null;
+try {
+  forestMask = require(__hooks + "/forest_mask.js");
+} catch (e1) {
+  try {
+    forestMask = require(__hooks + "/forest-mask.json");
+  } catch (e2) {
+    try {
+      forestMask = require("./forest_mask.js");
+    } catch (e3) {
+      try {
+        forestMask = require("./forest-mask.json");
+      } catch (e4) {}
+    }
+  }
+}
+
+function isForestCell(x, y) {
+  if (!forestMask || !forestMask.rows) return false;
+  var maskX = ((x % 50) + 50) % 50;
+  var maskY = ((y % 50) + 50) % 50;
+  var row = forestMask.rows[maskY];
+  if (!row) return false;
+  return row[maskX] === "1" || row.charAt(maskX) === "1";
+}
+
 function toInt(value, fallback) {
   var numeric = parseInt(value, 10);
   return isNaN(numeric) ? fallback : numeric;
@@ -168,7 +194,10 @@ function sanitizePbId(id) {
 }
 
 function parseResourceCoords(resourceId) {
-  var raw = normalizeString(resourceId, "");
+  var raw = normalizeString(resourceId, "").trim();
+  if (raw.indexOf("tree_") === 0) {
+    raw = raw.substring(5);
+  }
   var parts = raw.split("_");
   if (parts.length !== 2) return null;
   var x = toInt(parts[0], NaN);
@@ -309,8 +338,25 @@ function addInventoryItem(userRecord, itemId, amount) {
   };
 }
 
-function getTreeRecordSnapshot(treeRecord) {
-  if (!treeRecord) return null;
+function getTreeRecordSnapshot(treeRecord, fallbackCoords) {
+  if (!treeRecord) {
+    if (fallbackCoords) {
+      var zoneId = Math.floor(fallbackCoords.x / ZONE_SIZE) + "_" + Math.floor(fallbackCoords.y / ZONE_SIZE);
+      return {
+        id: "tree_" + fallbackCoords.x + "_" + fallbackCoords.y,
+        gameId: "tree_" + fallbackCoords.x + "_" + fallbackCoords.y,
+        x: fallbackCoords.x,
+        y: fallbackCoords.y,
+        zoneId: zoneId,
+        sectorId: zoneId,
+        type: "tree",
+        hp: TREE_MAX_HP,
+        maxHp: TREE_MAX_HP,
+        state: "alive",
+      };
+    }
+    return null;
+  }
   var data = parseDataField(treeRecord);
   return {
     id: normalizeString(treeRecord.id, ""),
@@ -355,19 +401,24 @@ function resolveTreeRecord(app, resourceId) {
       matchedBy: null,
       sanitizedId: sanitizedId,
       coords: coords,
+      isVirtual: false,
     };
   }
 
   if (logicalResourceId.length === 15 && /^[a-z0-9]+$/i.test(logicalResourceId)) {
     attempts.push({ mode: "record.id", value: logicalResourceId });
     try {
-      return {
-        record: app.findRecordById("map_resources", logicalResourceId),
-        attempts: attempts,
-        matchedBy: "record.id",
-        sanitizedId: sanitizedId,
-        coords: coords,
-      };
+      var recById = app.findRecordById("map_resources", logicalResourceId);
+      if (recById) {
+        return {
+          record: recById,
+          attempts: attempts,
+          matchedBy: "record.id",
+          sanitizedId: sanitizedId,
+          coords: coords,
+          isVirtual: false,
+        };
+      }
     } catch (error) {
       attempts[attempts.length - 1].error = String(error);
     }
@@ -375,30 +426,38 @@ function resolveTreeRecord(app, resourceId) {
 
   attempts.push({ mode: "sanitizedRecord.id", value: sanitizedId });
   try {
-    return {
-      record: app.findRecordById("map_resources", sanitizedId),
-      attempts: attempts,
-      matchedBy: "sanitizedRecord.id",
-      sanitizedId: sanitizedId,
-      coords: coords,
-    };
+    var recBySanitized = app.findRecordById("map_resources", sanitizedId);
+    if (recBySanitized) {
+      return {
+        record: recBySanitized,
+        attempts: attempts,
+        matchedBy: "sanitizedRecord.id",
+        sanitizedId: sanitizedId,
+        coords: coords,
+        isVirtual: false,
+      };
+    }
   } catch (error) {
     attempts[attempts.length - 1].error = String(error);
   }
 
   attempts.push({ mode: "gameId", value: logicalResourceId });
   try {
-    return {
-      record: app.findFirstRecordByFilter(
-        "map_resources",
-        "gameId = {:resourceId}",
-        { resourceId: logicalResourceId }
-      ),
-      attempts: attempts,
-      matchedBy: "gameId",
-      sanitizedId: sanitizedId,
-      coords: coords,
-    };
+    var recByGameId = app.findFirstRecordByFilter(
+      "map_resources",
+      "gameId = {:resourceId}",
+      { resourceId: logicalResourceId }
+    );
+    if (recByGameId) {
+      return {
+        record: recByGameId,
+        attempts: attempts,
+        matchedBy: "gameId",
+        sanitizedId: sanitizedId,
+        coords: coords,
+        isVirtual: false,
+      };
+    }
   } catch (error) {
     attempts[attempts.length - 1].error = String(error);
   }
@@ -406,19 +465,101 @@ function resolveTreeRecord(app, resourceId) {
   if (coords) {
     attempts.push({ mode: "coords", value: { x: coords.x, y: coords.y } });
     try {
-      return {
-        record: app.findFirstRecordByFilter(
-          "map_resources",
-          "x = {:x} && y = {:y}",
-          { x: coords.x, y: coords.y }
-        ),
-        attempts: attempts,
-        matchedBy: "coords",
-        sanitizedId: sanitizedId,
-        coords: coords,
-      };
+      var recByCoords = app.findFirstRecordByFilter(
+        "map_resources",
+        "x = {:x} && y = {:y}",
+        { x: coords.x, y: coords.y }
+      );
+      if (recByCoords) {
+        return {
+          record: recByCoords,
+          attempts: attempts,
+          matchedBy: "coords",
+          sanitizedId: sanitizedId,
+          coords: coords,
+          isVirtual: false,
+        };
+      }
     } catch (error) {
       attempts[attempts.length - 1].error = String(error);
+    }
+
+    // Procedural Forest Mask lookup:
+    // If no database record exists, check if this coordinate is a tree in the 50x50 mask
+    if (isForestCell(coords.x, coords.y)) {
+      // 1. Check if tree is respawning (pending respawn record)
+      try {
+        var pendingRespawn = app.findFirstRecordByFilter(
+          "tree_respawns",
+          "oldX = {:x} && oldY = {:y} && status = 'pending'",
+          { x: coords.x, y: coords.y }
+        );
+        if (pendingRespawn) {
+          attempts.push({ mode: "virtualMask.respawning", value: { x: coords.x, y: coords.y } });
+          return {
+            record: null,
+            attempts: attempts,
+            matchedBy: null,
+            sanitizedId: sanitizedId,
+            coords: coords,
+            isRespawning: true,
+            isVirtual: false,
+          };
+        }
+      } catch (_eRespawn) {}
+
+      // 2. Check if a building (mountain, river, player building) is on this cell
+      try {
+        var blockingBuilding = app.findFirstRecordByFilter(
+          "buildings",
+          "x = {:x} && y = {:y} && (hp > 0 || hp = null)",
+          { x: coords.x, y: coords.y }
+        );
+        if (blockingBuilding) {
+          attempts.push({ mode: "virtualMask.blockedByBuilding", value: { x: coords.x, y: coords.y, buildingId: blockingBuilding.get("buildingId") } });
+          return {
+            record: null,
+            attempts: attempts,
+            matchedBy: null,
+            sanitizedId: sanitizedId,
+            coords: coords,
+            isBlocked: true,
+            isVirtual: false,
+          };
+        }
+      } catch (_eBuilding) {}
+
+      // 3. Check if non-tree resource is on this cell
+      try {
+        var blockingResource = app.findFirstRecordByFilter(
+          "map_resources",
+          "x = {:x} && y = {:y} && type != 'tree'",
+          { x: coords.x, y: coords.y }
+        );
+        if (blockingResource) {
+          attempts.push({ mode: "virtualMask.blockedByResource", value: { x: coords.x, y: coords.y, type: blockingResource.get("type") } });
+          return {
+            record: null,
+            attempts: attempts,
+            matchedBy: null,
+            sanitizedId: sanitizedId,
+            coords: coords,
+            isBlocked: true,
+            isVirtual: false,
+          };
+        }
+      } catch (_eRes) {}
+
+      // Cell is a valid, unharvested virtual tree from mask!
+      attempts.push({ mode: "virtualMask.valid", value: { x: coords.x, y: coords.y } });
+      return {
+        record: null,
+        attempts: attempts,
+        matchedBy: "virtualMask",
+        sanitizedId: sanitizedId,
+        coords: coords,
+        isVirtual: true,
+      };
     }
   }
 
@@ -428,22 +569,22 @@ function resolveTreeRecord(app, resourceId) {
     matchedBy: null,
     sanitizedId: sanitizedId,
     coords: coords,
+    isVirtual: false,
   };
 }
 
-function buildRespawnJob(txApp, treeRecord, logicalResourceId, nowMs) {
+function buildRespawnJobAtCoords(txApp, x, y, zoneId, logicalResourceId, nowMs) {
   try {
     var respawnCollection = txApp.findCollectionByNameOrId("tree_respawns");
     if (!respawnCollection) return;
     var respawnJob = new Record(respawnCollection);
-    var sectorId = normalizeString(treeRecord.get("sectorId"), normalizeString(treeRecord.get("zoneId"), ""));
 
     respawnJob.set("resourceType", "tree");
     respawnJob.set("oldResourceId", logicalResourceId);
-    respawnJob.set("oldX", toInt(treeRecord.get("x"), 0));
-    respawnJob.set("oldY", toInt(treeRecord.get("y"), 0));
-    respawnJob.set("zoneId", normalizeString(treeRecord.get("zoneId"), sectorId));
-    respawnJob.set("sectorId", sectorId);
+    respawnJob.set("oldX", toInt(x, 0));
+    respawnJob.set("oldY", toInt(y, 0));
+    respawnJob.set("zoneId", zoneId);
+    respawnJob.set("sectorId", zoneId);
     respawnJob.set("respawnAt", nowMs + TREE_RESPAWN_DELAY_MS);
     respawnJob.set("status", "pending");
     respawnJob.set("attempts", 0);
@@ -451,8 +592,15 @@ function buildRespawnJob(txApp, treeRecord, logicalResourceId, nowMs) {
 
     txApp.save(respawnJob);
   } catch (err) {
-    debugLog("buildRespawnJob.error", String(err));
+    debugLog("buildRespawnJobAtCoords.error", String(err));
   }
+}
+
+function buildRespawnJob(txApp, treeRecord, logicalResourceId, nowMs) {
+  var x = toInt(treeRecord.get("x"), 0);
+  var y = toInt(treeRecord.get("y"), 0);
+  var sectorId = normalizeString(treeRecord.get("sectorId"), normalizeString(treeRecord.get("zoneId"), ""));
+  buildRespawnJobAtCoords(txApp, x, y, sectorId, logicalResourceId, nowMs);
 }
 
 function processTreeHit(app, authRecord, resourceId) {
@@ -492,6 +640,7 @@ function processTreeHit(app, authRecord, resourceId) {
 
       var userRecord = txApp.findRecordById("users", authRecord.id);
       var lookup = resolveTreeRecord(txApp, logicalResourceId);
+      var isVirtual = lookup.isVirtual === true;
       var treeRecord = lookup.record;
 
       debugLog("user.record.before_apply", {
@@ -506,37 +655,39 @@ function processTreeHit(app, authRecord, resourceId) {
         resourceId: logicalResourceId,
         lookupFilters: lookup.attempts,
         matchedBy: lookup.matchedBy,
-        foundRecord: getTreeRecordSnapshot(treeRecord),
+        foundRecord: getTreeRecordSnapshot(treeRecord, lookup.coords),
+        isVirtual: isVirtual,
       });
 
-      if (!treeRecord) {
-        result = buildErrorResponse(400, "TREE_NOT_FOUND", {
+      if (!treeRecord && !isVirtual) {
+        var errCode = lookup.isRespawning ? "TREE_NOT_ALIVE" : (lookup.isBlocked ? "BLOCKED_TILE" : "TREE_NOT_FOUND");
+        result = buildErrorResponse(lookup.isRespawning ? 409 : 400, errCode, {
           resourceId: logicalResourceId,
           sanitizedPbId: lookup.sanitizedId,
           coords: lookup.coords,
           lookupFilters: lookup.attempts,
-        }, "Tree resource was not found");
-        debugLog("process.tree_not_found", result.body);
+        }, lookup.isRespawning ? "Tree is respawning" : "Tree resource was not found");
+        debugLog("process.tree_not_found_or_blocked", result.body);
         return;
       }
 
-      if (normalizeString(treeRecord.get("type"), "") !== "tree") {
+      if (treeRecord && normalizeString(treeRecord.get("type"), "") !== "tree") {
         result = buildErrorResponse(400, "NOT_A_TREE", {
           resourceId: logicalResourceId,
           matchedBy: lookup.matchedBy,
-          record: getTreeRecordSnapshot(treeRecord),
+          record: getTreeRecordSnapshot(treeRecord, lookup.coords),
         }, "Resolved resource is not a tree");
         debugLog("process.not_a_tree", result.body);
         return;
       }
 
-      var currentTreeData = parseDataField(treeRecord);
-      var treeState = normalizeString(currentTreeData.state || treeRecord.get("state"), "alive");
+      var currentTreeData = treeRecord ? parseDataField(treeRecord) : {};
+      var treeState = normalizeString(currentTreeData.state || (treeRecord ? treeRecord.get("state") : "alive"), "alive");
       if (treeState !== "alive") {
         result = buildErrorResponse(409, "TREE_NOT_ALIVE", {
           resourceId: logicalResourceId,
           matchedBy: lookup.matchedBy,
-          record: getTreeRecordSnapshot(treeRecord),
+          record: getTreeRecordSnapshot(treeRecord, lookup.coords),
         }, "Tree is not in alive state");
         debugLog("process.tree_not_alive", result.body);
         return;
@@ -556,19 +707,23 @@ function processTreeHit(app, authRecord, resourceId) {
         return;
       }
 
-      var currentHp = getTreeCurrentHp(treeRecord);
+      var currentHp = isVirtual ? TREE_MAX_HP : getTreeCurrentHp(treeRecord);
       var nextHp = Math.max(0, currentHp - 1);
       var treesChoppedIncrement = nextHp <= 0 ? 1 : 0;
       var nowMs = Date.now();
+      var targetX = lookup.coords ? lookup.coords.x : toInt(treeRecord.get("x"), 0);
+      var targetY = lookup.coords ? lookup.coords.y : toInt(treeRecord.get("y"), 0);
+      var zoneId = Math.floor(targetX / ZONE_SIZE) + "_" + Math.floor(targetY / ZONE_SIZE);
 
       debugLog("process.before_apply", {
         authUserId: authRecord.id,
         resourceId: logicalResourceId,
         matchedBy: lookup.matchedBy,
-        record: getTreeRecordSnapshot(treeRecord),
+        record: getTreeRecordSnapshot(treeRecord, lookup.coords),
         currentEnergy: currentEnergy,
         nextHp: nextHp,
         treesChoppedIncrement: treesChoppedIncrement,
+        isVirtual: isVirtual,
       });
 
       userRecord.set("energy", Math.max(0, currentEnergy - TREE_HIT_ENERGY_COST));
@@ -599,28 +754,41 @@ function processTreeHit(app, authRecord, resourceId) {
       txApp.save(userRecord);
 
       if (nextHp > 0) {
+        if (isVirtual || !treeRecord) {
+          var resourcesCollection = txApp.findCollectionByNameOrId("map_resources");
+          treeRecord = new Record(resourcesCollection);
+          treeRecord.set("type", "tree");
+          treeRecord.set("x", targetX);
+          treeRecord.set("y", targetY);
+          treeRecord.set("zoneId", zoneId);
+          treeRecord.set("sectorId", zoneId);
+          treeRecord.set("gameId", logicalResourceId);
+        }
         var updatedTreeData = parseDataField(treeRecord);
         updatedTreeData.hp = nextHp;
         updatedTreeData.maxHp = TREE_MAX_HP;
         updatedTreeData.state = "alive";
-        updatedTreeData.x = toInt(treeRecord.get("x"), updatedTreeData.x);
-        updatedTreeData.y = toInt(treeRecord.get("y"), updatedTreeData.y);
+        updatedTreeData.x = targetX;
+        updatedTreeData.y = targetY;
         updatedTreeData.type = "tree";
-        updatedTreeData.gameId = normalizeString(treeRecord.get("gameId"), updatedTreeData.gameId);
-        updatedTreeData.zoneId = normalizeString(treeRecord.get("zoneId"), updatedTreeData.zoneId);
+        updatedTreeData.gameId = logicalResourceId;
+        updatedTreeData.zoneId = zoneId;
         setDataField(treeRecord, updatedTreeData);
         try { treeRecord.set("hp", nextHp); } catch (_) {}
         try { treeRecord.set("maxHp", TREE_MAX_HP); } catch (_) {}
         try { treeRecord.set("state", "alive"); } catch (_) {}
-        try { treeRecord.set("sectorId", normalizeString(treeRecord.get("sectorId"), normalizeString(treeRecord.get("zoneId"), ""))); } catch (_) {}
+        try { treeRecord.set("sectorId", zoneId); } catch (_) {}
         try { treeRecord.set("respawnAt", 0); } catch (_) {}
         if (toInt(treeRecord.get("createdAt"), 0) <= 0) {
           try { treeRecord.set("createdAt", nowMs); } catch (_) {}
         }
         txApp.save(treeRecord);
       } else {
-        buildRespawnJob(txApp, treeRecord, logicalResourceId, nowMs);
-        txApp.delete(treeRecord);
+        // Tree felled: build respawn job at exact coordinate
+        buildRespawnJobAtCoords(txApp, targetX, targetY, zoneId, logicalResourceId, nowMs);
+        if (treeRecord && !isVirtual) {
+          txApp.delete(treeRecord);
+        }
       }
 
       result.body = {
@@ -635,7 +803,7 @@ function processTreeHit(app, authRecord, resourceId) {
         rewardGlory: TREE_HIT_GLORY_REWARD,
         energyCost: TREE_HIT_ENERGY_COST,
         treesChoppedIncrement: treesChoppedIncrement,
-        treeRecord: getTreeRecordSnapshot(treeRecord),
+        treeRecord: getTreeRecordSnapshot(treeRecord, lookup.coords),
         playerGold: toInt(userRecord.get("gold"), 0),
         playerEnergy: toInt(userRecord.get("energy"), 0),
         playerGlory: toInt(userRecord.get("glory"), 0),
@@ -668,122 +836,21 @@ function processTreeHit(app, authRecord, resourceId) {
   return result;
 }
 
-function collectOccupiedCells(records) {
-  var occupied = {};
-  for (var i = 0; i < records.length; i++) {
-    var record = records[i];
-    var x = toInt(record.get("x"), NaN);
-    var y = toInt(record.get("y"), NaN);
-    if (isNaN(x) || isNaN(y)) continue;
-    occupied[x + "," + y] = true;
-  }
-  return occupied;
-}
-
-function buildFreeTreeCell(txApp, zoneId, oldX, oldY) {
-  var parts = normalizeString(zoneId, "").split("_");
-  if (parts.length !== 2) return null;
-
-  var zoneX = toInt(parts[0], NaN);
-  var zoneY = toInt(parts[1], NaN);
-  if (isNaN(zoneX) || isNaN(zoneY)) return null;
-
-  var resources = txApp.findRecordsByFilter("map_resources", "zoneId = {:zoneId}", "", 5000, 0, {
-    zoneId: zoneId,
-  });
-  var minX = zoneX * ZONE_SIZE;
-  var maxX = minX + ZONE_SIZE - 1;
-  var minY = zoneY * ZONE_SIZE;
-  var maxY = minY + ZONE_SIZE - 1;
-  var buildings = [];
-  try {
-    buildings = txApp.findRecordsByFilter("buildings", "x >= {:minX} && x <= {:maxX} && y >= {:minY} && y <= {:maxY}", "", 5000, 0, {
-      minX: minX,
-      maxX: maxX,
-      minY: minY,
-      maxY: maxY,
-    });
-  } catch (_bErr) {
-    buildings = [];
-  }
-
-  var occupied = collectOccupiedCells(resources);
-  var buildingOccupied = collectOccupiedCells(buildings);
-  for (var buildingKey in buildingOccupied) {
-    occupied[buildingKey] = true;
-  }
-
-  var oldKey = oldX + "," + oldY;
-  occupied[oldKey] = true;
-
-  var freeCells = [];
-  var startX = zoneX * ZONE_SIZE;
-  var startY = zoneY * ZONE_SIZE;
-
-  for (var x = startX; x < startX + ZONE_SIZE; x++) {
-    for (var y = startY; y < startY + ZONE_SIZE; y++) {
-      var key = x + "," + y;
-      if (!occupied[key]) {
-        freeCells.push({ x: x, y: y });
-      }
-    }
-  }
-
-  if (!freeCells.length) return null;
-  return freeCells[Math.floor(Math.random() * freeCells.length)];
-}
-
 function respawnSingleTree(app, respawnRecord) {
   try {
     app.runInTransaction(function (txApp) {
       var status = normalizeString(respawnRecord.get("status"), "pending");
       if (status !== "pending") return;
 
-      var zoneId = normalizeString(respawnRecord.get("zoneId"), normalizeString(respawnRecord.get("sectorId"), ""));
-      var oldX = toInt(respawnRecord.get("oldX"), NaN);
-      var oldY = toInt(respawnRecord.get("oldY"), NaN);
       var respawnAt = toInt(respawnRecord.get("respawnAt"), 0);
       var nowMs = Date.now();
 
-      if (!zoneId || respawnAt > nowMs) return;
+      if (respawnAt > nowMs) return;
 
-      var freeCell = buildFreeTreeCell(txApp, zoneId, oldX, oldY);
-      if (!freeCell) {
-        respawnRecord.set("respawnAt", nowMs + TREE_RESPAWN_RETRY_MS);
-        respawnRecord.set("attempts", toInt(respawnRecord.get("attempts"), 0) + 1);
-        txApp.save(respawnRecord);
-        return;
-      }
-
-      var resourcesCollection = txApp.findCollectionByNameOrId("map_resources");
-      var treeRecord = new Record(resourcesCollection);
-      var logicalResourceId = freeCell.x + "_" + freeCell.y;
-
-      treeRecord.set("type", "tree");
-      treeRecord.set("x", freeCell.x);
-      treeRecord.set("y", freeCell.y);
-      treeRecord.set("zoneId", zoneId);
-      treeRecord.set("sectorId", zoneId);
-      treeRecord.set("gameId", logicalResourceId);
-      try { treeRecord.set("hp", TREE_MAX_HP); } catch (_) {}
-      try { treeRecord.set("maxHp", TREE_MAX_HP); } catch (_) {}
-      try { treeRecord.set("state", "alive"); } catch (_) {}
-      try { treeRecord.set("createdAt", nowMs); } catch (_) {}
-      try { treeRecord.set("respawnAt", 0); } catch (_) {}
-
-      var treeData = {
-        gameId: logicalResourceId,
-        hp: TREE_MAX_HP,
-        maxHp: TREE_MAX_HP,
-        type: "tree",
-        x: freeCell.x,
-        y: freeCell.y,
-        zoneId: zoneId,
-        state: "alive",
-      };
-      setDataField(treeRecord, treeData);
-
-      txApp.save(treeRecord);
+      // In the deterministic procedural mask model, trees respawn at the exact same tile.
+      // Simply deleting the pending tree_respawns record naturally un-suppresses the tree!
+      // If a building was constructed on this tile while felled, building priority blocks it.
+      // NO synthetic map_resources record is created!
       txApp.delete(respawnRecord);
     });
   } catch (error) {
@@ -818,6 +885,8 @@ module.exports = {
   TREE_HIT_GLORY_REWARD: TREE_HIT_GLORY_REWARD,
   TREE_HIT_WOOD_REWARD: TREE_HIT_WOOD_REWARD,
   TREE_RESPAWN_DELAY_MS: TREE_RESPAWN_DELAY_MS,
+  isForestCell: isForestCell,
+  resolveTreeRecord: resolveTreeRecord,
   processTreeHit: processTreeHit,
   processDueTreeRespawns: processDueTreeRespawns,
 };

@@ -418,6 +418,16 @@ import {
     getCardinalNeighborTiles, getClosestWrappedWorldCoords,
     getZoneId,
 } from './src/world.js';
+import forestMaskData from './src/data/forest-mask.json';
+
+export const isForestCell = (x: number, y: number): boolean => {
+    const maskX = ((x % 50) + 50) % 50;
+    const maskY = ((y % 50) + 50) % 50;
+    const rows = (forestMaskData as any).rows;
+    if (!rows || !rows[maskY]) return false;
+    return rows[maskY][maskX] === '1';
+};
+
 const ZONE_SYNC_MAX_RETRIES = 2;
 const ZONE_SYNC_RETRY_DELAY_MS = 1500;
 const RENDER_RADIUS = 50; // Full visible viewport coverage for all zoom levels (0.5 to 2.0) and wide monitors
@@ -426,8 +436,6 @@ const MONSTER_AI_ACTIVE_RADIUS = 75; // Only claim/step wild monster AI within a
 const GOLD_PER_CHOP = 5000000;
 const TREE_HP = 3;
 const TREE_SERVER_HIT_ENERGY_COST = 2;
-const TREES_PER_ZONE = 243; // 243 trees per sector (-10% from 270)
-const NUM_TREES = TREES_PER_ZONE * ZONES_X * ZONES_Y; // 6075 total trees (243 ? 25 sectors)
 const MAX_OIL_DEPOSITS = 10;
 const MAX_CHESTS = 15;
 const MAX_QUARRIES = 8;
@@ -4278,6 +4286,35 @@ const App: React.FC = () => {
     }, []);
 
     // High-performance spatial indexing caches for O(1) tile lookups
+    const recentlyDepletedTreesRef = useRef<Map<string, number>>(new Map());
+    const virtualTreePoolRef = useRef<MapResource[]>([]);
+
+    const spatialBuildingsMapRef = useRef<Map<string, PlacedBuilding>>(new Map());
+    const lastBuildingsRefForSpatial = useRef<PlacedBuilding[] | null>(null);
+
+    const getSpatialBuildingAt = useCallback((x: number, y: number): PlacedBuilding | undefined => {
+        if (lastBuildingsRefForSpatial.current !== placedBuildingsRef.current) {
+            lastBuildingsRefForSpatial.current = placedBuildingsRef.current;
+            const map = spatialBuildingsMapRef.current;
+            map.clear();
+            const list = placedBuildingsRef.current;
+            for (let i = 0; i < list.length; i++) {
+                const b = list[i];
+                if (b.hp === undefined || b.hp > 0) {
+                    const coordKey = `${b.x},${b.y}`;
+                    const existing = map.get(coordKey);
+                    if (!existing || !isGroundTileId(b.buildingId)) {
+                        map.set(coordKey, b);
+                    }
+                    if (b.buildingId === TREBUCHET_ID && b.trebuchetMoveUntil && Date.now() < b.trebuchetMoveUntil && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveTargetY !== undefined) {
+                        map.set(`${b.trebuchetMoveTargetX},${b.trebuchetMoveTargetY}`, b);
+                    }
+                }
+            }
+        }
+        return spatialBuildingsMapRef.current.get(`${x},${y}`);
+    }, []);
+
     const spatialResourcesMapRef = useRef<Map<string, MapResource>>(new Map());
     const lastResourcesRefForSpatial = useRef<MapResource[] | null>(null);
 
@@ -4309,34 +4346,39 @@ const App: React.FC = () => {
                 map.set(`${r.x},${r.y}`, r);
             }
         }
-        return spatialResourcesMapRef.current.get(`${x},${y}`);
-    }, []);
-
-    const spatialBuildingsMapRef = useRef<Map<string, PlacedBuilding>>(new Map());
-    const lastBuildingsRefForSpatial = useRef<PlacedBuilding[] | null>(null);
-
-    const getSpatialBuildingAt = useCallback((x: number, y: number): PlacedBuilding | undefined => {
-        if (lastBuildingsRefForSpatial.current !== placedBuildingsRef.current) {
-            lastBuildingsRefForSpatial.current = placedBuildingsRef.current;
-            const map = spatialBuildingsMapRef.current;
-            map.clear();
-            const list = placedBuildingsRef.current;
-            for (let i = 0; i < list.length; i++) {
-                const b = list[i];
-                if (b.hp === undefined || b.hp > 0) {
-                    const coordKey = `${b.x},${b.y}`;
-                    const existing = map.get(coordKey);
-                    if (!existing || !isGroundTileId(b.buildingId)) {
-                        map.set(coordKey, b);
-                    }
-                    if (b.buildingId === TREBUCHET_ID && b.trebuchetMoveUntil && Date.now() < b.trebuchetMoveUntil && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveTargetY !== undefined) {
-                        map.set(`${b.trebuchetMoveTargetX},${b.trebuchetMoveTargetY}`, b);
-                    }
-                }
+        const direct = spatialResourcesMapRef.current.get(`${x},${y}`);
+        if (direct) {
+            if (direct.type === 'tree' && ((direct as any).cleared || (typeof direct.hp === 'number' && direct.hp <= 0))) {
+                return undefined;
             }
+            return direct;
         }
-        return spatialBuildingsMapRef.current.get(`${x},${y}`);
-    }, []);
+
+        // Procedural mask check
+        if (isForestCell(x, y)) {
+            const key = `${x}_${y}`;
+            const depletedAt = recentlyDepletedTreesRef.current.get(key);
+            if (depletedAt && Date.now() - depletedAt < 3 * 60 * 1000) {
+                return undefined;
+            }
+            // Check building collision (mountains 50005, rivers 50004, player buildings override forest)
+            const b = getSpatialBuildingAt(x, y);
+            if (b && (b.hp === undefined || b.hp > 0)) {
+                return undefined;
+            }
+            return {
+                id: `tree_${x}_${y}`,
+                x,
+                y,
+                type: 'tree',
+                hp: 3,
+                maxHp: 3,
+                zoneId: getZoneId(x, y),
+            } as MapResource;
+        }
+
+        return undefined;
+    }, [getSpatialBuildingAt]);
 
     // Macro-culling sector spatial buckets for draw()
     const resourceSectorsMapRef = useRef<Map<string, MapResource[]>>(new Map());
@@ -5004,7 +5046,6 @@ const App: React.FC = () => {
     useEffect(() => { playerEnergyRef.current = playerEnergy; }, [playerEnergy]);
     const deletingDroppedItemsRef = useRef<Map<string, number>>(new Map());
     const treeHitQueueRef = useRef<Map<string, Promise<void>>>(new Map());
-    const recentlyDepletedTreesRef = useRef<Map<string, number>>(new Map());
     const emptyTileCooldownUntilRef = useRef<number>(0);
     const isDroppedItemDeleting = useCallback((id: string): boolean => {
         const deleteTime = deletingDroppedItemsRef.current.get(id);
@@ -5292,12 +5333,7 @@ const App: React.FC = () => {
             }
         }
 
-        for (let i = 0; i < NUM_TREES; i++) {
-            const pos = tryPlace(50);
-            if (pos) {
-                newResources.push({ x: pos.x, y: pos.y, zoneId: getZoneId(pos.x, pos.y), hp: TREE_HP, type: 'tree' });
-            }
-        }
+        // Trees are procedural from the 50x50 mask; do not seed static tree records!
 
         // Generate oil deposits
         for (let i = 0; i < MAX_OIL_DEPOSITS; i++) {
@@ -7009,8 +7045,8 @@ const App: React.FC = () => {
                     if (!isGroundTileId(b.buildingId)) break;
                 }
             }
-            let resourceIndex = mapResources.findIndex(r => r.x === gridX && r.y === gridY);
-            if (!buildingAtTile && resourceIndex === -1) {
+            let clickedResource: MapResource | undefined = getSpatialResourceAt(gridX, gridY);
+            if (!buildingAtTile && !clickedResource) {
                 const adjClickX = clientX - cameraOffsetRef.current.x;
                 const adjClickY = clientY - cameraOffsetRef.current.y;
                 const candidateOffsets = [
@@ -7021,14 +7057,14 @@ const App: React.FC = () => {
                 for (const [dx, dy] of candidateOffsets) {
                     const cx = isWorldWrapped ? wrapCoord(gridX + dx, WORLD_WIDTH_TILES) : gridX + dx;
                     const cy = isWorldWrapped ? wrapCoord(gridY + dy, WORLD_HEIGHT_TILES) : gridY + dy;
-                    const idx = mapResources.findIndex(r => r.type === 'tree' && r.x === cx && r.y === cy);
-                    if (idx !== -1) {
+                    const candidateRes = getSpatialResourceAt(cx, cy);
+                    if (candidateRes && candidateRes.type === 'tree') {
                         const { screenX: treeSX, screenY: treeSY } = worldToScreen(cx, cy, zoom);
                         const halfW = TILE_WIDTH * zoom * 0.36;
                         const topReach = TILE_HEIGHT * zoom * 0.9;
                         const bottomReach = TILE_HEIGHT * zoom * 0.25;
                         if (Math.abs(adjClickX - treeSX) <= halfW && adjClickY >= treeSY - topReach && adjClickY <= treeSY + bottomReach) {
-                            resourceIndex = idx;
+                            clickedResource = candidateRes;
                             break;
                         }
                     }
@@ -7101,8 +7137,8 @@ const App: React.FC = () => {
             }
 
             // 4. Resource interaction (trees/chests/oil/quarry)
-            if (resourceIndex !== -1) {
-                const resource = mapResources[resourceIndex];
+            if (clickedResource) {
+                const resource = clickedResource;
 
                 if (resource.type === 'oil') {
                     setSelectedOilDeposit(resource);
@@ -12954,44 +12990,43 @@ const App: React.FC = () => {
         const isoRY = adjY / (scaledTileHeight / 2);
         const renderCenterX = Math.floor((isoRY + isoRX) / 2);
         const renderCenterY = Math.floor((isoRY - isoRX) / 2);
-        
+        const halfW = scaledTileWidth / 2;
+        const halfH = scaledTileHeight / 2;
+
+        // Viewport bounds in world screen space
+        const minSX = -cameraOffsetRef.current.x - scaledTileWidth;
+        const maxSX = canvas.width - cameraOffsetRef.current.x + scaledTileWidth;
+        const minSY = -cameraOffsetRef.current.y - scaledTileHeight;
+        const maxSY = canvas.height - cameraOffsetRef.current.y + scaledTileHeight;
+
+        // Inverse isometric projection of 4 screen corners to (i, j) tile bounds
+        const c1_i = (minSY / halfH + minSX / halfW) / 2;
+        const c1_j = (minSY / halfH - minSX / halfW) / 2;
+        const c2_i = (minSY / halfH + maxSX / halfW) / 2;
+        const c2_j = (minSY / halfH - maxSX / halfW) / 2;
+        const c3_i = (maxSY / halfH + minSX / halfW) / 2;
+        const c3_j = (maxSY / halfH - minSX / halfW) / 2;
+        const c4_i = (maxSY / halfH + maxSX / halfW) / 2;
+        const c4_j = (maxSY / halfH - maxSX / halfW) / 2;
+
+        let minTileX = Math.floor(Math.min(c1_i, c2_i, c3_i, c4_i));
+        let maxTileX = Math.ceil(Math.max(c1_i, c2_i, c3_i, c4_i));
+        let minTileY = Math.floor(Math.min(c1_j, c2_j, c3_j, c4_j));
+        let maxTileY = Math.ceil(Math.max(c1_j, c2_j, c3_j, c4_j));
+
+        if (!isWorldWrapped) {
+            minTileX = Math.max(0, minTileX);
+            maxTileX = Math.min(WORLD_WIDTH_TILES - 1, maxTileX);
+            minTileY = Math.max(0, minTileY);
+            maxTileY = Math.min(WORLD_HEIGHT_TILES - 1, maxTileY);
+        }
+
+        const camMinX = -cameraOffsetRef.current.x - scaledTileWidth;
+        const camMaxX = canvas.width - cameraOffsetRef.current.x + scaledTileWidth;
+        const camMinY = -cameraOffsetRef.current.y - scaledTileHeight;
+        const camMaxY = canvas.height - cameraOffsetRef.current.y + scaledTileHeight;
+
         if (groundImg) {
-            const halfW = scaledTileWidth / 2;
-            const halfH = scaledTileHeight / 2;
-            
-            // Viewport bounds in world screen space
-            const minSX = -cameraOffsetRef.current.x - scaledTileWidth;
-            const maxSX = canvas.width - cameraOffsetRef.current.x + scaledTileWidth;
-            const minSY = -cameraOffsetRef.current.y - scaledTileHeight;
-            const maxSY = canvas.height - cameraOffsetRef.current.y + scaledTileHeight;
-            
-            // Inverse isometric projection of 4 screen corners to (i, j) tile bounds
-            const c1_i = (minSY / halfH + minSX / halfW) / 2;
-            const c1_j = (minSY / halfH - minSX / halfW) / 2;
-            const c2_i = (minSY / halfH + maxSX / halfW) / 2;
-            const c2_j = (minSY / halfH - maxSX / halfW) / 2;
-            const c3_i = (maxSY / halfH + minSX / halfW) / 2;
-            const c3_j = (maxSY / halfH - minSX / halfW) / 2;
-            const c4_i = (maxSY / halfH + maxSX / halfW) / 2;
-            const c4_j = (maxSY / halfH - maxSX / halfW) / 2;
-            
-            let minTileX = Math.floor(Math.min(c1_i, c2_i, c3_i, c4_i));
-            let maxTileX = Math.ceil(Math.max(c1_i, c2_i, c3_i, c4_i));
-            let minTileY = Math.floor(Math.min(c1_j, c2_j, c3_j, c4_j));
-            let maxTileY = Math.ceil(Math.max(c1_j, c2_j, c3_j, c4_j));
-
-            if (!isWorldWrapped) {
-                minTileX = Math.max(0, minTileX);
-                maxTileX = Math.min(WORLD_WIDTH_TILES - 1, maxTileX);
-                minTileY = Math.max(0, minTileY);
-                maxTileY = Math.min(WORLD_HEIGHT_TILES - 1, maxTileY);
-            }
-            
-            const camMinX = -cameraOffsetRef.current.x - scaledTileWidth;
-            const camMaxX = canvas.width - cameraOffsetRef.current.x + scaledTileWidth;
-            const camMinY = -cameraOffsetRef.current.y - scaledTileHeight;
-            const camMaxY = canvas.height - cameraOffsetRef.current.y + scaledTileHeight;
-
             const isFullyInsideWorld =
                 isWorldWrapped ||
                 (minTileX > 0 && maxTileX < WORLD_WIDTH_TILES - 1 && minTileY > 0 && maxTileY < WORLD_HEIGHT_TILES - 1);
@@ -13175,6 +13210,74 @@ const App: React.FC = () => {
                         visibleCount++;
                     }
                 }
+            }
+        }
+
+        // 1b. Procedural Trees from 50x50 mask inside visible tile bounds
+        const virtualTreePool = virtualTreePoolRef.current;
+        let virtualTreePoolIdx = 0;
+        const nowMs = Date.now();
+        const depletedTrees = recentlyDepletedTreesRef.current;
+
+        for (let vx = minTileX; vx <= maxTileX; vx++) {
+            for (let vy = minTileY; vy <= maxTileY; vy++) {
+                const wx = isWorldWrapped ? wrapCoord(vx, WORLD_WIDTH_TILES) : vx;
+                const wy = isWorldWrapped ? wrapCoord(vy, WORLD_HEIGHT_TILES) : vy;
+                if (!isWorldWrapped && (wx < 0 || wx >= WORLD_WIDTH_TILES || wy < 0 || wy >= WORLD_HEIGHT_TILES)) continue;
+
+                if (!isForestCell(wx, wy)) continue;
+
+                // Priority: Buildings (mountains, rivers, player structures) override forest
+                const buildingAtCell = getSpatialBuildingAt(wx, wy);
+                if (buildingAtCell && (buildingAtCell.hp === undefined || buildingAtCell.hp > 0)) continue;
+
+                // Priority: Non-tree resources or damaged trees in DB override virtual tree
+                const explicitRes = getSpatialResourceAt(wx, wy);
+                if (explicitRes && explicitRes.id && !explicitRes.id.startsWith('tree_virtual_')) continue;
+
+                // Check recently depleted / felled trees
+                const depletedAt = depletedTrees.get(`${wx}_${wy}`);
+                if (depletedAt && nowMs - depletedAt < 3 * 60 * 1000) continue;
+
+                let tree = virtualTreePool[virtualTreePoolIdx];
+                if (!tree) {
+                    tree = virtualTreePool[virtualTreePoolIdx] = {
+                        id: `tree_virtual_${wx}_${wy}`,
+                        x: wx,
+                        y: wy,
+                        type: 'tree',
+                        hp: 3,
+                        maxHp: 3,
+                        zoneId: getZoneId(wx, wy),
+                        entityType: 'resource',
+                    } as any;
+                } else {
+                    tree.id = `tree_virtual_${wx}_${wy}`;
+                    tree.x = wx;
+                    tree.y = wy;
+                    tree.type = 'tree';
+                    tree.hp = 3;
+                    tree.maxHp = 3;
+                    tree.zoneId = getZoneId(wx, wy);
+                    (tree as any).entityType = 'resource';
+                }
+                virtualTreePoolIdx++;
+
+                let slot = visibleDrawableEntities[visibleCount];
+                if (!slot) {
+                    slot = visibleDrawableEntities[visibleCount] = {
+                        entity: tree,
+                        entityVX: vx,
+                        entityVY: vy,
+                        depth: vx + vy,
+                    };
+                } else {
+                    slot.entity = tree;
+                    slot.entityVX = vx;
+                    slot.entityVY = vy;
+                    slot.depth = vx + vy;
+                }
+                visibleCount++;
             }
         }
 

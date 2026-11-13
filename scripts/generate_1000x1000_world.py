@@ -23,7 +23,8 @@ ZONE_SIZE = 200
 ZONES_X = 5
 ZONES_Y = 5
 
-TREES_PER_SECTOR = 1000     # 25 * 1000 = 25,000 деревьев по маске Гномограда
+# TREES: Procedural deterministic 50x50 mask (520,800 total world, 20,832 per sector).
+# NEVER create physical tree records in PocketBase!
 RIVERS_PER_SECTOR = 125     # 25 * 125 = 3,125 речных клеток
 MOUNTAINS_PER_SECTOR = 125  # 25 * 125 = 3,125 горных клеток
 MONSTERS_PER_SECTOR = 125   # 25 * 125 = 3,125 монстров
@@ -339,37 +340,17 @@ def main():
                         break
 
             # ----------------------------------------------------
-            # Д. ПЛОТНЫЙ ЛЕС (1000 деревьев строго по маске Гномограда)
+            # Д. ПРОЦЕДУРНЫЙ ЛЕС (детерминированная маска Гномограда 50x50)
             # ----------------------------------------------------
-            # Сначала собираем все свободные координаты в секторе, где маска леса = 1
-            forest_candidates = []
-            for y in range(min_y, max_y + 1):
-                for x in range(min_x, max_x + 1):
-                    if (x, y) not in occupied and is_gnomograd_forest_tile(x, y):
-                        forest_candidates.append((x, y))
-
-            random.shuffle(forest_candidates)
-            selected_forest = forest_candidates[:TREES_PER_SECTOR]
-
-            for tx, ty in selected_forest:
-                occupied.add((tx, ty))
-                resources_to_create.append({
-                    "id": make_pb_id(),
-                    "gameId": f"tree_{tx}_{ty}",
-                    "type": "tree",
-                    "x": tx,
-                    "y": ty,
-                    "zoneId": zone_id,
-                    "hp": 3,
-                    "data": {"hp": 3}
-                })
-
-            print(f"  Сектор {zone_id} подготовлен (реки: {rivers_placed}, горы: {mountains_placed}, монстры: 125, лес: {len(selected_forest)})")
+            # Деревья генерируются процедурно по бинарной маске 50x50 клеток (1302 дерева / 50x50,
+            # 20832 дерева / сектор 200x200, 520800 потенциальных деревьев на всю карту 1000x1000).
+            # Физические записи деревьев в PocketBase НЕ создаются!
+            print(f"  Сектор {zone_id} подготовлен (реки: {rivers_placed}, горы: {mountains_placed}, монстры: 125, лес: процедурный по маске 50x50)")
 
     # 3. Пакетная вставка в PocketBase
     print(f"\n--- ШАГ 3: СОХРАНЕНИЕ ОБЪЕКТОВ В POCKETBASE ---")
     print(f"📦 Всего зданий к созданию: {len(buildings_to_create)} (реки, горы, монстры)")
-    print(f"📦 Всего ресурсов к созданию: {len(resources_to_create)} (деревья по маске, нефть, каменоломни, сундуки)")
+    print(f"📦 Всего ресурсов к созданию: {len(resources_to_create)} (нефть, каменоломни, сундуки; деревья — виртуальные)")
 
     batch_insert(token, "buildings", buildings_to_create)
     batch_insert(token, "map_resources", resources_to_create)
