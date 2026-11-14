@@ -3806,6 +3806,13 @@ const App: React.FC = () => {
     const activeZoneBuildingsRequestRef = useRef(0);
     const activeZoneResourcesRequestRef = useRef(0);
     const activeDroppedItemsRequestRef = useRef(0);
+    // Perf: reuse the previously built PlacedBuilding object when the underlying
+    // zone snapshot doc object is the SAME reference. The zone pool only creates
+    // a new doc object for records that actually changed, so unchanged buildings
+    // (hundreds per zone) skip the spread+normalize rebuild on every realtime
+    // emit. Full refetches (initial load, reconcile) produce fresh doc objects
+    // for every record and therefore always rebuild — correctness preserved.
+    const zoneDocPlacedReuseRef = useRef<Map<string, { doc: unknown; placed: PlacedBuilding }>>(new Map());
     const lastForceReloadAt = useRef<number>(0);
     const initialLoadDone = useRef(false);
     // High-watermark: the highest level ever loaded from DB or achieved locally.
@@ -11495,16 +11502,25 @@ const App: React.FC = () => {
             snapshot.forEach((doc) => {
                 const data = doc.data() as any;
                 const strId = String(doc.id);
-                
+
                 // Skip buildings that are being deleted (prevents monsters/buildings from reappearing after sell)
                 if (isBuildingTombstoned(strId)) return;
-                zoneBuildingsMap.set(strId, {
-                    ...data,
-                    id: strId,
-                    isLocal: false,
-                    status: 'normal',
-                    syncState: 'synced'
-                } as PlacedBuilding);
+                // Perf reuse: identical doc object reference means the record did not
+                // change since the last snapshot — keep the previously built object
+                // instead of rebuilding (spread+normalize over hundreds of buildings
+                // per realtime emit was measurable main-thread cost).
+                const reuseEntry = zoneDocPlacedReuseRef.current.get(strId);
+                if (reuseEntry && reuseEntry.doc === doc) {
+                    zoneBuildingsMap.set(strId, reuseEntry.placed);
+                } else {
+                    zoneBuildingsMap.set(strId, {
+                        ...data,
+                        id: strId,
+                        isLocal: false,
+                        status: 'normal',
+                        syncState: 'synced'
+                    } as PlacedBuilding);
+                }
                 
                 // Collect unique owner IDs
                 if (data.ownerId && data.ownerId !== '-1' && data.ownerId !== 'monster' && data.ownerId !== GUEST_ID && data.ownerId !== '0') {
@@ -11528,7 +11544,16 @@ const App: React.FC = () => {
             });
 
             serverZoneBuildingsRef.current = zoneBuildingsMap;
-            
+
+            // Refresh the reuse cache to exactly the docs present in this snapshot
+            // (drops entries for removed records; rebuild Map only from current ids).
+            const nextReuse = new Map<string, { doc: unknown; placed: PlacedBuilding }>();
+            snapshot.forEach((doc) => {
+                const placed = zoneBuildingsMap.get(String(doc.id));
+                if (placed) nextReuse.set(String(doc.id), { doc, placed });
+            });
+            zoneDocPlacedReuseRef.current = nextReuse;
+
             // NOTE: Zone owner hydration via users/getDoc is disabled to avoid repeated 404 spam
             // for orphaned ownerId references in legacy building records.
 

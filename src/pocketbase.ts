@@ -2274,7 +2274,7 @@ export function query(
             (v) => v !== undefined && v !== null && String(v).trim() !== ''
           );
           if (cleanValues.length > 0) {
-            const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId') || (col === 'private_messages' && (c.field === 'participants' || c.field === 'chatId' || c.field === 'messageType'));
+            const isDataField = (col === 'buildings' && c.field === 'initiatorId') || (col === 'dropped_items' && c.field === 'zoneId') || (col === 'private_messages' && (c.field === 'participants' || c.field === 'chatId' || c.field === 'messageType'));
             const targetField = isDataField ? `data.${c.field}` : c.field;
             const parts = cleanValues.map((v) => `${targetField} = ${pbFilterValue(v)}`);
             filter = filter ? `(${filter}) && (${parts.join(' || ')})` : `(${parts.join(' || ')})`;
@@ -2283,7 +2283,7 @@ export function query(
       } else if (c.op === 'array-contains') {
         // PocketBase JSON array contains: field ?~ value
         const isDataField = (col === 'private_messages' && c.field === 'participants') ||
-          (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) ||
+          (col === 'buildings' && c.field === 'initiatorId') ||
           (col === 'dropped_items' && c.field === 'zoneId') ||
           (!KNOWN_FIELDS_BY_COLLECTION[col]?.includes(c.field));
         const targetField = isDataField ? `data.${c.field}` : c.field;
@@ -2291,7 +2291,7 @@ export function query(
         const clause = `${targetField} ?~ ${valWithQuotes}`;
         filter = filter ? `(${filter}) && (${clause})` : clause;
       } else {
-        const isDataField = (col === 'buildings' && (c.field === 'zoneId' || c.field === 'initiatorId')) || (col === 'dropped_items' && c.field === 'zoneId') || (col === 'private_messages' && (c.field === 'participants' || c.field === 'chatId' || c.field === 'messageType'));
+        const isDataField = (col === 'buildings' && c.field === 'initiatorId') || (col === 'dropped_items' && c.field === 'zoneId') || (col === 'private_messages' && (c.field === 'participants' || c.field === 'chatId' || c.field === 'messageType'));
         const fieldName = isDataField ? `data.${c.field}` : c.field;
         const pbOp =
           c.op === '=='
@@ -3214,8 +3214,13 @@ export function onSnapshot(
 
   // Real-time Update Handler with light throttling.
   // We refetch immediately on the first event, then coalesce bursts into a short cooldown.
+  // Presence gets a long cooldown: every MOVING player's 800ms PATCH triggered a full
+  // presence-list refetch (75KB+ for ~90 players, parse + rebuild) up to 4x/sec, which
+  // scales linearly with online players. Client-side nameplate interpolation makes the
+  // 2s delay invisible, and chat/players list refresh is not latency-critical.
   let throttleTimeout: NodeJS.Timeout | null = null;
-  const THROTTLE_MS = 250;
+  const THROTTLE_MS_BY_COLLECTION: Record<string, number> = { presence: 2000 };
+  const THROTTLE_MS = THROTTLE_MS_BY_COLLECTION[desc.col] ?? 250;
   let pendingUpdate = false;
 
   const fetchLatestSnapshot = async (meta: Record<string, unknown> = {}) => {

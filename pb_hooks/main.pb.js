@@ -1400,6 +1400,48 @@ onRecordCreate(function (e) {
   e.next();
 }, "buildings");
 
+// ─── Hot-field column sync (2026-11 perf pass) ───────────────────────────────
+// zoneId/lastMoveTime/lastAttackTime/hostId are now REAL columns on buildings.
+// The client still writes them inside the `data` JSON blob (read-modify-write
+// merge keeps data complete), so sync the columns from data on every write.
+// This keeps `zoneId` filters correct for clients on any bundle version and
+// prepares future fast-path writes that touch columns only.
+var syncBuildingHotColumns = function (e) {
+  var data = {};
+  var raw = e.record.get("data");
+  if (raw) {
+    if (typeof raw === "string") {
+      try { var p = JSON.parse(raw); if (p && typeof p === "object") data = p; } catch (_err) {}
+    } else if (typeof raw === "object" && !Array.isArray(raw)) {
+      data = raw;
+    }
+  }
+  // Fallback-only: never overwrite a column that the request payload already
+  // set at top level (PB applies those before hooks run). Fill gaps from data.
+  if (!String(e.record.get("zoneId") || "")) {
+    e.record.set("zoneId", String(data.zoneId || ""));
+  }
+  if (!Number(e.record.get("lastMoveTime") || 0)) {
+    e.record.set("lastMoveTime", Number(data.lastMoveTime || 0) || 0);
+  }
+  if (!Number(e.record.get("lastAttackTime") || 0)) {
+    e.record.set("lastAttackTime", Number(data.lastAttackTime || 0) || 0);
+  }
+  if (!String(e.record.get("hostId") || "")) {
+    e.record.set("hostId", String(data.hostId || ""));
+  }
+};
+
+onRecordUpdate(function (e) {
+  syncBuildingHotColumns(e);
+  e.next();
+}, "buildings");
+
+onRecordCreate(function (e) {
+  syncBuildingHotColumns(e);
+  e.next();
+}, "buildings");
+
 onRecordUpdate(function (e) {
   var parseRecordData = function (record) {
     if (!record) return {};
