@@ -2,6 +2,8 @@
 
 Live server: `basingsecryptocity-server` — `130.61.108.45` (Oracle Cloud, Frankfurt,
 VM.Standard.A1.Flex ARM64, Ubuntu 24.04, Always Free).
+Player URLs: **https://basingsecryptocity.duckdns.org** and
+**https://gnomograd.duckdns.org** (both HTTPS, Let's Encrypt via Caddy, same app).
 Local SSH: `ssh -i ~/.ssh/oracle_worldless.key ubuntu@130.61.108.45`
 
 ## Layout on the server
@@ -31,8 +33,8 @@ Services (systemd):
 Caddy routes (`/etc/caddy/Caddyfile`, pre-deploy backup: `/etc/caddy/Caddyfile.bak_pre_basingse_*`):
 
 - `/api/dev-token` → **404** (unauthenticated auth-token backdoor in `pb_hooks/main.pb.js`;
-  blocked at the proxy layer because `pb_hooks/**` is protected scope. Permanent fix:
-  gate the route on a superuser/admin token inside the hook).
+  blocked at the proxy layer. 2026-11 security pass: the route was **removed from
+  `pb_hooks/main.pb.js` entirely** — the Caddy block now is defense-in-depth only).
 - `/api/*` → `127.0.0.1:8090`, `flush_interval -1` (realtime SSE-safe, no buffering).
 - `/_/*` → PocketBase dashboard + Caddy `basic_auth` (user `basingse-admin`;
   password in `/home/uro/basingse-oracle-credentials.txt` on the dev machine).
@@ -41,8 +43,25 @@ Caddy routes (`/etc/caddy/Caddyfile`, pre-deploy backup: `/etc/caddy/Caddyfile.b
 
 ## PocketBase admin
 
-- Dashboard: `http://130.61.108.45/_/` (basic-auth + PB superuser login).
-- Superuser (migrated from local): `admin@basingse.game` — same password as local.
+- Dashboard: `https://basingsecryptocity.duckdns.org/_/` (basic-auth + PB superuser login).
+- Superuser credentials are **not** documented here: they live only in the owner's
+  credentials file / `PB_ADMIN_EMAIL` + `PB_ADMIN_PASSWORD` env. Rotate them if they
+  ever appeared in an older revision of this repository.
+
+## Performance indexes (2026-11 perf pass)
+
+The local `pb_data/data.db` already carries 12 game-table indexes
+(`scripts/sql/pb_performance_indexes.sql`; verified 30–140× faster on hot queries:
+buildings tile-check 0.75 ms → 0.008 ms). Oracle gets them automatically with the
+next local→Oracle `pb_data` sync, or apply manually:
+
+```bash
+sqlite3 /opt/basingsecryptocity/pocketbase/pb_data/data.db \
+  < scripts/sql/pb_performance_indexes.sql
+```
+
+(WAL mode: applying while PocketBase runs is safe; no restart needed. An
+idempotent JSVM migration copy lives at `scripts/pb_performance_indexes_migration.js`.)
 
 ## Deploy (CI/CD)
 
@@ -101,28 +120,43 @@ scp -i ~/.ssh/oracle_worldless.key \
   ubuntu@130.61.108.45:/opt/basingsecryptocity/backups/data_*.db ~/basingse_remote_backups/
 ```
 
-## HTTPS / DuckDNS (pending owner action)
+## HTTPS / DuckDNS (live since 2026-11-14)
 
-1. Register `basingsecryptocity.duckdns.org` at https://www.duckdns.org (name was
-   free as of 2026-11-14; login via GitHub/Google).
-2. Either give the DuckDNS token to the agent, or run:
-   ```bash
-   ssh -i ~/.ssh/oracle_worldless.key ubuntu@130.61.108.45
-   echo "<TOKEN>" | sudo tee /etc/basingse/duckdns.token && sudo chmod 600 /etc/basingse/duckdns.token
-   sudo systemctl enable --now basingse-duckdns.timer
-   sudo sed -i 's/^:80 {/basingsecryptocity.duckdns.org {/' /etc/caddy/Caddyfile
-   sudo systemctl reload caddy
-   ```
-3. Caddy obtains/renews the Let's Encrypt certificate automatically once DNS
-   resolves to 130.61.108.45.
+Done on 2026-11-14. Player-facing addresses:
+**https://basingsecryptocity.duckdns.org** and **https://gnomograd.duckdns.org** —
+one Caddy site block serves both; each gets its own Let's Encrypt certificate.
 
-Until HTTPS is live, `http://130.61.108.45` is for technical diagnostics only
-(no real player auth over plain HTTP).
+1. Both domains registered at https://www.duckdns.org
+   (login `agent007rodygin-wq@github`), A records pinned to `130.61.108.45`.
+   Note: the typo domain `basinsecretcity.duckdns.org` also exists in the same
+   account and points to the same IP; it is unused.
+2. DuckDNS token lives in `/etc/basingse/duckdns.token` (chmod 600, root) on the
+   server. Never commit it.
+3. `basingse-duckdns.timer` enabled: re-points BOTH domains at the server IP every
+   15 minutes (`/opt/basingsecryptocity/shared/duckdns_update.sh`,
+   `DOMAIN=basingsecryptocity,gnomograd`).
+4. `/etc/caddy/Caddyfile` site address is
+   `basingsecryptocity.duckdns.org, gnomograd.duckdns.org` (backups:
+   `/etc/caddy/Caddyfile.bak_pre_https_*`, `Caddyfile.bak_pre_gnomograd_*`).
+   Caddy obtained both Let's Encrypt certificates automatically and renews them
+   on its own; HTTP is 308-redirected to HTTPS.
+
+Verification evidence (2026-11-14): both domains return HTTP 200 over HTTPS with
+`TLS verify 0` from an external client, `/api/health` 200 on both, certs issued
+by Let's Encrypt, `curl -I http://...` → 308 redirect.
+
+`http://130.61.108.45` no longer serves the game directly: a dedicated
+`http://130.61.108.45` site block (added 2026-11-14 after plain-IP access broke
+when the main block switched to named hosts) 301-redirects every legacy IP link,
+including deep paths like `/#12,41` and asset URLs, to
+`https://basingsecryptocity.duckdns.org` (backup:
+`/etc/caddy/Caddyfile.bak_pre_ip_redir_*`). Use the domain names for all player
+and admin access.
 
 ## Monitoring / limits
 
 - Both services auto-restart (systemd `Restart=always`).
 - journald logging; check with `journalctl -u basingsecryptocity-pocketbase.service -n 200`.
-- Health probe: `curl http://130.61.108.45/api/health`.
+- Health probe: `curl https://basingsecryptocity.duckdns.org/api/health`.
 - VM: 2 OCPU / 12 GB RAM / 45 GB disk, ~43 GB free after deployment. No extra
   daemons installed (no containers, no panels).

@@ -59,6 +59,7 @@ export function buildMonsterRuntimeSnapshot({
     const candidateMonsters = [];
     for (let i = 0; i < buildings.length; i++) {
         const b = buildings[i];
+        if (b.buildingId === 50005 || b.buildingId === 50004) continue;
         const key = `${b.x},${b.y}`;
         let bucket = buildingsByTile.get(key);
         if (!bucket) {

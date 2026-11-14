@@ -506,5 +506,53 @@ export const items: Item[] = [
     category: 'Расходники',
     description: 'Любит и лечит зверушек, всех. Нажмите «Поставить», чтобы выпустить Айболита на карту.',
     imageUrl: '/buildings/Монстры/Айболит/70009.webp'
+  },
+  {
+    id: 10060,
+    name: 'Серебряный карась',
+    englishName: 'Silver Crucian',
+    category: 'Расходники',
+    description: 'Свежевыловленный речной карась. Можно быстро продать или съесть для восстановления сил (+10 энергии).',
+    imageUrl: '/buildings/рыба/карась.svg'
+  },
+  {
+    id: 10061,
+    name: 'Речной окунь',
+    englishName: 'River Perch',
+    category: 'Расходники',
+    description: 'Полосатый речной хищник. Ценится среди торговцев Ба Синг Се (+15 энергии).',
+    imageUrl: '/buildings/рыба/окунь.svg'
+  },
+  {
+    id: 10062,
+    name: 'Зеркальный карп',
+    englishName: 'Mirror Carp',
+    category: 'Расходники',
+    description: 'Увесистый карп с блестящей чешуей. Дает отличный запас энергии (+25 энергии).',
+    imageUrl: '/buildings/рыба/карп.svg'
+  },
+  {
+    id: 10063,
+    name: 'Речная щука',
+    englishName: 'River Pike',
+    category: 'Расходники',
+    description: 'Грозный хищник рек Царства Земли с острыми зубами (+40 энергии).',
+    imageUrl: '/buildings/рыба/щука.svg'
+  },
+  {
+    id: 10064,
+    name: 'Королевский лосось',
+    englishName: 'Royal Salmon',
+    category: 'Расходники',
+    description: 'Редчайшая благородная рыба, плывущая против бурного течения (+60 энергии).',
+    imageUrl: '/buildings/рыба/лосось.svg'
+  },
+  {
+    id: 10065,
+    name: 'Золотая рыбка удачи',
+    englishName: 'Lucky Goldfish',
+    category: 'Расходники',
+    description: 'Легендарная золотая рыбка из священных вод Ба Синг Се. Скупщики отдадут за нее целое состояние (+100 энергии)!',
+    imageUrl: '/buildings/рыба/золотая_рыбка.svg'
   }
 ];

@@ -23,6 +23,7 @@ import { getCardinalNeighborTiles, getWrappedDirectionToTarget } from '../../wor
  * @param {{ dx: number; dy: number }} [lastDir]
  * @param {Array<{ x: number; y: number }>} [recentPositions]
  * @param {any} [kotofeyContext]
+ * @param {((x: number, y: number) => boolean) | null} [extraBlocked] Optional extra tile blocking (e.g. procedural forest mask); receives normalized coords.
  * @returns {{ chosenMove: (null | { x: number; y: number; dx: number; dy: number }); nextDir: { dx: number; dy: number } }}
  */
 export function chooseMonsterBackgroundMove(
@@ -30,7 +31,8 @@ export function chooseMonsterBackgroundMove(
     occupiedPositions, blockedResourcePositions,
     zoneCounts, isWrappedWorld,
     previousPos, lastDir, recentPositions,
-    kotofeyContext
+    kotofeyContext,
+    extraBlocked = null
 ) {
     const isPlayerOwned = Boolean(monster.ownerId && monster.ownerId !== 'monster' && monster.ownerId !== '-1' && monster.ownerId !== '0');
     if (monster.monsterMode === 'stand' || (isPlayerOwned && monster.monsterMode !== 'patrol')) {
@@ -54,8 +56,8 @@ export function chooseMonsterBackgroundMove(
 
     const validMoves = neighbors.filter(move =>
         usesCustomRoadRules
-            ? !isKotofeyTileBlocked(monster, move.x, move.y, buildings, blockedResourcePositions, kotofeyContext, isWrappedWorld)
-            : !isMonsterTileBlocked(move.x, move.y, occupiedPositions, blockedResourcePositions, undefined, isWrappedWorld)
+            ? !isKotofeyTileBlocked(monster, move.x, move.y, buildings, blockedResourcePositions, kotofeyContext, isWrappedWorld, extraBlocked)
+            : !isMonsterTileBlocked(move.x, move.y, occupiedPositions, blockedResourcePositions, extraBlocked, isWrappedWorld)
     );
     if (validMoves.length === 0) {
         return { chosenMove: null, nextDir };

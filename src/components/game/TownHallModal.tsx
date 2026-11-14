@@ -94,7 +94,9 @@ export const TownHallModal: React.FC<TownHallModalProps> = ({
     const durability = info.stats?.durability || 40;
     const maxHp = building.maxHp ?? durability;
     const currentHp = Math.max(0, Math.min(building.hp ?? maxHp, maxHp));
-    const displayHp = building.isDestroying ? Math.max(0, currentHp - (building.pendingDamage || 0)) : currentHp;
+    // Show real current HP; pending mine damage is a separate line (DEC-012a):
+    // it applies only when the destruction timer explodes.
+    const displayHp = currentHp;
 
     // Construction status
     const isUnderConstruction = Boolean(
@@ -196,6 +198,12 @@ export const TownHallModal: React.FC<TownHallModalProps> = ({
                     <span className={`text-2xl font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] ${displayHp < maxHp ? 'text-red-400' : 'text-green-400'}`}>
                         {displayHp} / {maxHp}
                     </span>
+                    {building.isDestroying && (building.pendingDamage || 0) > 0 && (
+                        <span className="block text-sm font-bold text-orange-300">
+                            💣 Мина: −{building.pendingDamage} при взрыве
+                            {building.destructionEndTime ? ` (через ${Math.max(0, Math.ceil((building.destructionEndTime - Date.now()) / 60000))} мин)` : ''}
+                        </span>
+                    )}
                 </div>
 
                 {/* 3.3. ДАЕТ НАСЕЛЕНИЕ VALUE: next to 'Дает население:' label */}

@@ -1,6 +1,6 @@
 import React, { memo, useState } from 'react';
 import { InventoryIcon } from '../../../components/IconComponents';
-import type { Item } from '../../../types';
+import type { Building, Item } from '../../../types';
 import {
     CRAFTING_RECIPES,
     CraftingRecipe,
@@ -23,12 +23,14 @@ export interface InventoryModalProps {
     onClose: () => void;
     inventory: Record<number, number>;
     itemData: Item[];
+    buildingData?: Building[];
     playerEnergy?: number;
     maxEnergy?: number;
     coinImageUrl?: string;
     onUseItem?: (itemId: number) => void;
     onCraftItem?: (recipeId: string, count: number) => void;
     onQuickSellItem?: (itemId: number, amount: number) => void;
+    onPlaceBuilding?: (buildingId: number) => void;
     playCloseSound?: () => void;
 }
 
@@ -45,12 +47,14 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
     onClose,
     inventory,
     itemData,
+    buildingData,
     playerEnergy,
     maxEnergy,
     coinImageUrl = '/Gui/Front/значек монет/Image-2.webp',
     onUseItem,
     onCraftItem,
     onQuickSellItem,
+    onPlaceBuilding,
     playCloseSound
 }) => {
     const [activeTab, setActiveTab] = useState<'inventory' | 'craft'>('inventory');
@@ -188,6 +192,103 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
                                     const id = parseInt(idStr);
                                     if (amount <= 0) return null;
                                     const item = itemData.find(i => i.id === id);
+                                    const invBuilding = !item && buildingData ? buildingData.find(b => b.id === id) : undefined;
+
+                                    // Gift buildings (received from other players) live in the
+                                    // same inventory map under their buildingId — they are placed
+                                    // for free (consumes 1 from inventory) instead of being used/sold.
+                                    if (invBuilding) {
+                                        return (
+                                            <div
+                                                key={id}
+                                                style={{
+                                                    background: 'rgba(236, 72, 153, 0.10)',
+                                                    borderRadius: '10px',
+                                                    padding: '10px 8px',
+                                                    border: '1.5px solid rgba(249, 168, 212, 0.45)',
+                                                    textAlign: 'center',
+                                                    position: 'relative',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    justifyContent: 'space-between',
+                                                    boxShadow: '0 0 12px rgba(236, 72, 153, 0.18)'
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '5px',
+                                                        right: '5px',
+                                                        background: 'rgba(0,0,0,0.75)',
+                                                        color: '#fbbf24',
+                                                        fontFamily: 'Nunito, sans-serif',
+                                                        fontSize: '11px',
+                                                        fontWeight: 800,
+                                                        padding: '1px 6px',
+                                                        borderRadius: '6px',
+                                                        border: '1px solid rgba(255,255,255,0.15)'
+                                                    }}
+                                                >
+                                                    {amount}
+                                                </span>
+
+                                                <span
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '5px',
+                                                        left: '5px',
+                                                        background: 'rgba(236, 72, 153, 0.85)',
+                                                        color: '#ffffff',
+                                                        fontSize: '9px',
+                                                        fontWeight: 800,
+                                                        padding: '1px 5px',
+                                                        borderRadius: '5px'
+                                                    }}
+                                                >
+                                                    ПОДАРОК
+                                                </span>
+
+                                                <div style={{ width: '100%', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '6px 0 4px' }}>
+                                                    <img
+                                                        src={invBuilding.imageUrl}
+                                                        alt={invBuilding.name}
+                                                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                                    />
+                                                </div>
+
+                                                <p
+                                                    style={{
+                                                        fontFamily: 'Nunito, sans-serif',
+                                                        fontSize: '11px',
+                                                        fontWeight: 700,
+                                                        color: '#f9a8d4',
+                                                        lineHeight: '1.2',
+                                                        marginBottom: '6px'
+                                                    }}
+                                                >
+                                                    {invBuilding.name}
+                                                </p>
+
+                                                <div className="flex flex-col gap-1.5 mt-2">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (onPlaceBuilding) onPlaceBuilding(id);
+                                                        }}
+                                                        className="w-full py-1 px-1 rounded-lg text-xs font-bold text-white transition-all transform active:scale-95 cursor-pointer shadow-md"
+                                                        style={{
+                                                            background: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
+                                                            border: '1px solid rgba(249, 168, 212, 0.5)'
+                                                        }}
+                                                        title={`Поставить «${invBuilding.name}» (выберите свободную клетку)`}
+                                                    >
+                                                        📍 Поставить
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
                                     const isUsable = isUsableInventoryItem(id);
                                     const isWeapon = isWeaponInventoryItem(id);
                                     const badge = getItemBadgeInfo(id);
@@ -749,6 +850,7 @@ export const InventoryModal: React.FC<InventoryModalProps> = memo(({
     return (
         prevProps.inventory === nextProps.inventory &&
         prevProps.itemData === nextProps.itemData &&
+        prevProps.buildingData === nextProps.buildingData &&
         prevProps.playerEnergy === nextProps.playerEnergy &&
         prevProps.maxEnergy === nextProps.maxEnergy
     );

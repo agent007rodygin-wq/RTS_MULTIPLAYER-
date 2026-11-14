@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="perchBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80" />
+      <stop offset="50%" stop-color="#16a34a" />
+      <stop offset="100%" stop-color="#15803d" />
+    </linearGradient>
+    <linearGradient id="perchSpikes" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fb923c" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+  </defs>
+  <!-- Tail -->
+  <path d="M74 50 L92 36 Q87 50 92 64 Z" fill="url(#perchSpikes)" />
+  <!-- Spiky dorsal fin -->
+  <path d="M30 36 L36 18 L42 34 L48 18 L54 34 L60 22 L66 36 Z" fill="url(#perchSpikes)" stroke="#c2410c" stroke-width="1" />
+  <!-- Lower fins -->
+  <path d="M40 65 Q46 78 52 66 Z" fill="url(#perchSpikes)" />
+  <path d="M56 63 Q62 75 66 62 Z" fill="url(#perchSpikes)" />
+  <!-- Body -->
+  <ellipse cx="48" cy="50" rx="30" ry="17" fill="url(#perchBody)" />
+  <!-- Stripes -->
+  <path d="M38 36 L40 60" stroke="#14532d" stroke-width="3" stroke-linecap="round" opacity="0.75" />
+  <path d="M46 34 L48 64" stroke="#14532d" stroke-width="3" stroke-linecap="round" opacity="0.75" />
+  <path d="M54 35 L56 63" stroke="#14532d" stroke-width="3" stroke-linecap="round" opacity="0.75" />
+  <path d="M62 38 L64 60" stroke="#14532d" stroke-width="3" stroke-linecap="round" opacity="0.75" />
+  <!-- Eye -->
+  <circle cx="28" cy="46" r="4" fill="#facc15" />
+  <circle cx="27.5" cy="46" r="2" fill="#0f172a" />
+  <!-- Mouth -->
+  <path d="M18 51 Q23 53 26 50" stroke="#14532d" stroke-width="2" fill="none" stroke-linecap="round" />
+</svg>

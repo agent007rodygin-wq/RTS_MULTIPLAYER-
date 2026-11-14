@@ -1,9 +1,8 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
+export default defineConfig(() => {
     const proxyConfig = {
       '/api': {
         target: 'http://127.0.0.1:8090',
@@ -81,18 +80,28 @@ export default defineConfig(({ mode }) => {
           }
         }
       ],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-      },
+      // 2026-11 security pass:
+      // - the previous `define` block inlined GEMINI_API_KEY into the client
+      //   bundle as a compile-time constant; client code never reads
+      //   process.env (verified), so it was removed — API keys must never
+      //   reach the browser.
+      // - `build.sourcemap: false` keeps original TS/TSX sources out of the
+      //   production bundle (source maps used to ship full sourcesContent).
+      // - esbuild drops debugger statements and pure console.log/info/debug
+      //   calls (error/warn kept for production diagnostics). Build-time only,
+      //   no runtime FPS impact.
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
       },
+      esbuild: {
+        drop: ['debugger'],
+        pure: ['console.log', 'console.info', 'console.debug']
+      },
       build: {
         outDir: 'dist',
-        sourcemap: true,
+        sourcemap: false,
         chunkSizeWarningLimit: 2000
       }
     };

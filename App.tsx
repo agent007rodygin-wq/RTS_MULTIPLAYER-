@@ -8,7 +8,7 @@ import {
     signInWithEmailAndPassword, createUserWithEmailAndPassword,
     doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, onSnapshot, query, where, orderBy, limit,
     handleFirestoreError, OperationType, testConnection, deleteField, increment, runTransaction, writeBatch, deleteAll, sanitizePbId, pbFilterString,
-    clearUserCache, forceClearAuth, requestTreeHit, setRuntimeAuditContext
+    clearUserCache, forceClearAuth, requestTreeHit, requestChestCollect, requestGiftSend, setRuntimeAuditContext
 } from './src/pocketbase';
 import { useMapForceReload } from './src/game/realtime/mapRealtime';
 import { repairMojibakeCp1251Utf8 } from './src/game/utils/mojibake.js';
@@ -70,6 +70,9 @@ import { MissingResource } from './src/game/economy/blackMarketLogic';
 import { RoyalElectionsModal, RoyalVotingModal } from './src/components/game/RoyalElectionsModal';
 import { PoliceMoralsModal, PoliceVotingModal } from './src/components/game/PoliceMoralsModal';
 import { OtherPlayerProfileModal } from './src/components/game/OtherPlayerProfileModal';
+import { GiftCatalogModal } from './src/components/game/GiftCatalogModal';
+import { GiftReceivedPopup } from './src/components/game/GiftReceivedPopup';
+import type { GiftReceivedPopupData } from './src/components/game/GiftReceivedPopup';
 import { CasinoModal, CasinoBankModal } from './src/components/game/CasinoModal';
 import type { LuckyWheelSector } from './src/components/game/LuckyWheel';
 import { MonsterAcademyModal } from './src/components/game/MonsterAcademyModal';
@@ -102,6 +105,11 @@ import {
 } from './src/game/economy/clanStockLogic';
 import { ShoutModal, PrivateChatModal } from './src/components/game/ChatModals';
 import { SelectedBuildingModal } from './src/components/game/SelectedBuildingModal';
+import { SelectedChestModal } from './src/components/game/SelectedChestModal';
+import { FishingModal } from './src/components/game/FishingModal';
+import { fishingSpotManager } from './src/game/fishing/fishingSpotManager';
+import { drawFishingSpotRipple } from './src/game/fishing/fishingVisuals';
+import type { FishingSpot, CaughtFishResult } from './src/game/fishing/fishingTypes';
 import { FinancialProductionModal, TabType as FinancialTabType } from './src/components/game/FinancialProductionModal';
 import {
     checkHasEgyptianObelisk,
@@ -167,6 +175,7 @@ import {
     COIN_ANIMATION_FRAMES,
     COIN_ANIMATION_FPS,
 } from './src/game/buildings/enhancedBuildingAnimations';
+import { TOWN_HALL_ANIMS } from './src/game/buildings/townHallAnimations';
 import { compressImageFile } from './src/game/utils/imageCompress';
 import {
     LogIn,
@@ -183,7 +192,8 @@ import {
 } from 'lucide-react';
 import { buildings as _buildingDataRaw } from './data/buildings';
 import { generateDestructionInfo } from './data/destructionWeapons';
-const buildingData = _buildingDataRaw.filter(Boolean);
+import { ensureAccelerationCosts } from './src/game/buildings/accelerationCost';
+const buildingData = ensureAccelerationCosts(_buildingDataRaw.filter(Boolean));
 import { items as itemData } from './data/items';
 import {
     BRONEKUR_WALK_BASE,
@@ -368,6 +378,8 @@ import {
     ALL_MOUNTAIN_ASSET_URLS,
 } from './src/game/buildings/mountainAutotile';
 import {
+    WOODEN_WALL_BUILDING_ID,
+    STONE_WALL_BUILDING_ID,
     isWoodenWallBuilding,
     isStoneWallBuilding,
     isWallBuilding,
@@ -375,6 +387,13 @@ import {
     getStoneWallTileUrl,
     ALL_WALL_ASSET_URLS,
 } from './src/game/buildings/wallAutotile';
+import {
+    RAIL_BUILDING_ID,
+    isRailBuilding,
+    isRailRenderTile,
+    getRailTileUrl,
+    ALL_RAIL_ASSET_URLS,
+} from './src/game/buildings/railAutotile';
 import { CloseIcon, EnergyIcon, UserIcon, ResidentialIcon, BusinessIcon, LettersIcon, GreeneryIcon, RoadsIcon, WallsIcon, FactoriesIcon, MonstersIcon, ClanIcon, GiftsIcon, InventoryIcon, MoveIcon, ShoppingCartIcon, RepairIcon, DefenseIcon, HomeIcon, ChevronUpIcon, ChevronDownIcon, SellIcon, ShieldIcon, MapIcon, CoinIcon, CompassIcon, SmileyIcon, TradeIcon, SearchIcon, ChatBubbleIcon } from './components/IconComponents';
 
 const getCanonicalItemName = (itemId: string | number, fallbackName?: string, buildingId?: string | number) => {
@@ -428,12 +447,21 @@ export const isForestCell = (x: number, y: number): boolean => {
     return rows[maskY][maskX] === '1';
 };
 
+// A felled tree record (hp 0 / state 'felled', written by the tree-hit hook until the
+// respawn cron deletes it) is a tombstone, not a physical obstacle: it must not render
+// as a standing tree, block placement, or enter monster blocking sets.
+export const isFelledTreeResource = (r: { type?: string; hp?: number; cleared?: boolean } | undefined | null): boolean => {
+    if (!r || r.type !== 'tree') return false;
+    if (r.cleared === true) return true;
+    return typeof r.hp === 'number' && r.hp <= 0;
+};
+
 const ZONE_SYNC_MAX_RETRIES = 2;
 const ZONE_SYNC_RETRY_DELAY_MS = 1500;
 const RENDER_RADIUS = 50; // Full visible viewport coverage for all zoom levels (0.5 to 2.0) and wide monitors
 const ZONE_EDGE_PRELOAD_MARGIN = 65; // Preload neighbor sectors only when camera nears a sector border (> RENDER_RADIUS)
-const MONSTER_AI_ACTIVE_RADIUS = 75; // Only claim/step wild monster AI within active radius of player camera
-const GOLD_PER_CHOP = 5000000;
+const MONSTER_AI_ACTIVE_RADIUS = 52; // Only claim/step wild monster AI within active radius of player camera (aligned with RENDER_RADIUS)
+const GOLD_PER_CHOP = 3;
 const TREE_HP = 3;
 const TREE_SERVER_HIT_ENERGY_COST = 2;
 const MAX_OIL_DEPOSITS = 10;
@@ -587,7 +615,7 @@ const RIVER_ID = 50004;
 const MAX_RIVERS = 55;
 const BASE_MAX_ENERGY = 500;
 const ENERGY_COST_PER_CHOP = 1;
-const ENERGY_REGEN_PER_MINUTE = 10;
+const ENERGY_REGEN_PER_MINUTE = 1;
 const GLORY_PER_CHOP = 2;
 const MAX_LEVEL = 30;
 
@@ -1668,13 +1696,13 @@ const MORTAR_SHELL_FLIGHT_MS = 850;
 const mortarFlashFrames: string[] = Array.from({ length: 15 }, (_, i) => `/animation/mortar/flash/${i + 1}.webp`);
 const MORTAR_FRAME_CUMULATIVE_MS = [0, 80, 160, 240, 320, 400, 480, 560, 670, 780, 890, 1000, 1110, 1220, 1330];
 
-// Town Hall Flag animation frames (61 frames, ~2 second loop)
-const TOWN_HALL_FLAG_IDS = [301, 306, 312, 331]; // First 4 levels of Town Hall
-const townHallFlagAnimationFrames: Record<number, string[]> = {};
-for (const id of TOWN_HALL_FLAG_IDS) {
-  townHallFlagAnimationFrames[id] = Array.from({ length: 61 }, (_, i) => `/animation/town_hall_flag/1/${i + 1}.webp`);
+// Town Hall full-building animation frames (waving flag, dragons; backed by townHallAnimations.ts)
+const TOWN_HALL_ANIM_IDS = Object.keys(TOWN_HALL_ANIMS).map(Number);
+const townHallAnimationFrameUrls: Record<number, string[]> = {};
+for (const id of TOWN_HALL_ANIM_IDS) {
+  townHallAnimationFrameUrls[id] = TOWN_HALL_ANIMS[id].frames;
 }
-const TOWN_HALL_FLAG_ID_SET = new Set(TOWN_HALL_FLAG_IDS);
+const TOWN_HALL_ANIM_ID_SET = new Set(TOWN_HALL_ANIM_IDS);
 
 // Decorative Flags (Р В¤Р В»Р В°Р С–Р С‘) animation frames - 61 frames each, continuous loop
 const FLAG_ANIMATION_IDS = [21001, 21002, 21004, 21005, 21006, 21007, 21008, 21009, 21010, 21011, 21012, 21013, 21014, 21015, 21017, 21018, 21019, 21020, 21021, 21022, 21023, 21024, 21025, 21026, 21027, 21029];
@@ -1684,13 +1712,36 @@ for (const id of FLAG_ANIMATION_IDS) {
 }
 const FLAG_ANIMATION_ID_SET = new Set(FLAG_ANIMATION_IDS);
 
-// Coin Factory (IDs 430-445, 469) animation frames - 80 frames per level, 3 second loop (~27 FPS)
-const COIN_FACTORY_IDS = [430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 469];
-const coinFactoryAnimationFrames: Record<number, string[]> = {};
-for (const id of COIN_FACTORY_IDS) {
-  coinFactoryAnimationFrames[id] = Array.from({ length: 80 }, (_, i) => `/animation/coin_factory/${id}/${i + 1}.webp`);
+// Coin Factory (Монетный заводик) animation frames - gnomograd.com work/wait labels
+// IDs 430-443: 40 working + 40 idle @ 24 FPS; IDs 444-445, 469: 20 working + 20 idle @ 12 FPS
+const COIN_FACTORY_ANIM_DEFS: Array<{ id: number; workingFrames: number; idleFrames: number; fps: number }> = [
+  { id: 430, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 431, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 432, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 433, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 434, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 435, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 436, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 437, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 438, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 439, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 440, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 441, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 442, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 443, workingFrames: 40, idleFrames: 40, fps: 24 },
+  { id: 444, workingFrames: 20, idleFrames: 20, fps: 12 },
+  { id: 445, workingFrames: 20, idleFrames: 20, fps: 12 },
+  { id: 469, workingFrames: 20, idleFrames: 20, fps: 12 },
+];
+const coinFactoryWorkingFrames: Record<number, string[]> = {};
+const coinFactoryIdleFrames: Record<number, string[]> = {};
+const coinFactoryFps: Record<number, number> = {};
+for (const def of COIN_FACTORY_ANIM_DEFS) {
+  coinFactoryWorkingFrames[def.id] = Array.from({ length: def.workingFrames }, (_, i) => `/animation/coin_factory/${def.id}/working/${i + 1}.webp`);
+  coinFactoryIdleFrames[def.id] = Array.from({ length: def.idleFrames }, (_, i) => `/animation/coin_factory/${def.id}/idle/${i + 1}.webp`);
+  coinFactoryFps[def.id] = def.fps;
 }
-const COIN_FACTORY_ID_SET = new Set(COIN_FACTORY_IDS);
+const COIN_FACTORY_ID_SET = new Set(COIN_FACTORY_ANIM_DEFS.map(d => d.id));
 
 // Sawmill (Р вЂєР ВµРЎРѓР С•Р С—Р С‘Р В»Р С”Р В°) animation frames
 // Animation folders use different numbering than building IDs
@@ -1731,6 +1782,29 @@ for (const id of SAWMILL_LEVEL6_16_IDS) {
 }
 const SAWMILL_ID_SET = new Set(SAWMILL_IDS);
 
+// Sawmill site animations (gnomograd.com work/wait labels) - per level id
+// Levels 1-4 (55, 56, 391, 392): 45 working + 40 idle @ 24 FPS
+// Levels 12-16 (453, 454, 468, 470, 471): 25 working + 20 idle @ 12 FPS
+// Levels 5-11 (393-399) have no site animations and keep the legacy flat loop
+const SAWMILL_SITE_ANIM_DEFS: Record<number, { workingFrames: number; idleFrames: number; fps: number }> = {
+  55: { workingFrames: 45, idleFrames: 40, fps: 24 },
+  56: { workingFrames: 45, idleFrames: 40, fps: 24 },
+  391: { workingFrames: 45, idleFrames: 40, fps: 24 },
+  392: { workingFrames: 45, idleFrames: 40, fps: 24 },
+  453: { workingFrames: 25, idleFrames: 20, fps: 12 },
+  454: { workingFrames: 25, idleFrames: 20, fps: 12 },
+  468: { workingFrames: 25, idleFrames: 20, fps: 12 },
+  470: { workingFrames: 25, idleFrames: 20, fps: 12 },
+  471: { workingFrames: 25, idleFrames: 20, fps: 12 },
+};
+const sawmillSiteWorkingFrames: Record<number, string[]> = {};
+const sawmillSiteIdleFrames: Record<number, string[]> = {};
+for (const [idStr, siteSpec] of Object.entries(SAWMILL_SITE_ANIM_DEFS)) {
+  const siteId = Number(idStr);
+  sawmillSiteWorkingFrames[siteId] = Array.from({ length: siteSpec.workingFrames }, (_, i) => `/animation/sawmill/${siteId}/working/${i + 1}.webp`);
+  sawmillSiteIdleFrames[siteId] = Array.from({ length: siteSpec.idleFrames }, (_, i) => `/animation/sawmill/${siteId}/idle/${i + 1}.webp`);
+}
+
 // Financial Intelligence (Финансовая разведка: 340, 341, 342) animation frames
 // 60 frames, 3 second smooth scanning loop
 const FINANCIAL_INTELLIGENCE_IDS = [340, 341, 342];
@@ -1748,17 +1822,19 @@ const FINANCIAL_INTELLIGENCE_ID_SET = new Set(FINANCIAL_INTELLIGENCE_IDS);
 // Levels 11-15: IDs 69966, 70066, 70166, 70266, 70366 > folder "699"
 // Levels 16-20: IDs 70466, 70566, 70666, 70766, 70866 > folder "704"
 // Level 21: ID 70966 > folder "709"
-const MONSTER_ACADEMY_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number }> = {};
-const MA_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number }> = [
-  { ids: [689, 690, 691, 692, 693], folder: '689', workingFrames: 32, idleFrames: 32 },
-  { ids: [694, 695, 696, 697, 698], folder: '694', workingFrames: 33, idleFrames: 27 },
-  { ids: [69966, 70066, 70166, 70266, 70366], folder: '699', workingFrames: 46, idleFrames: 27 },
-  { ids: [70466, 70566, 70666, 70766, 70866], folder: '704', workingFrames: 51, idleFrames: 27 },
-  { ids: [70966], folder: '709', workingFrames: 51, idleFrames: 29 },
+const MONSTER_ACADEMY_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number; fps: number }> = {};
+// gnomograd.com work/wait labels: groups 689/694/699: 32 working + 27 idle @ 24 FPS,
+// group 704: 16 + 14 @ 12 FPS, group 709: 15 + 15 @ 12 FPS
+const MA_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number; fps: number }> = [
+  { ids: [689, 690, 691, 692, 693], folder: '689', workingFrames: 32, idleFrames: 27, fps: 24 },
+  { ids: [694, 695, 696, 697, 698], folder: '694', workingFrames: 32, idleFrames: 27, fps: 24 },
+  { ids: [69966, 70066, 70166, 70266, 70366], folder: '699', workingFrames: 32, idleFrames: 27, fps: 24 },
+  { ids: [70466, 70566, 70666, 70766, 70866], folder: '704', workingFrames: 16, idleFrames: 14, fps: 12 },
+  { ids: [70966], folder: '709', workingFrames: 15, idleFrames: 15, fps: 12 },
 ];
 for (const group of MA_GROUP_DEFS) {
   for (const id of group.ids) {
-    MONSTER_ACADEMY_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames };
+    MONSTER_ACADEMY_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames, fps: group.fps };
   }
 }
 const MONSTER_ACADEMY_ALL_IDS = Object.keys(MONSTER_ACADEMY_ID_TO_GROUP).map(Number);
@@ -1788,11 +1864,37 @@ for (const def of ALCHEMY_FACTORY_ANIM_DEFS) {
   alchemyFactoryIdleFrames[def.id] = Array.from({ length: def.idleFrames }, (_, i) => `/animation/alchemy_factory/${def.id}/idle/${i + 1}.webp`);
 }
 
-// Military Factory (Р вЂ™Р С•Р ВµР Р…Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames - 62 frames, working state only
+// Military Factory (Военный завод) animation frames - 62 frames, stateless loop (gnomograd.com id 13)
 // Building IDs: 60332 (base), 604 (Secret lvl1), 605 (Secret lvl2)
 const MILITARY_FACTORY_IDS = [60332, 604, 605];
 const militaryFactoryAnimationFrames: string[] = Array.from({ length: 62 }, (_, i) => `/animation/military_factory/${i + 1}.webp`);
 const MILITARY_FACTORY_ID_SET = new Set(MILITARY_FACTORY_IDS);
+
+// Petard Factory (Петардный завод) - gnomograd.com site series 307 + 619-639.
+// Site id mapping: our 307 -> 307; our 619+6201-6231 -> 619; our 6241-6281 -> 624;
+// our 6291-6331 -> 629; our 6341-6381 -> 634; our 6391 -> 639.
+// Groups: 307/619/624: 20 working + 20 idle @ 12 FPS; 629/634/639: 40 + 40 @ 24 FPS
+const PETARD_FACTORY_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number; fps: number }> = {};
+const PETARD_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number; fps: number }> = [
+  { ids: [307], folder: '307', workingFrames: 20, idleFrames: 20, fps: 12 },
+  { ids: [619, 6201, 6211, 6221, 6231], folder: '619', workingFrames: 20, idleFrames: 20, fps: 12 },
+  { ids: [6241, 6251, 6261, 6271, 6281], folder: '624', workingFrames: 20, idleFrames: 20, fps: 12 },
+  { ids: [6291, 6301, 6311, 6321, 6331], folder: '629', workingFrames: 40, idleFrames: 40, fps: 24 },
+  { ids: [6341, 6351, 6361, 6371, 6381], folder: '634', workingFrames: 40, idleFrames: 40, fps: 24 },
+  { ids: [6391], folder: '639', workingFrames: 40, idleFrames: 40, fps: 24 },
+];
+for (const group of PETARD_GROUP_DEFS) {
+  for (const id of group.ids) {
+    PETARD_FACTORY_ID_TO_GROUP[id] = group;
+  }
+}
+const PETARD_FACTORY_ID_SET = new Set(PETARD_GROUP_DEFS.flatMap(g => g.ids));
+const petardFactoryWorkingFrames: Record<string, string[]> = {};
+const petardFactoryIdleFrames: Record<string, string[]> = {};
+for (const group of PETARD_GROUP_DEFS) {
+  petardFactoryWorkingFrames[group.folder] = Array.from({ length: group.workingFrames }, (_, i) => `/animation/petard_factory/${group.folder}/working/${i + 1}.webp`);
+  petardFactoryIdleFrames[group.folder] = Array.from({ length: group.idleFrames }, (_, i) => `/animation/petard_factory/${group.folder}/idle/${i + 1}.webp`);
+}
 
 // Mushroom Bed & Enhanced Pumpkin Bed animation frames (backed by enhancedBuildingAnimations.ts)
 const MUSHROOM_BED_ALL_IDS = Object.keys(MUSHROOM_BED_ANIMS).map(Number);
@@ -1803,16 +1905,21 @@ const MUSHROOM_BED_ID_SET = new Set(MUSHROOM_BED_ALL_IDS);
 // Levels 11-15: IDs 678-682 > folder "678" (86 working + 39 idle)
 // Levels 16-20: IDs 683-687 > folder "683" (86 working + 39 idle)
 // Level 21: ID 688 > folder "688" (86 working + 39 idle)
-const MINE_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number }> = {};
-const MINE_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number }> = [
-  { ids: [668, 669, 670, 671, 672, 673, 674, 675, 676, 677], folder: '668', workingFrames: 82, idleFrames: 37 },
-  { ids: [678, 679, 680, 681, 682], folder: '678', workingFrames: 86, idleFrames: 39 },
-  { ids: [683, 684, 685, 686, 687], folder: '683', workingFrames: 86, idleFrames: 39 },
-  { ids: [688], folder: '688', workingFrames: 86, idleFrames: 39 },
+const MINE_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number; fps: number }> = {};
+// gnomograd.com work/wait labels; the site splits levels 1-10 into two looks (668 and 673):
+// Levels 1-5: IDs 668-672 (41 working + 19 idle, 12 FPS), Levels 6-10: IDs 673-677 (41 + 19, 12 FPS),
+// Levels 11-15: IDs 678-682 (43 + 20, 12 FPS), Levels 16-20: IDs 683-687 (43 + 20, 12 FPS),
+// Level 21: ID 688 (86 working + 39 idle, 24 FPS)
+const MINE_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number; fps: number }> = [
+  { ids: [668, 669, 670, 671, 672], folder: '668', workingFrames: 41, idleFrames: 19, fps: 12 },
+  { ids: [673, 674, 675, 676, 677], folder: '673', workingFrames: 41, idleFrames: 19, fps: 12 },
+  { ids: [678, 679, 680, 681, 682], folder: '678', workingFrames: 43, idleFrames: 20, fps: 12 },
+  { ids: [683, 684, 685, 686, 687], folder: '683', workingFrames: 43, idleFrames: 20, fps: 12 },
+  { ids: [688], folder: '688', workingFrames: 86, idleFrames: 39, fps: 24 },
 ];
 for (const group of MINE_GROUP_DEFS) {
   for (const id of group.ids) {
-    MINE_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames };
+    MINE_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames, fps: group.fps };
   }
 }
 const MINE_ALL_IDS = Object.keys(MINE_ID_TO_GROUP).map(Number);
@@ -1825,22 +1932,22 @@ for (const group of MINE_GROUP_DEFS) {
 }
 
 // Emerald Factory (Р ВР В·РЎС“Р СРЎР‚РЎС“Р Т‘Р Р…РЎвЂ№Р в„– Р В·Р В°Р Р†Р С•Р Т‘) animation frames (working + idle states)
-// Levels 1-5: IDs 640-644 > folder "640" (40 working + 40 idle)
-// Levels 6-10: IDs 645-649 > folder "645" (40 working + 40 idle)
-// Levels 11-15: IDs 650-654 > folder "650" (40 working + 40 idle)
-// Levels 16-20: IDs 655-659 > folder "655" (40 working + 40 idle)
-// Level 21: ID 660 > folder "660" (40 working + 40 idle)
-const EMERALD_FACTORY_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number }> = {};
-const EF_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number }> = [
-  { ids: [640, 641, 642, 643, 644], folder: '640', workingFrames: 40, idleFrames: 40 },
-  { ids: [645, 646, 647, 648, 649], folder: '645', workingFrames: 40, idleFrames: 40 },
-  { ids: [650, 651, 652, 653, 654], folder: '650', workingFrames: 40, idleFrames: 40 },
-  { ids: [655, 656, 657, 658, 659], folder: '655', workingFrames: 40, idleFrames: 40 },
-  { ids: [660], folder: '660', workingFrames: 40, idleFrames: 40 },
+// Levels 1-5: IDs 640-644 > folder "640" (20 working + 20 idle, 12 FPS from gnomograd.com labels)
+// Levels 6-10: IDs 645-649 > folder "645" (20 working + 20 idle, 12 FPS)
+// Levels 11-15: IDs 650-654 > folder "650" (20 working + 20 idle, 12 FPS)
+// Levels 16-20: IDs 655-659 > folder "655" (20 working + 20 idle, 12 FPS)
+// Level 21: ID 660 > folder "660" (40 working + 40 idle, 24 FPS)
+const EMERALD_FACTORY_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number; fps: number }> = {};
+const EF_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number; fps: number }> = [
+  { ids: [640, 641, 642, 643, 644], folder: '640', workingFrames: 20, idleFrames: 20, fps: 12 },
+  { ids: [645, 646, 647, 648, 649], folder: '645', workingFrames: 20, idleFrames: 20, fps: 12 },
+  { ids: [650, 651, 652, 653, 654], folder: '650', workingFrames: 20, idleFrames: 20, fps: 12 },
+  { ids: [655, 656, 657, 658, 659], folder: '655', workingFrames: 20, idleFrames: 20, fps: 12 },
+  { ids: [660], folder: '660', workingFrames: 40, idleFrames: 40, fps: 24 },
 ];
 for (const group of EF_GROUP_DEFS) {
   for (const id of group.ids) {
-    EMERALD_FACTORY_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames };
+    EMERALD_FACTORY_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames, fps: group.fps };
   }
 }
 const EMERALD_FACTORY_ALL_IDS = Object.keys(EMERALD_FACTORY_ID_TO_GROUP).map(Number);
@@ -1862,17 +1969,17 @@ const GOLD_SMELTER_ID_SET = new Set(GOLD_SMELTER_ALL_IDS);
 // Levels 11-15: IDs 863-867 > folder "863" (80 working + 39 idle)
 // Levels 16-20: IDs 868-872 > folder "868" (80 working + 39 idle)
 // Level 21: ID 873 > folder "873" (80 working + 39 idle)
-const STEEL_ROLLING_MILL_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number }> = {};
-const SRM_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number }> = [
-  { ids: [853, 854, 855, 856, 857], folder: '853', workingFrames: 80, idleFrames: 39 },
-  { ids: [858, 859, 860, 861, 862], folder: '858', workingFrames: 55, idleFrames: 64 },
-  { ids: [863, 864, 865, 866, 867], folder: '863', workingFrames: 80, idleFrames: 39 },
-  { ids: [868, 869, 870, 871, 872], folder: '868', workingFrames: 80, idleFrames: 39 },
-  { ids: [873], folder: '873', workingFrames: 80, idleFrames: 39 },
+const STEEL_ROLLING_MILL_ID_TO_GROUP: Record<number, { folder: string; workingFrames: number; idleFrames: number; fps: number }> = {};
+const SRM_GROUP_DEFS: Array<{ ids: number[]; folder: string; workingFrames: number; idleFrames: number; fps: number }> = [
+  { ids: [853, 854, 855, 856, 857], folder: '853', workingFrames: 80, idleFrames: 39, fps: 24 },
+  { ids: [858, 859, 860, 861, 862], folder: '858', workingFrames: 80, idleFrames: 39, fps: 24 },
+  { ids: [863, 864, 865, 866, 867], folder: '863', workingFrames: 80, idleFrames: 39, fps: 24 },
+  { ids: [868, 869, 870, 871, 872], folder: '868', workingFrames: 80, idleFrames: 39, fps: 24 },
+  { ids: [873], folder: '873', workingFrames: 80, idleFrames: 39, fps: 24 },
 ];
 for (const group of SRM_GROUP_DEFS) {
   for (const id of group.ids) {
-    STEEL_ROLLING_MILL_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames };
+    STEEL_ROLLING_MILL_ID_TO_GROUP[id] = { folder: group.folder, workingFrames: group.workingFrames, idleFrames: group.idleFrames, fps: group.fps };
   }
 }
 const STEEL_ROLLING_MILL_ALL_IDS = Object.keys(STEEL_ROLLING_MILL_ID_TO_GROUP).map(Number);
@@ -2024,7 +2131,7 @@ for (const group of MA_GROUP_DEFS) {
 const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'buildingId' | 'workState' | 'workEndTime'>): string[] => {
     const isWorking = building.workState === 'working' && !!building.workEndTime;
 
-    if (TOWN_HALL_FLAG_ID_SET.has(building.buildingId)) return townHallFlagAnimationFrames[building.buildingId] || [];
+    if (TOWN_HALL_ANIM_ID_SET.has(building.buildingId)) return townHallAnimationFrameUrls[building.buildingId] || [];
     if (FLAG_ANIMATION_ID_SET.has(building.buildingId)) return flagAnimationFrames[building.buildingId] || [];
     if (FINANCIAL_INTELLIGENCE_ID_SET.has(building.buildingId)) return financialIntelligenceAnimationFrames[building.buildingId] || [];
     if (building.buildingId === DETONATOR_FACTORY_ID && isWorking) return detonatorFactoryAnimationFrames;
@@ -2056,19 +2163,24 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
         ];
     }
     if (building.buildingId === MORTAR_ID) return mortarFlashFrames;
-    if (COIN_FACTORY_ID_SET.has(building.buildingId) && isWorking) return coinFactoryAnimationFrames[building.buildingId] || [];
+    if (COIN_FACTORY_ID_SET.has(building.buildingId)) return (isWorking ? coinFactoryWorkingFrames[building.buildingId] : coinFactoryIdleFrames[building.buildingId]) || [];
+    if (SAWMILL_SITE_ANIM_DEFS[building.buildingId]) return (isWorking ? sawmillSiteWorkingFrames[building.buildingId] : sawmillSiteIdleFrames[building.buildingId]) || [];
     if (SAWMILL_ID_SET.has(building.buildingId) && isWorking) return sawmillAnimationFrames[building.buildingId] || [];
+    if (PETARD_FACTORY_ID_SET.has(building.buildingId)) {
+        const petardGroup = PETARD_FACTORY_ID_TO_GROUP[building.buildingId];
+        if (petardGroup) return (isWorking ? petardFactoryWorkingFrames[petardGroup.folder] : petardFactoryIdleFrames[petardGroup.folder]) || [];
+    }
 
     if (MONSTER_ACADEMY_ID_SET.has(building.buildingId)) {
         const group = MONSTER_ACADEMY_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? monsterAcademyWorkingFrames[group.folder] : (monsterAcademyIdleFrames[group.folder]?.[0] ? [monsterAcademyIdleFrames[group.folder][0]] : []);
+        if (group) return isWorking ? monsterAcademyWorkingFrames[group.folder] : (monsterAcademyIdleFrames[group.folder] || []);
     }
 
     if (ALCHEMY_FACTORY_ID_SET.has(building.buildingId)) {
         return isWorking ? (alchemyFactoryWorkingFrames[building.buildingId] || []) : (alchemyFactoryIdleFrames[building.buildingId]?.[0] ? [alchemyFactoryIdleFrames[building.buildingId][0]] : []);
     }
 
-    if (MILITARY_FACTORY_ID_SET.has(building.buildingId) && isWorking) return militaryFactoryAnimationFrames;
+    if (MILITARY_FACTORY_ID_SET.has(building.buildingId)) return militaryFactoryAnimationFrames;
 
     if (MUSHROOM_BED_ID_SET.has(building.buildingId)) {
         const spec = MUSHROOM_BED_ANIMS[building.buildingId];
@@ -2082,12 +2194,12 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
 
     if (MINE_ID_SET.has(building.buildingId)) {
         const group = MINE_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? mineWorkingFrames[group.folder] : (mineIdleFrames[group.folder]?.[0] ? [mineIdleFrames[group.folder][0]] : []);
+        if (group) return isWorking ? mineWorkingFrames[group.folder] : (mineIdleFrames[group.folder] || []);
     }
 
     if (EMERALD_FACTORY_ID_SET.has(building.buildingId)) {
         const group = EMERALD_FACTORY_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? emeraldFactoryWorkingFrames[group.folder] : (emeraldFactoryIdleFrames[group.folder]?.[0] ? [emeraldFactoryIdleFrames[group.folder][0]] : []);
+        if (group) return isWorking ? emeraldFactoryWorkingFrames[group.folder] : (emeraldFactoryIdleFrames[group.folder] || []);
     }
 
     if (GOLD_SMELTER_ID_SET.has(building.buildingId)) {
@@ -2097,7 +2209,7 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
 
     if (STEEL_ROLLING_MILL_ID_SET.has(building.buildingId)) {
         const group = STEEL_ROLLING_MILL_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? steelRollingMillWorkingFrames[group.folder] : (steelRollingMillIdleFrames[group.folder]?.[0] ? [steelRollingMillIdleFrames[group.folder][0]] : []);
+        if (group) return isWorking ? steelRollingMillWorkingFrames[group.folder] : (steelRollingMillIdleFrames[group.folder] || []);
     }
 
     if (STEEL_SMELTING_ID_SET.has(building.buildingId)) {
@@ -2112,7 +2224,7 @@ const getPriorityAnimationUrlsForBuilding = (building: Pick<PlacedBuilding, 'bui
 
     if (LILY_POND_ID_SET.has(building.buildingId)) {
         const group = LILY_POND_ID_TO_GROUP[building.buildingId];
-        if (group) return isWorking ? lilyPondWorkingFrames[group.folder] : (lilyPondIdleFrames[group.folder]?.[0] ? [lilyPondIdleFrames[group.folder][0]] : []);
+        if (group) return isWorking ? lilyPondWorkingFrames[group.folder] : (lilyPondIdleFrames[group.folder] || []);
     }
 
     if (DETONATOR_FACTORY_ID_SET.has(building.buildingId)) {
@@ -2825,6 +2937,15 @@ const App: React.FC = () => {
     const [permitPurchaseToast, setPermitPurchaseToast] = useState<string | null>(null);
     const [isBuyingBuildingPermit, setIsBuyingBuildingPermit] = useState(false);
     const permitPurchaseToastTimerRef = useRef<number | null>(null);
+    // Player-to-player gifting: catalog + realtime "you received a gift" popup.
+    const [showGiftCatalogModal, setShowGiftCatalogModal] = useState(false);
+    const [isGiftSendProcessing, setIsGiftSendProcessing] = useState(false);
+    const giftSendInFlightRef = useRef(false);
+    const [giftReceivedPopup, setGiftReceivedPopup] = useState<GiftReceivedPopupData | null>(null);
+    // Realtime-only popups: anything stamped before this moment (minus a small
+    // clock-skew tolerance) was received in a previous session and is surfaced
+    // by the profile history instead of a popup.
+    const giftNotificationSessionStartRef = useRef<number>(Date.now() - 15000);
     const [goldCapacity, setGoldCapacity] = useState(BASE_GOLD_CAPACITY);
     const [playerEnergy, setPlayerEnergy] = useState(BASE_MAX_ENERGY);
     const [playerGender, setPlayerGender] = useState<'male' | 'female' | null>(null);
@@ -3217,6 +3338,17 @@ const App: React.FC = () => {
     }, []);
     const [selectedPlayerBuildings, setSelectedPlayerBuildings] = useState<PlacedBuilding[]>([]);
     const [showInventory, setShowInventory] = useState(false);
+    const [activeFishingSpot, setActiveFishingSpot] = useState<FishingSpot | null>(null);
+    const [showFishingModal, setShowFishingModal] = useState(false);
+    const showFishingModalRef = useRef(false);
+    const [hasNearbyFishingSpot, setHasNearbyFishingSpot] = useState(false);
+    const lastFishingSpotCheckRef = useRef(0);
+    const screenToWorldSimpleRef = useRef<any>(null);
+    const handleOpenNearbyFishingRef = useRef<() => void>(() => {});
+
+    useEffect(() => {
+        showFishingModalRef.current = showFishingModal;
+    }, [showFishingModal]);
     const [showDailyRewardModal, setShowDailyRewardModal] = useState(false);
     const [telegramLinked, setTelegramLinked] = useState(false);
     const [lastDailyRewardClaim, setLastDailyRewardClaim] = useState(0);
@@ -3259,6 +3391,8 @@ const App: React.FC = () => {
     const [moveMode, setMoveMode] = useState<{ active: boolean, building: PlacedBuilding | null }>({ active: false, building: null });
     const [roadBuilderMode, setRoadBuilderMode] = useState<boolean>(false);
     const [pavementBuilderMode, setPavementBuilderMode] = useState<boolean>(false);
+    const [railBuilderMode, setRailBuilderMode] = useState<boolean>(false);
+    const [wallBuilderMode, setWallBuilderMode] = useState<'wooden' | 'stone' | null>(null);
     const [trebuchetTargeting, setTrebuchetTargeting] = useState<{ buildingId: string | number; sourceX: number; sourceY: number } | null>(null);
     const trebuchetTargetingRef = useRef(trebuchetTargeting);
     trebuchetTargetingRef.current = trebuchetTargeting;
@@ -3274,6 +3408,9 @@ const App: React.FC = () => {
     const mortarHitProcessedRef = useRef<Set<string>>(new Set());
     const [selectedOilDeposit, setSelectedOilDeposit] = useState<MapResource | null>(null);
     const [selectedQuarry, setSelectedQuarry] = useState<MapResource | null>(null);
+    const [selectedChestCoords, setSelectedChestCoords] = useState<{ x: number; y: number } | null>(null);
+    const [isChestActionProcessing, setIsChestActionProcessing] = useState(false);
+    const [chestModalError, setChestModalError] = useState<string | null>(null);
     const [showBlackMarketMissingModal, setShowBlackMarketMissingModal] = useState(false);
     const [blackMarketBuilding, setBlackMarketBuilding] = useState<Building | null>(null);
     const [comboState, setComboState] = useState<ComboState>(() => createInitialComboState());
@@ -4285,37 +4422,57 @@ const App: React.FC = () => {
         };
     }, []);
 
-    // High-performance spatial indexing caches for O(1) tile lookups
+    // High-performance spatial indexing caches for O(1) tile lookups (integer keys: y * 1000 + x)
     const recentlyDepletedTreesRef = useRef<Map<string, number>>(new Map());
     const virtualTreePoolRef = useRef<MapResource[]>([]);
 
-    const spatialBuildingsMapRef = useRef<Map<string, PlacedBuilding>>(new Map());
+    interface CachedVirtualTree {
+        entity: MapResource;
+        entityVX: number;
+        entityVY: number;
+        depth: number;
+    }
+    const cachedVirtualTreesRef = useRef<CachedVirtualTree[]>([]);
+    const lastVirtualTreesBoundsRef = useRef({
+        minX: -9999,
+        maxX: -9999,
+        minY: -9999,
+        maxY: -9999,
+        buildingsRef: null as PlacedBuilding[] | null,
+        resourcesRef: null as MapResource[] | null,
+        depletedSize: -1,
+        lastCheckTime: 0,
+    });
+
+    const spatialBuildingsMapRef = useRef<Map<number, PlacedBuilding>>(new Map());
     const lastBuildingsRefForSpatial = useRef<PlacedBuilding[] | null>(null);
+    const spatialBuildingsGenerationRef = useRef<number>(1);
 
     const getSpatialBuildingAt = useCallback((x: number, y: number): PlacedBuilding | undefined => {
         if (lastBuildingsRefForSpatial.current !== placedBuildingsRef.current) {
             lastBuildingsRefForSpatial.current = placedBuildingsRef.current;
+            spatialBuildingsGenerationRef.current++;
             const map = spatialBuildingsMapRef.current;
             map.clear();
             const list = placedBuildingsRef.current;
             for (let i = 0; i < list.length; i++) {
                 const b = list[i];
                 if (b.hp === undefined || b.hp > 0) {
-                    const coordKey = `${b.x},${b.y}`;
+                    const coordKey = (b.y * 1000) + b.x;
                     const existing = map.get(coordKey);
                     if (!existing || !isGroundTileId(b.buildingId)) {
                         map.set(coordKey, b);
                     }
                     if (b.buildingId === TREBUCHET_ID && b.trebuchetMoveUntil && Date.now() < b.trebuchetMoveUntil && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveTargetY !== undefined) {
-                        map.set(`${b.trebuchetMoveTargetX},${b.trebuchetMoveTargetY}`, b);
+                        map.set((b.trebuchetMoveTargetY * 1000) + b.trebuchetMoveTargetX, b);
                     }
                 }
             }
         }
-        return spatialBuildingsMapRef.current.get(`${x},${y}`);
+        return spatialBuildingsMapRef.current.get((y * 1000) + x);
     }, []);
 
-    const spatialResourcesMapRef = useRef<Map<string, MapResource>>(new Map());
+    const spatialResourcesMapRef = useRef<Map<number, MapResource>>(new Map());
     const lastResourcesRefForSpatial = useRef<MapResource[] | null>(null);
 
     const blockedResourcePositionsSetRef = useRef<Set<string>>(new Set());
@@ -4329,13 +4486,17 @@ const App: React.FC = () => {
             const list = mapResourcesRef.current;
             for (let i = 0; i < list.length; i++) {
                 const r = list[i];
+                // Felled trees (hp 0, awaiting respawn) are tombstones, not obstacles.
+                if (isFelledTreeResource(r)) continue;
                 set.add(`${r.x},${r.y}`);
             }
         }
         return blockedResourcePositionsSetRef.current;
     }, []);
 
-    const getSpatialResourceAt = useCallback((x: number, y: number): MapResource | undefined => {
+    // Raw DB-backed resource lookup without the procedural forest fallback.
+    // The draw loop uses this to decide whether a virtual mask tree may render.
+    const getRawResourceAt = useCallback((x: number, y: number): MapResource | undefined => {
         if (lastResourcesRefForSpatial.current !== mapResourcesRef.current) {
             lastResourcesRefForSpatial.current = mapResourcesRef.current;
             const map = spatialResourcesMapRef.current;
@@ -4343,10 +4504,14 @@ const App: React.FC = () => {
             const list = mapResourcesRef.current;
             for (let i = 0; i < list.length; i++) {
                 const r = list[i];
-                map.set(`${r.x},${r.y}`, r);
+                map.set((r.y * 1000) + r.x, r);
             }
         }
-        const direct = spatialResourcesMapRef.current.get(`${x},${y}`);
+        return spatialResourcesMapRef.current.get((y * 1000) + x);
+    }, []);
+
+    const getSpatialResourceAt = useCallback((x: number, y: number): MapResource | undefined => {
+        const direct = getRawResourceAt(x, y);
         if (direct) {
             if (direct.type === 'tree' && ((direct as any).cleared || (typeof direct.hp === 'number' && direct.hp <= 0))) {
                 return undefined;
@@ -4378,6 +4543,17 @@ const App: React.FC = () => {
         }
 
         return undefined;
+    }, [getRawResourceAt, getSpatialBuildingAt]);
+
+    // Monsters must not walk or spawn inside the procedural forest mask. Mirrors
+    // getSpatialResourceAt: an alive building on the cell overrides the forest.
+    // Passed as extraBlocked into isMonsterTileBlocked / isKotofeyTileBlocked and
+    // consulted by monster spawn/teleport spot finders.
+    const isMonsterForestBlocked = useCallback((x: number, y: number): boolean => {
+        if (!isForestCell(x, y)) return false;
+        const b = getSpatialBuildingAt(x, y);
+        if (b && (b.hp === undefined || b.hp > 0)) return false;
+        return true;
     }, [getSpatialBuildingAt]);
 
     // Macro-culling sector spatial buckets for draw()
@@ -4451,7 +4627,9 @@ const App: React.FC = () => {
         }
 
         const localResource = mapResourcesRef.current.find(r => r.x === x && r.y === y);
-        if (localResource && !allowedResourceTypes.has(localResource.type)) {
+        // Felled tree tombstones (hp 0, awaiting respawn) do not block placement —
+        // building priority already overrides the forest mask on such cells.
+        if (localResource && !isFelledTreeResource(localResource) && !allowedResourceTypes.has(localResource.type)) {
             return finish({
                 ok: false,
                 reason: 'occupied',
@@ -4527,7 +4705,7 @@ const App: React.FC = () => {
 
             const blockingResource = serverResourcesSnap.docs.find(d => {
                 const data = d.data() as MapResource;
-                return !allowedResourceTypes.has(data.type);
+                return !isFelledTreeResource(data) && !allowedResourceTypes.has(data.type);
             });
             if (blockingResource) {
                 return finish({
@@ -4619,6 +4797,31 @@ const App: React.FC = () => {
         const zoom = ZOOM_LEVELS[zoomIndexRef.current];
         return screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
     }, [screenToWorldSimple]);
+
+    useEffect(() => {
+        screenToWorldSimpleRef.current = screenToWorldSimple;
+    }, [screenToWorldSimple]);
+
+    const handleOpenNearbyFishing = useCallback(() => {
+        if (showFishingModalRef.current) return;
+        const hovered = hoveredTileRef.current;
+        const spot = (hovered ? fishingSpotManager.getSpotAt(hovered.x, hovered.y) : null) ||
+            (hovered ? fishingSpotManager.getSpots().find(s => Math.hypot(s.x - hovered.x, s.y - hovered.y) <= 1.2) : null) ||
+            (() => {
+                const zoom = ZOOM_LEVELS[zoomIndexRef.current];
+                const center = screenToWorldSimple(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, zoom);
+                return fishingSpotManager.getNearbySpot(center.x, center.y, 4.0);
+            })();
+        if (spot) {
+            setActiveFishingSpot(spot);
+            setShowFishingModal(true);
+            playOpenSound();
+        }
+    }, [screenToWorldSimple, playOpenSound]);
+
+    useEffect(() => {
+        handleOpenNearbyFishingRef.current = handleOpenNearbyFishing;
+    }, [handleOpenNearbyFishing]);
 
     // Throttled movement reporting so other players see synchronous smooth movement without overloading the server
     const reportPlayerMovement = useCallback((immediate = false) => {
@@ -5781,9 +5984,9 @@ const App: React.FC = () => {
         return () => window.removeEventListener('keydown', handleHotkey);
     }, []);
 
-    // Escape listener to cancel trebuchet targeting, movement, mortar range preview mode, road builder mode, pavement builder mode, or monster placement mode
+    // Escape listener to cancel trebuchet targeting, movement, mortar range preview mode, road builder mode, pavement builder mode, rail builder mode, wall builder mode, or monster placement mode
     useEffect(() => {
-        if (!trebuchetTargeting && !mortarRangePreview && !trebuchetMovingTargeting && !roadBuilderMode && !pavementBuilderMode && !pendingMonsterPlacement) return;
+        if (!trebuchetTargeting && !mortarRangePreview && !trebuchetMovingTargeting && !roadBuilderMode && !pavementBuilderMode && !railBuilderMode && !wallBuilderMode && !pendingMonsterPlacement) return;
         const handleEsc = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 if (pendingMonsterPlacement) {
@@ -5808,11 +6011,19 @@ const App: React.FC = () => {
                     setPavementBuilderMode(false);
                     playCloseSound();
                 }
+                if (railBuilderMode) {
+                    setRailBuilderMode(false);
+                    playCloseSound();
+                }
+                if (wallBuilderMode) {
+                    setWallBuilderMode(null);
+                    playCloseSound();
+                }
             }
         };
         window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
-    }, [trebuchetTargeting, mortarRangePreview, trebuchetMovingTargeting, roadBuilderMode, pavementBuilderMode, pendingMonsterPlacement, playCloseSound]);
+    }, [trebuchetTargeting, mortarRangePreview, trebuchetMovingTargeting, roadBuilderMode, pavementBuilderMode, railBuilderMode, wallBuilderMode, pendingMonsterPlacement, playCloseSound]);
 
     // Keyboard WASD & Arrow movement listener (screen-space panning, 30% slower than mouse)
     useEffect(() => {
@@ -5831,6 +6042,11 @@ const App: React.FC = () => {
             const code = e.code;
             const key = e.key ? e.key.toLowerCase() : '';
             let handled = false;
+
+            // E / Fishing interaction
+            if ((code === 'KeyE' || key === 'e' || key === 'у') && !showFishingModalRef.current) {
+                handleOpenNearbyFishingRef.current?.();
+            }
 
             // W / Up (Latin W, Cyrillic Ц, Up arrow, Numpad 8)
             if (code === 'KeyW' || code === 'ArrowUp' || code === 'Numpad8' || key === 'w' || key === 'ц') {
@@ -6181,11 +6397,13 @@ const App: React.FC = () => {
             const allResources = allResourcesSnap.docs.map(d => ({ id: d.id, ...d.data() } as MapResource));
             const resourceByPosition = new Map<string, MapResource>();
             allResources.forEach(resource => {
+                // Felled tree tombstones (hp 0, awaiting respawn) do not block shift spots.
+                if (isFelledTreeResource(resource)) return;
                 resourceByPosition.set(`${resource.x},${resource.y}`, resource);
             });
             const occupiedCollisionPositions = new Set([
                 ...movableBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`),
-                ...allResources.map(r => `${r.x},${r.y}`)
+                ...allResources.filter(r => !isFelledTreeResource(r)).map(r => `${r.x},${r.y}`)
             ]);
             
             // Group buildings by position
@@ -6539,6 +6757,113 @@ const App: React.FC = () => {
                         }
                     } catch (err) {
                         console.error('[PavementBuilderMode] placement error:', err);
+                    } finally {
+                        setIsBuildingActionProcessing(false);
+                    }
+                }
+                return;
+            }
+
+            if (railBuilderMode) {
+                if (!isWorldWrapped && (gridX < 0 || gridX >= WORLD_WIDTH_TILES || gridY < 0 || gridY >= WORLD_HEIGHT_TILES)) {
+                    return;
+                }
+                const railDef = buildingData.find(b => b.id === RAIL_BUILDING_ID) || buildingData.find(b => isRailBuilding(b.id));
+                if (railDef) {
+                    const previewState = getPlacementPreviewState(gridX, gridY);
+                    if (previewState !== 'free') {
+                        return;
+                    }
+                    const cost = railDef.price || 25000;
+                    const currentGold = playerGoldRef.current ?? playerGold;
+                    if (currentGold < cost) {
+                        alert("Недостаточно золота для постройки железной дороги! Требуется 25 000 монет.");
+                        return;
+                    }
+                    const steelInInv = Number(inventory[10023]) || 0;
+                    const boardsInInv = Number(inventory[10002]) || 0;
+                    if (steelInInv < 5 || boardsInInv < 15) {
+                        alert("Недостаточно ресурсов для железной дороги! Требуется 5 стали и 15 досок.");
+                        return;
+                    }
+                    if (isBuildingActionProcessing) return;
+                    setIsBuildingActionProcessing(true);
+                    try {
+                        const placed = await placeBuildingAtTileRef.current?.(railDef, gridX, gridY);
+                        if (placed) {
+                            playHammerSound();
+                            const now = Date.now();
+                            setFloatingJuiceItems(current => [
+                                ...current.filter(item => now - item.createdAt < item.durationMs),
+                                {
+                                    id: `rail-cost-${now}-${Math.random()}`,
+                                    worldX: gridX,
+                                    worldY: gridY,
+                                    text: `-${cost} 🪙 -5 ⛓️ -15 🪵`,
+                                    type: 'gold',
+                                    comboLevel: 1,
+                                    color: '#f87171',
+                                    glowColor: 'rgba(239, 68, 68, 0.5)',
+                                    scale: 1.15,
+                                    createdAt: now,
+                                    durationMs: 1400,
+                                }
+                            ]);
+                        }
+                    } catch (err) {
+                        console.error('[RailBuilderMode] placement error:', err);
+                    } finally {
+                        setIsBuildingActionProcessing(false);
+                    }
+                }
+                return;
+            }
+
+            if (wallBuilderMode) {
+                if (!isWorldWrapped && (gridX < 0 || gridX >= WORLD_WIDTH_TILES || gridY < 0 || gridY >= WORLD_HEIGHT_TILES)) {
+                    return;
+                }
+                const wallDefId = wallBuilderMode === 'stone' ? STONE_WALL_BUILDING_ID : WOODEN_WALL_BUILDING_ID;
+                const wallDef = buildingData.find(b => b.id === wallDefId) || buildingData.find(b => isWallBuilding(b.id));
+                if (wallDef) {
+                    const previewState = getPlacementPreviewState(gridX, gridY);
+                    if (previewState !== 'free') {
+                        return;
+                    }
+                    const cost = wallDef.price || (wallBuilderMode === 'stone' ? 6000 : 600);
+                    const currentGold = playerGoldRef.current ?? playerGold;
+                    if (currentGold < cost) {
+                        alert(wallBuilderMode === 'stone'
+                            ? "Недостаточно золота для постройки каменной стены! Требуется 6 000 монет."
+                            : "Недостаточно золота для постройки стены! Требуется 600 монет.");
+                        return;
+                    }
+                    if (isBuildingActionProcessing) return;
+                    setIsBuildingActionProcessing(true);
+                    try {
+                        const placed = await placeBuildingAtTileRef.current?.(wallDef, gridX, gridY);
+                        if (placed) {
+                            playHammerSound();
+                            const now = Date.now();
+                            setFloatingJuiceItems(current => [
+                                ...current.filter(item => now - item.createdAt < item.durationMs),
+                                {
+                                    id: `wall-cost-${now}-${Math.random()}`,
+                                    worldX: gridX,
+                                    worldY: gridY,
+                                    text: `-${cost} 🪙`,
+                                    type: 'gold',
+                                    comboLevel: 1,
+                                    color: '#f87171',
+                                    glowColor: 'rgba(239, 68, 68, 0.5)',
+                                    scale: 1.15,
+                                    createdAt: now,
+                                    durationMs: 1400,
+                                }
+                            ]);
+                        }
+                    } catch (err) {
+                        console.error('[WallBuilderMode] placement error:', err);
                     } finally {
                         setIsBuildingActionProcessing(false);
                     }
@@ -7020,6 +7345,16 @@ const App: React.FC = () => {
                 return;
             }
 
+            // Check for fishing spot interaction on river tiles / ripples
+            const clickedFishingSpot = fishingSpotManager.getSpotAt(gridX, gridY) ||
+                fishingSpotManager.getSpots().find(s => Math.hypot(s.x - gridX, s.y - gridY) <= 1.2);
+            if (clickedFishingSpot) {
+                setActiveFishingSpot(clickedFishingSpot);
+                setShowFishingModal(true);
+                playOpenSound();
+                return;
+            }
+
             // 2. Check for buildings and their interactions
             let buildingAtTile: PlacedBuilding | undefined;
             for (let i = 0; i < placedBuildings.length; i++) {
@@ -7147,6 +7482,13 @@ const App: React.FC = () => {
 
                 if (resource.type === 'quarry') {
                     setSelectedQuarry(resource);
+                    return;
+                }
+
+                if (resource.type === 'chest') {
+                    // Chest menu: collection is server-authoritative via /api/basingse/chest-collect.
+                    setSelectedChestCoords({ x: resource.x, y: resource.y });
+                    setChestModalError(null);
                     return;
                 }
 
@@ -7338,19 +7680,7 @@ const App: React.FC = () => {
                 const currentHp = (typeof resource.hp === 'number' && !isNaN(resource.hp)) ? resource.hp : TREE_HP;
                 const newHp = currentHp - 1;
 
-                if (resource.type === 'chest') {
-                    const coinRewards = [100, 500, 1000, 2000];
-                    const randomCoins = coinRewards[Math.floor(Math.random() * coinRewards.length)];
-                    updatePlayerResources(randomCoins, 0, {});
-                    addHistoryLog(`Найден клад в точке [${gridX}, ${gridY}]! Получено ${randomCoins} монет.`, 'economy');
-                    triggerGatherJuice({
-                        worldX: resource.x,
-                        worldY: resource.y,
-                        gold: randomCoins,
-                    });
-                }
-
-                if (newHp <= 0 || resource.type === 'chest') {
+                if (newHp <= 0) {
                     setMapResources(prev => prev.filter(r => r.x !== resource.x || r.y !== resource.y));
                     if (isAuthReady && user) {
                         deleteDoc(resourceRef).catch(e => handleFirestoreError(e, OperationType.DELETE, `map_resources/${resourceId}`));
@@ -7529,7 +7859,7 @@ const App: React.FC = () => {
                 }
             }
         }
-    }, [placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, roadBuilderMode, pavementBuilderMode, getPlacementPreviewState, trebuchetTargeting, trebuchetMovingTargeting, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
+    }, [placedBuildings, mapResources, playerGold, goldCapacity, playerEnergy, hasTownHall, maxBuildings, buildMenu, selectedBuilding, buildConfirmation, zoomIndex, screenToWorld, currentPopulation, maxPopulation, inventory, moveMode, roadBuilderMode, pavementBuilderMode, railBuilderMode, wallBuilderMode, getPlacementPreviewState, trebuchetTargeting, trebuchetMovingTargeting, sellItemSelection, user, playerName, isAuthReady, allUsers, droppedItems, isBanned, validatePlacementTarget, isMoveActionProcessing, tutorialAutoBuildMode, isBuildingActionProcessing]);
 
     const handleMouseUp = useCallback(async (event: React.MouseEvent<HTMLCanvasElement>) => {
         if (isDraggingRef.current && hasDraggedRef.current) {
@@ -7581,7 +7911,7 @@ const App: React.FC = () => {
         if (isWorldWrapped || (gridX >= 0 && gridX < WORLD_WIDTH_TILES && gridY >= 0 && gridY < WORLD_HEIGHT_TILES)) {
             setHoveredOutOfBounds(prev => (prev ? false : prev));
             hoveredTileRef.current = { x: gridX, y: gridY };
-            if (buildMenu.selectedBuilding || moveMode.active || roadBuilderMode || pavementBuilderMode) {
+            if (buildMenu.selectedBuilding || moveMode.active || roadBuilderMode || pavementBuilderMode || railBuilderMode || wallBuilderMode) {
                 setHoveredTile(prev => (prev && prev.x === gridX && prev.y === gridY ? prev : { x: gridX, y: gridY }));
             }
             const normHoverX = isWorldWrapped ? wrapCoord(gridX, WORLD_WIDTH_TILES) : gridX;
@@ -7666,7 +7996,7 @@ const App: React.FC = () => {
             }
         }
 
-    }, [zoomIndex, screenToWorld, isMyBuilding, buildMenu.selectedBuilding, moveMode.active, roadBuilderMode, pavementBuilderMode, getSpatialBuildingAt, isWorldWrapped, reportPlayerMovement]);
+    }, [zoomIndex, screenToWorld, isMyBuilding, buildMenu.selectedBuilding, moveMode.active, roadBuilderMode, pavementBuilderMode, railBuilderMode, wallBuilderMode, getSpatialBuildingAt, isWorldWrapped, reportPlayerMovement]);
 
     const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
         if (isDraggingRef.current && event.touches.length === 1) {
@@ -8606,6 +8936,15 @@ const App: React.FC = () => {
         }
     };
 
+    const handleCatchFish = useCallback((result: CaughtFishResult) => {
+        updatePlayerResources(result.coinsEarned, 0, { [result.fish.itemId]: 1 });
+        playCoinSound();
+        addHistoryLogRef.current?.(`🎣 Поймана рыба: ${result.fish.name} (${result.weight} кг)! Получено +${result.coinsEarned} монет!`, 'economy');
+        if (activeFishingSpot) {
+            fishingSpotManager.consumeCatch(activeFishingSpot.id);
+        }
+    }, [activeFishingSpot, playCoinSound]);
+
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isLoggingIn) return;
@@ -8623,16 +8962,33 @@ const App: React.FC = () => {
                 return;
             }
 
-            // Check nickname uniqueness
+            // Check nickname uniqueness via the rate-limited server route
+            // (the users collection is no longer publicly readable — 2026-11 security pass).
             try {
                 const cleanName = regPlayerName.trim();
-                const escaped = pbFilterString(cleanName);
-                const existing = await pb.collection('users').getList(1, 1, {
-                    filter: `name = "${escaped}" || username = "${escaped}"`
+                const res = await fetch(`${pb.baseUrl}/api/basingse/check-name`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: cleanName })
                 });
-                if (existing.items && existing.items.length > 0) {
-                    setAuthError("Этот ник уже занят, выберите другой");
-                    return;
+                if (res.ok) {
+                    const json: any = await res.json();
+                    if (json?.taken) {
+                        setAuthError("Этот ник уже занят, выберите другой");
+                        return;
+                    }
+                } else {
+                    // Route unavailable (server not restarted yet): fall back to the
+                    // legacy anonymous lookup; PocketBase still enforces username
+                    // uniqueness natively at create time.
+                    const escaped = pbFilterString(cleanName);
+                    const existing = await pb.collection('users').getList(1, 1, {
+                        filter: `name = "${escaped}" || username = "${escaped}"`
+                    });
+                    if (existing.items && existing.items.length > 0) {
+                        setAuthError("Этот ник уже занят, выберите другой");
+                        return;
+                    }
                 }
             } catch (checkErr) {
                 console.warn('[Register] Nickname check error:', checkErr);
@@ -8734,7 +9090,10 @@ const App: React.FC = () => {
                     try {
                         const orderRes = await fetch('/api/basingse/player-order', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {})
+                            },
                             body: JSON.stringify({ userId: newUser.uid })
                         });
                         if (orderRes.ok) {
@@ -8926,6 +9285,22 @@ const App: React.FC = () => {
                             console.warn('[App] New player detected with 0 energy. Auto-healing to BASE_MAX_ENERGY.');
                             initialServerEnergy = BASE_MAX_ENERGY;
                             updateDoc(userDocRef, { energy: BASE_MAX_ENERGY }).catch(() => {});
+                        }
+                        // Offline energy catch-up (Gnomograd-style): +1 energy per elapsed
+                        // minute, derived from the record's server-side `updated` timestamp
+                        // so it also accrues while the game is closed.
+                        const energyMaxForLoad = BASE_MAX_ENERGY + (loadedLevel - 1) * 50;
+                        const recordUpdatedAtMs = Date.parse(String((data as any).updated || ''));
+                        if (Number.isFinite(recordUpdatedAtMs)) {
+                            const elapsedMinutes = Math.floor((Date.now() - recordUpdatedAtMs) / 60000);
+                            if (elapsedMinutes > 0 && initialServerEnergy < energyMaxForLoad) {
+                                const caughtUpEnergy = Math.min(energyMaxForLoad, initialServerEnergy + elapsedMinutes * ENERGY_REGEN_PER_MINUTE);
+                                if (caughtUpEnergy > initialServerEnergy) {
+                                    console.log(`[EnergyRegen] Offline catch-up: +${caughtUpEnergy - initialServerEnergy} energy (${elapsedMinutes} min elapsed)`);
+                                    initialServerEnergy = caughtUpEnergy;
+                                    updateDoc(userDocRef, { energy: caughtUpEnergy }).catch(() => {});
+                                }
+                            }
                         }
                         setPlayerEnergy(initialServerEnergy);
                         
@@ -9273,7 +9648,10 @@ const App: React.FC = () => {
             // Notify server to reward referrer if this player was invited by a friend
             fetch(`${pb.baseUrl || 'http://127.0.0.1:8090'}/api/basingse/complete-referral-tutorial`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {})
+                },
                 body: JSON.stringify({ userId: user.uid })
             }).catch(err => console.warn('[Referral] complete-referral-tutorial failed:', err));
         } catch (e) {
@@ -9570,6 +9948,38 @@ const App: React.FC = () => {
             });
         }, (error) => {
             console.error('[UserBanCurseListener] Error:', error);
+        });
+
+        return () => unsubscribe();
+    }, [isAuthReady, user, loadPhase]);
+
+    // Realtime "you received a gift" popup. The gift-send hook stamps
+    // users.data.lastGiftNotification inside the same transaction that grants
+    // the item, so this listener needs no extra collection or subscription.
+    // Only notifications stamped after session start pop up (realtime-only per
+    // owner decision); older ones are visible in the profile history tab.
+    useEffect(() => {
+        if (!isAuthReady || !user || loadPhase < 2) return;
+
+        const userDocRef = doc(db, 'users', user.uid);
+        const unsubscribe = onSnapshot(userDocRef, (snap) => {
+            if (!snap.exists()) return;
+            const data = snap.data();
+            const notification = data.lastGiftNotification;
+            if (!notification || typeof notification !== 'object') return;
+            const at = Number(notification.at || 0);
+            if (!at || at <= giftNotificationSessionStartRef.current) return;
+
+            giftNotificationSessionStartRef.current = at;
+            setGiftReceivedPopup({
+                fromId: String(notification.fromId || ''),
+                fromName: String(notification.fromName || 'Игрок'),
+                buildingId: Number(notification.buildingId || 0),
+                buildingName: String(notification.buildingName || 'Подарок'),
+                at,
+            });
+        }, (error) => {
+            console.error('[GiftNotificationListener] Error:', error);
         });
 
         return () => unsubscribe();
@@ -10842,11 +11252,16 @@ const App: React.FC = () => {
             // Fast O(1) comparison against pre-indexed localById map
             if (localById.size === dedupedBuildings.length) {
                 let same = true;
+                let structuralChanged = false;
                 for (let i = 0; i < dedupedBuildings.length; i++) {
                     const b = dedupedBuildings[i];
                     const a = localById.get(String(b.id));
-                    if (!a || a.x !== b.x || a.y !== b.y || 
-                        a.buildingId !== b.buildingId || a.hp !== b.hp || 
+                    if (!a) {
+                        same = false;
+                        structuralChanged = true;
+                        break;
+                    }
+                    if (a.buildingId !== b.buildingId || a.hp !== b.hp || 
                         a.maxHp !== b.maxHp ||
                         a.workState !== b.workState || a.isConstructing !== b.isConstructing ||
                         a.isDestroying !== b.isDestroying || a.shieldHp !== b.shieldHp ||
@@ -10859,15 +11274,31 @@ const App: React.FC = () => {
                         a.lastTrollBoostAt !== b.lastTrollBoostAt ||
                         a.kotofeySettings !== b.kotofeySettings ||
                         a.trollSettings !== b.trollSettings ||
-                        a.lastAttackTime !== b.lastAttackTime ||
-                        a.lastMoveTime !== b.lastMoveTime) {
+                        a.lastAttackTime !== b.lastAttackTime) {
                         same = false;
+                        structuralChanged = true;
                         break;
+                    }
+                    if (a.x !== b.x || a.y !== b.y || a.lastMoveTime !== b.lastMoveTime) {
+                        same = false;
                     }
                 }
                 if (same) return prev; // No change, skip re-render
+
+                // Pure monster/unit movement: update in-memory ref immediately for smooth 60fps canvas,
+                // but throttle React state re-rendering to at most once per 1200ms (matching gameLoop).
+                if (!structuralChanged) {
+                    placedBuildingsRef.current = dedupedBuildings;
+                    if (nowMs - lastPlacedBuildingsSetRef.current < 1200) {
+                        return prev; // Skip React re-render, canvas is already updated!
+                    }
+                    lastPlacedBuildingsSetRef.current = nowMs;
+                }
+            } else {
+                lastPlacedBuildingsSetRef.current = nowMs;
             }
             
+            placedBuildingsRef.current = dedupedBuildings;
             return dedupedBuildings;
         });
     }, [isMyBuilding, isBuildingDeleting, isBuildingTombstoned, isNotFoundBuildingError, removeBuildingFromSnapshotCaches, shouldLogTownHallEvent]);
@@ -11742,7 +12173,10 @@ const App: React.FC = () => {
             try {
                 const res = await fetch('/api/basingse/player-order', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {})
+                    },
                     body: JSON.stringify({ userId: user.uid })
                 });
                 if (!cancelled && res.ok) {
@@ -12190,6 +12624,94 @@ const App: React.FC = () => {
             isPraiseInFlightRef.current = false;
         }
     };
+
+    // Player-to-player gift: server-authoritative spend of rubies + inventory
+    // grant on the recipient (single transaction in pb_hooks/gift_server_utils.js).
+    // No optimistic local mutation — rubies are reconciled from the response.
+    const handleOpenGiftCatalog = useCallback(() => {
+        if (!selectedPlayerId || selectedPlayerId === user?.uid) return;
+        setShowGiftCatalogModal(true);
+    }, [selectedPlayerId, user]);
+
+    const handleSendGift = async (building: Building) => {
+        const targetUid = selectedPlayerId;
+        if (!targetUid || !user) {
+            setPermitPurchaseToast('Игрок-получатель не выбран');
+            return;
+        }
+        if (targetUid === user.uid) {
+            setPermitPurchaseToast('Нельзя подарить подарок самому себе');
+            return;
+        }
+        if (giftSendInFlightRef.current) return;
+        if (!building || (building.rubyPrice || 0) <= 0) return;
+
+        const currentRubies = playerRubiesRef.current ?? playerRubies;
+        if (currentRubies < (building.rubyPrice || 0)) {
+            setPermitPurchaseToast(`⚠️ Недостаточно рубинов! Нужно ${building.rubyPrice}`);
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 2500);
+            return;
+        }
+
+        giftSendInFlightRef.current = true;
+        setIsGiftSendProcessing(true);
+        try {
+            const response = await requestGiftSend(targetUid, building.id);
+
+            // Reconcile from the authoritative server value.
+            if (typeof response.senderRubies === 'number') {
+                playerRubiesRef.current = response.senderRubies;
+                setPlayerRubies(response.senderRubies);
+            }
+
+            const targetName = response.targetName || allUsers[targetUid]?.name || 'Игрок';
+            const buildingName = response.buildingName || building.name;
+
+            setShowGiftCatalogModal(false);
+            addHistoryLog(`🎁 Вы подарили «${buildingName}» игроку ${targetName} за ${(response.rubyPrice ?? building.rubyPrice ?? 0)} рубинов.`, 'social');
+            playCoinSound();
+
+            setPermitPurchaseToast(`🎁 Подарок «${buildingName}» отправлен игроку ${targetName}!`);
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 3000);
+        } catch (e: any) {
+            console.error('[handleSendGift] Error:', e);
+            const errorCode = String(e?.details?.error || e?.message || '');
+            let toastText = 'Не удалось отправить подарок';
+            if (errorCode.includes('INSUFFICIENT_RUBIES')) {
+                const required = Number(e?.details?.details?.required || e?.details?.required || building.rubyPrice || 0);
+                toastText = `⚠️ Недостаточно рубинов! Нужно ${required}`;
+            } else if (errorCode.includes('CANNOT_GIFT_SELF')) {
+                toastText = 'Нельзя подарить подарок самому себе';
+            } else if (errorCode.includes('TARGET_NOT_FOUND')) {
+                toastText = 'Игрок-получатель не найден';
+            } else if (errorCode.includes('INVALID_BUILDING')) {
+                toastText = 'Этот подарок недоступен';
+            }
+            setPermitPurchaseToast(toastText);
+            if (permitPurchaseToastTimerRef.current !== null) {
+                window.clearTimeout(permitPurchaseToastTimerRef.current);
+            }
+            permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+                setPermitPurchaseToast(null);
+                permitPurchaseToastTimerRef.current = null;
+            }, 3000);
+        } finally {
+            giftSendInFlightRef.current = false;
+            setIsGiftSendProcessing(false);
+        }
+    };
     const handleBanPlayer = (cost: number, durationMinutes: number) => {
         const targetUser = Object.values(allUsersRef.current).find((u: any) => u.name === selectedChatUser) as any;
         if (!targetUser) {
@@ -12335,14 +12857,67 @@ const App: React.FC = () => {
         };
         console.log('[CurseDebug] Cursing player:', targetUid, 'with prefix:', prefix, 'endTime:', activeCurse.endTime);
 
-        const batch = writeBatch(db);
-        if (targetUid === user.uid) {
-            // Self-curse: combine curse + gold into one atomic update
-            batch.update(doc(db, 'users', targetUid), { activeCurse, gold: increment(-cost) });
-        } else {
-            batch.update(doc(db, 'users', targetUid), { activeCurse });
-            batch.update(doc(db, 'users', user.uid), { gold: increment(-cost) });
+        if (targetUid !== user.uid) {
+            // Remote curse: the users collection update rule only allows client self-updates
+            // ("id = @request.auth.id"), so another player's record must be written
+            // through the server endpoint (same pattern as ban-player).
+            try {
+                const response = await pb.send('/api/game/curse-player', {
+                    method: 'POST',
+                    body: { targetUserId: targetUid, durationMinutes },
+                });
+
+                if (!response || !response.success) {
+                    const errMsg = response?.error === 'INSUFFICIENT_GOLD'
+                        ? `Недостаточно золота! Требуется ${Number(response.required || cost).toLocaleString()} монет.`
+                        : response?.error === 'TARGET_NOT_FOUND'
+                            ? 'Игрок не найден.'
+                            : `Ошибка заколдования: ${response?.error || 'неизвестная ошибка'}`;
+                    alert(errMsg);
+                    return;
+                }
+
+                const serverCurse = response.activeCurse || activeCurse;
+                setPlayerGold(Number(response.issuerGold) || Math.max(0, playerGold - cost));
+
+                const targetName = allUsers[targetUid]?.name || 'неизвестный';
+
+                // Send system message to general chat about the curse
+                const curseNotification: ChatMessage = {
+                    id: Date.now(),
+                    sender: 'Система',
+                    text: `\u{1F52E} ${playerName} заколдовал игрока ${targetName} в "${animalName}" на ${durationMinutes} мин.`,
+                    type: 'system',
+                    timestamp: Date.now(),
+                    tab: 'general'
+                };
+                const msgId = `${Date.now()}-curse-${targetUid}`;
+                setDoc(doc(db, 'chat_messages', msgId), curseNotification).catch(e => handleFirestoreError(e, OperationType.CREATE, `chat_messages/${msgId}`));
+
+                // Optimistic update for local responsiveness
+                setAllUsers(prev => ({
+                    ...prev,
+                    [targetUid]: {
+                        ...prev[targetUid],
+                        activeCurse: serverCurse
+                    }
+                }));
+
+                alert(`Игрок ${targetName} успешно заколдован!`);
+            } catch (e: any) {
+                console.error('[curse-player] Endpoint error:', {
+                    status: e?.status,
+                    message: e?.message,
+                    data: e?.data,
+                });
+                alert('Ошибка при попытке заколдовать игрока.');
+            }
+            return;
         }
+
+        // Self-curse: combine curse + gold into one atomic update (own record is writable)
+        const batch = writeBatch(db);
+        batch.update(doc(db, 'users', targetUid), { activeCurse, gold: increment(-cost) });
 
         try {
             await batch.commit();
@@ -12644,6 +13219,7 @@ const App: React.FC = () => {
             ...ALL_PAVEMENT_ASSET_URLS,
             ...ALL_MOUNTAIN_ASSET_URLS,
             ...ALL_WALL_ASSET_URLS,
+            ...ALL_RAIL_ASSET_URLS,
         ];
 
         enqueueImagePreload(baseCriticalUrls, {
@@ -12808,29 +13384,44 @@ const App: React.FC = () => {
                 glory: newGlory
             });
         } else {
-            const targetUserRef = doc(db, 'users', targetUid);
-            let currentTargetGlory = Math.max(0, Number(allUsersRef.current[targetUid]?.glory || 0) || 0);
+            // Remote punish: the users collection update rule only allows client
+            // self-updates ("id = @request.auth.id"), so the target's glory must be
+            // written through the server endpoint (same pattern as ban-player).
             try {
-                const targetUserSnap = await getDoc(targetUserRef);
-                if (targetUserSnap.exists()) {
-                    currentTargetGlory = Math.max(0, Number(targetUserSnap.data().glory || 0) || 0);
+                const response = await pb.send('/api/game/punish-player', {
+                    method: 'POST',
+                    body: { targetUserId: targetUid, cost },
+                });
+
+                if (!response || !response.success) {
+                    setPlayerRubies(prev => prev + cost);
+                    const errMsg = response?.error === 'INSUFFICIENT_RUBIES'
+                        ? 'Недостаточно рубинов!'
+                        : response?.error === 'TARGET_NOT_FOUND'
+                            ? 'Игрок не найден.'
+                            : `Ошибка наказания: ${response?.error || 'неизвестная ошибка'}`;
+                    alert(errMsg);
+                    return;
                 }
-            } catch (error) {
-                console.warn('[Punish] Failed to refresh target glory before penalty:', error);
+
+                setPlayerRubies(Number(response.issuerRubies) || Math.max(0, playerRubies - cost));
+                setAllUsers(prev => ({
+                    ...prev,
+                    [targetUid]: {
+                        ...prev[targetUid],
+                        glory: Number(response.targetGlory) || 0
+                    }
+                }));
+            } catch (e: any) {
+                setPlayerRubies(prev => prev + cost);
+                console.error('[punish-player] Endpoint error:', {
+                    status: e?.status,
+                    message: e?.message,
+                    data: e?.data,
+                });
+                alert('Ошибка при попытке наказать игрока.');
+                return;
             }
-            const nextTargetGlory = Math.max(0, currentTargetGlory - penalty);
-            // Update target player's glory in Firestore
-            await updateDoc(targetUserRef, {
-                glory: nextTargetGlory
-            });
-            // Update allUsers locally for immediate profile/top sync
-            setAllUsers(prev => ({
-                ...prev,
-                [targetUid]: {
-                    ...prev[targetUid],
-                    glory: nextTargetGlory
-                }
-            }));
         }
         // Log action
         console.log(`Punished ${targetUid} with ${actionName}`);
@@ -13151,6 +13742,15 @@ const App: React.FC = () => {
         const visibleDrawableEntities = visibleEntitiesPoolRef.current;
         let visibleCount = 0;
 
+        // Viewport culling boundaries in screen space (including safety margins for tall buildings/assets)
+        const cullMarginX = Math.max(scaledTileWidth * 2, 500 * zoom);
+        const cullMarginTop = Math.max(scaledTileHeight * 6, 800 * zoom);
+        const cullMarginBottom = Math.max(scaledTileHeight * 2, 250 * zoom);
+        const cullMinScreenX = -cameraOffsetRef.current.x - cullMarginX;
+        const cullMaxScreenX = canvas.width - cameraOffsetRef.current.x + cullMarginX;
+        const cullMinScreenY = -cameraOffsetRef.current.y - cullMarginTop;
+        const cullMaxScreenY = canvas.height - cameraOffsetRef.current.y + cullMarginBottom;
+
         // 1. Resources macro-culled by active sectors
         const resList = mapResourcesRef.current;
         const resourceSectors = resourceSectorsMapRef.current;
@@ -13189,96 +13789,167 @@ const App: React.FC = () => {
 
                 for (let i = 0; i < bucket.length; i++) {
                     const r = bucket[i];
+                    // Felled tree tombstones (hp 0, awaiting respawn) must never render as
+                    // standing trees: the respawn cron deletes the record and the procedural
+                    // mask pass below regenerates the tree for every client.
+                    if (isFelledTreeResource(r)) continue;
                     const vx = isWorldWrapped ? r.x + Math.round((renderCenterX - r.x) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : r.x;
                     const vy = isWorldWrapped ? r.y + Math.round((renderCenterY - r.y) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : r.y;
                     if (Math.abs(vx - renderCenterX) <= RENDER_RADIUS && Math.abs(vy - renderCenterY) <= RENDER_RADIUS) {
-                        (r as any).entityType = 'resource';
-                        let slot = visibleDrawableEntities[visibleCount];
-                        if (!slot) {
-                            slot = visibleDrawableEntities[visibleCount] = {
-                                entity: r,
-                                entityVX: vx,
-                                entityVY: vy,
-                                depth: vx + vy,
-                            };
-                        } else {
-                            slot.entity = r;
-                            slot.entityVX = vx;
-                            slot.entityVY = vy;
-                            slot.depth = vx + vy;
+                        const sX = (vx - vy) * halfW;
+                        const sY = (vx + vy) * halfH;
+                        if (sX >= cullMinScreenX && sX <= cullMaxScreenX && sY >= cullMinScreenY && sY <= cullMaxScreenY) {
+                            (r as any).entityType = 'resource';
+                            let slot = visibleDrawableEntities[visibleCount];
+                            if (!slot) {
+                                slot = visibleDrawableEntities[visibleCount] = {
+                                    entity: r,
+                                    entityVX: vx,
+                                    entityVY: vy,
+                                    depth: vx + vy,
+                                };
+                            } else {
+                                slot.entity = r;
+                                slot.entityVX = vx;
+                                slot.entityVY = vy;
+                                slot.depth = vx + vy;
+                            }
+                            visibleCount++;
                         }
-                        visibleCount++;
                     }
                 }
             }
         }
 
-        // 1b. Procedural Trees from 50x50 mask inside visible tile bounds
-        const virtualTreePool = virtualTreePoolRef.current;
-        let virtualTreePoolIdx = 0;
+        // 1b. Procedural Trees from 50x50 mask inside visible tile bounds (cached across frames)
         const nowMs = Date.now();
         const depletedTrees = recentlyDepletedTreesRef.current;
+        const boundsCache = lastVirtualTreesBoundsRef.current;
+        const currentBuildingsList = placedBuildingsRef.current;
+        const currentResourcesList = mapResourcesRef.current;
 
-        for (let vx = minTileX; vx <= maxTileX; vx++) {
-            for (let vy = minTileY; vy <= maxTileY; vy++) {
-                const wx = isWorldWrapped ? wrapCoord(vx, WORLD_WIDTH_TILES) : vx;
-                const wy = isWorldWrapped ? wrapCoord(vy, WORLD_HEIGHT_TILES) : vy;
-                if (!isWorldWrapped && (wx < 0 || wx >= WORLD_WIDTH_TILES || wy < 0 || wy >= WORLD_HEIGHT_TILES)) continue;
+        const TREE_CACHE_PADDING = 8;
+        const needsRecache =
+            boundsCache.minX === -9999 ||
+            minTileX < boundsCache.minX ||
+            maxTileX > boundsCache.maxX ||
+            minTileY < boundsCache.minY ||
+            maxTileY > boundsCache.maxY ||
+            boundsCache.buildingsRef !== currentBuildingsList ||
+            boundsCache.resourcesRef !== currentResourcesList ||
+            boundsCache.depletedSize !== depletedTrees.size ||
+            (depletedTrees.size > 0 && nowMs - boundsCache.lastCheckTime > 2000);
 
-                if (!isForestCell(wx, wy)) continue;
+        if (needsRecache) {
+            const cacheMinX = minTileX - TREE_CACHE_PADDING;
+            const cacheMaxX = maxTileX + TREE_CACHE_PADDING;
+            const cacheMinY = minTileY - TREE_CACHE_PADDING;
+            const cacheMaxY = maxTileY + TREE_CACHE_PADDING;
+            boundsCache.minX = cacheMinX;
+            boundsCache.maxX = cacheMaxX;
+            boundsCache.minY = cacheMinY;
+            boundsCache.maxY = cacheMaxY;
+            boundsCache.buildingsRef = currentBuildingsList;
+            boundsCache.resourcesRef = currentResourcesList;
+            boundsCache.depletedSize = depletedTrees.size;
+            boundsCache.lastCheckTime = nowMs;
 
-                // Priority: Buildings (mountains, rivers, player structures) override forest
-                const buildingAtCell = getSpatialBuildingAt(wx, wy);
-                if (buildingAtCell && (buildingAtCell.hp === undefined || buildingAtCell.hp > 0)) continue;
+            const virtualTreePool = virtualTreePoolRef.current;
+            let virtualTreePoolIdx = 0;
+            const cachedList = cachedVirtualTreesRef.current;
+            let cachedCount = 0;
+            const hasDepleted = depletedTrees.size > 0;
 
-                // Priority: Non-tree resources or damaged trees in DB override virtual tree
-                const explicitRes = getSpatialResourceAt(wx, wy);
-                if (explicitRes && explicitRes.id && !explicitRes.id.startsWith('tree_virtual_')) continue;
+            for (let vx = cacheMinX; vx <= cacheMaxX; vx++) {
+                for (let vy = cacheMinY; vy <= cacheMaxY; vy++) {
+                    const wx = isWorldWrapped ? wrapCoord(vx, WORLD_WIDTH_TILES) : vx;
+                    const wy = isWorldWrapped ? wrapCoord(vy, WORLD_HEIGHT_TILES) : vy;
+                    if (!isWorldWrapped && (wx < 0 || wx >= WORLD_WIDTH_TILES || wy < 0 || wy >= WORLD_HEIGHT_TILES)) continue;
 
-                // Check recently depleted / felled trees
-                const depletedAt = depletedTrees.get(`${wx}_${wy}`);
-                if (depletedAt && nowMs - depletedAt < 3 * 60 * 1000) continue;
+                    if (!isForestCell(wx, wy)) continue;
 
-                let tree = virtualTreePool[virtualTreePoolIdx];
-                if (!tree) {
-                    tree = virtualTreePool[virtualTreePoolIdx] = {
-                        id: `tree_virtual_${wx}_${wy}`,
-                        x: wx,
-                        y: wy,
-                        type: 'tree',
-                        hp: 3,
-                        maxHp: 3,
-                        zoneId: getZoneId(wx, wy),
-                        entityType: 'resource',
-                    } as any;
-                } else {
-                    tree.id = `tree_virtual_${wx}_${wy}`;
-                    tree.x = wx;
-                    tree.y = wy;
-                    tree.type = 'tree';
-                    tree.hp = 3;
-                    tree.maxHp = 3;
-                    tree.zoneId = getZoneId(wx, wy);
-                    (tree as any).entityType = 'resource';
+                    // Priority: Buildings (mountains, rivers, player structures) override forest
+                    const buildingAtCell = getSpatialBuildingAt(wx, wy);
+                    if (buildingAtCell && (buildingAtCell.hp === undefined || buildingAtCell.hp > 0)) continue;
+
+                    // Priority: Real DB resources (oil, chests, damaged trees) override the virtual
+                    // tree — section 1 already draws them. Do NOT use getSpatialResourceAt here:
+                    // it returns a virtual mask tree for every forest cell, which suppresses
+                    // the entire procedural forest.
+                    const explicitRes = getRawResourceAt(wx, wy);
+                    if (explicitRes) continue;
+
+                    // Check recently depleted / felled trees
+                    if (hasDepleted) {
+                        const depletedAt = depletedTrees.get(`${wx}_${wy}`);
+                        if (depletedAt && nowMs - depletedAt < 3 * 60 * 1000) continue;
+                    }
+
+                    let tree = virtualTreePool[virtualTreePoolIdx];
+                    if (!tree) {
+                        tree = virtualTreePool[virtualTreePoolIdx] = {
+                            id: `tree_virtual_${wx}_${wy}`,
+                            x: wx,
+                            y: wy,
+                            type: 'tree',
+                            hp: 3,
+                            maxHp: 3,
+                            zoneId: getZoneId(wx, wy),
+                            entityType: 'resource',
+                        } as any;
+                    } else {
+                        tree.id = `tree_virtual_${wx}_${wy}`;
+                        tree.x = wx;
+                        tree.y = wy;
+                        tree.type = 'tree';
+                        tree.hp = 3;
+                        tree.maxHp = 3;
+                        tree.zoneId = getZoneId(wx, wy);
+                        (tree as any).entityType = 'resource';
+                    }
+                    virtualTreePoolIdx++;
+
+                    let slot = cachedList[cachedCount];
+                    if (!slot) {
+                        slot = cachedList[cachedCount] = {
+                            entity: tree,
+                            entityVX: vx,
+                            entityVY: vy,
+                            depth: vx + vy,
+                        };
+                    } else {
+                        slot.entity = tree;
+                        slot.entityVX = vx;
+                        slot.entityVY = vy;
+                        slot.depth = vx + vy;
+                    }
+                    cachedCount++;
                 }
-                virtualTreePoolIdx++;
-
-                let slot = visibleDrawableEntities[visibleCount];
-                if (!slot) {
-                    slot = visibleDrawableEntities[visibleCount] = {
-                        entity: tree,
-                        entityVX: vx,
-                        entityVY: vy,
-                        depth: vx + vy,
-                    };
-                } else {
-                    slot.entity = tree;
-                    slot.entityVX = vx;
-                    slot.entityVY = vy;
-                    slot.depth = vx + vy;
-                }
-                visibleCount++;
             }
+            cachedList.length = cachedCount;
+        }
+
+        const cachedTrees = cachedVirtualTreesRef.current;
+        for (let i = 0; i < cachedTrees.length; i++) {
+            const cachedSlot = cachedTrees[i];
+            const sX = (cachedSlot.entityVX - cachedSlot.entityVY) * halfW;
+            const sY = (cachedSlot.entityVX + cachedSlot.entityVY) * halfH;
+            if (sX < cullMinScreenX || sX > cullMaxScreenX || sY < cullMinScreenY || sY > cullMaxScreenY) continue;
+            let slot = visibleDrawableEntities[visibleCount];
+            if (!slot) {
+                slot = visibleDrawableEntities[visibleCount] = {
+                    entity: cachedSlot.entity,
+                    entityVX: cachedSlot.entityVX,
+                    entityVY: cachedSlot.entityVY,
+                    depth: cachedSlot.depth,
+                };
+            } else {
+                slot.entity = cachedSlot.entity;
+                slot.entityVX = cachedSlot.entityVX;
+                slot.entityVY = cachedSlot.entityVY;
+                slot.depth = cachedSlot.depth;
+            }
+            visibleCount++;
         }
 
         // 2. Dropped items from ref
@@ -13288,22 +13959,26 @@ const App: React.FC = () => {
             const vx = isWorldWrapped ? item.x + Math.round((renderCenterX - item.x) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : item.x;
             const vy = isWorldWrapped ? item.y + Math.round((renderCenterY - item.y) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : item.y;
             if (Math.abs(vx - renderCenterX) <= RENDER_RADIUS && Math.abs(vy - renderCenterY) <= RENDER_RADIUS) {
-                (item as any).entityType = 'dropped_item';
-                let slot = visibleDrawableEntities[visibleCount];
-                if (!slot) {
-                    slot = visibleDrawableEntities[visibleCount] = {
-                        entity: item,
-                        entityVX: vx,
-                        entityVY: vy,
-                        depth: vx + vy,
-                    };
-                } else {
-                    slot.entity = item;
-                    slot.entityVX = vx;
-                    slot.entityVY = vy;
-                    slot.depth = vx + vy;
+                const sX = (vx - vy) * halfW;
+                const sY = (vx + vy) * halfH;
+                if (sX >= cullMinScreenX && sX <= cullMaxScreenX && sY >= cullMinScreenY && sY <= cullMaxScreenY) {
+                    (item as any).entityType = 'dropped_item';
+                    let slot = visibleDrawableEntities[visibleCount];
+                    if (!slot) {
+                        slot = visibleDrawableEntities[visibleCount] = {
+                            entity: item,
+                            entityVX: vx,
+                            entityVY: vy,
+                            depth: vx + vy,
+                        };
+                    } else {
+                        slot.entity = item;
+                        slot.entityVX = vx;
+                        slot.entityVY = vy;
+                        slot.depth = vx + vy;
+                    }
+                    visibleCount++;
                 }
-                visibleCount++;
             }
         }
 
@@ -13347,7 +14022,8 @@ const App: React.FC = () => {
                     if (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetMoveUntil && now < b.trebuchetMoveUntil && b.trebuchetMoveStartTime) {
                         const elapsed = now - b.trebuchetMoveStartTime;
                         let path = b.trebuchetMovePath;
-                        if ((!path || path.length < 2) && b.trebuchetMoveStartX !== undefined && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveStartY !== undefined && b.trebuchetMoveTargetY !== undefined) {
+                        if ((!path || path.length < 2) && b.trebuchetMoveStartX !== undefined && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveStartY !== undefined && b.trebuchetMoveTargetY !== undefined && now - ((b as any).__trebuchetReconstructAt || 0) > 500) {
+                            (b as any).__trebuchetReconstructAt = now;
                             const isTileBlocked = (tx: number, ty: number): boolean => {
                                 const normX = isWorldWrapped ? wrapCoord(tx, WORLD_WIDTH_TILES) : tx;
                                 const normY = isWorldWrapped ? wrapCoord(ty, WORLD_HEIGHT_TILES) : ty;
@@ -13369,14 +14045,23 @@ const App: React.FC = () => {
                         if (path && path.length >= 2) {
                             const numSegments = path.length - 1;
                             const segDur = Math.max(1, (b.trebuchetMoveDuration || (numSegments * TREBUCHET_MOVE_SPEED_MS_PER_TILE)) / numSegments);
-                            const curSegIdx = Math.min(numSegments - 1, Math.floor(elapsed / segDur));
+                            // Clamp on BOTH sides: Math.floor can go negative when the observer's
+                            // clock is behind the mover's (startTime written on another machine),
+                            // which previously produced path[-N] and crashed draw() every frame.
+                            const curSegIdx = Math.max(0, Math.min(numSegments - 1, Math.floor(elapsed / segDur)));
                             const segElapsed = elapsed - curSegIdx * segDur;
                             const segProgress = Math.min(1, Math.max(0, segElapsed / segDur));
                             const fromTile = path[curSegIdx];
                             const toTile = path[curSegIdx + 1];
-                            actualX = fromTile.x + (toTile.x - fromTile.x) * segProgress;
-                            actualY = fromTile.y + (toTile.y - fromTile.y) * segProgress;
-                        } else if (b.trebuchetMoveStartX !== undefined && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveStartY !== undefined && b.trebuchetMoveTargetY !== undefined) {
+                            if (fromTile && toTile && typeof fromTile.x === 'number' && typeof toTile.x === 'number') {
+                                actualX = fromTile.x + (toTile.x - fromTile.x) * segProgress;
+                                actualY = fromTile.y + (toTile.y - fromTile.y) * segProgress;
+                            } else {
+                                actualX = undefined as unknown as number;
+                                actualY = undefined as unknown as number;
+                            }
+                        }
+                        if ((actualX === undefined || actualY === undefined || Number.isNaN(actualX) || Number.isNaN(actualY)) && b.trebuchetMoveStartX !== undefined && b.trebuchetMoveTargetX !== undefined && b.trebuchetMoveStartY !== undefined && b.trebuchetMoveTargetY !== undefined) {
                             const duration = Math.max(1, b.trebuchetMoveDuration || (b.trebuchetMoveUntil - b.trebuchetMoveStartTime));
                             const progress = Math.min(1, Math.max(0, elapsed / duration));
                             actualX = b.trebuchetMoveStartX + (b.trebuchetMoveTargetX - b.trebuchetMoveStartX) * progress;
@@ -13386,22 +14071,26 @@ const App: React.FC = () => {
                     const vx = isWorldWrapped ? actualX + Math.round((renderCenterX - actualX) / WORLD_WIDTH_TILES) * WORLD_WIDTH_TILES : actualX;
                     const vy = isWorldWrapped ? actualY + Math.round((renderCenterY - actualY) / WORLD_HEIGHT_TILES) * WORLD_HEIGHT_TILES : actualY;
                     if (Math.abs(vx - renderCenterX) <= RENDER_RADIUS && Math.abs(vy - renderCenterY) <= RENDER_RADIUS) {
-                        (b as any).entityType = 'building';
-                        let slot = visibleDrawableEntities[visibleCount];
-                        if (!slot) {
-                            slot = visibleDrawableEntities[visibleCount] = {
-                                entity: b,
-                                entityVX: vx,
-                                entityVY: vy,
-                                depth: vx + vy,
-                            };
-                        } else {
-                            slot.entity = b;
-                            slot.entityVX = vx;
-                            slot.entityVY = vy;
-                            slot.depth = vx + vy;
+                        const sX = (vx - vy) * halfW;
+                        const sY = (vx + vy) * halfH;
+                        if (sX >= cullMinScreenX && sX <= cullMaxScreenX && sY >= cullMinScreenY && sY <= cullMaxScreenY) {
+                            (b as any).entityType = 'building';
+                            let slot = visibleDrawableEntities[visibleCount];
+                            if (!slot) {
+                                slot = visibleDrawableEntities[visibleCount] = {
+                                    entity: b,
+                                    entityVX: vx,
+                                    entityVY: vy,
+                                    depth: vx + vy,
+                                };
+                            } else {
+                                slot.entity = b;
+                                slot.entityVX = vx;
+                                slot.entityVY = vy;
+                                slot.depth = vx + vy;
+                            }
+                            visibleCount++;
                         }
-                        visibleCount++;
                     }
                 }
             }
@@ -13418,13 +14107,15 @@ const App: React.FC = () => {
             if (groundA !== groundB) return groundA - groundB;
             const typeDiff = (TYPE_DEPTH_ORDER[a.entity.entityType] ?? 0) - (TYPE_DEPTH_ORDER[b.entity.entityType] ?? 0);
             if (typeDiff !== 0) return typeDiff;
+            if (a.entityVX !== b.entityVX) return a.entityVX - b.entityVX;
             const idA = a.entity.id ?? 0;
             const idB = b.entity.id ?? 0;
             return idA < idB ? -1 : (idA > idB ? 1 : 0);
         });
 
         visibleDrawableEntities.forEach(({ entity, entityVX, entityVY }) => {
-            const { screenX, screenY } = worldToScreen(entityVX, entityVY, zoom);
+            const screenX = (entityVX - entityVY) * halfW;
+            const screenY = (entityVX + entityVY) * halfH;
 
             // Generous margins so multi-tile and tall buildings never pop out of view while partially on-screen
             const marginX = Math.max(scaledTileWidth * 2, 500 * zoom);
@@ -13442,6 +14133,7 @@ const App: React.FC = () => {
 
             let img: HTMLImageElement | HTMLCanvasElement | undefined;
             let overlayImg: HTMLImageElement | HTMLCanvasElement | undefined;
+            let townHallOverlayImg: HTMLImageElement | HTMLCanvasElement | undefined;
             let color: string = 'blue';
             let buildingInfo: Building | undefined;
 
@@ -13559,10 +14251,16 @@ const App: React.FC = () => {
                                 const numSegments = path.length - 1;
                                 const segDur = Math.max(1, (pb.trebuchetMoveDuration || (numSegments * TREBUCHET_MOVE_SPEED_MS_PER_TILE)) / numSegments);
                                 const elapsed = now - pb.trebuchetMoveStartTime;
-                                const curSegIdx = Math.min(numSegments - 1, Math.floor(elapsed / segDur));
+                                // Clamp on BOTH sides and validate tiles: a duplicate of the
+                                // section-3 pattern above — negative elapsed (observer clock
+                                // behind the mover's) previously produced path[-N].x crashes
+                                // in this animation branch too.
+                                const curSegIdx = Math.max(0, Math.min(numSegments - 1, Math.floor(elapsed / segDur)));
                                 const fromTile = path[curSegIdx];
                                 const toTile = path[curSegIdx + 1];
-                                activeFacing = getTrebuchetFacingFromDelta(toTile.x - fromTile.x, toTile.y - fromTile.y);
+                                if (fromTile && toTile && typeof fromTile.x === 'number' && typeof toTile.x === 'number') {
+                                    activeFacing = getTrebuchetFacingFromDelta(toTile.x - fromTile.x, toTile.y - fromTile.y);
+                                }
                             } else if (pb.trebuchetMoveStartX !== undefined && pb.trebuchetMoveTargetX !== undefined && pb.trebuchetMoveStartY !== undefined && pb.trebuchetMoveTargetY !== undefined) {
                                 activeFacing = getTrebuchetFacingFromDelta(pb.trebuchetMoveTargetX - pb.trebuchetMoveStartX, pb.trebuchetMoveTargetY - pb.trebuchetMoveStartY);
                             }
@@ -13648,36 +14346,53 @@ const App: React.FC = () => {
                         } else {
                             img = images[mortarFlashFrames[0]] || images[buildingInfo.imageUrl];
                         }
-                    } else if (COIN_FACTORY_ID_SET.has(entity.buildingId) && isWorking) {
-                        // Animation: 80 frames over 3 seconds (~27 FPS), looping continuously
-                        const now = Date.now();
-                        const animationDuration = 3000; // 3 seconds for full loop
-                        const frames = coinFactoryAnimationFrames[entity.buildingId];
-                        const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                        const frameUrl = frames[frameIndex];
-                        img = images[frameUrl];
-                    } else if (SAWMILL_ID_SET.has(entity.buildingId) && isWorking) {
-                        // Sawmill animation: 85 frames (levels 1-5) or 90 frames (levels 6-16) at 30 FPS
-                        const now = Date.now();
-                        const frames = sawmillAnimationFrames[entity.buildingId];
-                        const animationDuration = frames.length * (1000 / 30); // 30 FPS: 85 frames = ~2.8s, 90 frames = 3s
-                        const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                        const frameUrl = frames[frameIndex];
-                        img = images[frameUrl];
+                    } else if (COIN_FACTORY_ID_SET.has(entity.buildingId)) {
+                        // Coin Factory: animated working AND idle loops (gnomograd.com work/wait labels)
+                        const frames = isWorking ? coinFactoryWorkingFrames[entity.buildingId] : coinFactoryIdleFrames[entity.buildingId];
+                        if (frames && frames.length > 1) {
+                            const now = Date.now();
+                            const animationDuration = frames.length * (1000 / (coinFactoryFps[entity.buildingId] || 24));
+                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                            const frameUrl = frames[frameIndex];
+                            img = images[frameUrl] || images[buildingInfo.imageUrl];
+                        } else if (frames && frames[0]) {
+                            img = images[frames[0]] || images[buildingInfo.imageUrl];
+                        }
+                    } else if (SAWMILL_ID_SET.has(entity.buildingId)) {
+                        const siteSpec = SAWMILL_SITE_ANIM_DEFS[entity.buildingId];
+                        if (siteSpec) {
+                            // Sawmill site animation: animated working AND idle loops (gnomograd.com labels)
+                            const frames = isWorking ? sawmillSiteWorkingFrames[entity.buildingId] : sawmillSiteIdleFrames[entity.buildingId];
+                            if (frames && frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / siteSpec.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                const frameUrl = frames[frameIndex];
+                                img = images[frameUrl] || images[buildingInfo.imageUrl];
+                            } else if (frames && frames[0]) {
+                                img = images[frames[0]] || images[buildingInfo.imageUrl];
+                            }
+                        } else if (isWorking) {
+                            // Legacy flat animation for sawmill levels missing on gnomograd.com (393-399)
+                            const now = Date.now();
+                            const frames = sawmillAnimationFrames[entity.buildingId];
+                            const animationDuration = frames.length * (1000 / 30); // 30 FPS: 85 frames = ~2.8s, 90 frames = 3s
+                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                            const frameUrl = frames[frameIndex];
+                            img = images[frameUrl];
+                        }
                     } else if (MONSTER_ACADEMY_ID_SET.has(entity.buildingId)) {
                         const groupInfo = MONSTER_ACADEMY_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            if (isWorking) {
-                                const frames = monsterAcademyWorkingFrames[groupInfo.folder];
-                                if (frames && frames.length > 0) {
-                                    const now = Date.now();
-                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                    img = images[frames[frameIndex]];
-                                }
-                            } else {
-                                const frames = monsterAcademyIdleFrames[groupInfo.folder];
-                                if (frames && frames[0]) img = images[frames[0]];
+                            // Monster Academy: animated working AND idle loops (gnomograd.com work/wait labels)
+                            const frames = isWorking ? monsterAcademyWorkingFrames[groupInfo.folder] : monsterAcademyIdleFrames[groupInfo.folder];
+                            if (frames && frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / groupInfo.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames && frames[0]) {
+                                img = images[frames[0]];
                             }
                         }
                     } else if (ALCHEMY_FACTORY_ID_SET.has(entity.buildingId)) {
@@ -13693,13 +14408,14 @@ const App: React.FC = () => {
                             const frames = alchemyFactoryIdleFrames[entity.buildingId];
                             if (frames && frames[0]) img = images[frames[0]];
                         }
-                    } else if (MILITARY_FACTORY_ID_SET.has(entity.buildingId) && isWorking) {
-                        // Military Factory animation: 62 frames at 30 FPS when working
+                    } else if (MILITARY_FACTORY_ID_SET.has(entity.buildingId)) {
+                        // Military Factory: 62-frame 2s loop (gnomograd.com id 13, no work/wait
+                        // labels - the same loop plays in both states), 31 FPS
                         const now = Date.now();
-                        const animationDuration = militaryFactoryAnimationFrames.length * (1000 / 30); // ~2.07s at 30 FPS
+                        const animationDuration = militaryFactoryAnimationFrames.length * (1000 / 31);
                         const frameIndex = Math.floor((now % animationDuration) / (animationDuration / militaryFactoryAnimationFrames.length)) % militaryFactoryAnimationFrames.length;
                         const frameUrl = militaryFactoryAnimationFrames[frameIndex];
-                        img = images[frameUrl];
+                        img = images[frameUrl] || images[buildingInfo.imageUrl];
                     } else if (MUSHROOM_BED_ID_SET.has(entity.buildingId)) {
                         const spec = MUSHROOM_BED_ANIMS[entity.buildingId];
                         if (spec) {
@@ -13726,36 +14442,46 @@ const App: React.FC = () => {
                                 img = images[frames[0]];
                             }
                         }
+                    } else if (PETARD_FACTORY_ID_SET.has(entity.buildingId)) {
+                        const groupInfo = PETARD_FACTORY_ID_TO_GROUP[entity.buildingId];
+                        if (groupInfo) {
+                            // Petard Factory: animated working AND idle loops (gnomograd.com work/wait labels)
+                            const frames = isWorking ? petardFactoryWorkingFrames[groupInfo.folder] : petardFactoryIdleFrames[groupInfo.folder];
+                            if (frames && frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / groupInfo.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]] || images[buildingInfo.imageUrl];
+                            } else if (frames && frames[0]) {
+                                img = images[frames[0]] || images[buildingInfo.imageUrl];
+                            }
+                        }
                     } else if (MINE_ID_SET.has(entity.buildingId)) {
                         const groupInfo = MINE_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            if (isWorking) {
-                                const frames = mineWorkingFrames[groupInfo.folder];
-                                if (frames && frames.length > 0) {
-                                    const now = Date.now();
-                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                    img = images[frames[frameIndex]];
-                                }
-                            } else {
-                                const frames = mineIdleFrames[groupInfo.folder];
-                                if (frames && frames[0]) img = images[frames[0]];
+                            // Mine: animated working AND idle loops (gnomograd.com work/wait labels)
+                            const frames = isWorking ? mineWorkingFrames[groupInfo.folder] : mineIdleFrames[groupInfo.folder];
+                            if (frames && frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / groupInfo.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames && frames[0]) {
+                                img = images[frames[0]];
                             }
                         }
                     } else if (EMERALD_FACTORY_ID_SET.has(entity.buildingId)) {
                         const groupInfo = EMERALD_FACTORY_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            if (isWorking) {
-                                const frames = emeraldFactoryWorkingFrames[groupInfo.folder];
-                                if (frames && frames.length > 0) {
-                                    const now = Date.now();
-                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                    img = images[frames[frameIndex]];
-                                }
-                            } else {
-                                const frames = emeraldFactoryIdleFrames[groupInfo.folder];
-                                if (frames && frames[0]) img = images[frames[0]];
+                            // Emerald Factory: animated working AND idle loops (gnomograd.com labels work/wait)
+                            const frames = isWorking ? emeraldFactoryWorkingFrames[groupInfo.folder] : emeraldFactoryIdleFrames[groupInfo.folder];
+                            if (frames && frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / groupInfo.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames && frames[0]) {
+                                img = images[frames[0]];
                             }
                         }
                     } else if (GOLD_SMELTER_ID_SET.has(entity.buildingId)) {
@@ -13774,17 +14500,15 @@ const App: React.FC = () => {
                     } else if (STEEL_ROLLING_MILL_ID_SET.has(entity.buildingId)) {
                         const groupInfo = STEEL_ROLLING_MILL_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            if (isWorking) {
-                                const frames = steelRollingMillWorkingFrames[groupInfo.folder];
-                                if (frames && frames.length > 0) {
-                                    const now = Date.now();
-                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                    img = images[frames[frameIndex]];
-                                }
-                            } else {
-                                const frames = steelRollingMillIdleFrames[groupInfo.folder];
-                                if (frames && frames[0]) img = images[frames[0]];
+                            // Steel Rolling Mill: animated working AND idle loops (gnomograd.com labels work/wait)
+                            const frames = isWorking ? steelRollingMillWorkingFrames[groupInfo.folder] : steelRollingMillIdleFrames[groupInfo.folder];
+                            if (frames && frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / groupInfo.fps);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames && frames[0]) {
+                                img = images[frames[0]];
                             }
                         }
                     } else if (STEEL_SMELTING_ID_SET.has(entity.buildingId)) {
@@ -13819,17 +14543,15 @@ const App: React.FC = () => {
                     } else if (LILY_POND_ID_SET.has(entity.buildingId)) {
                         const groupInfo = LILY_POND_ID_TO_GROUP[entity.buildingId];
                         if (groupInfo) {
-                            if (isWorking) {
-                                const frames = lilyPondWorkingFrames[groupInfo.folder];
-                                if (frames && frames.length > 0) {
-                                    const now = Date.now();
-                                    const animationDuration = frames.length * (1000 / 30); // 30 FPS
-                                    const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                                    img = images[frames[frameIndex]];
-                                }
-                            } else {
-                                const frames = lilyPondIdleFrames[groupInfo.folder];
-                                if (frames && frames[0]) img = images[frames[0]];
+                            // Enhanced Lily Pond: animated working AND idle loops (gnomograd.com, 24 FPS)
+                            const frames = isWorking ? lilyPondWorkingFrames[groupInfo.folder] : lilyPondIdleFrames[groupInfo.folder];
+                            if (frames && frames.length > 1) {
+                                const now = Date.now();
+                                const animationDuration = frames.length * (1000 / 24);
+                                const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                                img = images[frames[frameIndex]];
+                            } else if (frames && frames[0]) {
+                                img = images[frames[0]];
                             }
                         }
                     } else if (DETONATOR_FACTORY_ID_SET.has(entity.buildingId)) {
@@ -14712,59 +15434,114 @@ const App: React.FC = () => {
                         }
 
                     } else if (isRiverBuilding(entity.buildingId)) {
-                        const isRiverAt = (nx: number, ny: number): boolean => {
-                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
-                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
-                            const nb = getSpatialBuildingAt(wx, wy);
-                            return Boolean(nb && isRiverBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
-                        };
-                        const riverUrl = getRiverTileUrl(entity.x, entity.y, isRiverAt);
+                        let riverUrl = (entity as any).__autotileUrl;
+                        if (!riverUrl) {
+                            const isRiverAt = (nx: number, ny: number): boolean => {
+                                const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                                const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                                const nb = getSpatialBuildingAt(wx, wy);
+                                return Boolean(nb && isRiverBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                            };
+                            riverUrl = getRiverTileUrl(entity.x, entity.y, isRiverAt);
+                            (entity as any).__autotileUrl = riverUrl;
+                        }
                         img = getOrLoadCachedSprite(riverUrl, loadedImageElementsRef.current);
                     } else if (isRoadBuilding(entity.buildingId)) {
-                        const isRoadAt = (nx: number, ny: number): boolean => {
-                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
-                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
-                            const nb = getSpatialBuildingAt(wx, wy);
-                            return Boolean(nb && isRoadBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
-                        };
-                        const roadUrl = getRoadTileUrl(entity.x, entity.y, isRoadAt);
+                        let roadUrl = (entity as any).__autotileUrl;
+                        if (!roadUrl || (entity as any).__autotileGen !== spatialBuildingsGenerationRef.current) {
+                            const isRoadAt = (nx: number, ny: number): boolean => {
+                                const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                                const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                                const nb = getSpatialBuildingAt(wx, wy);
+                                return Boolean(nb && isRoadBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                            };
+                            roadUrl = getRoadTileUrl(entity.x, entity.y, isRoadAt);
+                            (entity as any).__autotileUrl = roadUrl;
+                            (entity as any).__autotileGen = spatialBuildingsGenerationRef.current;
+                        }
                         img = getOrLoadCachedSprite(roadUrl, loadedImageElementsRef.current);
                     } else if (isPavementBuilding(entity.buildingId)) {
-                        const isPavementAt = (nx: number, ny: number): boolean => {
-                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
-                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
-                            const nb = getSpatialBuildingAt(wx, wy);
-                            return Boolean(nb && isPavementBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
-                        };
-                        const paveUrl = getPavementTileUrl(entity.x, entity.y, isPavementAt);
+                        let paveUrl = (entity as any).__autotileUrl;
+                        if (!paveUrl || (entity as any).__autotileGen !== spatialBuildingsGenerationRef.current) {
+                            const isPavementAt = (nx: number, ny: number): boolean => {
+                                const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                                const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                                const nb = getSpatialBuildingAt(wx, wy);
+                                return Boolean(nb && isPavementBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                            };
+                            paveUrl = getPavementTileUrl(entity.x, entity.y, isPavementAt);
+                            (entity as any).__autotileUrl = paveUrl;
+                            (entity as any).__autotileGen = spatialBuildingsGenerationRef.current;
+                        }
                         img = getOrLoadCachedSprite(paveUrl, loadedImageElementsRef.current);
                     } else if (isWoodenWallBuilding(entity.buildingId)) {
-                        const isWoodenWallAt = (nx: number, ny: number): boolean => {
-                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
-                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
-                            const nb = getSpatialBuildingAt(wx, wy);
-                            return Boolean(nb && isWoodenWallBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
-                        };
-                        const wallUrl = getWoodenWallTileUrl(entity.x, entity.y, isWoodenWallAt);
+                        let wallUrl = (entity as any).__autotileUrl;
+                        if (!wallUrl || (entity as any).__autotileGen !== spatialBuildingsGenerationRef.current) {
+                            const isWoodenWallAt = (nx: number, ny: number): boolean => {
+                                const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                                const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                                const nb = getSpatialBuildingAt(wx, wy);
+                                return Boolean(nb && isWoodenWallBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                            };
+                            wallUrl = getWoodenWallTileUrl(entity.x, entity.y, isWoodenWallAt);
+                            (entity as any).__autotileUrl = wallUrl;
+                            (entity as any).__autotileGen = spatialBuildingsGenerationRef.current;
+                        }
                         img = getOrLoadCachedSprite(wallUrl, loadedImageElementsRef.current);
                     } else if (isStoneWallBuilding(entity.buildingId)) {
-                        const isStoneWallAt = (nx: number, ny: number): boolean => {
-                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
-                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
-                            const nb = getSpatialBuildingAt(wx, wy);
-                            return Boolean(nb && isStoneWallBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
-                        };
-                        const wallUrl = getStoneWallTileUrl(entity.x, entity.y, isStoneWallAt);
+                        let wallUrl = (entity as any).__autotileUrl;
+                        if (!wallUrl || (entity as any).__autotileGen !== spatialBuildingsGenerationRef.current) {
+                            const isStoneWallAt = (nx: number, ny: number): boolean => {
+                                const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                                const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                                const nb = getSpatialBuildingAt(wx, wy);
+                                return Boolean(nb && isStoneWallBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                            };
+                            wallUrl = getStoneWallTileUrl(entity.x, entity.y, isStoneWallAt);
+                            (entity as any).__autotileUrl = wallUrl;
+                            (entity as any).__autotileGen = spatialBuildingsGenerationRef.current;
+                        }
                         img = getOrLoadCachedSprite(wallUrl, loadedImageElementsRef.current);
+                    } else if (isRailRenderTile(entity.buildingId)) {
+                        let railUrl = (entity as any).__autotileUrl;
+                        if (!railUrl || (entity as any).__autotileGen !== spatialBuildingsGenerationRef.current) {
+                            const isRailAt = (nx: number, ny: number): boolean => {
+                                const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                                const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                                const nb = getSpatialBuildingAt(wx, wy);
+                                return Boolean(nb && isRailBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                            };
+                            railUrl = getRailTileUrl(entity.x, entity.y, isRailAt);
+                            (entity as any).__autotileUrl = railUrl;
+                            (entity as any).__autotileGen = spatialBuildingsGenerationRef.current;
+                        }
+                        img = getOrLoadCachedSprite(railUrl, loadedImageElementsRef.current);
                     } else if (isMountainBuilding(entity.buildingId)) {
-                        const isMountainAt = (nx: number, ny: number): boolean => {
-                            const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
-                            const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
-                            const nb = getSpatialBuildingAt(wx, wy);
-                            return Boolean(nb && isMountainBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
-                        };
-                        const mountainUrl = getMountainTileUrl(entity.x, entity.y, isMountainAt);
+                        let mountainUrl = (entity as any).__autotileUrl;
+                        if (!mountainUrl) {
+                            const isMountainAt = (nx: number, ny: number): boolean => {
+                                const wx = isWorldWrapped ? wrapCoord(nx, WORLD_WIDTH_TILES) : nx;
+                                const wy = isWorldWrapped ? wrapCoord(ny, WORLD_HEIGHT_TILES) : ny;
+                                const nb = getSpatialBuildingAt(wx, wy);
+                                return Boolean(nb && isMountainBuilding(nb.buildingId) && (nb.hp === undefined || nb.hp > 0));
+                            };
+                            mountainUrl = getMountainTileUrl(entity.x, entity.y, isMountainAt);
+                            (entity as any).__autotileUrl = mountainUrl;
+                        }
                         img = getOrLoadCachedSprite(mountainUrl, loadedImageElementsRef.current);
+                    } else if (TOWN_HALL_ANIM_ID_SET.has(entity.buildingId)) {
+                        // Town Hall: keep the base building aligned to the tile and
+                        // draw the animated frame (flag, dragons) as an overlay aligned
+                        // to the static image via the per-level offsetX/offsetY spec.
+                        const spec = TOWN_HALL_ANIMS[entity.buildingId];
+                        const frames = townHallAnimationFrameUrls[entity.buildingId];
+                        if (spec && frames && frames.length > 0) {
+                            const now = Date.now();
+                            const animationDuration = (frames.length / spec.fps) * 1000;
+                            const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
+                            townHallOverlayImg = images[frames[frameIndex]];
+                        }
+                        img = images[buildingInfo.imageUrl];
                     } else {
                         img = images[buildingInfo.imageUrl];
                     }
@@ -14801,16 +15578,15 @@ const App: React.FC = () => {
 
             // Visual anti-flicker fallback:
             // if a frame is temporarily missing (e.g. transient network reset), keep the last good image for this entity.
-            const entityRenderKey = `${entity.entityType}:${String((entity as any).id ?? `${entity.x},${entity.y}`)}`;
-            if (img) {
-                if ((img as any).naturalWidth > MAX_BUILDING_TEXTURE_DIMENSION) {
-                    img = createOptimizedCanvasFromImage(img as HTMLImageElement);
-                }
-                lastRenderableImageByEntityRef.current.set(entityRenderKey, img);
-            } else {
-                const lastGoodImg = lastRenderableImageByEntityRef.current.get(entityRenderKey);
-                if (lastGoodImg) {
-                    img = lastGoodImg;
+            // Trees and static ground tiles always have static sprites; skip to prevent thousands of string allocations and Map bloat per second.
+            if (entity.entityType === 'building' && !isMountainBuilding((entity as PlacedBuilding).buildingId) && !isRiverBuilding((entity as PlacedBuilding).buildingId) && !isRoadBuilding((entity as PlacedBuilding).buildingId) && !isPavementBuilding((entity as PlacedBuilding).buildingId)) {
+                if (img) {
+                    if ((img as any).naturalWidth > MAX_BUILDING_TEXTURE_DIMENSION) {
+                        img = createOptimizedCanvasFromImage(img as HTMLImageElement);
+                    }
+                    (entity as any).__lastGoodImg = img;
+                } else if ((entity as any).__lastGoodImg) {
+                    img = (entity as any).__lastGoodImg;
                 }
             }
 
@@ -15050,6 +15826,14 @@ const App: React.FC = () => {
                     }
                     context.globalAlpha = 1.0;
 
+                    // Fishing spot animated water ripples and leaping fish on river tiles
+                    if (isRiver) {
+                        const spot = fishingSpotManager.getSpotAt(entity.x, entity.y);
+                        if (spot) {
+                            drawFishingSpotRipple(context, screenX, screenY, now, zoom, entity.x * 37 + entity.y);
+                        }
+                    }
+
                     if (overlayImg && isWildQuarryBuilding) {
                         const overlayAspectRatio = overlayImg.naturalWidth > 0 ? overlayImg.naturalHeight / overlayImg.naturalWidth : aspectRatio;
                         const overlayWidth = imageScaledWidth * 0.64;
@@ -15059,22 +15843,22 @@ const App: React.FC = () => {
                         context.drawImage(overlayImg, overlayX, overlayY, overlayWidth, overlayHeight);
                     }
                     
-                    // Town Hall Flag Animation - draw only when no active protection shield.
-                    if ('buildingId' in entity && TOWN_HALL_FLAG_ID_SET.has(entity.buildingId) && !(((entity.shieldHp || 0) > 0) || (entity.protectionEndTime && entity.protectionEndTime > Date.now()))) {
-                        const now = Date.now();
-                        const animationDuration = 3000; // 3 seconds for full loop
-                        const frames = townHallFlagAnimationFrames[entity.buildingId];
-                        const frameIndex = Math.floor((now % animationDuration) / (animationDuration / frames.length)) % frames.length;
-                        const frameUrl = frames[frameIndex];
-                        const flagImg = images[frameUrl];
-                        if (flagImg) {
-                            // Draw flag with original aspect ratio, positioned at top of building
-                            const flagAspectRatio = flagImg.height / flagImg.width;
-                            const flagWidth = imageScaledWidth * 0.55; // Flag is ~55% of building width (bigger)
-                            const flagHeight = flagWidth * flagAspectRatio;
-                            const flagX = drawX + imageScaledWidth * 0.52; // Move more right to align with flagpole
-                            const flagY = drawY + imageScaledHeight * 0.035; // Lower on flagpole
-                            context.drawImage(flagImg, flagX, flagY, flagWidth, flagHeight);
+                    // Town Hall building animation overlay (waving flag, dragons).
+                    // The overlay is only assigned in the non-protected img branch,
+                    // so a protection shield naturally pauses the animation.
+                    if (townHallOverlayImg && 'buildingId' in entity && TOWN_HALL_ANIM_ID_SET.has(entity.buildingId)) {
+                        const spec = TOWN_HALL_ANIMS[entity.buildingId];
+                        if (spec && townHallOverlayImg.complete && townHallOverlayImg.naturalWidth > 0) {
+                            // Align the frame canvas with the static base image pixel-for-pixel:
+                            // pixelScale maps static-image pixels to screen pixels.
+                            const pixelScale = imageScaledWidth / spec.staticWidth;
+                            context.drawImage(
+                                townHallOverlayImg,
+                                drawX - spec.offsetX * pixelScale,
+                                drawY - spec.offsetY * pixelScale,
+                                spec.frameWidth * pixelScale,
+                                spec.frameHeight * pixelScale
+                            );
                         }
                     }
 
@@ -16049,8 +16833,20 @@ const App: React.FC = () => {
                         context.fillText('Дорога (100 🪙)', screenX, textY);
                     } else if (pavementBuilderMode) {
                         context.fillStyle = 'rgba(251, 191, 36, 0.95)';
-                        context.strokeText('Мостовая (1000 🪙, 1 🧱)', screenX, textY);
-                        context.fillText('Мостовая (1000 🪙, 1 🧱)', screenX, textY);
+                        context.strokeText('Мостовая (10 000 🪙, 15 🧱)', screenX, textY);
+                        context.fillText('Мостовая (10 000 🪙, 15 🧱)', screenX, textY);
+                    } else if (railBuilderMode) {
+                        context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+                        context.strokeText('Железная дорога (25 000 🪙, 5 ⛓️, 15 🪵)', screenX, textY);
+                        context.fillText('Железная дорога (25 000 🪙, 5 ⛓️, 15 🪵)', screenX, textY);
+                    } else if (wallBuilderMode === 'stone') {
+                        context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+                        context.strokeText('Каменная стена (6 000 🪙)', screenX, textY);
+                        context.fillText('Каменная стена (6 000 🪙)', screenX, textY);
+                    } else if (wallBuilderMode === 'wooden') {
+                        context.fillStyle = 'rgba(251, 191, 36, 0.95)';
+                        context.strokeText('Стена (600 🪙)', screenX, textY);
+                        context.fillText('Стена (600 🪙)', screenX, textY);
                     } else {
                         context.fillStyle = 'rgba(255, 255, 255, 0.8)';
                         context.strokeText('Построить', screenX, textY);
@@ -16103,7 +16899,7 @@ const App: React.FC = () => {
         }
 
         context.restore();
-    }, [hoveredOutOfBounds, hasTownHall, zoomIndex, worldToScreen, moveMode.active, trebuchetTargeting, trebuchetMovingTargeting, mortarRangePreview, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, getSpatialResourceAt]);
+    }, [hoveredOutOfBounds, hasTownHall, zoomIndex, worldToScreen, moveMode.active, trebuchetTargeting, trebuchetMovingTargeting, mortarRangePreview, townHallLocation, getPlacementPreviewState, isZoneReadyForPlacement, isWorldWrapped, getRawResourceAt, getSpatialResourceAt, roadBuilderMode, pavementBuilderMode, railBuilderMode, wallBuilderMode]);
 
     const drawRef = useRef(draw);
     const lastDrawAtRef = useRef(0);
@@ -16254,7 +17050,8 @@ const App: React.FC = () => {
             const allPlaced = placedBuildingsRef.current;
             for (let i = 0; i < allPlaced.length; i++) {
                 const b = allPlaced[i];
-                    if (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetFireAt && now >= b.trebuchetFireAt) {
+                if (b.buildingId === 50005 || b.buildingId === 50004) continue;
+                if (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetFireAt && now >= b.trebuchetFireAt) {
                     const fireElapsed = now - b.trebuchetFireAt;
                     const trebDocId = String(b.id);
                     
@@ -16557,6 +17354,7 @@ const App: React.FC = () => {
             // Mortar attack & projectile lifecycle (runs every frame for smooth timing & autonomous targeting)
             for (let i = 0; i < allPlaced.length; i++) {
                 const b = allPlaced[i];
+                if (b.buildingId === 50005 || b.buildingId === 50004) continue;
                 if (Number(b.buildingId) !== MORTAR_ID) continue;
                 if (b.isConstructing || b.isDestroying) continue;
 
@@ -16780,6 +17578,7 @@ const App: React.FC = () => {
             let buildingsToUpdate: PlacedBuilding[] = [];
             if (monsterAiTickReady) {
                 buildingsToUpdate = placedBuildingsRef.current.filter(b => {
+                    if (b.buildingId === 50005 || b.buildingId === 50004) return false;
                     const isOwner = b.ownerId === "0" || b.ownerId === GUEST_ID || Boolean(b.isLocal) || (isAuthReadyRef.current && userRef.current && b.ownerId === userRef.current.uid);
                     const isHost = b.ownerId === "monster" && isAuthReadyRef.current && userRef.current && (b.hostId === userRef.current.uid || !b.hostId);
                     const isInitiator = b.initiatorId && isAuthReadyRef.current && userRef.current && b.initiatorId === userRef.current.uid;
@@ -16830,6 +17629,7 @@ const App: React.FC = () => {
                 monsterZoneCounts = snapshot.monsterZoneCounts;
                 actingMonsters = snapshot.actingMonsters as PlacedBuilding[];
                 trollsReadyToWhip = placedBuildingsRef.current.filter(b => {
+                    if (b.buildingId === 50005 || b.buildingId === 50004) return false;
                     if (!isTrollMonster(b.buildingId)) return false;
                     if (b.isConstructing || b.isDestroying) return false;
                     if (b.hp !== undefined && b.hp <= 0) return false;
@@ -16852,6 +17652,7 @@ const App: React.FC = () => {
             if (cannonTickReady) {
                 (window as any)[_lastCannonTickKey] = now;
                 cannonsAttacking = placedBuildingsRef.current.filter(b => {
+                    if (b.buildingId === 50005 || b.buildingId === 50004) return false;
                     const isDefense = [...CANNON_IDS, PROTECTED_TOWER_ID, ...WATCHTOWER_IDS].includes(Number(b.buildingId));
                     if (!isDefense || Number(b.buildingId) === TREBUCHET_ID || Number(b.buildingId) === MORTAR_ID) return false;
                     if (b.isConstructing || b.isDestroying) return false;
@@ -16871,12 +17672,18 @@ const App: React.FC = () => {
             if (now - lastStuckCheck >= 5000) {
                 (window as any)[lastStuckCheckKey] = now;
                 const allBuildings = placedBuildingsRef.current;
-                const buildingPositions = new Set(
-                    allBuildings
-                        .filter(b => (b.hp === undefined || b.hp > 0) && b.ownerId !== 'monster' && b.ownerId !== '-1')
-                        .map(b => `${b.x},${b.y}`)
-                );
-                const allOccupied = new Set(allBuildings.filter(b => b.hp === undefined || b.hp > 0).map(b => `${b.x},${b.y}`));
+                const buildingPositions = new Set<string>();
+                const allOccupied = new Set<string>();
+                for (let i = 0; i < allBuildings.length; i++) {
+                    const b = allBuildings[i];
+                    if (b.hp === undefined || b.hp > 0) {
+                        const pos = `${b.x},${b.y}`;
+                        allOccupied.add(pos);
+                        if (b.ownerId !== 'monster' && b.ownerId !== '-1') {
+                            buildingPositions.add(pos);
+                        }
+                    }
+                }
                 const blockedResourcePositionsForTeleport = getBlockedResourcePositionsSet();
 
                 // Track which monsters are currently stuck this check
@@ -16887,7 +17694,9 @@ const App: React.FC = () => {
                 allBuildings.forEach(b => {
                     if (stuckTeleported >= MAX_STUCK_TELEPORTS_PER_CHECK) return;
                     if (b.ownerId !== 'monster' && b.ownerId !== '-1') return;
-                    if (isRoadCapableCustomMonster(b.buildingId)) return;
+                    // Road-capable monsters handle their own stuck logic, EXCEPT when stranded
+                    // inside the procedural forest mask — those are rescued below as well.
+                    if (isRoadCapableCustomMonster(b.buildingId) && !isMonsterForestBlocked(b.x, b.y)) return;
                     const info = buildingByIdMap.get(Number(b.buildingId));
                     if (!info || !info.stats.isMonster) return;
                     if (b.hp !== undefined && b.hp <= 0) return;
@@ -16898,7 +17707,11 @@ const App: React.FC = () => {
                     // Skip monsters that were teleported recently (prevents snapshot-rollback teleport loops)
                     const lastTeleportTime = monsterTeleportCooldownRef.current.get(b.id || '') || 0;
                     if (now - lastTeleportTime < 15000) return;
-                    if (!buildingPositions.has(`${b.x},${b.y}`)) {
+                    const isOnBuildingTile = buildingPositions.has(`${b.x},${b.y}`);
+                    // A monster standing inside the procedural forest mask (e.g. placed or
+                    // spawned there before the mask became passable-blocking) is stuck too.
+                    const isStrandedInForest = isMonsterForestBlocked(b.x, b.y);
+                    if (!isOnBuildingTile && !isStrandedInForest) {
                         // Monster is NOT stuck - reset its stuck counter
                         monsterStuckCountRef.current.delete(b.id || '');
                         return;
@@ -16929,7 +17742,7 @@ const App: React.FC = () => {
                         b,
                         allOccupied,
                         blockedResourcePositionsForTeleport,
-                        undefined
+                        isMonsterForestBlocked
                     );
 
                         if (teleportSpot) {
@@ -16987,6 +17800,8 @@ const App: React.FC = () => {
                     }
                 }
                 // Monsters cannot move onto map resources (forest/trees, chests, oil, quarry, etc.).
+                // Felled trees (hp 0) are excluded from this set; the procedural forest mask is
+                // enforced separately via isMonsterForestBlocked at every movement/teleport check.
                 // Rivers/mountains/buildings are already blocked by occupiedPositions.
                 const blockedResourcePositions = getBlockedResourcePositionsSet();
 
@@ -17347,14 +18162,15 @@ const App: React.FC = () => {
                                     currentBuildings,
                                     blockedResourcePositions,
                                     kotofeyContext,
-                                    isWorldWrapped
+                                    isWorldWrapped,
+                                    isMonsterForestBlocked
                                 )
                                 : !isMonsterTileBlocked(
                                     move.x,
                                     move.y,
                                     occupiedPositions,
                                     blockedResourcePositions,
-                                    undefined,
+                                    isMonsterForestBlocked,
                                     isWorldWrapped
                                 )
                         );
@@ -17677,7 +18493,9 @@ const App: React.FC = () => {
                             if (path && path.length >= 2) {
                                 const lastStepFrom = path[path.length - 2];
                                 const lastStepTo = path[path.length - 1];
-                                finalFacing = getTrebuchetFacingFromDelta(lastStepTo.x - lastStepFrom.x, lastStepTo.y - lastStepFrom.y);
+                                if (lastStepFrom && lastStepTo && typeof lastStepFrom.x === 'number' && typeof lastStepTo.x === 'number') {
+                                    finalFacing = getTrebuchetFacingFromDelta(lastStepTo.x - lastStepFrom.x, lastStepTo.y - lastStepFrom.y);
+                                }
                             } else if (updatedB.trebuchetMoveStartX !== undefined && updatedB.trebuchetMoveTargetX !== undefined && updatedB.trebuchetMoveStartY !== undefined && updatedB.trebuchetMoveTargetY !== undefined) {
                                 finalFacing = getTrebuchetFacingFromDelta(updatedB.trebuchetMoveTargetX - updatedB.trebuchetMoveStartX, updatedB.trebuchetMoveTargetY - updatedB.trebuchetMoveStartY);
                             }
@@ -17731,8 +18549,11 @@ const App: React.FC = () => {
                         }
                     }
 
-                    // Apply Kotofey repair heals before combat damage
-                    if (healMap.has(entityDamageKey) && !updatedB.isDestroying) {
+                    // Apply Kotofey repair heals before combat damage.
+                    // Owner rule (2026-11-14): heals also land on mined/destroying targets so
+                    // healers can save them; the destruction finalize clears the flag itself
+                    // when the target survives with hp > pendingDamage.
+                    if (healMap.has(entityDamageKey)) {
                         const totalHeal = healMap.get(entityDamageKey)!;
                         const healTargetInfo = buildingByIdMap.get(Number(updatedB.buildingId));
                         const healFullHp = Math.max(1, updatedB.maxHp ?? healTargetInfo?.stats.durability ?? 100);
@@ -18194,6 +19015,18 @@ const App: React.FC = () => {
                 visualEffectsRef.current = visualEffectsRef.current.filter(effect => isVisualEffectAlive(effect, nowTs));
             }
 
+            // Update active fishing spots on river tiles and check proximity for HUD prompt
+            fishingSpotManager.update(placedBuildingsRef.current);
+            if (now - lastFishingSpotCheckRef.current > 600) {
+                lastFishingSpotCheckRef.current = now;
+                if (screenToWorldSimpleRef.current) {
+                    const currentZoom = ZOOM_LEVELS[zoomIndexRef.current];
+                    const center = screenToWorldSimpleRef.current(window.innerWidth / 2, window.innerHeight / 2, cameraOffsetRef.current, currentZoom);
+                    const near = fishingSpotManager.getNearbySpot(center.x, center.y, 4.0);
+                    setHasNearbyFishingSpot(Boolean(near));
+                }
+            }
+
             // WASD & Arrow Camera Panning (screen-space, 30% slower than mouse)
             if (!isLoadingScreenRef.current) {
                 const wasdNow = performance.now();
@@ -18252,7 +19085,13 @@ const App: React.FC = () => {
         const interval = setInterval(() => {
             const sinceLastDraw = Date.now() - lastDrawAtRef.current;
             if (sinceLastDraw > 400) {
-                drawRef.current();
+                try {
+                    drawRef.current();
+                } catch (heartbeatDrawErr) {
+                    // Never let a draw bug escape as an uncaught exception here:
+                    // the game loop has its own guard, this fallback must not be weaker.
+                    console.error('[Fallback Draw Uncaught Exception]', heartbeatDrawErr);
+                }
                 lastDrawAtRef.current = Date.now();
             }
         }, 250);
@@ -18531,7 +19370,8 @@ const App: React.FC = () => {
                     for (let t = 0; t < 100; t++) {
                         const x = sx + Math.floor(Math.random() * ZONE_SIZE);
                         const y = sy + Math.floor(Math.random() * ZONE_SIZE);
-                        if (!occupied.has(`${x},${y}`)) return {x, y};
+                        // Monsters never spawn inside the procedural forest mask.
+                        if (!occupied.has(`${x},${y}`) && !isMonsterForestBlocked(x, y)) return {x, y};
                     }
                     return null;
                 };
@@ -18907,7 +19747,8 @@ const App: React.FC = () => {
                             monsterPrevPosRef.current.get(monsterId),
                             monsterDirectionRef.current.get(monsterId),
                             monsterRecentPositionsRef.current.get(monsterId) || [],
-                            kotofeyContext
+                            kotofeyContext,
+                            isMonsterForestBlocked
                         );
 
                         if (movePlan.chosenMove) {
@@ -18941,7 +19782,7 @@ const App: React.FC = () => {
                         }
 
                         if (!isRoadCapableCustomMonster(monster.buildingId) && (nowTs - lastMoveTime) >= (moveInterval * WORLD_MONSTER_STUCK_RECOVERY_MULTIPLIER)) {
-                            const teleportSpot = findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions);
+                            const teleportSpot = findFreeMonsterTeleportSpot(monster, occupied, blockedResourcePositions, isMonsterForestBlocked);
                             if (teleportSpot) {
                                 occupied.delete(`${monster.x},${monster.y}`);
                                 occupied.add(`${teleportSpot.x},${teleportSpot.y}`);
@@ -19198,7 +20039,8 @@ const App: React.FC = () => {
                 for (let t = 0; t < 100; t++) {
                     const x = sx + Math.floor(Math.random() * ZONE_SIZE);
                     const y = sy + Math.floor(Math.random() * ZONE_SIZE);
-                    if (!occupied.has(`${x},${y}`)) return {x, y};
+                    // Monsters never spawn inside the procedural forest mask.
+                    if (!occupied.has(`${x},${y}`) && !isMonsterForestBlocked(x, y)) return {x, y};
                 }
                 return null; // zone is full, skip - will retry next cycle
             };
@@ -19686,6 +20528,129 @@ const App: React.FC = () => {
 
         setChatHistory(prev => [...prev, newMessage]);
         setSelectedQuarry(null);
+    };
+
+    const handleChestCollect = async (mode: 'share' | 'private') => {
+        if (isChestActionProcessing) return;
+        if (!selectedChestCoords) return;
+        if (isBanned()) {
+            alert("Вы забанены и не можете собирать клады!");
+            return;
+        }
+        if (!isAuthReady || !user || !pb.authStore.isValid) {
+            setChestModalError('Требуется авторизация.');
+            return;
+        }
+
+        const chestX = selectedChestCoords.x;
+        const chestY = selectedChestCoords.y;
+        const currentChest = mapResourcesRef.current.find(r => r.type === 'chest' && r.x === chestX && r.y === chestY);
+        // Legacy world-gen chests carry logical ids like "chest_84_281" (mirrored into
+        // resource.id by the adapter); always prefer the record's own logical id.
+        const resourceId = currentChest?.gameId || currentChest?.id || `${chestX}_${chestY}`;
+        const chestMeta = currentChest?.chest || currentChest?.data?.chest;
+        if (chestMeta && (chestMeta.finderId === user.uid || (chestMeta.collectors || []).includes(user.uid))) {
+            setChestModalError('Вы уже собрали этот клад.');
+            return;
+        }
+
+        const applyChestMeta = (resource: MapResource, serverChest: { finderId?: string; finderName?: string; collectors?: string[] }) => {
+            const prevData = (resource.data && typeof resource.data === 'object' && !Array.isArray(resource.data))
+                ? resource.data as Record<string, unknown>
+                : {};
+            return {
+                ...resource,
+                chest: serverChest,
+                data: { ...prevData, chest: serverChest },
+            };
+        };
+
+        setIsChestActionProcessing(true);
+        setChestModalError(null);
+        try {
+            const result = await requestChestCollect(resourceId, mode);
+
+            // Reconcile from the authoritative server payload (server already persisted).
+            if (typeof result.playerGold === 'number') {
+                const nextGold = Math.max(0, result.playerGold);
+                playerGoldRef.current = nextGold;
+                setPlayerGold(nextGold);
+            }
+            if (typeof result.playerEnergy === 'number') {
+                const nextEnergy = Math.max(0, result.playerEnergy);
+                playerEnergyRef.current = nextEnergy;
+                setPlayerEnergy(nextEnergy);
+            }
+            if (typeof result.playerGlory === 'number') {
+                const nextGlory = Math.max(0, result.playerGlory);
+                playerGloryRef.current = nextGlory;
+                setPlayerGlory(nextGlory);
+            }
+
+            if (result.applied && (result.rewardGold || 0) > 0) {
+                triggerGatherJuice({
+                    worldX: chestX,
+                    worldY: chestY,
+                    gold: result.rewardGold,
+                });
+                addHistoryLog(`Найден клад в точке [${chestX}, ${chestY}]! Получено ${result.rewardGold} монет.`, 'economy');
+            }
+
+            if (result.chestDeleted) {
+                setMapResources(prev => prev.filter(r => !(r.type === 'chest' && r.x === chestX && r.y === chestY)));
+            } else if (result.chest) {
+                setMapResources(prev => prev.map(r => (r.type === 'chest' && r.x === chestX && r.y === chestY) ? applyChestMeta(r, result.chest!) : r));
+            }
+
+            if (result.createdShare && result.chest) {
+                // Global notification with a clickable «ТУТ» teleport link
+                // (ChatPanel renders it for any message with teleportCoordinates).
+                const nowMs = Date.now();
+                const shareMessage: ChatMessage = {
+                    id: nowMs + Math.random(),
+                    sender: 'Система',
+                    senderId: 'system',
+                    text: `${playerName} нашёл сундук с сокровищем! Собрать смогут ещё двое.`,
+                    type: 'system',
+                    timestamp: nowMs,
+                    tab: 'general',
+                    teleportCoordinates: { x: chestX, y: chestY },
+                    localOnly: true,
+                };
+                setChatHistory(history => [...history, shareMessage]);
+                setDoc(doc(db, 'chat_messages', `chest-${chestX}_${chestY}-${nowMs}-${user.uid}`), shareMessage)
+                    .catch(e => handleFirestoreError(e, OperationType.CREATE, 'chat_messages/chest-share'));
+            }
+
+            setSelectedChestCoords(null);
+        } catch (error: any) {
+            const details = error?.details || {};
+            const code = details?.error || error?.code;
+
+            if (code === 'CHEST_GONE' || code === 'CHEST_DEPLETED') {
+                setMapResources(prev => prev.filter(r => !(r.type === 'chest' && r.x === chestX && r.y === chestY)));
+                setSelectedChestCoords(null);
+                addHistoryLog('Сундук уже разобрали другие искатели.', 'economy');
+            } else if (code === 'ALREADY_COLLECTED') {
+                // Reconcile: the original request may have succeeded but its response was lost.
+                if (typeof details.playerGold === 'number') {
+                    const nextGold = Math.max(0, details.playerGold);
+                    playerGoldRef.current = nextGold;
+                    setPlayerGold(nextGold);
+                }
+                if (details.chest) {
+                    const serverChest = details.chest;
+                    setMapResources(prev => prev.map(r => (r.type === 'chest' && r.x === chestX && r.y === chestY) ? applyChestMeta(r, serverChest) : r));
+                }
+                setSelectedChestCoords(null);
+            } else if (code === 'NOT_ENOUGH_ENERGY') {
+                openEnergyWarningModal(typeof details.requiredEnergy === 'number' ? details.requiredEnergy : ENERGY_COST_PER_CHOP);
+            } else {
+                setChestModalError(error?.message || 'Не удалось собрать клад. Попробуйте ещё раз.');
+            }
+        } finally {
+            setIsChestActionProcessing(false);
+        }
     };
 
     const handleBuildOilRig = async () => {
@@ -22647,6 +23612,27 @@ const App: React.FC = () => {
             setPavementBuilderMode(true);
             return;
         }
+        if (isRailBuilding(building.id)) {
+            setBuildMenu({ visible: false, x: 0, y: 0 });
+            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+            playCloseSound();
+            setRailBuilderMode(true);
+            return;
+        }
+        if (isWoodenWallBuilding(building.id)) {
+            setBuildMenu({ visible: false, x: 0, y: 0 });
+            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+            playCloseSound();
+            setWallBuilderMode('wooden');
+            return;
+        }
+        if (isStoneWallBuilding(building.id)) {
+            setBuildMenu({ visible: false, x: 0, y: 0 });
+            setBuildConfirmation({ visible: false, building: null, x: 0, y: 0 });
+            playCloseSound();
+            setWallBuilderMode('stone');
+            return;
+        }
         setBuildMenu({ visible: false, x: 0, y: 0 });
         playCloseSound();
         setBuildConfirmation({ visible: true, building, x: buildMenu.x, y: buildMenu.y });
@@ -23200,6 +24186,8 @@ const App: React.FC = () => {
         setSelectedBuilding(null);
         setRoadBuilderMode(false);
         setPavementBuilderMode(false);
+        setRailBuilderMode(false);
+        setWallBuilderMode(null);
         setTrebuchetTargeting(null);
         setTrebuchetMovingTargeting(null);
         setMortarRangePreview(null);
@@ -23210,6 +24198,48 @@ const App: React.FC = () => {
         pendingMonsterPlacementRef.current = nextPlacement;
         setPendingMonsterPlacement(nextPlacement);
         setPermitPurchaseToast(`🐾 Выберите свободную клетку на карте для размещения «${monsterBuilding.name}» (ESC — отмена)`);
+        if (permitPurchaseToastTimerRef.current !== null) {
+            window.clearTimeout(permitPurchaseToastTimerRef.current);
+        }
+        permitPurchaseToastTimerRef.current = window.setTimeout(() => {
+            setPermitPurchaseToast(null);
+            permitPurchaseToastTimerRef.current = null;
+        }, 4000);
+    }, [inventory, buildingData]);
+
+    // Gifted buildings arrive in inventory under their buildingId. Placement
+    // reuses the generic from-inventory pipeline (pendingMonsterPlacement):
+    // free placement that consumes 1 inventory unit; cancelled placement
+    // keeps the gift in inventory.
+    const handleStartPlaceGiftBuildingFromInventory = useCallback((buildingId: number) => {
+        const currentInv = inventoryRef.current || inventory;
+        const count = Math.max(0, Number(currentInv[buildingId]) || 0);
+        const giftBuilding = buildingData.find(b => b.id === buildingId);
+        if (!giftBuilding) return;
+        if (count < 1) {
+            alert(`«${giftBuilding.name}» отсутствует в инвентаре.`);
+            return;
+        }
+
+        setShowInventory(false);
+        setShowMonsterAcademyModal(false);
+        setShowBlackMarketMissingModal(false);
+        setBlackMarketBuilding(null);
+        setSelectedBuilding(null);
+        setRoadBuilderMode(false);
+        setPavementBuilderMode(false);
+        setRailBuilderMode(false);
+        setWallBuilderMode(null);
+        setTrebuchetTargeting(null);
+        setTrebuchetMovingTargeting(null);
+        setMortarRangePreview(null);
+        setMoveMode({ active: false, building: null });
+        setBuildMenu(prev => ({ ...prev, visible: false }));
+
+        const nextPlacement = { building: giftBuilding, fromInventoryItemId: buildingId };
+        pendingMonsterPlacementRef.current = nextPlacement;
+        setPendingMonsterPlacement(nextPlacement);
+        setPermitPurchaseToast(`🎁 Выберите свободную клетку на карте для размещения «${giftBuilding.name}» (ESC — отмена, подарок останется в инвентаре)`);
         if (permitPurchaseToastTimerRef.current !== null) {
             window.clearTimeout(permitPurchaseToastTimerRef.current);
         }
@@ -23297,6 +24327,8 @@ const App: React.FC = () => {
             setSelectedBuilding(null);
             setRoadBuilderMode(false);
             setPavementBuilderMode(false);
+            setRailBuilderMode(false);
+            setWallBuilderMode(null);
             setTrebuchetTargeting(null);
             setTrebuchetMovingTargeting(null);
             setMortarRangePreview(null);
@@ -25934,7 +26966,7 @@ const App: React.FC = () => {
                     <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
                             <span className="font-black text-sm text-amber-300">Редактор строительства мостовой</span>
-                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">1000 🪙 + 1 🧱 / клетка</span>
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">10 000 🪙 + 15 🧱 / клетка</span>
                         </div>
                         <span className="text-xs text-gray-300">Нажимайте по клеткам, чтобы строить мостовую. Для того чтобы закрыть редактор нажмите esc</span>
                     </div>
@@ -25946,6 +26978,52 @@ const App: React.FC = () => {
                         className="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap cursor-pointer flex-shrink-0"
                     >
                         <span>Закрыть редактор строительства мостовой</span>
+                        <span className="bg-red-800/80 px-1.5 py-0.5 rounded text-[10px] text-red-200">ESC</span>
+                    </button>
+                </div>
+            )}
+
+            {railBuilderMode && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-5 sm:px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-3 sm:gap-4 border border-amber-500/70 animate-fade-in max-w-[95vw]">
+                    <span className="text-2xl flex-shrink-0 animate-pulse">🛤️</span>
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-amber-300">Редактор строительства железной дороги</span>
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">25 000 🪙 + 5 ⛓️ + 15 🪵 / клетка</span>
+                        </div>
+                        <span className="text-xs text-gray-300">Нажимайте по клеткам, чтобы прокладывать железную дорогу — пути соединяются автоматически. Для того чтобы закрыть редактор нажмите esc</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setRailBuilderMode(false);
+                            playCloseSound();
+                        }}
+                        className="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap cursor-pointer flex-shrink-0"
+                    >
+                        <span>Закрыть редактор железной дороги</span>
+                        <span className="bg-red-800/80 px-1.5 py-0.5 rounded text-[10px] text-red-200">ESC</span>
+                    </button>
+                </div>
+            )}
+
+            {wallBuilderMode && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white px-5 sm:px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-3 sm:gap-4 border border-amber-500/70 animate-fade-in max-w-[95vw]">
+                    <span className="text-2xl flex-shrink-0 animate-pulse">🧱</span>
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-amber-300">{wallBuilderMode === 'stone' ? 'Редактор строительства каменной стены' : 'Редактор строительства стены'}</span>
+                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full text-[11px] font-bold">{wallBuilderMode === 'stone' ? '6 000 🪙 / клетка' : '600 🪙 / клетка'}</span>
+                        </div>
+                        <span className="text-xs text-gray-300">Нажимайте по клеткам, чтобы строить стену — сегменты соединяются автоматически. Для того чтобы закрыть редактор нажмите esc</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setWallBuilderMode(null);
+                            playCloseSound();
+                        }}
+                        className="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-md flex items-center gap-1.5 whitespace-nowrap cursor-pointer flex-shrink-0"
+                    >
+                        <span>Закрыть редактор стены</span>
                         <span className="bg-red-800/80 px-1.5 py-0.5 rounded text-[10px] text-red-200">ESC</span>
                     </button>
                 </div>
@@ -26093,6 +27171,47 @@ const App: React.FC = () => {
                 </div>
             )}
 
+
+            {selectedChestCoords && (
+                <SelectedChestModal
+                    resource={mapResources.find(r => r.type === 'chest' && r.x === selectedChestCoords.x && r.y === selectedChestCoords.y) || null}
+                    playerId={user?.uid}
+                    imageUrl={chestImageUrl}
+                    isProcessing={isChestActionProcessing}
+                    errorText={chestModalError}
+                    onCollect={handleChestCollect}
+                    onClose={() => {
+                        if (isChestActionProcessing) return;
+                        setSelectedChestCoords(null);
+                        setChestModalError(null);
+                    }}
+                />
+            )}
+
+            {hasNearbyFishingSpot && !showFishingModal && (
+                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-bounce">
+                    <div className="bg-slate-900/90 border border-sky-400/50 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl flex items-center gap-2">
+                        <span className="text-xl">🎣</span>
+                        <span className="text-sm font-bold text-sky-200">
+                            Рыбное место! Нажмите <span className="bg-sky-500/30 text-amber-300 px-1.5 py-0.5 rounded border border-sky-400/40 font-mono">E</span> или кликните по кругам на воде
+                        </span>
+                    </div>
+                </div>
+            )}
+
+            {showFishingModal && (
+                <FishingModal
+                    isOpen={showFishingModal}
+                    spot={activeFishingSpot}
+                    playerEnergy={playerEnergy}
+                    onClose={() => {
+                        setShowFishingModal(false);
+                        setActiveFishingSpot(null);
+                        playCloseSound();
+                    }}
+                    onCatchFish={handleCatchFish}
+                />
+            )}
 
             <SelectedBuildingModal
                 selectedBuilding={selectedBuilding}
@@ -26341,12 +27460,14 @@ const App: React.FC = () => {
                 onClose={closeInventoryModal}
                 inventory={inventory}
                 itemData={itemData}
+                buildingData={buildingData}
                 playerEnergy={playerEnergy}
                 maxEnergy={maxEnergy}
                 coinImageUrl={coinImageUrl}
                 onUseItem={handleUseInventoryItem}
                 onCraftItem={handleCraftInventoryItem}
                 onQuickSellItem={handleQuickSellInventoryItem}
+                onPlaceBuilding={handleStartPlaceGiftBuildingFromInventory}
                 playCloseSound={playCloseSound}
             />
 
@@ -26567,6 +27688,24 @@ const App: React.FC = () => {
                 onPunishPlayer={handlePunishPlayerByUid}
                 onCursePlayer={handleCursePlayerByUid}
                 onBuyRubies={openRubyShopModal}
+                onGift={handleOpenGiftCatalog}
+            />
+
+            <GiftCatalogModal
+                isOpen={showGiftCatalogModal && !!selectedPlayerId}
+                onClose={() => setShowGiftCatalogModal(false)}
+                targetPlayerId={selectedPlayerId}
+                targetPlayerName={selectedPlayerId ? (allUsers[selectedPlayerId]?.name || 'Игрок') : ''}
+                playerRubies={playerRubies}
+                buildingData={buildingData}
+                isSending={isGiftSendProcessing}
+                onSend={handleSendGift}
+            />
+
+            <GiftReceivedPopup
+                gift={giftReceivedPopup && user ? { ...giftReceivedPopup, buildingImageUrl: buildingData.find(b => b.id === giftReceivedPopup.buildingId)?.imageUrl } : null}
+                onClose={() => setGiftReceivedPopup(null)}
+                playOpenSound={playOpenSound}
             />
             <ProfileModal
                 isOpen={showProfileModal}

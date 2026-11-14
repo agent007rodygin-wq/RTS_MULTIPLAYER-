@@ -5,6 +5,15 @@ routerAdd(
   "/api/basingse/tree-hit",
   function (e) {
     var treeUtils = require(__hooks + "/tree_server_utils.js");
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    // 2026-11 security pass: each hit pays out server-side rewards, so cap
+    // request rate per player (150/min — far above any human chop cadence).
+    if (!secUtils.checkRateLimit("tree-hit:" + secUtils.requestKey(e), 150)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/tree-hit" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком частые удары по дереву, притормозите" });
+    }
+
     var payload = new DynamicModel({
       resourceId: "",
       id: "",
@@ -53,6 +62,107 @@ routerAdd(
     console.log("[TreeHit Debug][route][response]", JSON.stringify({
       authUserId: authUserId,
       logicalResourceId: logicalResourceId,
+      status: result.status,
+      body: result.body,
+    }));
+    return e.json(result.status, result.body);
+  },
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/chest-collect",
+  function (e) {
+    var chestUtils = require(__hooks + "/chest_server_utils.js");
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    // 2026-11 security pass: server-rolled rewards → cap per player (30/min).
+    if (!secUtils.checkRateLimit("chest:" + secUtils.requestKey(e), 30)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/chest-collect" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
+    var payload = new DynamicModel({
+      resourceId: "",
+      mode: "",
+    });
+
+    try {
+      var _body = e.requestInfo().body || {};
+      payload.resourceId = String(_body.resourceId || _body.id || "");
+      payload.mode = String(_body.mode || "");
+    } catch (error) {
+      console.log("[ChestCollect Debug][route][bind-error]", String(error));
+      return e.json(400, {
+        success: false,
+        error: "INVALID_REQUEST_BODY",
+        details: {
+          message: String(error),
+        },
+      });
+    }
+
+    var authRecord = null;
+    try {
+      var _h = e.requestInfo().headers;
+      var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
+      if (_token) authRecord = $app.findAuthRecordByToken(_token);
+    } catch (_e) { authRecord = null; }
+    var authUserId = authRecord ? authRecord.id : null;
+
+    console.log("[ChestCollect Debug][route][request]", JSON.stringify({
+      authUserId: authUserId,
+      resourceId: payload.resourceId,
+      mode: payload.mode,
+    }));
+
+    var result = chestUtils.processChestCollect($app, authRecord, payload.resourceId, payload.mode);
+    console.log("[ChestCollect Debug][route][response]", JSON.stringify({
+      authUserId: authUserId,
+      resourceId: payload.resourceId,
+      mode: payload.mode,
+      status: result.status,
+      body: result.body,
+    }));
+    return e.json(result.status, result.body);
+  },
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/gift-send",
+  function (e) {
+    var giftUtils = require(__hooks + "/gift_server_utils.js");
+    var targetUserId = "";
+    var buildingId = "";
+
+    try {
+      var _body = e.requestInfo().body || {};
+      targetUserId = String(_body.targetUserId || _body.targetId || "");
+      buildingId = String(_body.buildingId || "");
+    } catch (error) {
+      console.log("[GiftSend Debug][route][bind-error]", String(error));
+      return e.json(400, {
+        success: false,
+        error: "INVALID_REQUEST_BODY",
+        details: {
+          message: String(error),
+        },
+      });
+    }
+
+    var authRecord = null;
+    try {
+      var _h = e.requestInfo().headers;
+      var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
+      if (_token) authRecord = $app.findAuthRecordByToken(_token);
+    } catch (_e) { authRecord = null; }
+
+    var result = giftUtils.processGiftSend($app, authRecord, targetUserId, buildingId);
+    console.log("[GiftSend Debug][route][response]", JSON.stringify({
+      authUserId: authRecord ? authRecord.id : null,
+      targetUserId: targetUserId,
+      buildingId: buildingId,
       status: result.status,
       body: result.body,
     }));
@@ -407,6 +517,330 @@ routerAdd(
   },
 );
 
+// ─── Curse player (turn into animal) ────────────────────────────────────────
+// The users collection update rule only allows self-updates ("id = @request.auth.id"),
+// so the client cannot write another player's record directly. This endpoint performs
+// the write with elevated (hook) privileges and uses the server-side price table.
+routerAdd(
+  "POST",
+  "/api/game/curse-player",
+  function (e) {
+    // Server-authoritative options (mirrors src/game/ui/actionOptions.ts CURSE_OPTIONS)
+    var CURSE_OPTIONS = [
+      { durationMinutes: 1, cost: 4000, prefix: "(ква-ква-ква)", animalName: "Жаба" },
+      { durationMinutes: 2, cost: 8000, prefix: "(му-му-му)", animalName: "Корова" },
+      { durationMinutes: 3, cost: 12000, prefix: "(гаф-гаф)", animalName: "Собака" },
+      { durationMinutes: 4, cost: 16000, prefix: "(хрю-хрю)", animalName: "Свинья" },
+      { durationMinutes: 5, cost: 20000, prefix: "(бе-бе-бе)", animalName: "Барашек" },
+    ];
+
+    var decodeUtf8Bytes = function (raw) {
+      if (!raw) return "";
+      if (typeof raw === "string") return raw;
+      var out = "";
+      var i = 0;
+      var len = raw.length;
+      while (i < len) {
+        var c = raw[i++] & 0xff;
+        if ((c & 0x80) === 0) {
+          out += String.fromCharCode(c);
+        } else if ((c & 0xe0) === 0xc0) {
+          if (i < len) {
+            var c2 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x1f) << 6) | (c2 & 0x3f));
+          }
+        } else if ((c & 0xf0) === 0xe0) {
+          if (i + 1 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x0f) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+          }
+        } else if ((c & 0xf8) === 0xf0) {
+          if (i + 2 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            var c4 = raw[i++] & 0xff;
+            var cp = (((c & 0x07) << 18) | ((c2 & 0x3f) << 12) | ((c3 & 0x3f) << 6) | (c4 & 0x3f)) - 0x10000;
+            out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+          }
+        } else {
+          out += String.fromCharCode(c);
+        }
+      }
+      return out;
+    };
+
+    var parseDataField = function (record) {
+      var raw = record.get("data");
+      if (!raw) return {};
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      var str = Array.isArray(raw) ? decodeUtf8Bytes(raw) : (typeof raw === "string" ? raw : "");
+      if (!str) return {};
+      try {
+        var parsed = JSON.parse(str);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      } catch (error) {
+        console.log("[curse-player:parseDataField] decode failed:", String(error));
+      }
+      return {};
+    };
+
+    var setDataField = function (record, obj) {
+      record.set("data", JSON.stringify(obj));
+    };
+
+    try {
+      var body = e.requestInfo().body || {};
+      var targetId = String(body.targetUserId || "").trim();
+      var duration = Number(body.durationMinutes) || 0;
+
+      var authRecord = null;
+      try {
+        var _h = e.requestInfo().headers;
+        var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
+        if (_token) authRecord = $app.findAuthRecordByToken(_token);
+      } catch (_e) { authRecord = null; }
+      if (!authRecord) {
+        return e.json(401, { success: false, error: "AUTH_REQUIRED" });
+      }
+      var issuerId = authRecord.id;
+
+      if (!targetId) {
+        return e.json(400, { success: false, error: "MISSING_TARGET" });
+      }
+
+      var option = null;
+      for (var i = 0; i < CURSE_OPTIONS.length; i++) {
+        if (CURSE_OPTIONS[i].durationMinutes === duration) option = CURSE_OPTIONS[i];
+      }
+      if (!option) {
+        return e.json(400, { success: false, error: "INVALID_DURATION" });
+      }
+
+      var result = null;
+
+      $app.runInTransaction(function (txApp) {
+        var issuerRecord = txApp.findRecordById("users", issuerId);
+        var targetRecord = txApp.findRecordById("users", targetId);
+
+        var issuerGold = Number(issuerRecord.get("gold") || 0);
+        if (issuerGold < option.cost) {
+          throw new Error("INSUFFICIENT_GOLD|" + option.cost + "|" + issuerGold);
+        }
+
+        var issuerData = parseDataField(issuerRecord);
+        if (Array.isArray(issuerData)) issuerData = {};
+        var targetData = parseDataField(targetRecord);
+        if (Array.isArray(targetData)) targetData = {};
+
+        var now = Date.now();
+        var activeCurse = {
+          prefix: option.prefix,
+          animalName: option.animalName,
+          endTime: now + option.durationMinutes * 60 * 1000,
+        };
+
+        issuerRecord.set("gold", issuerGold - option.cost);
+        issuerData.gold = issuerGold - option.cost;
+        setDataField(issuerRecord, issuerData);
+
+        targetData.activeCurse = activeCurse;
+        setDataField(targetRecord, targetData);
+
+        txApp.save(issuerRecord);
+        txApp.save(targetRecord);
+
+        result = {
+          success: true,
+          targetUserId: targetId,
+          cost: option.cost,
+          durationMinutes: option.durationMinutes,
+          activeCurse: activeCurse,
+          issuerGold: issuerGold - option.cost,
+        };
+      });
+
+      return e.json(200, result);
+    } catch (err) {
+      var detail = String(err);
+      if (detail.indexOf("INSUFFICIENT_GOLD") !== -1) {
+        var parts = detail.split("|");
+        return e.json(409, {
+          success: false,
+          error: "INSUFFICIENT_GOLD",
+          required: Number(parts[1]) || 0,
+          available: Number(parts[2]) || 0,
+        });
+      }
+      if (detail.indexOf("sql: no rows in result set") !== -1 || detail.indexOf("not found") !== -1) {
+        return e.json(404, { success: false, error: "TARGET_NOT_FOUND" });
+      }
+      console.log("[curse-player] FAILED:", detail);
+      return e.json(500, { success: false, error: "INTERNAL_ERROR", detail: detail.substring(0, 200) });
+    }
+  }
+);
+
+// ─── Punish player (glory penalty for rubies) ───────────────────────────────
+// Same rule constraint as curse-player: writes the TARGET player's glory with
+// hook privileges and deducts rubies from the issuer using the server-side table.
+routerAdd(
+  "POST",
+  "/api/game/punish-player",
+  function (e) {
+    // Server-authoritative options (mirrors src/game/ui/actionOptions.ts PUNISHMENT_OPTIONS)
+    var PUNISHMENT_OPTIONS = [
+      { cost: 1, gloryPenalty: 500 },
+      { cost: 2, gloryPenalty: 1000 },
+      { cost: 3, gloryPenalty: 2400 },
+      { cost: 4, gloryPenalty: 5500 },
+      { cost: 5, gloryPenalty: 9000 },
+    ];
+
+    var decodeUtf8Bytes = function (raw) {
+      if (!raw) return "";
+      if (typeof raw === "string") return raw;
+      var out = "";
+      var i = 0;
+      var len = raw.length;
+      while (i < len) {
+        var c = raw[i++] & 0xff;
+        if ((c & 0x80) === 0) {
+          out += String.fromCharCode(c);
+        } else if ((c & 0xe0) === 0xc0) {
+          if (i < len) {
+            var c2 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x1f) << 6) | (c2 & 0x3f));
+          }
+        } else if ((c & 0xf0) === 0xe0) {
+          if (i + 1 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            out += String.fromCharCode(((c & 0x0f) << 12) | ((c2 & 0x3f) << 6) | (c3 & 0x3f));
+          }
+        } else if ((c & 0xf8) === 0xf0) {
+          if (i + 2 < len) {
+            var c2 = raw[i++] & 0xff;
+            var c3 = raw[i++] & 0xff;
+            var c4 = raw[i++] & 0xff;
+            var cp = (((c & 0x07) << 18) | ((c2 & 0x3f) << 12) | ((c3 & 0x3f) << 6) | (c4 & 0x3f)) - 0x10000;
+            out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+          }
+        } else {
+          out += String.fromCharCode(c);
+        }
+      }
+      return out;
+    };
+
+    var parseDataField = function (record) {
+      var raw = record.get("data");
+      if (!raw) return {};
+      if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+      var str = Array.isArray(raw) ? decodeUtf8Bytes(raw) : (typeof raw === "string" ? raw : "");
+      if (!str) return {};
+      try {
+        var parsed = JSON.parse(str);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      } catch (error) {
+        console.log("[punish-player:parseDataField] decode failed:", String(error));
+      }
+      return {};
+    };
+
+    var setDataField = function (record, obj) {
+      record.set("data", JSON.stringify(obj));
+    };
+
+    try {
+      var body = e.requestInfo().body || {};
+      var targetId = String(body.targetUserId || "").trim();
+      var cost = Number(body.cost) || 0;
+
+      var authRecord = null;
+      try {
+        var _h = e.requestInfo().headers;
+        var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
+        if (_token) authRecord = $app.findAuthRecordByToken(_token);
+      } catch (_e) { authRecord = null; }
+      if (!authRecord) {
+        return e.json(401, { success: false, error: "AUTH_REQUIRED" });
+      }
+      var issuerId = authRecord.id;
+
+      if (!targetId) {
+        return e.json(400, { success: false, error: "MISSING_TARGET" });
+      }
+
+      var option = null;
+      for (var i = 0; i < PUNISHMENT_OPTIONS.length; i++) {
+        if (PUNISHMENT_OPTIONS[i].cost === cost) option = PUNISHMENT_OPTIONS[i];
+      }
+      if (!option) {
+        return e.json(400, { success: false, error: "INVALID_COST" });
+      }
+
+      var result = null;
+
+      $app.runInTransaction(function (txApp) {
+        var issuerRecord = txApp.findRecordById("users", issuerId);
+        var targetRecord = txApp.findRecordById("users", targetId);
+
+        var issuerRubies = Number(issuerRecord.get("rubies") || 0);
+        if (issuerRubies < option.cost) {
+          throw new Error("INSUFFICIENT_RUBIES|" + option.cost + "|" + issuerRubies);
+        }
+
+        var issuerData = parseDataField(issuerRecord);
+        if (Array.isArray(issuerData)) issuerData = {};
+        var targetData = parseDataField(targetRecord);
+        if (Array.isArray(targetData)) targetData = {};
+
+        var targetGlory = Number(targetRecord.get("glory") || 0);
+        var nextTargetGlory = Math.max(0, targetGlory - option.gloryPenalty);
+
+        issuerRecord.set("rubies", issuerRubies - option.cost);
+        issuerData.rubies = issuerRubies - option.cost;
+        setDataField(issuerRecord, issuerData);
+
+        targetRecord.set("glory", nextTargetGlory);
+        targetData.glory = nextTargetGlory;
+        setDataField(targetRecord, targetData);
+
+        txApp.save(issuerRecord);
+        txApp.save(targetRecord);
+
+        result = {
+          success: true,
+          targetUserId: targetId,
+          cost: option.cost,
+          gloryPenalty: option.gloryPenalty,
+          targetGlory: nextTargetGlory,
+          issuerRubies: issuerRubies - option.cost,
+        };
+      });
+
+      return e.json(200, result);
+    } catch (err) {
+      var detail = String(err);
+      if (detail.indexOf("INSUFFICIENT_RUBIES") !== -1) {
+        var parts = detail.split("|");
+        return e.json(409, {
+          success: false,
+          error: "INSUFFICIENT_RUBIES",
+          required: Number(parts[1]) || 0,
+          available: Number(parts[2]) || 0,
+        });
+      }
+      if (detail.indexOf("sql: no rows in result set") !== -1 || detail.indexOf("not found") !== -1) {
+        return e.json(404, { success: false, error: "TARGET_NOT_FOUND" });
+      }
+      console.log("[punish-player] FAILED:", detail);
+      return e.json(500, { success: false, error: "INTERNAL_ERROR", detail: detail.substring(0, 200) });
+    }
+  }
+);
+
 routerAdd(
   "POST",
   "/api/game/reputation-action",
@@ -585,14 +1019,69 @@ routerAdd(
 );
 
 // --- BasingSe Telegram Link & Daily Reward API ---
+// 2026-11 security pass: all mutating Telegram routes now require
+// authentication. Two access paths:
+//   1. Backend/bot path  — "X-Internal-Secret" header matching the
+//      TELEGRAM_LINK_SECRET env var (shared secret, never exposed to browsers).
+//   2. Mini App path     — Bearer auth token + freshly signed Telegram
+//      initData (HMAC-validated server-side); linking is forced to the
+//      authenticated player's own account.
+// Everything else is rejected with 401 and security-logged.
 
 routerAdd(
   "POST",
   "/api/basingse/telegram-link",
   function (e) {
     var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    if (!secUtils.checkRateLimit("tg-link:" + secUtils.requestKey(e), 15)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/telegram-link" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
     var _body = e.requestInfo().body || {};
-    var result = dailyUtils.linkTelegram($app, _body.userId, _body.telegramId, _body.telegramUsername);
+    var authRecord = secUtils.resolveAuthRecord(e);
+    var hasInternal = secUtils.verifyInternalSecret(e);
+
+    var userId = String(_body.userId || "");
+    var telegramId = String(_body.telegramId || "");
+    var telegramUsername = String(_body.telegramUsername || "");
+
+    if (!hasInternal) {
+      // Mini App path: proof of Telegram identity must be freshly signed initData
+      // tied to the authenticated player. Anything else is rejected.
+      var tgUser = null;
+      var botToken = secUtils.getTelegramBotToken();
+      var initData = String(_body.initData || "");
+      if (authRecord && botToken && initData) {
+        var v = secUtils.validateTelegramInitData(initData, botToken, 86400);
+        if (v.ok) tgUser = v.user;
+      }
+      if (!authRecord || !tgUser) {
+        secUtils.securityLog("rejected", {
+          route: "/api/basingse/telegram-link",
+          reason: tgUser ? "NO_AUTH" : "BAD_OR_MISSING_INITDATA",
+          hasAuth: !!authRecord
+        });
+        return e.json(401, {
+          success: false,
+          error: "UNAUTHORIZED",
+          message: "Требуется авторизация (Bearer-токен и подписанный Telegram initData) или внутренний секрет"
+        });
+      }
+      // Force the link onto the authenticated player's own record with the
+      // initData-verified Telegram identity — never trust body-supplied ids here.
+      userId = authRecord.id;
+      telegramId = String(tgUser.id || "");
+      telegramUsername = String(tgUser.username || tgUser.first_name || "");
+    }
+
+    if (!secUtils.isValidTelegramId(telegramId)) {
+      return e.json(400, { success: false, error: "INVALID_TELEGRAM_ID", message: "Некорректный telegramId" });
+    }
+
+    var result = dailyUtils.linkTelegram($app, userId, telegramId, telegramUsername);
     return e.json(result.status, result.body);
   }
 );
@@ -602,6 +1091,20 @@ routerAdd(
   "/api/basingse/telegram-status",
   function (e) {
     var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    if (!secUtils.checkRateLimit("tg-status:" + secUtils.requestKey(e), 15)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/telegram-status" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
+    var authRecord = secUtils.resolveAuthRecord(e);
+    var hasInternal = secUtils.verifyInternalSecret(e);
+    if (!authRecord && !hasInternal) {
+      secUtils.securityLog("rejected", { route: "/api/basingse/telegram-status", reason: "NO_AUTH_OR_SECRET" });
+      return e.json(401, { success: false, error: "UNAUTHORIZED", message: "Требуется авторизация или внутренний секрет" });
+    }
+
     var _body = e.requestInfo().body || {};
     var result = dailyUtils.getTelegramStatus($app, _body.telegramId);
     return e.json(result.status, result.body);
@@ -613,15 +1116,27 @@ routerAdd(
   "/api/basingse/claim-daily-reward",
   function (e) {
     var dailyUtils = require(__hooks + "/daily_reward_utils.js");
-    var authRecord = null;
-    try {
-      var _h = e.requestInfo().headers;
-      var _token = (_h["Authorization"] || _h["authorization"] || "").replace(/^Bearer\s+/i, "");
-      if (_token) authRecord = $app.findAuthRecordByToken(_token);
-    } catch (_e) { authRecord = null; }
+    var secUtils = require(__hooks + "/security_utils.js");
 
-    var _body = e.requestInfo().body || {};
-    var result = dailyUtils.claimDailyReward($app, authRecord, _body.userId);
+    var authRecord = secUtils.resolveAuthRecord(e);
+    if (!authRecord) {
+      secUtils.securityLog("rejected", { route: "/api/basingse/claim-daily-reward", reason: "NO_AUTH" });
+      return e.json(401, { success: false, error: "UNAUTHORIZED", message: "Необходима авторизация" });
+    }
+
+    if (!secUtils.checkRateLimit("daily:" + authRecord.id, 6)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/claim-daily-reward", userId: authRecord.id });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
+    // 2026-11 security pass: the body-supplied fallback userId was removed —
+    // rewards can only ever be claimed for the token's own account, and the
+    // read-check-save sequence now runs inside a transaction so concurrent
+    // claims cannot double-apply the reward.
+    var result = null;
+    $app.runInTransaction(function (txApp) {
+      result = dailyUtils.claimDailyReward(txApp, authRecord);
+    });
     return e.json(result.status, result.body);
   }
 );
@@ -631,6 +1146,16 @@ routerAdd(
   "/api/basingse/validate-promo",
   function (e) {
     var dailyUtils = require(__hooks + "/daily_reward_utils.js");
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    // Stays unauthenticated by design: it is called during registration, before
+    // the player has a session. It is read-only — rate limited to slow down
+    // promo-code enumeration.
+    if (!secUtils.checkRateLimit("promo:" + secUtils.requestKey(e), 30)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/validate-promo" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
     var _body = e.requestInfo().body || {};
     var result = dailyUtils.validatePromoCode($app, _body.promoCode, _body.currentName);
     return e.json(result.status, result.body);
@@ -642,8 +1167,22 @@ routerAdd(
   "/api/basingse/complete-referral-tutorial",
   function (e) {
     var dailyUtils = require(__hooks + "/daily_reward_utils.js");
-    var _body = e.requestInfo().body || {};
-    var result = dailyUtils.processReferralTutorialCompleted($app, _body.userId);
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    var authRecord = secUtils.resolveAuthRecord(e);
+    if (!authRecord) {
+      secUtils.securityLog("rejected", { route: "/api/basingse/complete-referral-tutorial", reason: "NO_AUTH" });
+      return e.json(401, { success: false, error: "UNAUTHORIZED", message: "Необходима авторизация" });
+    }
+
+    if (!secUtils.checkRateLimit("referral:" + authRecord.id, 10)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/complete-referral-tutorial", userId: authRecord.id });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
+    // 2026-11 security pass: the tutorial completion (and referrer payout) is
+    // attributed to the authenticated player only — the body userId is ignored.
+    var result = dailyUtils.processReferralTutorialCompleted($app, authRecord.id);
     return e.json(result.status, result.body);
   }
 );
@@ -654,6 +1193,14 @@ routerAdd(
   "GET",
   "/api/basingse/achievements-stats",
   function (e) {
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    // Scans up to ~2000 user records per call — rate limit anonymous bulk reads.
+    if (!secUtils.checkRateLimit("achstats:" + secUtils.requestKey(e), 10)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/achievements-stats" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
     var parseRecordData = function (record) {
       if (!record) return {};
       var raw = record.get("data");
@@ -713,6 +1260,22 @@ routerAdd(
   "POST",
   "/api/basingse/player-order",
   function (e) {
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    // 2026-11 security pass: this route writes joinNumber onto a user record,
+    // so it now requires authentication (any logged-in player may look up any
+    // profile's static number, matching the in-game profile UI).
+    var authRecord = secUtils.resolveAuthRecord(e);
+    if (!authRecord) {
+      secUtils.securityLog("rejected", { route: "/api/basingse/player-order", reason: "NO_AUTH" });
+      return e.json(401, { success: false, error: "UNAUTHORIZED", message: "Необходима авторизация" });
+    }
+
+    if (!secUtils.checkRateLimit("order:" + authRecord.id, 20)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/player-order", userId: authRecord.id });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
     var parseRecordData = function (record) {
       if (!record) return {};
       var raw = record.get("data");
@@ -883,16 +1446,110 @@ onRecordUpdate(function (e) {
 }, "buildings");
 
 
-// Assign static sequential joinNumber to newly registered users
-routerAdd("GET", "/api/dev-token", function(e) {
-  try {
-    var id = String(e.requestInfo().query.id || "2vs7soljllm1nh8");
-    var record = $app.findRecordById("users", id);
-    var token = record.newAuthToken();
-    return e.json(200, { token: token, record: record });
-  } catch (err) {
-    return e.json(500, { error: String(err) });
-  }
-});
+// 2026-11 security pass: the unauthenticated "GET /api/dev-token" route was
+// REMOVED here. It minted a valid auth token for any user id without any
+// authentication — a full account-takeover backdoor. Use
+// $app.findAuthRecordByToken-based routes or the PocketBase superuser API for
+// tooling instead.
 
+// ==============================================================================
+//  🛡️ 2026-11 security pass: signup/login helpers replacing anonymous reads
+// ==============================================================================
+// Once the "users" collection list/view rules are tightened to authenticated
+// users, the client can no longer (a) check nickname uniqueness during
+// registration and (b) resolve a nickname to the auth identity for Cyrillic
+// names. These two rate-limited routes provide exactly that functionality
+// without exposing user records.
+
+routerAdd(
+  "POST",
+  "/api/basingse/check-name",
+  function (e) {
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    if (!secUtils.checkRateLimit("check-name:" + secUtils.requestKey(e), 30)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/check-name" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
+    var _body = e.requestInfo().body || {};
+    var name = String(_body.name || "").trim();
+    if (name.length < 3 || name.length > 150) {
+      return e.json(200, { success: true, taken: false, valid: false });
+    }
+    // bind params ({:name}) are escaped by PocketBase — pass the raw value
+    var existing = [];
+    try {
+      existing = $app.findRecordsByFilter("users", "name = {:name} || username = {:name}", "", 1, 0, { name: name });
+    } catch (_err) { existing = []; }
+    return e.json(200, { success: true, taken: existing && existing.length > 0 });
+  }
+);
+
+routerAdd(
+  "POST",
+  "/api/basingse/resolve-identity",
+  function (e) {
+    var secUtils = require(__hooks + "/security_utils.js");
+
+    if (!secUtils.checkRateLimit("resolve-id:" + secUtils.requestKey(e), 15)) {
+      secUtils.securityLog("rate_limit", { route: "/api/basingse/resolve-identity" });
+      return e.json(429, { success: false, error: "RATE_LIMITED", message: "Слишком много запросов, попробуйте позже" });
+    }
+
+    var _body = e.requestInfo().body || {};
+    var identity = String(_body.identity || "").trim();
+    if (!identity || identity.length > 150) {
+      return e.json(200, { success: true, found: false });
+    }
+    // bind params ({:identity}) are escaped by PocketBase — pass the raw value
+    var matched = [];
+    try {
+      matched = $app.findRecordsByFilter("users", "name = {:identity} || username = {:identity}", "", 1, 0, { identity: identity });
+    } catch (_err) { matched = []; }
+    if (matched && matched.length > 0) {
+      var email = "";
+      try { email = String(matched[0].email() || ""); } catch (_e1) {}
+      if (!email) { try { email = String(matched[0].get("email") || ""); } catch (_e2) { email = ""; } }
+      if (email) {
+        return e.json(200, { success: true, found: true, email: email });
+      }
+    }
+    return e.json(200, { success: true, found: false });
+  }
+);
+
+// ==============================================================================
+//  🛡️ Server-side Protection: users starting economy (2026-11 security pass)
+// ==============================================================================
+// Registration is a public create on the "users" collection (it has to be for
+// sign-up). Without this hook a modified client could POST arbitrary starting
+// gold / rubies / energy and mint free currency on account creation. The
+// values below mirror the legacy legit signup payload in src/pocketbase.ts —
+// no balance change, only enforcement.
+onRecordCreate(function (e) {
+  var START_GOLD = 100;
+  var START_RUBIES = 10;
+  var START_ENERGY = 500;
+
+  var rec = e.record;
+  var gold = Number(rec.get("gold") || 0);
+  var rubies = Number(rec.get("rubies") || 0);
+  var energy = Number(rec.get("energy") || 0);
+
+  if (gold !== START_GOLD) {
+    console.log("[SECURITY] users.create: forced starting gold", gold, "->", START_GOLD, "for", rec.get("name"));
+    rec.set("gold", START_GOLD);
+  }
+  if (rubies !== START_RUBIES) {
+    console.log("[SECURITY] users.create: forced starting rubies", rubies, "->", START_RUBIES, "for", rec.get("name"));
+    rec.set("rubies", START_RUBIES);
+  }
+  if (energy !== START_ENERGY) {
+    console.log("[SECURITY] users.create: forced starting energy", energy, "->", START_ENERGY, "for", rec.get("name"));
+    rec.set("energy", START_ENERGY);
+  }
+
+  e.next();
+}, "users");
 

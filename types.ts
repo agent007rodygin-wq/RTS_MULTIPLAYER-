@@ -134,6 +134,13 @@ export interface DroppedItem {
   ownerName?: string;
 }
 
+export interface ChestShareMeta {
+  finderId?: string;
+  finderName?: string;
+  foundAt?: number;
+  collectors?: string[];
+}
+
 export interface MapResource {
   id?: string;
   x: number;
@@ -141,6 +148,10 @@ export interface MapResource {
   zoneId?: string;
   hp: number;
   type: 'tree' | 'oil' | 'chest' | 'quarry';
+  /** Server-side chest share state (merged from the map_resources data JSON column). */
+  data?: { chest?: ChestShareMeta };
+  /** Convenience mirror of data.chest produced by the pocketbase adapter merge. */
+  chest?: ChestShareMeta;
 }
 
 export interface PlacedBuilding {

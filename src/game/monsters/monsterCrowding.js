@@ -45,6 +45,7 @@ export function buildMonsterZoneCounts(buildings, buildingData) {
     const byId = getBuildingByIdMap(buildingData);
     for (let i = 0; i < buildings.length; i++) {
         const building = buildings[i];
+        if (building.buildingId === 50005 || building.buildingId === 50004) continue;
         const info = byId.get(Number(building.buildingId));
         if (!info || !info.stats.isMonster) continue;
         if (building.isConstructing || building.isDestroying) continue;

@@ -12545,7 +12545,7 @@ export const buildings: Building[] = [
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 10000,
-    buildable: true,
+    buildable: false,
     constructionRequirements: {
       resources: [
         { id: 10006, name: 'Каменные блоки', amount: 15 },
@@ -12609,7 +12609,7 @@ export const buildings: Building[] = [
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 1000,
-    buildable: true,
+    buildable: false,
     constructionRequirements: {
       resources: [
         { id: 10006, name: 'Каменные блоки', amount: 1 },
@@ -13996,7 +13996,7 @@ export const buildings: Building[] = [
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 600,
-    buildable: true,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -14040,7 +14040,7 @@ export const buildings: Building[] = [
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 6000,
-    buildable: true,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },
@@ -14062,7 +14062,7 @@ export const buildings: Building[] = [
     category: 'Дороги и стены',
     type: BuildingType.Default,
     price: 6000,
-    buildable: true,
+    buildable: false,
     constructionRequirements: {
       population: 0,
     },

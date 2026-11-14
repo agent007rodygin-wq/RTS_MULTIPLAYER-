@@ -1,4 +1,4 @@
-import PocketBase, { RecordModel } from 'pocketbase';
+import PocketBase, { RecordModel, BaseAuthStore, AuthModel } from 'pocketbase';
 import { ZONE_SIZE } from './world.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,7 +16,112 @@ const getInitialPbUrl = (): string => {
   return 'http://127.0.0.1:8090';
 };
 const RESOLVED_PB_URL = getInitialPbUrl();
-export const pb = new PocketBase(RESOLVED_PB_URL);
+
+// ─── Cached auth store ──────────────────────────────────────────────────────
+// The SDK's LocalAuthStore re-reads and re-parses the whole auth blob from
+// localStorage on EVERY `authStore.token` / `.model` / `.isValid` access.
+// Measured on the live game: ~35 parses/sec at idle (one ~3.6KB JSON.parse per
+// realtime event + per request), which is constant main-thread/GC pressure.
+// This subclass keeps the parsed values in memory and touches localStorage
+// only on save/clear and on cross-tab 'storage' events — same observable
+// behavior, no per-access parsing.
+class CachedAuthStore extends BaseAuthStore {
+  private static readonly STORAGE_KEY = 'pocketbase_auth';
+  private readonly storageFallback: Record<string, string> = {};
+  private cachedToken = '';
+  private cachedModel: AuthModel = null;
+  private cacheReady = false;
+
+  constructor() {
+    super();
+    this.bindStorageEvent();
+  }
+
+  private loadCache(): void {
+    if (this.cacheReady) return;
+    const raw = this.storageGet(CachedAuthStore.STORAGE_KEY) as { token?: string; model?: AuthModel } | string;
+    const parsed = (raw && typeof raw === 'object' ? raw : {}) as { token?: string; model?: AuthModel };
+    this.cachedToken = parsed.token || '';
+    this.cachedModel = parsed.model ?? null;
+    this.cacheReady = true;
+  }
+
+  get token(): string {
+    this.loadCache();
+    return this.cachedToken;
+  }
+
+  get model(): AuthModel {
+    this.loadCache();
+    return this.cachedModel;
+  }
+
+  save(token: string, model?: AuthModel): void {
+    this.cachedToken = token || '';
+    this.cachedModel = model ?? null;
+    this.cacheReady = true;
+    this.storageSet(CachedAuthStore.STORAGE_KEY, { token: this.cachedToken, model: this.cachedModel });
+    super.save(this.cachedToken, this.cachedModel);
+  }
+
+  clear(): void {
+    this.cachedToken = '';
+    this.cachedModel = null;
+    this.cacheReady = true;
+    this.storageRemove(CachedAuthStore.STORAGE_KEY);
+    super.clear();
+  }
+
+  private storageGet(key: string): unknown {
+    if (typeof window !== 'undefined' && window?.localStorage) {
+      const raw = window.localStorage.getItem(key) || '';
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return raw;
+      }
+    }
+    return this.storageFallback[key];
+  }
+
+  private storageSet(key: string, value: unknown): void {
+    if (typeof window !== 'undefined' && window?.localStorage) {
+      let serialized: string;
+      try {
+        serialized = JSON.stringify(value);
+      } catch {
+        return;
+      }
+      window.localStorage.setItem(key, serialized);
+    } else {
+      this.storageFallback[key] = JSON.stringify(value);
+    }
+  }
+
+  private storageRemove(key: string): void {
+    if (typeof window !== 'undefined' && window?.localStorage) {
+      window.localStorage.removeItem(key);
+    }
+    delete this.storageFallback[key];
+  }
+
+  // Cross-tab sync: another tab may save/clear the auth store. Update the
+  // in-memory cache first, then let BaseAuthStore.notify its listeners.
+  private bindStorageEvent(): void {
+    if (typeof window === 'undefined' || !window?.localStorage || !window.addEventListener) return;
+    window.addEventListener('storage', (e: StorageEvent) => {
+      if (e.key !== CachedAuthStore.STORAGE_KEY) return;
+      const raw = this.storageGet(CachedAuthStore.STORAGE_KEY) as { token?: string; model?: AuthModel } | string;
+      const parsed = (raw && typeof raw === 'object' ? raw : {}) as { token?: string; model?: AuthModel };
+      this.cachedToken = parsed.token || '';
+      this.cachedModel = parsed.model ?? null;
+      this.cacheReady = true;
+      super.save(this.cachedToken, this.cachedModel);
+    });
+  }
+}
+
+export const pb = new PocketBase(RESOLVED_PB_URL, new CachedAuthStore());
 // Keep auth token alive automatically
 pb.autoCancellation(false);
 const PB_BUILD_MARKER = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_BUILD_MARKER || 'local-dev';
@@ -45,10 +150,11 @@ export function setRuntimeAuditContext(context: RuntimeAuditContext | null): voi
 const getRuntimeTraceLabel = (): string | null =>
   currentRuntimeAuditContext ? `${currentRuntimeAuditContext.kind}:${currentRuntimeAuditContext.traceId}` : null;
 
-const logPbAudit = (stage: string, payload: Record<string, unknown>) => {
+const logPbAudit = (stage: string, payload: Record<string, unknown> | (() => Record<string, unknown>)) => {
   if (!PB_RUNTIME_AUDIT_ENABLED) return;
+  const data = typeof payload === 'function' ? payload() : payload;
   console.info(`[PB ${stage}]`, {
-    ...payload,
+    ...data,
     traceLabel: getRuntimeTraceLabel(),
   });
 };
@@ -215,18 +321,39 @@ export async function signInWithEmailAndPassword(identity: string, password: str
   let resolvedIdentity = trimmed;
 
   // If the entered identity does not look like an email:
-  // Lookup PocketBase users by `name` or `username`
+  // resolve the nickname to its auth identity server-side. The 2026-11 security
+  // pass locked anonymous reads of the users collection, so the legacy
+  // getFirstListItem lookup would 403 — use the rate-limited helper route and
+  // keep the legacy query only as a fallback for servers without the route.
   if (!trimmed.includes('@')) {
     try {
-      const escaped = pbFilterString(trimmed);
-      const userMatch = await pb.collection('users').getFirstListItem(`name = "${escaped}" || username = "${escaped}"`);
-      if (userMatch?.email) {
-        resolvedIdentity = userMatch.email;
-      } else if (userMatch?.username) {
-        resolvedIdentity = userMatch.username;
+      const res = await fetch(`${pb.baseUrl}/api/basingse/resolve-identity`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: trimmed })
+      });
+      if (res.ok) {
+        const json: any = await res.json();
+        if (json?.found && json.email) {
+          resolvedIdentity = String(json.email);
+        } else if (json?.found === false) {
+          resolvedIdentity = trimmed; // PB will try username identity natively
+        }
+      } else {
+        throw new Error(`resolve-identity ${res.status}`);
       }
     } catch {
-      // User not found by name, continue with original trimmed string
+      try {
+        const escaped = pbFilterString(trimmed);
+        const userMatch = await pb.collection('users').getFirstListItem(`name = "${escaped}" || username = "${escaped}"`);
+        if (userMatch?.email) {
+          resolvedIdentity = userMatch.email;
+        } else if (userMatch?.username) {
+          resolvedIdentity = userMatch.username;
+        }
+      } catch {
+        // User not found by name, continue with original trimmed string
+      }
     }
   }
 
@@ -2405,9 +2532,53 @@ interface ZonePoolEntry {
   listeners: Set<() => void>;
   errorListeners: Set<(e: unknown) => void>;
   unsub: () => void;
+  // Reconciliation metadata: the single-zone query descriptor and the last time
+  // this entry received data (initial fetch or realtime event). Used by the
+  // watchdog to re-fetch zones whose SSE stream silently died.
+  singleQuery?: QueryDescriptor;
+  lastActivityAt?: number;
 }
 
 const zoneSubscriptionPool = new Map<string, ZonePoolEntry>();
+
+// ─── Zone reconciliation watchdog ───────────────────────────────────────────
+// A dead SSE stream (proxy hiccup, PocketBase hooks hot-reload, sleep/wake)
+// otherwise leaves a client with stale buildings/resources until a manual page
+// refresh. Every 60s we re-fetch active zone entries that have not received any
+// data for 90s, so the client converges with the server even without realtime.
+const ZONE_RECONCILE_INTERVAL_MS = 60000;
+const ZONE_RECONCILE_STALE_MS = 90000;
+const ZONE_RECONCILE_COLS = new Set(['buildings', 'map_resources', 'dropped_items']);
+let zoneReconcileTimer: ReturnType<typeof setInterval> | null = null;
+
+function ensureZoneReconcileTimer(): void {
+  if (zoneReconcileTimer) return;
+  zoneReconcileTimer = setInterval(() => {
+    const now = Date.now();
+    for (const entry of Array.from(zoneSubscriptionPool.values())) {
+      if (!ZONE_RECONCILE_COLS.has(entry.col)) continue;
+      if (entry.refCount <= 0) continue;
+      const lastActivity = entry.lastActivityAt || entry.lastUsedAt || 0;
+      const stale = !entry.loaded || (now - lastActivity) > ZONE_RECONCILE_STALE_MS;
+      if (!stale) continue;
+      const query = entry.singleQuery;
+      if (!query) continue;
+      fetchQueryRecords(query)
+        .then((records) => {
+          entry.loaded = true;
+          entry.lastActivityAt = Date.now();
+          entry.docs = records.map(toDocSnapshot);
+          entry.listeners.forEach((listener) => {
+            try { listener(); } catch { /* one broken listener must not block others */ }
+          });
+        })
+        .catch((err) => {
+          console.warn(`[PB Realtime] zone reconcile failed for ${entry.key}:`, err);
+        });
+    }
+  }, ZONE_RECONCILE_INTERVAL_MS);
+  if (typeof zoneReconcileTimer.unref === 'function') zoneReconcileTimer.unref();
+}
 
 function evictExpiredOrExcessWarmZones(col: string) {
   const now = Date.now();
@@ -2430,6 +2601,117 @@ function evictExpiredOrExcessWarmZones(col: string) {
       try { victim.unsub(); } catch {}
     }
   }
+}
+
+// ─── Shared collection-level SSE subscription per zone-partitioned collection ─
+// Avoids N duplicate EventSource listeners (one per zone), which flooded the client
+// with duplicate JSON parsing and GC allocations whenever any building changed.
+const zoneCollectionRealtimeUnsubs = new Map<string, () => void>();
+
+function getRecordZoneId(record: any): string | null {
+  if (!record) return null;
+  const unwrapped = unwrapData(record);
+  if (unwrapped.zoneId) return String(unwrapped.zoneId);
+  const x = Number(unwrapped.x);
+  const y = Number(unwrapped.y);
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    return `${Math.floor(x / ZONE_SIZE)}_${Math.floor(y / ZONE_SIZE)}`;
+  }
+  return null;
+}
+
+function ensureZoneCollectionRealtime(col: string): void {
+  if (zoneCollectionRealtimeUnsubs.has(col)) return;
+
+  let unsubCallback: (() => void) | null = null;
+  let isCancelled = false;
+
+  zoneCollectionRealtimeUnsubs.set(col, () => {
+    isCancelled = true;
+    if (unsubCallback) {
+      try { unsubCallback(); } catch {}
+    }
+  });
+
+  const onEvent = (event: any) => {
+    const record = event?.record;
+    if (!record) return;
+    const recordId = String(record.id || '').trim();
+    if (!recordId) return;
+
+    const action = String(event?.action || '').toLowerCase();
+    const isDelete = action === 'delete';
+    const gameId = String((record as any)?.gameId || (record as any)?.data?.gameId || '').trim();
+    const newZoneId = getRecordZoneId(record);
+    const targetKey = newZoneId ? `${col}:${newZoneId}` : null;
+    const targetEntry = targetKey ? zoneSubscriptionPool.get(targetKey) : null;
+
+    // 1. If this record was previously tracked in a DIFFERENT loaded zone
+    // (e.g. monster or entity moved across sector boundaries, or deleted),
+    // remove it from the old zone so it doesn't linger or duplicate.
+    for (const entry of Array.from(zoneSubscriptionPool.values())) {
+      if (entry.col !== col || !entry.loaded) continue;
+      if (entry === targetEntry) continue;
+
+      const idx = entry.docs.findIndex(
+        (d: any) => d.id === recordId || (Boolean(gameId) && d.id === gameId)
+      );
+      if (idx !== -1) {
+        entry.docs.splice(idx, 1);
+        entry.lastActivityAt = Date.now();
+        entry.auditSource = 'realtime-event';
+        entry.listeners.forEach((listener) => {
+          try { listener(); } catch {}
+        });
+      }
+    }
+
+    // 2. Route the event to targetEntry if that zone is active or warm
+    if (targetEntry && targetEntry.loaded) {
+      const idx = targetEntry.docs.findIndex(
+        (d: any) => d.id === recordId || (Boolean(gameId) && d.id === gameId)
+      );
+
+      let changed = false;
+      if (isDelete) {
+        if (idx !== -1) {
+          targetEntry.docs.splice(idx, 1);
+          changed = true;
+        }
+      } else {
+        const nextDoc = toDocSnapshot(record);
+        if (idx !== -1) {
+          targetEntry.docs[idx] = nextDoc;
+          changed = true;
+        } else {
+          targetEntry.docs.push(nextDoc);
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        targetEntry.lastActivityAt = Date.now();
+        targetEntry.auditSource = 'realtime-event';
+        targetEntry.listeners.forEach((listener) => {
+          try { listener(); } catch {}
+        });
+      }
+    }
+  };
+
+  pb.collection(col)
+    .subscribe('*', onEvent)
+    .then((unsub) => {
+      if (isCancelled) {
+        try { unsub(); } catch {}
+      } else {
+        unsubCallback = unsub;
+      }
+    })
+    .catch((err) => {
+      console.warn(`[PB Realtime] Collection subscription failed for ${col}:`, err);
+      zoneCollectionRealtimeUnsubs.delete(col);
+    });
 }
 
 function subscribeZonePartitionedQuery(
@@ -2530,33 +2812,41 @@ function subscribeZonePartitionedQuery(
         lastUsedAt: now,
         loaded: false,
         docs: [],
-        auditSource: 'onSnapshot',
+        auditSource: 'initial-fetch',
         listeners: new Set(),
         errorListeners: new Set(),
         unsub: () => {},
+        singleQuery,
+        lastActivityAt: now,
       };
       zoneSubscriptionPool.set(key, createdEntry);
-      createdEntry.unsub = onSnapshot(
-        singleQuery,
-        (singleSnap) => {
+
+      ensureZoneCollectionRealtime(desc.col);
+
+      fetchQueryRecords(singleQuery)
+        .then((records) => {
           createdEntry.loaded = true;
           createdEntry.lastUsedAt = Date.now();
-          createdEntry.docs = Array.isArray(singleSnap.docs) ? singleSnap.docs : [];
-          createdEntry.auditSource = String((singleSnap as any).__auditSource || 'onSnapshot');
-          createdEntry.listeners.forEach((listener) => listener());
-        },
-        (err) => {
+          createdEntry.lastActivityAt = Date.now();
+          createdEntry.docs = records.map(toDocSnapshot);
+          createdEntry.listeners.forEach((listener) => {
+            try { listener(); } catch { /* one broken listener must not block others */ }
+          });
+        })
+        .catch((err) => {
           if (!createdEntry.loaded) {
             zoneSubscriptionPool.delete(createdEntry.key);
-            try { createdEntry.unsub(); } catch {}
           }
-          createdEntry.errorListeners.forEach((listener) => listener(err));
-        }
-      );
+          createdEntry.errorListeners.forEach((listener) => {
+            try { listener(err); } catch { /* isolate listener errors */ }
+          });
+        });
+
       entry = createdEntry;
     }
 
     entry.refCount += 1;
+    ensureZoneReconcileTimer();
     entry.lastUsedAt = now;
     entry.listeners.add(onEntryUpdate);
     entry.errorListeners.add(onEntryError);
@@ -2651,6 +2941,7 @@ export function onSnapshot(
         const isGenericRealtime404 = err?.status === 404 && !errText.includes('client id');
         const isTransient =
           isClientId404 ||
+          isGenericRealtime404 ||
           err?.status === 429 ||
           err?.status === 503 ||
           errText.includes('network') ||
@@ -2660,12 +2951,9 @@ export function onSnapshot(
 
         const backoffMs = Math.min(30000, 1000 * Math.pow(2, Math.min(retries, 5)));
 
-        if (isGenericRealtime404) {
-          if (!realtimeUnavailableLogged) {
-            realtimeUnavailableLogged = true;
-            console.warn('[PB Realtime] /api/realtime returned 404. Realtime subscriptions are unavailable on this server; falling back to initial fetch only.');
-          }
-          return;
+        if (isGenericRealtime404 && !realtimeUnavailableLogged) {
+          realtimeUnavailableLogged = true;
+          console.warn('[PB Realtime] /api/realtime returned 404 (likely a PocketBase hot-reload window). Retrying with backoff — realtime will recover automatically instead of falling back to fetch-only.');
         }
 
         if (!destroyed && isTransient) {
@@ -2851,21 +3139,22 @@ export function onSnapshot(
     const recordId = String(record?.id || '').trim();
     if (!recordId) return null;
 
-    const nextDocs = [...prevDocs];
-    const gameId = String((record as any)?.gameId || (record as any)?.data?.gameId || '').trim();
-    const existingIndex = nextDocs.findIndex((doc) => doc.id === recordId || (Boolean(gameId) && doc.id === gameId));
-
     const action = String(event?.action || '').toLowerCase();
     const isDelete = action === 'delete';
     const matches = !isDelete && checkRecordMatchesQuery(record);
 
+    const gameId = String((record as any)?.gameId || (record as any)?.data?.gameId || '').trim();
+    const existingIndex = prevDocs.findIndex((doc) => doc.id === recordId || (Boolean(gameId) && doc.id === gameId));
+
     if (isDelete || !matches) {
       if (existingIndex === -1) return null;
+      const nextDocs = [...prevDocs];
       nextDocs.splice(existingIndex, 1);
       return buildSnapshotFromDocs(nextDocs);
     }
 
     const nextDoc = toDocSnapshot(record);
+    const nextDocs = [...prevDocs];
     if (existingIndex >= 0) {
       nextDocs[existingIndex] = nextDoc;
     } else {
@@ -2974,12 +3263,14 @@ export function onSnapshot(
   safeSubscribe(desc.col, '*', async (event) => {
     const eventAction = String(event?.action || '').toLowerCase();
     const eventRecordId = String(event?.record?.id || '').trim() || null;
-    logPbAudit('onSnapshot-event', {
-      ...querySummary,
-      action: eventAction || null,
-      eventRecordId,
-      source: 'realtime-event',
-    });
+    if (PB_RUNTIME_AUDIT_ENABLED) {
+      logPbAudit('onSnapshot-event', {
+        ...querySummary,
+        action: eventAction || null,
+        eventRecordId,
+        source: 'realtime-event',
+      });
+    }
     const nextSnapshot = buildIncrementalSnapshot(event);
     if (nextSnapshot) {
       const auditedSnapshot = attachAuditMeta(nextSnapshot, {
@@ -2990,13 +3281,15 @@ export function onSnapshot(
         __auditEventAction: eventAction || null,
         __auditEventRecordId: eventRecordId,
       });
-      logPbAudit('onSnapshot-incremental', {
-        ...querySummary,
-        action: eventAction || null,
-        eventRecordId,
-        refetchMode: 'incremental-merge',
-        ...summarizeQuerySnapshotForAudit(auditedSnapshot),
-      });
+      if (PB_RUNTIME_AUDIT_ENABLED) {
+        logPbAudit('onSnapshot-incremental', {
+          ...querySummary,
+          action: eventAction || null,
+          eventRecordId,
+          refetchMode: 'incremental-merge',
+          ...summarizeQuerySnapshotForAudit(auditedSnapshot),
+        });
+      }
       callback(auditedSnapshot);
       return;
     }
@@ -3208,6 +3501,132 @@ export async function requestTreeHit(resourceId: string): Promise<TreeHitRespons
   if (!response.ok) {
     const message = payload?.message || payload?.error || payload?.code || `Tree hit failed (${response.status})`;
     const error = new Error(message) as Error & { status?: number; details?: TreeHitResponse };
+    error.status = response.status;
+    error.details = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
+export const CHEST_COLLECT_API_PATH = '/api/basingse/chest-collect';
+
+export type ChestCollectMode = 'share' | 'private';
+
+export type ChestCollectResponse = {
+  success: boolean;
+  applied?: boolean;
+  resourceId?: string;
+  mode?: ChestCollectMode;
+  rewardGold?: number;
+  playerGold?: number;
+  playerEnergy?: number;
+  playerGlory?: number;
+  requiredEnergy?: number;
+  currentEnergy?: number;
+  chestDeleted?: boolean;
+  createdShare?: boolean;
+  chest?: {
+    gameId?: string;
+    x?: number;
+    y?: number;
+    zoneId?: string;
+    finderId?: string;
+    finderName?: string;
+    collectors?: string[];
+  } | null;
+  code?: string;
+  error?: string;
+  message?: string;
+  details?: {
+    alreadyCollected?: boolean;
+    playerGold?: number;
+    chestDeleted?: boolean;
+    chest?: ChestCollectResponse['chest'];
+    [key: string]: unknown;
+  };
+};
+
+export async function requestChestCollect(
+  resourceId: string,
+  mode: ChestCollectMode
+): Promise<ChestCollectResponse> {
+  const token = pb.authStore.token;
+  if (!token) {
+    const error = new Error('Authentication required') as Error & { status?: number };
+    error.status = 401;
+    throw error;
+  }
+
+  const response = await fetch(`${pb.baseUrl}${CHEST_COLLECT_API_PATH}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: token,
+    },
+    body: JSON.stringify({ resourceId, mode }),
+  });
+
+  const payload = await response.json().catch(() => ({})) as ChestCollectResponse;
+  if (!response.ok) {
+    const message = payload?.message || payload?.error || payload?.code || `Chest collect failed (${response.status})`;
+    const error = new Error(message) as Error & { status?: number; details?: ChestCollectResponse };
+    error.status = response.status;
+    error.details = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
+export const GIFT_SEND_API_PATH = '/api/basingse/gift-send';
+
+export type GiftSendResponse = {
+  success: boolean;
+  targetUserId?: string;
+  targetName?: string;
+  buildingId?: number;
+  buildingName?: string;
+  rubyPrice?: number;
+  senderRubies?: number;
+  senderName?: string;
+  grantedCount?: number;
+  notificationAt?: number;
+  code?: string;
+  error?: string;
+  message?: string;
+  details?: {
+    required?: number;
+    available?: number;
+    buildingId?: string;
+    [key: string]: unknown;
+  };
+};
+
+export async function requestGiftSend(
+  targetUserId: string,
+  buildingId: number
+): Promise<GiftSendResponse> {
+  const token = pb.authStore.token;
+  if (!token) {
+    const error = new Error('Authentication required') as Error & { status?: number };
+    error.status = 401;
+    throw error;
+  }
+
+  const response = await fetch(`${pb.baseUrl}${GIFT_SEND_API_PATH}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: token,
+    },
+    body: JSON.stringify({ targetUserId, buildingId }),
+  });
+
+  const payload = await response.json().catch(() => ({})) as GiftSendResponse;
+  if (!response.ok) {
+    const message = payload?.message || payload?.error || payload?.code || `Gift send failed (${response.status})`;
+    const error = new Error(message) as Error & { status?: number; details?: GiftSendResponse };
     error.status = response.status;
     error.details = payload;
     throw error;

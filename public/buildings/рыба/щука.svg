@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="pikeBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15803d" />
+      <stop offset="50%" stop-color="#166534" />
+      <stop offset="100%" stop-color="#052e16" />
+    </linearGradient>
+  </defs>
+  <!-- Tail -->
+  <path d="M78 50 L95 34 Q89 50 95 66 Z" fill="#b45309" stroke="#78350f" stroke-width="1" />
+  <!-- Rear Dorsal fin (set far back) -->
+  <path d="M62 40 Q69 28 74 42 Z" fill="#b45309" stroke="#78350f" stroke-width="1" />
+  <!-- Rear Ventral fin -->
+  <path d="M62 60 Q68 72 74 58 Z" fill="#b45309" stroke="#78350f" stroke-width="1" />
+  <path d="M42 63 Q46 73 50 63 Z" fill="#b45309" stroke="#78350f" stroke-width="1" />
+  <!-- Elongated body & duck-bill snout -->
+  <path d="M8 50 Q24 40 45 40 Q75 42 78 50 Q75 58 45 60 Q24 60 8 50 Z" fill="url(#pikeBody)" />
+  <!-- Yellow spots -->
+  <circle cx="34" cy="48" r="2" fill="#fef08a" opacity="0.8" />
+  <circle cx="44" cy="46" r="2.2" fill="#fef08a" opacity="0.8" />
+  <circle cx="52" cy="52" r="2.5" fill="#fef08a" opacity="0.8" />
+  <circle cx="60" cy="48" r="2" fill="#fef08a" opacity="0.8" />
+  <circle cx="68" cy="51" r="1.8" fill="#fef08a" opacity="0.8" />
+  <circle cx="40" cy="53" r="2" fill="#fef08a" opacity="0.8" />
+  <!-- Sharp snout / toothy mouth line -->
+  <path d="M8 50 L24 53" stroke="#052e16" stroke-width="2" stroke-linecap="round" />
+  <!-- Eye -->
+  <circle cx="22" cy="46" r="3.5" fill="#facc15" />
+  <circle cx="21" cy="46" r="1.8" fill="#020617" />
+</svg>

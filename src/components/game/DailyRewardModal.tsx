@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { pb } from '../../pocketbase';
+import { getTelegramInitData } from '../../telegram/telegramWebApp';
 
 export interface DailyRewardItem {
   id?: number;
@@ -234,7 +235,12 @@ export const DailyRewardModal: React.FC<DailyRewardModalProps> = ({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ userId })
+        body: JSON.stringify({
+          // 2026-11 security pass: the server only ever rewards the Bearer
+          // token's own account; initData is attached so Telegram Mini App
+          // sessions can be strongly verified server-side (HMAC).
+          initData: getTelegramInitData() || undefined
+        })
       });
 
       const text = await res.text();

@@ -267,7 +267,11 @@ export function isKotofeyRepairCandidate(monster, target, buildingData, options)
 
     if (options?.blockedTargetIds?.has(targetId)) return false;
     if (options?.pendingDestroyedIds?.has(targetId)) return false;
-    if (target.isDestroying) return false;
+    // Owner rule (2026-11-14): healer monsters (Kotofey, Aibolit, Big Aibolit) may
+    // repair/heal targets that are mined or under attack, so a healer can save a
+    // mined target: the destruction finalize keeps the target alive when
+    // remainingHp > 0 (hp - pendingDamage). Only an already-expired destruction
+    // window (finalize imminent) is excluded below.
     if (target.destructionEndTime && target.destructionEndTime <= Date.now()) return false;
     if (target.isConstructing && (target.constructionEndTime === undefined || target.constructionEndTime > Date.now())) return false;
     if (target.hp === undefined || target.hp <= 0) return false;
@@ -360,7 +364,8 @@ export function isKotofeyTileBlocked(
     allBuildings,
     blockedResourcePositions,
     kotofeyContext,
-    isWrappedWorld = false
+    isWrappedWorld = false,
+    extraBlocked = null
 ) {
     const nx = normalizeWorldCoord(x, WORLD_WIDTH_TILES, isWrappedWorld);
     const ny = normalizeWorldCoord(y, WORLD_HEIGHT_TILES, isWrappedWorld);
@@ -370,6 +375,12 @@ export function isKotofeyTileBlocked(
 
     const key = `${nx},${ny}`;
     if (blockedResourcePositions && blockedResourcePositions.has(key)) {
+        return true;
+    }
+
+    // Extra tile-level blocking (e.g. procedural forest mask), mirroring
+    // isMonsterTileBlocked's extraBlocked contract. Receives normalized coords.
+    if (extraBlocked && extraBlocked(nx, ny)) {
         return true;
     }
 

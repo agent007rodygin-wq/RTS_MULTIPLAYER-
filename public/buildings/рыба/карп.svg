@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="carpBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="50%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#78350f" />
+    </linearGradient>
+    <linearGradient id="carpFins" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+  </defs>
+  <!-- Tail -->
+  <path d="M72 50 L94 30 Q86 50 94 70 Z" fill="url(#carpFins)" />
+  <!-- Long Dorsal fin -->
+  <path d="M34 32 Q54 18 68 36 Z" fill="url(#carpFins)" />
+  <!-- Belly fins -->
+  <path d="M38 68 Q46 80 52 69 Z" fill="url(#carpFins)" />
+  <path d="M56 67 Q64 78 68 64 Z" fill="url(#carpFins)" />
+  <!-- Big round body -->
+  <ellipse cx="46" cy="50" rx="31" ry="21" fill="url(#carpBody)" />
+  <!-- Whiskers (Barbel) -->
+  <path d="M18 53 Q14 58 10 57" stroke="#78350f" stroke-width="2.5" fill="none" stroke-linecap="round" />
+  <!-- Big Mirror Scales -->
+  <circle cx="40" cy="45" r="5" fill="#fef08a" opacity="0.6" stroke="#b45309" />
+  <circle cx="48" cy="42" r="6" fill="#fef08a" opacity="0.6" stroke="#b45309" />
+  <circle cx="56" cy="46" r="5.5" fill="#fef08a" opacity="0.6" stroke="#b45309" />
+  <circle cx="44" cy="55" r="5.5" fill="#fef08a" opacity="0.6" stroke="#b45309" />
+  <circle cx="52" cy="54" r="5" fill="#fef08a" opacity="0.6" stroke="#b45309" />
+  <!-- Eye -->
+  <circle cx="26" cy="45" r="4" fill="#f8fafc" />
+  <circle cx="25" cy="45" r="2.2" fill="#0f172a" />
+</svg>

@@ -331,6 +331,13 @@ export function getItemEnergyRestore(itemId: number): number {
     if (itemId === PUMPKIN_PIE_ID) {
         return PUMPKIN_PIE_RESTORE;
     }
+    // Fish consumables
+    if (itemId === 10060) return 10;  // Серебряный карась
+    if (itemId === 10061) return 15;  // Речной окунь
+    if (itemId === 10062) return 25;  // Зеркальный карп
+    if (itemId === 10063) return 40;  // Речная щука
+    if (itemId === 10064) return 60;  // Королевский лосось
+    if (itemId === 10065) return 100; // Золотая рыбка удачи
     return 0;
 }
 
@@ -340,6 +347,18 @@ export function getItemActionLabel(itemId: number): string {
             return '⚡ Выпить (+15)';
         case PUMPKIN_PIE_ID:
             return '🥧 Съесть (+25)';
+        case 10060:
+            return '🐟 Съесть (+10)';
+        case 10061:
+            return '🐟 Съесть (+15)';
+        case 10062:
+            return '🐟 Съесть (+25)';
+        case 10063:
+            return '🐟 Съесть (+40)';
+        case 10064:
+            return '🐟 Съесть (+60)';
+        case 10065:
+            return '✨ Съесть (+100)';
         case LUMBERJACK_ELIXIR_ID:
             return '🧪 Выпить (10 мин)';
         case REINFORCING_MORTAR_ID:

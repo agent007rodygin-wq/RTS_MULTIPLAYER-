@@ -209,11 +209,11 @@ function getTelegramStatus(app, telegramId) {
   };
 }
 
-function claimDailyReward(app, authRecord, fallbackUserId) {
+function claimDailyReward(app, authRecord) {
+  // 2026-11 security pass: the fallbackUserId parameter was removed —
+  // daily rewards can only be claimed for the Bearer token's own account
+  // (route resolves the auth record and runs this inside a transaction).
   var userId = authRecord ? authRecord.id : null;
-  if (!userId) {
-    userId = String(fallbackUserId || "").trim();
-  }
 
   if (!userId) {
     return {

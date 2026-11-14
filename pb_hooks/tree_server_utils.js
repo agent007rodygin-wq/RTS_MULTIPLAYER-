@@ -1,6 +1,6 @@
 var TREE_MAX_HP = 3;
 var TREE_HIT_ENERGY_COST = 2;
-var TREE_HIT_GOLD_REWARD = 5000000;
+var TREE_HIT_GOLD_REWARD = 3;
 var TREE_HIT_GLORY_REWARD = 2;
 var TREE_HIT_WOOD_REWARD = 1;
 var TREE_RESPAWN_DELAY_MS = 3 * 60 * 1000;
@@ -786,9 +786,37 @@ function processTreeHit(app, authRecord, resourceId) {
       } else {
         // Tree felled: build respawn job at exact coordinate
         buildRespawnJobAtCoords(txApp, targetX, targetY, zoneId, logicalResourceId, nowMs);
-        if (treeRecord && !isVirtual) {
-          txApp.delete(treeRecord);
+        // Keep a visible tombstone record (state='felled', hp=0) until respawn so that
+        // every client learns about the fell through the normal map_resources realtime
+        // subscription and stops rendering the procedural mask tree. The respawn cron
+        // deletes this record, which un-suppresses the tree on all clients.
+        if (isVirtual || !treeRecord) {
+          var resourcesCollection = txApp.findCollectionByNameOrId("map_resources");
+          treeRecord = new Record(resourcesCollection);
+          treeRecord.set("type", "tree");
+          treeRecord.set("x", targetX);
+          treeRecord.set("y", targetY);
+          treeRecord.set("zoneId", zoneId);
+          treeRecord.set("sectorId", zoneId);
+          treeRecord.set("gameId", logicalResourceId);
+          try { treeRecord.set("createdAt", nowMs); } catch (_) {}
         }
+        var felledTreeData = parseDataField(treeRecord);
+        felledTreeData.hp = 0;
+        felledTreeData.maxHp = TREE_MAX_HP;
+        felledTreeData.state = "felled";
+        felledTreeData.x = targetX;
+        felledTreeData.y = targetY;
+        felledTreeData.type = "tree";
+        felledTreeData.gameId = logicalResourceId;
+        felledTreeData.zoneId = zoneId;
+        setDataField(treeRecord, felledTreeData);
+        try { treeRecord.set("hp", 0); } catch (_) {}
+        try { treeRecord.set("maxHp", TREE_MAX_HP); } catch (_) {}
+        try { treeRecord.set("state", "felled"); } catch (_) {}
+        try { treeRecord.set("sectorId", zoneId); } catch (_) {}
+        try { treeRecord.set("respawnAt", nowMs + TREE_RESPAWN_DELAY_MS); } catch (_) {}
+        txApp.save(treeRecord);
       }
 
       result.body = {
@@ -848,10 +876,37 @@ function respawnSingleTree(app, respawnRecord) {
       if (respawnAt > nowMs) return;
 
       // In the deterministic procedural mask model, trees respawn at the exact same tile.
-      // Simply deleting the pending tree_respawns record naturally un-suppresses the tree!
+      // Deleting the pending tree_respawns record un-suppresses the virtual mask tree.
+      // The felled map_resources tombstone (state='felled', hp=0) written at fell time
+      // must also be removed so every client regenerates the tree from the mask; its
+      // deletion propagates to other clients through the map_resources subscription.
       // If a building was constructed on this tile while felled, building priority blocks it.
       // NO synthetic map_resources record is created!
       txApp.delete(respawnRecord);
+
+      var oldX = toInt(respawnRecord.get("oldX"), 0);
+      var oldY = toInt(respawnRecord.get("oldY"), 0);
+      try {
+        var felledRecords = txApp.findRecordsByFilter(
+          "map_resources",
+          "x = {:x} && y = {:y} && type = 'tree'",
+          "",
+          0,
+          0,
+          { x: oldX, y: oldY }
+        );
+        for (var fi = 0; fi < felledRecords.length; fi++) {
+          var felledRecord = felledRecords[fi];
+          var felledData = parseDataField(felledRecord);
+          var felledState = normalizeString(felledRecord.get("state"), normalizeString(felledData.state, "alive"));
+          var felledHp = typeof felledData.hp === "number" ? felledData.hp : toInt(felledRecord.get("hp"), TREE_MAX_HP);
+          // Safety: never delete a record that is back to a live tree state.
+          if (felledState === "alive" && felledHp > 0) continue;
+          txApp.delete(felledRecord);
+        }
+      } catch (errFelled) {
+        debugLog("respawnSingleTree.felled_delete_error", String(errFelled));
+      }
     });
   } catch (error) {
     debugLog("respawnSingleTree.error", String(error));

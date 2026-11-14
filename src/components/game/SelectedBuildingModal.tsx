@@ -846,15 +846,22 @@ export const SelectedBuildingModalComponent: React.FC<SelectedBuildingModalProps
                                     const currentHp = Math.max(0, Math.min(building.hp ?? maxHp, maxHp));
                                     const shieldMaxHp = Math.max(0, building.shieldMaxHp || 0);
                                     const shieldHp = Math.max(0, Math.min(building.shieldHp || 0, shieldMaxHp || Number.MAX_SAFE_INTEGER));
-                                    const displayHp = building.isDestroying
-                                        ? Math.max(0, currentHp - (building.pendingDamage || 0))
-                                        : currentHp;
+                                    // Show real current HP; pending mine damage is displayed as a
+                                    // separate line (owner decision DEC-012a): it applies only when
+                                    // the destruction timer explodes.
+                                    const displayHp = currentHp;
                                     return (
                                         <>
                                             {shieldMaxHp > 0 && (
                                                 <p>Броня щита: <span className={`${shieldHp < shieldMaxHp ? 'text-yellow-400' : 'text-cyan-300'} font-bold`}>{shieldHp} / {shieldMaxHp}</span></p>
                                             )}
                                             <p>Здоровье: <span className={`${displayHp < maxHp ? 'text-red-400' : 'text-green-400'} font-bold`}>{displayHp} / {maxHp}</span></p>
+                                            {building.isDestroying && (building.pendingDamage || 0) > 0 && (
+                                                <p className="text-orange-300">
+                                                    💣 Мина: −{building.pendingDamage} к здоровью при взрыве
+                                                    {building.destructionEndTime ? ` (через ${Math.max(0, Math.ceil((building.destructionEndTime - Date.now()) / 60000))} мин)` : ''}
+                                                </p>
+                                            )}
                                         </>
                                     );
                                 })()

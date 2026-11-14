@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="salmonBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="40%" stop-color="#fda4af" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+  </defs>
+  <!-- Tail -->
+  <path d="M74 50 L94 32 Q87 50 94 68 Z" fill="#0284c7" />
+  <!-- Dorsal fin -->
+  <path d="M40 34 Q50 20 58 35 Z" fill="#0369a1" />
+  <!-- Adipose fin (classic salmon feature) -->
+  <ellipse cx="68" cy="42" rx="3" ry="2" fill="#0369a1" />
+  <!-- Lower fins -->
+  <path d="M42 66 Q48 76 54 66 Z" fill="#0369a1" />
+  <path d="M60 63 Q64 72 68 62 Z" fill="url(#salmonBody)" />
+  <!-- Body -->
+  <path d="M12 50 Q28 35 52 35 Q74 38 76 50 Q74 62 52 65 Q28 65 12 50 Z" fill="url(#salmonBody)" />
+  <!-- Speckles -->
+  <circle cx="42" cy="42" r="1.2" fill="#0f172a" opacity="0.6" />
+  <circle cx="48" cy="40" r="1.4" fill="#0f172a" opacity="0.6" />
+  <circle cx="56" cy="42" r="1.2" fill="#0f172a" opacity="0.6" />
+  <circle cx="62" cy="45" r="1.3" fill="#0f172a" opacity="0.6" />
+  <!-- Eye -->
+  <circle cx="24" cy="46" r="3.5" fill="#f8fafc" />
+  <circle cx="23.5" cy="46" r="1.8" fill="#0f172a" />
+</svg>

@@ -4,6 +4,7 @@ import { BAN_OPTIONS, PUNISHMENT_OPTIONS, CURSE_OPTIONS } from '../../game/ui/ac
 import { AchievementsView } from './AchievementsView';
 import type { Building, PlacedBuilding } from '../../../types';
 import { repairMojibakeCp1251Utf8 } from '../../game/utils/mojibake.js';
+import { pb } from '../../pocketbase';
 
 export interface PlayerStatusMeta {
     isOnline: boolean;
@@ -108,7 +109,10 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
         let cancelled = false;
         fetch('/api/basingse/player-order', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(pb.authStore.token ? { Authorization: `Bearer ${pb.authStore.token}` } : {})
+            },
             body: JSON.stringify({ userId: selectedPlayerId })
         })
         .then(res => res.json())
@@ -497,21 +501,23 @@ const OtherPlayerProfileModalComponent: React.FC<OtherPlayerProfileModalProps> =
                         </button>
 
                         {/* Row 4: Y = 465 */}
-                        <button
-                            id="btn-gift"
-                            type="button"
-                            onClick={() => onGift?.()}
-                            style={{ position: 'absolute', left: '20px', top: '465px', width: '279px', height: '65px' }}
-                            className="p-0 border-0 bg-transparent cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] hover:brightness-110 active:brightness-95 focus:outline-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
-                            title="Подарить"
-                        >
-                            <img
-                                src="/Gui/GUI_Menu_Profile/buttons/07_gift.png"
-                                alt="Подарить"
-                                className="w-full h-full object-contain pointer-events-none select-none block"
-                                draggable={false}
-                            />
-                        </button>
+                        {!isCurrentPlayer && (
+                            <button
+                                id="btn-gift"
+                                type="button"
+                                onClick={() => onGift?.()}
+                                style={{ position: 'absolute', left: '20px', top: '465px', width: '279px', height: '65px' }}
+                                className="p-0 border-0 bg-transparent cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98] hover:brightness-110 active:brightness-95 focus:outline-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                                title="Подарить"
+                            >
+                                <img
+                                    src="/Gui/GUI_Menu_Profile/buttons/07_gift.png"
+                                    alt="Подарить"
+                                    className="w-full h-full object-contain pointer-events-none select-none block"
+                                    draggable={false}
+                                />
+                            </button>
+                        )}
                         <button
                             id="btn-friends"
                             type="button"
@@ -866,5 +872,9 @@ export const OtherPlayerProfileModal = memo(OtherPlayerProfileModalComponent, (p
     if (prev.selectedPlayerBuildings !== next.selectedPlayerBuildings) return false;
     if (prev.playerStatusMeta !== next.playerStatusMeta) return false;
     if (prev.achievementPercentages !== next.achievementPercentages) return false;
+    // Callback props must propagate or the memoized modal keeps a stale
+    // onGift handler (button clicks silently do nothing after HMR).
+    if (prev.onGift !== next.onGift) return false;
+    if (prev.onBuyRubies !== next.onBuyRubies) return false;
     return true;
 });
