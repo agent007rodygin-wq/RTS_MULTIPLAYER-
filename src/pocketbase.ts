@@ -3218,8 +3218,14 @@ export function onSnapshot(
   // presence-list refetch (75KB+ for ~90 players, parse + rebuild) up to 4x/sec, which
   // scales linearly with online players. Client-side nameplate interpolation makes the
   // 2s delay invisible, and chat/players list refresh is not latency-critical.
+  // buildings (my/clan/initiated wildcards) also get a long cooldown: production
+  // completion bursts (workTimeSeconds ~15s cycles) made EVERY connected client
+  // refetch its building queries up to 4x/sec — 4 subscriptions x full zone parses
+  // = the reported 3-5s freezes on all clients simultaneously. Optimistic local
+  // updates already reflect the player's own actions instantly; the refetch only
+  // confirms server state, so a 1.2s delay is invisible.
   let throttleTimeout: NodeJS.Timeout | null = null;
-  const THROTTLE_MS_BY_COLLECTION: Record<string, number> = { presence: 2000 };
+  const THROTTLE_MS_BY_COLLECTION: Record<string, number> = { presence: 2000, buildings: 1200 };
   const THROTTLE_MS = THROTTLE_MS_BY_COLLECTION[desc.col] ?? 250;
   let pendingUpdate = false;
 
