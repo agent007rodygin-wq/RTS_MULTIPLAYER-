@@ -802,6 +802,20 @@ function unwrapData(record: RecordModel): AnyRecord {
     }
   }
 
+  // Buildings hot-field columns migrated 2026-11: for these fields the REAL
+  // column (top-level) is the fresh authority — the data.json copy may be
+  // stale (movement writes now update columns without touching data.json).
+  // Keep the data.json value only when the column is empty/unset.
+  if (record.collectionName === 'buildings') {
+    const hotCols = ['x', 'y', 'zoneId', 'lastMoveTime', 'lastAttackTime', 'hostId'] as const;
+    for (const col of hotCols) {
+      const colVal = (record as AnyRecord)[col];
+      if (colVal !== undefined && colVal !== null && colVal !== '' && (extra as AnyRecord | null) && typeof extra === 'object' && !Array.isArray(extra)) {
+        (extra as AnyRecord)[col] = colVal;
+      }
+    }
+  }
+
   // Presence alias: PB schema uses userId/userName; frontend expects uid/name.
   if (record.collectionName === 'presence') {
     const rawUid = (record as AnyRecord).uid || (record as AnyRecord).userId || record.id;
@@ -1800,10 +1814,25 @@ async function updateDocInternal(
   const hasIncrementOp = Object.values(data || {}).some(
     (v: any) => Boolean(v && typeof v === 'object' && v.__sentinel === 'increment')
   );
+  // Fast path (2026-11 perf pass): movement writes on buildings touch ONLY real
+  // columns now (x, y, zoneId, lastMoveTime, lastAttackTime, hostId are migrated
+  // columns; unwrapData gives columns priority over data.json for these fields).
+  // Such writes skip the read-modify-write lookup entirely — a plain PATCH of the
+  // column fields, no GET, no data.json merge. This removes the per-monster-step
+  // lookup GET and shrinks the broadcast payload ~10x (no 1KB data blob), which
+  // matters most when several players walk at once (each hosts local monsters).
+  const MOVEMENT_COLUMN_FIELDS = new Set(['x', 'y', 'zoneId', 'lastMoveTime', 'lastAttackTime', 'hostId']);
+  const movementColumnFastPath =
+    ref.collectionName === 'buildings' &&
+    !hasIncrementOp &&
+    Object.keys(data || {}).length > 0 &&
+    Object.keys(data).every((k) => MOVEMENT_COLUMN_FIELDS.has(k));
   // Never reuse cached metadata for users or increment writes: server hooks
   // (e.g. /api/basingse/tree-hit) mutate user gold/inventory outside client updateDoc.
   const canUseMetadataCache = ref.collectionName !== 'users' && !hasIncrementOp;
-  if (canUseMetadataCache && cachedMeta && (startedAt - cachedMeta.ts) < 25000) {
+  if (movementColumnFastPath) {
+    // Skip the read-merge lookup entirely: the payload touches only real columns.
+  } else if (canUseMetadataCache && cachedMeta && (startedAt - cachedMeta.ts) < 25000) {
     lookupSucceeded = true;
     recordResolved = true;
     targetId = cachedMeta.targetId;
@@ -1980,16 +2009,20 @@ async function updateDocInternal(
     // top-level value on the next load (unwrapData does Object.assign(data, extra)).
     const knownFields = KNOWN_FIELDS_BY_COLLECTION[ref.collectionName] || [];
     // Sync any known fields that are in the payload to data.json as well
-    if (!payload.data) payload.data = {};
-    for (const [key, value] of Object.entries(payload)) {
-      if (key === 'data' || SYSTEM_FIELDS.includes(key) || AUTH_FIELDS.includes(key)) continue;
-      if (knownFields.includes(key) && value !== undefined) {
-        payload.data[key] = value;
+    // (skipped on the movement fast path: those fields are real columns now and
+    // unwrapData gives the column values priority over stale data.json copies)
+    if (!movementColumnFastPath) {
+      if (!payload.data) payload.data = {};
+      for (const [key, value] of Object.entries(payload)) {
+        if (key === 'data' || SYSTEM_FIELDS.includes(key) || AUTH_FIELDS.includes(key)) continue;
+        if (knownFields.includes(key) && value !== undefined) {
+          payload.data[key] = value;
+        }
       }
-    }
-    // Now merge with existing raw data.json
-    if (currentRawDataJson) {
-      payload.data = { ...currentRawDataJson, ...payload.data };
+      // Now merge with existing raw data.json
+      if (currentRawDataJson) {
+        payload.data = { ...currentRawDataJson, ...payload.data };
+      }
     }
     // Ensure spatial entities always maintain an up-to-date zoneId in data JSON
     if (ref.collectionName === 'buildings' || ref.collectionName === 'map_resources' || ref.collectionName === 'dropped_items') {
@@ -1997,8 +2030,10 @@ async function updateDocInternal(
       const effY = Number(payload.y !== undefined ? payload.y : (resolved.y !== undefined ? resolved.y : (current.y !== undefined ? current.y : currentRawDataJson?.y)));
       if (Number.isFinite(effX) && Number.isFinite(effY)) {
         const computedZone = `${Math.floor(effX / ZONE_SIZE)}_${Math.floor(effY / ZONE_SIZE)}`;
-        if (!payload.data) payload.data = {};
-        payload.data.zoneId = computedZone;
+        if (!movementColumnFastPath) {
+          if (!payload.data) payload.data = {};
+          payload.data.zoneId = computedZone;
+        }
         payload.zoneId = computedZone;
       }
     }
