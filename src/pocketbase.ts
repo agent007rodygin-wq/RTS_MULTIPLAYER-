@@ -2783,13 +2783,31 @@ function subscribeZonePartitionedQuery(
     callback(snap);
   };
 
+  // Realtime events for the same zone often arrive in bursts (monster movement,
+  // attacks, production ticks — up to 8 writes/sec from the hosting client).
+  // Each emitCombined callback runs a full zone rebuild + React setState in the
+  // app (~10-16ms with hundreds of buildings), so emitting per event froze the
+  // main thread in 50-260ms bursts while flying. Coalesce events: emit at most
+  // once per EMIT_MIN_INTERVAL_MS. emitCombined always reads the CURRENT
+  // entry.docs, so no update is ever lost — only the delivery is batched; the
+  // app-side interpolation of monster movement hides the extra latency.
+  const ZONE_EMIT_MIN_INTERVAL_MS = 100;
+  let lastEmitAt = 0;
   const onEntryUpdate = () => {
     if (destroyed || scheduledEmit) return;
     scheduledEmit = true;
-    queueMicrotask(() => {
+    const emitNow = () => {
       scheduledEmit = false;
+      if (destroyed) return;
+      lastEmitAt = performance.now();
       emitCombined();
-    });
+    };
+    const elapsed = performance.now() - lastEmitAt;
+    if (elapsed >= ZONE_EMIT_MIN_INTERVAL_MS) {
+      setTimeout(emitNow, 0);
+    } else {
+      setTimeout(emitNow, ZONE_EMIT_MIN_INTERVAL_MS - elapsed);
+    }
   };
 
   const onEntryError = (err: unknown) => {
