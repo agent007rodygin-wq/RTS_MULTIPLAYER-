@@ -63,3 +63,6 @@ backup_before_*/
 *.backup
 *.backup/
 assets_backup_archive/
+
+# PocketBase API-rules backups (scripts/secure_api_rules.mjs)
+pb_rules_backup_*.json

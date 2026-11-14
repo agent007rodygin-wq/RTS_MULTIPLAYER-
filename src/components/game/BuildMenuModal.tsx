@@ -32,6 +32,7 @@ export interface BuildMenuModalProps {
     playCloseSound: () => void;
     enqueueImagePreload?: (urls: string[], options?: { batchSize?: number }) => void;
     getIsBuildingFree?: (buildingId: number) => boolean;
+    hasTownHall?: boolean;
 }
 
 const TOWN_HALL_IDS = [301, 306, 312, 331, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 360, 361, 371, 381, 413, 414, 452, 726, 752];
@@ -60,7 +61,7 @@ const biznesSortOrder: number[] = [2, 27, 11, 6000, 31532, 66, 8, 4, 340, 31612,
 const zashchitaSortOrder: number[] = [700, 703];
 
 const buildTabCategoryAliases: Record<string, string[]> = {
-    'Жилье': ['Жилые', 'Жилье'],
+    'Жилье': ['Жилые', 'Жилье', 'Центр города'],
     'Дороги и стены': ['Дороги и стены', 'дороги и стены', 'Дороги', 'Реки и Горы', 'Природа'],
     'Декор': ['Декор', 'декор', 'Природа', 'Реки и Горы'],
     'Спецальное': ['Спецальное', 'спецальное', 'Специальное', 'специальное'],
@@ -77,7 +78,8 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
     coinImageUrl,
     playCloseSound,
     enqueueImagePreload,
-    getIsBuildingFree
+    getIsBuildingFree,
+    hasTownHall
 }) => {
     const [activeBuildTab, setActiveBuildTab] = useState<BuildMenuTab>('Жилье');
     const [buildMenuSearch, setBuildMenuSearch] = useState('');
@@ -119,7 +121,10 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
 
     const buildingsInCurrentTab = useMemo(() => {
         return buildingData.filter(b => {
-            if (TOWN_HALL_IDS.includes(Number(b.id))) return false;
+            if (TOWN_HALL_IDS.includes(Number(b.id))) {
+                if (hasTownHall !== false) return false;
+                if (Number(b.id) !== 301) return false;
+            }
             if (b.buildable === false) return false;
             if (normalizedBuildMenuSearch) {
                 const normalizedBuildingName = repairMojibakeCp1251Utf8(String(b.name || '')).toLowerCase();
@@ -191,7 +196,8 @@ const BuildMenuModalComponent: React.FC<BuildMenuModalProps> = ({
         normalizedBuildMenuSearch,
         letterSubTab,
         giftSubTab,
-        decorSubTab
+        decorSubTab,
+        hasTownHall
     ]);
 
     // Lazy-preload only the building cards for the currently opened build tab.
@@ -404,5 +410,6 @@ export const BuildMenuModal = memo(BuildMenuModalComponent, (prev, next) => {
     if (prev.rubyImageUrl !== next.rubyImageUrl) return false;
     if (prev.coinImageUrl !== next.coinImageUrl) return false;
     if (prev.getIsBuildingFree !== next.getIsBuildingFree) return false;
+    if (prev.hasTownHall !== next.hasTownHall) return false;
     return true;
 });

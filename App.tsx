@@ -4970,24 +4970,26 @@ const App: React.FC = () => {
         if (placedBuildings.some(b =>
             TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
             isBuildingAlive(b) &&
+            !isBuildingDeleting(String(b.id)) &&
             (isMyBuilding(b) || (!!user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === "0")))
         )) {
             return true;
         }
         if (user) {
             for (const b of serverMyBuildingsRef.current.values()) {
-                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && isMyBuilding(b)) {
+                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)) && isMyBuilding(b)) {
                     return true;
                 }
             }
         }
         return false;
-    }, [placedBuildings, isMyBuilding, user]);
+    }, [placedBuildings, isMyBuilding, user, isBuildingDeleting]);
 
     const hasCompletedTownHall = useMemo(() => {
         if (placedBuildings.some(b =>
             TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
             isBuildingAlive(b) &&
+            !isBuildingDeleting(String(b.id)) &&
             !b.isConstructing &&
             (isMyBuilding(b) || (!!user && b.isLocal && (b.ownerId === GUEST_ID || b.ownerId === "0")))
         )) {
@@ -4995,13 +4997,13 @@ const App: React.FC = () => {
         }
         if (user) {
             for (const b of serverMyBuildingsRef.current.values()) {
-                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && !b.isConstructing && isMyBuilding(b)) {
+                if (TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)) && !b.isConstructing && isMyBuilding(b)) {
                     return true;
                 }
             }
         }
         return false;
-    }, [placedBuildings, isMyBuilding, user]);
+    }, [placedBuildings, isMyBuilding, user, isBuildingDeleting]);
 
     const tutorialForcedBuildingCompleted = useMemo(() => {
         const hasCompletedTrackedTutorialBuilding = tutorialForcedBuildingId
@@ -7374,6 +7376,9 @@ const App: React.FC = () => {
                     }
                 }
                 if (matches) {
+                    if (!isBuildingAlive(b) || isBuildingDeleting(String(b.id))) {
+                        continue;
+                    }
                     if (!buildingAtTile || isGroundTileId(buildingAtTile.buildingId)) {
                         buildingAtTile = b;
                     }
@@ -7702,9 +7707,9 @@ const App: React.FC = () => {
                 }
                 const alreadyHasTownHall = hasTownHall ||
                     isPlacingTownHallRef.current ||
-                    placedBuildingsRef.current.some(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && isMyBuilding(b)) ||
+                    placedBuildingsRef.current.some(b => TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)) && isMyBuilding(b)) ||
                     (userRef.current ? Array.from(serverMyBuildingsRef.current.values()).some(b =>
-                        TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && isMyBuilding(b)
+                        TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && !isBuildingDeleting(String(b.id)) && isMyBuilding(b)
                     ) : false);
 
                 if (!alreadyHasTownHall) {
@@ -7728,60 +7733,64 @@ const App: React.FC = () => {
 
                         // SYNCHRONOUS LOCK: prevent any concurrent click from placing a second Town Hall
                         isPlacingTownHallRef.current = true;
-
-                        const placementGuard = await validatePlacementTarget(gridX, gridY);
-                        if (!placementGuard.ok) {
-                            isPlacingTownHallRef.current = false;
-                            alert(placementGuard.message);
-                            return;
-                        }
-
-                        // Double check on server for safety before placing
                         try {
-                            const userBuildingsSnap = await getDocs(query(collection(db, 'buildings'), where('ownerId', '==', currentUser.uid)));
-                            const hasTownHallOnServer = userBuildingsSnap.docs.some(d => {
-                                const b = d.data() as PlacedBuilding;
-                                return TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b);
-                            });
-                            if (hasTownHallOnServer) {
+                            const placementGuard = await validatePlacementTarget(gridX, gridY);
+                            if (!placementGuard.ok) {
+                                alert(placementGuard.message);
                                 return;
                             }
-                        } catch (checkErr) {
-                            console.warn('[TH-PLACE] Server check failed:', checkErr);
-                        }
 
-                        const newTownHallId = makePlacedEntityId(currentUser.uid);
-                        const newTownHall: PlacedBuilding = {
-                            id: newTownHallId,
-                            x: gridX,
-                            y: gridY,
-                            zoneId: getZoneId(gridX, gridY),
-                            buildingId: TOWN_HALL_ID,
-                            ownerId: currentUser.uid,
-                            ownerName: playerName,
-                            timestamp: Date.now(),
-                            isConstructing: false,
-                            constructionEndTime: 0,
-                            workState: 'idle',
-                            type: BuildingType.TownHall,
-                            hp: townHallBuilding.stats.durability,
-                            maxHp: townHallBuilding.stats.durability,
-                            isLocal: true
-                        };
-                        setPlacedBuildings(prev => [...prev, newTownHall]);
-                        const docId = String(newTownHallId);
-                        try {
-                            await setDoc(doc(db, 'buildings', docId), newTownHall);
-                            if (shouldLogTownHallEvent(`place-saved-${docId}`, 60000)) {
-                                console.info(`[TH-PLACE] Saved Town Hall ${docId} at [${gridX}, ${gridY}]`);
+                            // Double check on server for safety before placing
+                            try {
+                                const userBuildingsSnap = await getDocs(query(collection(db, 'buildings'), where('ownerId', '==', currentUser.uid)));
+                                const hasTownHallOnServer = userBuildingsSnap.docs.some(d => {
+                                    const b = d.data() as PlacedBuilding;
+                                    const strId = String(d.id);
+                                    return TOWN_HALL_IDS.includes(Number(b.buildingId)) && isBuildingAlive(b) && !isBuildingDeleting(strId);
+                                });
+                                if (hasTownHallOnServer) {
+                                    return;
+                                }
+                            } catch (checkErr) {
+                                console.warn('[TH-PLACE] Server check failed:', checkErr);
                             }
-                        } catch (e) {
+
+                            const newTownHallId = makePlacedEntityId(currentUser.uid);
+                            const newTownHall: PlacedBuilding = {
+                                id: newTownHallId,
+                                x: gridX,
+                                y: gridY,
+                                zoneId: getZoneId(gridX, gridY),
+                                buildingId: TOWN_HALL_ID,
+                                ownerId: currentUser.uid,
+                                ownerName: playerName,
+                                timestamp: Date.now(),
+                                isConstructing: false,
+                                constructionEndTime: 0,
+                                workState: 'idle',
+                                type: BuildingType.TownHall,
+                                hp: townHallBuilding.stats.durability,
+                                maxHp: townHallBuilding.stats.durability,
+                                isLocal: true
+                            };
+                            setPlacedBuildings(prev => [...prev, newTownHall]);
+                            placedBuildingsRef.current = [...placedBuildingsRef.current, newTownHall];
+                            const docId = String(newTownHallId);
+                            try {
+                                await setDoc(doc(db, 'buildings', docId), newTownHall);
+                                if (shouldLogTownHallEvent(`place-saved-${docId}`, 60000)) {
+                                    console.info(`[TH-PLACE] Saved Town Hall ${docId} at [${gridX}, ${gridY}]`);
+                                }
+                            } catch (e) {
+                                setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
+                                placedBuildingsRef.current = placedBuildingsRef.current.filter(b => String(b.id) !== docId);
+                                handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
+                                alert('Ошибка сохранения Городского центра. Попробуйте еще раз.');
+                            }
+                            addHistoryLog("Основан новый город!", 'build');
+                        } finally {
                             isPlacingTownHallRef.current = false;
-                            setPlacedBuildings(prev => prev.filter(b => String(b.id) !== docId));
-                            handleFirestoreError(e, OperationType.CREATE, `buildings/${docId}`);
-                            alert('Ошибка сохранения Городского центра. Попробуйте еще раз.');
                         }
-                        addHistoryLog("Основан новый город!", 'build');
                     }
                 } else {
                     const placementGuard = await validatePlacementTarget(gridX, gridY);
@@ -17233,7 +17242,7 @@ const App: React.FC = () => {
                                 }
                             } else {
                                 // Target is a building
-                                const isDead = nextHp <= 0 && !TOWN_HALL_IDS.includes(Number(hitTarget.buildingId));
+                                const isDead = nextHp <= 0;
                                 hitTarget.hp = nextHp;
                                 if (currentShield > 0) {
                                     hitTarget.shieldHp = nextShield > 0 ? nextShield : undefined;
@@ -17594,7 +17603,7 @@ const App: React.FC = () => {
                         (b.isDestroying && !!getEffectiveDestructionExpiresAt(b) && now >= (getEffectiveDestructionExpiresAt(b) || 0)) ||
                         (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetAnimStart && now >= b.trebuchetAnimStart + TREBUCHET_ANIM_DURATION && !b.trebuchetLoaded) ||
                         (Number(b.buildingId) === TREBUCHET_ID && b.trebuchetMoveUntil && now >= b.trebuchetMoveUntil) ||
-                        (b.hp !== undefined && b.hp <= 0 && !TOWN_HALL_IDS.includes(Number(b.buildingId)));
+                        (b.hp !== undefined && b.hp <= 0);
                 });
             }
 
@@ -18716,8 +18725,10 @@ const App: React.FC = () => {
 
                         if (updatedB.hp !== undefined && updatedB.hp <= 0) {
                         const isTownHall = TOWN_HALL_IDS.includes(Number(updatedB.buildingId));
+                        const isExplodedByPlayer = Boolean(updatedB.pendingDamage && updatedB.pendingDamage > 0);
                         const inTownHallSafetyWindow =
                             isTownHall &&
+                            !isExplodedByPlayer &&
                             (updatedB.isConstructing ||
                                 (updatedB.constructionEndTime !== undefined &&
                                     now < (updatedB.constructionEndTime + 120000)));
@@ -18735,6 +18746,9 @@ const App: React.FC = () => {
                             updatedB.destructionEndTime = undefined;
                             updatedB.pendingDamage = 0;
                             isDestroyed = true;
+                            if (isTownHall) {
+                                isPlacingTownHallRef.current = false;
+                            }
                             clearMonsterTargetLocksForBuilding(entityId);
                         }
                     }
@@ -18743,6 +18757,10 @@ const App: React.FC = () => {
                         stateChanged = true;
                         structuralStateChanged = true;
                         const docId = String(updatedB.id);
+                        deletingBuildingsRef.current.set(docId, now);
+                        if (TOWN_HALL_IDS.includes(Number(updatedB.buildingId))) {
+                            isPlacingTownHallRef.current = false;
+                        }
                         clearMonsterTargetLocksForBuilding(docId);
                         // If this building is already in delete pipeline, do not process
                         // destruction side-effects again (prevents duplicate loot/explosions).
@@ -19120,7 +19138,6 @@ const App: React.FC = () => {
             b =>
                 b.hp !== undefined &&
                 b.hp <= 0 &&
-                !TOWN_HALL_IDS.includes(Number(b.buildingId)) &&
                 b.ownerId === user.uid &&
                 !b.isConstructing &&
                 !b.isDestroying &&
@@ -19135,12 +19152,16 @@ const App: React.FC = () => {
         if (deadBuildings.length > 0) {
             deadBuildings.forEach(b => {
                 const docId = String(b.id);
+                if (TOWN_HALL_IDS.includes(Number(b.buildingId))) {
+                    isPlacingTownHallRef.current = false;
+                }
                 if (!isBuildingDeleting(docId)) {
                     deletingBuildingsRef.current.set(docId, Date.now());
                     deleteDoc(doc(db, 'buildings', docId))
                         .then(() => {
                             removeBuildingFromSnapshotCaches(docId);
                             setPlacedBuildings(prev => prev.filter(pb => String(pb.id) !== docId));
+                            placedBuildingsRef.current = placedBuildingsRef.current.filter(pb => String(pb.id) !== docId);
                             setSelectedBuilding(prev => prev && String(prev.building.id) === docId ? null : prev);
                         })
                         .catch(e => {
@@ -22939,7 +22960,7 @@ const App: React.FC = () => {
         addHistoryLog(`Продано здание "${info.name}". Получено: ${refundGold} монет.`, 'economy');
 
         // Optimistic removal - immediate UI update
-        setPlacedBuildings(prev => prev.filter(b => {
+        const updatedPlaced = placedBuildingsRef.current.filter(b => {
             const bId = String(b.id);
             if (duplicateSoldIds.has(bId)) return false;
             if (
@@ -22951,8 +22972,14 @@ const App: React.FC = () => {
                 return false;
             }
             return true;
-        }));
+        });
+        placedBuildingsRef.current = updatedPlaced;
+        setPlacedBuildings(updatedPlaced);
         setSelectedBuilding(null);
+
+        if (TOWN_HALL_IDS.includes(Number(building.buildingId))) {
+            isPlacingTownHallRef.current = false;
+        }
 
         if (isAuthReady && user) {
             duplicateSoldIds.forEach((docId) => {
@@ -27397,6 +27424,7 @@ const App: React.FC = () => {
                 coinImageUrl={coinImageUrl}
                 playCloseSound={playCloseSound}
                 enqueueImagePreload={enqueueImagePreload}
+                hasTownHall={hasTownHall}
                 getIsBuildingFree={(buildingId) => Boolean(
                     (buildingId === TOWN_HALL_ID && (!hasTownHall || !townHallTutorialCompleted)) ||
                     (buildingId === TUTORIAL_FROG_HOUSE_ID && (!townHallTutorialCompleted && !placedBuildings.some(b => isMyBuilding(b) && Number(b.buildingId) === TUTORIAL_FROG_HOUSE_ID))) ||
